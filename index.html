@@ -9,7 +9,6 @@
             --blanco: #FFFFFF;
             --negro: #0a0a0a;
             --azul: #1a3a8f;
-            --rojo: #8B0000;
         }
         
         body {
@@ -23,80 +22,25 @@
             align-items: center;
         }
 
-        /* SECCIÓN 1 - HEADER */
-        .header {
-            margin-top: 120px;
-            margin-bottom: 80px;
-            text-align: center;
-            width: 100%;
-        }
+        .header { margin-top: 120px; margin-bottom: 80px; text-align: center; width: 100%; }
+        .logo { font-size: 28px; font-weight: normal; letter-spacing: 1.5px; color: var(--negro); margin: 0; }
 
-        .logo {
-            font-size: 28px;
-            font-weight: normal;
-            letter-spacing: 1.5px;
-            color: var(--negro);
-            margin: 0;
-        }
+        .seccion-bienvenida { max-width: 680px; width: 90%; margin-bottom: 40px; }
+        .seccion-bienvenida p { font-size: 19px; line-height: 1.8; margin-bottom: 26px; }
 
-        /* SECCIÓN 2 - BIENVENIDA */
-        .seccion-bienvenida {
-            max-width: 680px;
-            width: 90%;
-            margin-bottom: 40px;
-        }
+        .linea-divisoria { border: none; border-top: 1px solid var(--azul); width: 60%; max-width: 680px; margin: 80px auto; }
+        
+        .preludio { color: var(--azul); font-size: 32px; font-weight: normal; text-align: center; margin-bottom: 60px; }
 
-        .seccion-bienvenida p {
-            font-size: 19px;
-            line-height: 1.8;
-            margin-bottom: 26px;
-        }
+        /* SECCIÓN 6 - ENSAYOS */
+        .lista-ensayos { max-width: 680px; width: 90%; margin-bottom: 120px; }
+        .ensayo-item { margin-bottom: 40px; }
+        .ensayo-titulo { font-size: 22px; color: var(--negro); margin-bottom: 8px; display: block; text-decoration: none; }
+        .ensayo-titulo:hover { color: var(--azul); }
+        .ensayo-fecha { font-size: 14px; color: #666; font-style: italic; }
 
-        /* SECCIÓN 3 - LÍNEA DIVISORIA */
-        .linea-divisoria {
-            border: none;
-            border-top: 1px solid var(--azul);
-            width: 60%;
-            max-width: 680px;
-            margin: 80px auto;
-        }
-
-        /* SECCIÓN 4 - PRELUDIO */
-        .preludio {
-            color: var(--azul);
-            font-size: 32px;
-            font-weight: normal;
-            text-align: center;
-            margin-bottom: 80px;
-            width: 90%;
-        }
-
-        /* SECCIÓN 5 - BARRA DE BÚSQUEDA */
-        .buscador-container {
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            margin-bottom: 120px;
-        }
-
-        .buscador {
-            width: 90%;
-            max-width: 450px;
-            padding: 15px 20px;
-            border: 1px solid var(--azul);
-            border-radius: 0;
-            outline: none;
-            font-family: 'Georgia', 'Times New Roman', serif;
-            font-size: 16px;
-            background: transparent;
-            color: var(--negro);
-            text-align: center;
-        }
-
-        .buscador::placeholder {
-            color: #777;
-            font-style: italic;
-        }
+        .buscador-container { width: 100%; display: flex; justify-content: center; margin-bottom: 120px; }
+        .buscador { width: 90%; max-width: 450px; padding: 15px 20px; border: 1px solid var(--azul); border-radius: 0; outline: none; font-family: 'Georgia', 'Times New Roman', serif; font-size: 16px; background: transparent; color: var(--negro); text-align: center; }
     </style>
 </head>
 <body>
@@ -133,6 +77,17 @@
     <hr class="linea-divisoria">
 
     <h2 class="preludio">Lo que la ciencia sabe sobre ti.</h2>
+
+    <section class="lista-ensayos">
+        <div class="ensayo-item">
+            <a href="#" class="ensayo-titulo">La arquitectura de la parálisis: Por qué más opciones te hacen menos libre.</a>
+            <span class="ensayo-fecha">15 de mayo, 2026</span>
+        </div>
+        <div class="ensayo-item">
+            <a href="#" class="ensayo-titulo">El mito de la fuerza de voluntad.</a>
+            <span class="ensayo-fecha">10 de mayo, 2026</span>
+        </div>
+    </section>
 
     <div class="buscador-container">
         <input type="text" class="buscador" placeholder="Busca un tema, una pregunta, una duda...">
