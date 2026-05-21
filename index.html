@@ -6,62 +6,48 @@
     <title>Montaguth Institute</title>
     <style>
         :root {
-            --fondo-profundo: #050a14;
+            --fondo: #050a14;
             --azul-acento: #38bdf8;
-            --texto-claro: #e2e8f0;
-            --texto-brillante: #ffffff;
+            --texto-principal: #f8fafc;
         }
         
         body {
-            background: radial-gradient(circle at top, #1e293b 0%, #050a14 100%);
-            color: var(--texto-claro);
+            background-color: var(--fondo);
+            color: var(--texto-principal);
             font-family: 'Georgia', serif;
             margin: 0; padding: 0;
             display: flex; flex-direction: column; align-items: center;
+            justify-content: center;
             min-height: 100vh;
         }
 
-        .header { margin-top: 50px; margin-bottom: 30px; text-align: center; }
-        
-        /* Título optimizado */
+        .header { margin-bottom: 60px; }
         .logo { 
-            font-family: sans-serif;
-            font-size: 20px; /* Tamaño más seguro para móvil */
-            letter-spacing: 3px; 
-            text-transform: uppercase; 
-            color: var(--texto-brillante); 
-            margin: 0;
+            font-family: sans-serif; font-size: 18px; 
+            letter-spacing: 8px; text-transform: uppercase; 
+            color: #94a3b8; margin: 0;
         }
 
-        .contenedor-manifiesto {
-            max-width: 650px; width: 85%;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        /* La Frase de Oro */
+        .frase-hero {
+            max-width: 800px; width: 90%;
+            text-align: center;
+            font-size: 32px; line-height: 1.4;
+            margin-bottom: 40px;
+            font-weight: 300;
         }
 
-        #texto-manifiesto { font-size: 15px; line-height: 1.7; text-align: justify; }
-        
-        .btn-leer-mas {
-            display: block; width: 100%; margin-top: 20px;
-            padding: 12px; background: transparent;
+        .btn-filosofia {
+            background: transparent; color: var(--azul-acento);
             border: 1px solid var(--azul-acento);
-            color: var(--azul-acento); cursor: pointer;
-            text-transform: uppercase; letter-spacing: 2px; font-size: 12px;
+            padding: 12px 30px; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 2px;
+            font-size: 12px; transition: 0.3s;
         }
+        .btn-filosofia:hover { background: var(--azul-acento); color: var(--fondo); }
 
-        .buscador {
-            width: 85%; max-width: 400px; margin-top: 40px; margin-bottom: 40px;
-            padding: 12px; background: rgba(0,0,0,0.2);
-            border: 1px solid rgba(255,255,255,0.1); color: #94a3b8;
-            text-align: center; font-family: 'Georgia', serif;
-        }
-
-        /* Ajuste para pantallas grandes (Escritorio) */
         @media (min-width: 768px) {
-            .logo { font-size: 26px; letter-spacing: 6px; }
-            .contenedor-manifiesto { padding: 40px; }
+            .frase-hero { font-size: 42px; }
         }
     </style>
 </head>
@@ -71,31 +57,9 @@
         <h1 class="logo">Montaguth Institute</h1>
     </header>
 
-    <main class="contenedor-manifiesto">
-        <div id="texto-manifiesto">
-            <p>Llega un punto exacto en el que buscar respuestas se convierte en el problema. Has leído los libros. Has escuchado los consejos. Has intentado aplicar filosofías que prometían claridad, solo para descubrir que la verdad de alguien contradice por completo la verdad de otro. Y al final del día, te quedas con una colección de teorías y una parálisis silenciosa. 
-            <span id="mas-texto" style="display:none;">
-            No sabes qué camino tomar, no por falta de opciones, sino porque hay demasiadas. Esa confusión que sientes no es un defecto tuyo. No es falta de voluntad ni de capacidad. Es la consecuencia biológica y lógica de vivir en un ecosistema donde todos gritan tener la razón al mismo tiempo. Es el agotamiento natural de quien busca certezas en un mundo saturado de opiniones. Cuando nosotros llegamos a ese mismo nivel de saturación, nos hicimos una pregunta inevitable: ante tanto ruido, ¿quién tiene entonces la verdad? La salida a esa parálisis no la encontramos en un nuevo autor de moda, ni en un método revolucionario que prometiera darnos la respuesta definitiva en tres pasos. La encontramos en el único lugar que no necesita que creas en él para funcionar. Un terreno que no grita para ser escuchado. Que no depende del carisma de quien lo explica y que existe mucho antes y mucho después de cualquier debate humano. La ciencia. Lo comprobado. Pero no la ciencia vista como una institución fría, distante o escrita en un lenguaje indescifrable para quien no usa bata blanca. Hablamos de la ciencia como el único filtro real que tenemos para apagar el ruido. Como el único sistema humano diseñado específicamente para separar lo que de verdad funciona de lo que solo suena inspirador. De esa necesidad de pisar tierra firme nació Montaguth Institute. No somos una plataforma de autoayuda. Somos un lugar donde la psicología, la neurociencia y la comunicación se abordan exclusivamente desde la evidencia. Aquí vas a encontrar información respaldada por estudios reales. Y cuando algo no esté comprobado o tenga limitaciones, te lo diremos de frente. No tenemos ningún interés en venderte certezas disfrazadas. Hacemos esto por una razón muy simple: creemos que antes de intentar cambiar algo de ti, de corregir un hábito o de exigirte ser mejor, primero necesitas entender por qué te pasa lo que te pasa. Comprender tu propia mente es el paso obligatorio e innegociable para poder vivir en paz con ella. En este proceso, no queremos que te quedes solo con la teoría. No nos interesan los monólogos corporativos donde nadie escucha del otro lado. Por eso, al final de cada ensayo que leas, vas a encontrar una invitación para escribirnos directamente. Si un texto te deja pensando, si tienes una duda sobre tu propio proceso, o incluso si hay una pregunta que ni siquiera sabes cómo formular bien todavía, envíanos un correo. Te va a responder una persona, no una máquina. Recibirás una respuesta real, cálida y fundamentada en la misma evidencia que defendemos. Esta es nuestra casa y la puerta está abierta. Aquí hemos reunido todo lo que encontramos al otro lado del ruido. Pasa, lee a tu propio ritmo, y úsalo como mejor te sirva.
-            </span>
-            </p>
-        </div>
-        <button id="btn-toggle" class="btn-leer-mas" onclick="toggleTexto()">Leer más</button>
-    </main>
+    <h2 class="frase-hero">"Llega un punto exacto en el que buscar respuestas se convierte en el problema."</h2>
 
-    <input type="text" class="buscador" placeholder="Busca un tema, una pregunta...">
+    <button class="btn-filosofia" onclick="window.location.href='filosofia.html'">Nuestra Filosofía</button>
 
-    <script>
-        function toggleTexto() {
-            var dots = document.getElementById("mas-texto");
-            var btnText = document.getElementById("btn-toggle");
-            if (dots.style.display === "none") {
-                dots.style.display = "inline";
-                btnText.innerHTML = "Leer menos";
-            } else {
-                dots.style.display = "none";
-                btnText.innerHTML = "Leer más";
-            }
-        }
-    </script>
 </body>
 </html>
