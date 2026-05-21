@@ -2,10 +2,30 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nuestra Filosofía | Montaguth Institute</title>
+    <style>
+        :root { --fondo: #050a14; --azul-acento: #38bdf8; --texto: #e2e8f0; }
+        body { background-color: var(--fondo); color: var(--texto); font-family: 'Georgia', serif; line-height: 1.8; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; }
+        .contenedor { max-width: 650px; width: 100%; }
+        .volver { color: var(--azul-acento); text-decoration: none; font-size: 14px; margin-bottom: 20px; display: inline-block; }
+        h1 { font-family: sans-serif; font-size: 24px; letter-spacing: 4px; text-transform: uppercase; color: #fff; margin-bottom: 40px; }
+        p { font-size: 17px; margin-bottom: 20px; text-align: justify; }
+        .buscador { width: 100%; padding: 15px; margin-top: 50px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: center; font-family: 'Georgia', serif; }
+    </style>
 </head>
-<body style="background-color: #050a14; color: white; font-family: sans-serif; padding: 50px;">
-    <h1>Estamos trabajando en nuestra filosofía...</h1>
-    <a href="index.html" style="color: #38bdf8;">← Volver al inicio</a>
+<body>
+    <div class="contenedor">
+        <a href="index.html" class="volver">← Volver al inicio</a>
+        <h1>Nuestra Filosofía</h1>
+        
+        <p>Llega un punto exacto en el que buscar respuestas se convierte en el problema. Has leído los libros. Has escuchado los consejos. Has intentado aplicar filosofías que prometían claridad, solo para descubrir que la verdad de alguien contradice por completo la verdad de otro.</p>
+        
+        <p>Esa confusión que sientes no es un defecto tuyo. Es la consecuencia de vivir en un ecosistema donde todos gritan tener la razón. Cuando nosotros llegamos a ese nivel de saturación, nos hicimos una pregunta inevitable: ante tanto ruido, ¿quién tiene entonces la verdad?</p>
+        
+        <p>La salida la encontramos en el único lugar que no necesita que creas en él para funcionar: la ciencia. En Montaguth Institute, no vendemos autoayuda; nos dedicamos a filtrar el ruido mediante la psicología, la neurociencia y la comunicación basada exclusivamente en la evidencia.</p>
+
+        <input type="text" class="buscador" placeholder="Busca un tema, una pregunta...">
+    </div>
 </body>
 </html>
