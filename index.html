@@ -28,7 +28,6 @@
             color: #94a3b8; margin: 0;
         }
 
-        /* La Frase de Oro */
         .frase-hero {
             max-width: 800px; width: 90%;
             text-align: center;
@@ -43,8 +42,19 @@
             padding: 12px 30px; cursor: pointer;
             text-transform: uppercase; letter-spacing: 2px;
             font-size: 12px; transition: 0.3s;
+            margin-bottom: 50px;
         }
         .btn-filosofia:hover { background: var(--azul-acento); color: var(--fondo); }
+
+        .buscador-container { text-align: center; width: 100%; }
+        .buscador {
+            width: 85%; max-width: 400px;
+            padding: 15px; background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1); color: #94a3b8;
+            text-align: center; font-family: 'Georgia', serif;
+            font-size: 14px;
+        }
+        .instruccion { color: #475569; font-size: 12px; margin-top: 10px; display: block; }
 
         @media (min-width: 768px) {
             .frase-hero { font-size: 42px; }
@@ -57,9 +67,14 @@
         <h1 class="logo">Montaguth Institute</h1>
     </header>
 
-    <h2 class="frase-hero">"Llega un punto exacto en el que buscar respuestas se convierte en el problema."</h2>
+    <h2 class="frase-hero">Llega un punto exacto en el que buscar respuestas se convierte en el problema.</h2>
 
     <button class="btn-filosofia" onclick="window.location.href='filosofia.html'">Nuestra Filosofía</button>
+
+    <div class="buscador-container">
+        <input type="text" class="buscador" placeholder="Busca un tema...">
+        <span class="instruccion">Presiona Enter para buscar</span>
+    </div>
 
 </body>
 </html>
