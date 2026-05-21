@@ -22,11 +22,12 @@
             min-height: 100vh;
         }
 
-        .header { margin-top: 60px; margin-bottom: 30px; text-align: center; }
-        .logo { font-family: 'Segoe UI', sans-serif; font-size: 24px; letter-spacing: 6px; text-transform: uppercase; color: var(--texto-brillante); margin: 0; }
-
-        /* Gráfico técnico minimalista */
-        .grafico-contenedor { margin-bottom: 30px; opacity: 0.6; }
+        .header { margin-top: 80px; margin-bottom: 60px; }
+        .logo { 
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 24px; letter-spacing: 6px; 
+            text-transform: uppercase; color: var(--texto-brillante);
+        }
 
         .contenedor-manifiesto {
             max-width: 650px; width: 90%;
@@ -61,15 +62,6 @@
     <header class="header">
         <h1 class="logo">Montaguth Institute</h1>
     </header>
-
-    <div class="grafico-contenedor">
-        <svg width="80" height="80" viewBox="0 0 100 100" fill="none" stroke="#38bdf8" stroke-width="0.5">
-            <circle cx="50" cy="50" r="40" stroke-dasharray="10 10"/>
-            <circle cx="50" cy="50" r="20" stroke-dasharray="5 5"/>
-            <line x1="50" y1="10" x2="50" y2="90"/>
-            <line x1="10" y1="50" x2="90" y2="50"/>
-        </svg>
-    </div>
 
     <main class="contenedor-manifiesto">
         <div id="texto-manifiesto">
