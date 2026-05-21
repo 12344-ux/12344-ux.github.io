@@ -6,41 +6,57 @@
     <title>Montaguth Institute</title>
     <style>
         :root {
-            --blanco: #FFFFFF;
-            --negro: #0a0a0a;
-            --azul: #1a3a8f;
+            --fondo: #0f172a;
+            --recuadro: rgba(255, 255, 255, 0.03);
+            --borde: rgba(255, 255, 255, 0.1);
+            --texto: #f8fafc;
+            --azul-acento: #38bdf8;
         }
         
         body {
-            background-color: var(--blanco);
-            color: var(--negro);
+            background: radial-gradient(circle at top, #1e293b 0%, #0f172a 100%);
+            color: var(--texto);
             font-family: 'Georgia', 'Times New Roman', serif;
             margin: 0;
             padding: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
+            min-height: 100vh;
         }
 
-        .header { margin-top: 120px; margin-bottom: 80px; text-align: center; width: 100%; }
-        .logo { font-size: 28px; font-weight: normal; letter-spacing: 1.5px; color: var(--negro); margin: 0; }
+        .header { margin-top: 60px; margin-bottom: 40px; text-align: center; }
+        .logo { font-size: 26px; letter-spacing: 4px; text-transform: uppercase; margin: 0; }
 
-        .seccion-bienvenida { max-width: 680px; width: 90%; margin-bottom: 40px; }
-        .seccion-bienvenida p { font-size: 19px; line-height: 1.8; margin-bottom: 26px; }
+        .contenedor-manifiesto {
+            max-width: 700px;
+            width: 85%;
+            background: var(--recuadro);
+            border: 1px solid var(--borde);
+            padding: 40px;
+            border-radius: 2px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
 
-        .linea-divisoria { border: none; border-top: 1px solid var(--azul); width: 60%; max-width: 680px; margin: 80px auto; }
-        
-        .preludio { color: var(--azul); font-size: 32px; font-weight: normal; text-align: center; margin-bottom: 60px; }
+        .contenedor-manifiesto p {
+            font-size: 16px;
+            line-height: 1.8;
+            text-align: justify;
+            margin: 0;
+        }
 
-        /* SECCIÓN 6 - ENSAYOS */
-        .lista-ensayos { max-width: 680px; width: 90%; margin-bottom: 120px; }
-        .ensayo-item { margin-bottom: 40px; }
-        .ensayo-titulo { font-size: 22px; color: var(--negro); margin-bottom: 8px; display: block; text-decoration: none; }
-        .ensayo-titulo:hover { color: var(--azul); }
-        .ensayo-fecha { font-size: 14px; color: #666; font-style: italic; }
-
-        .buscador-container { width: 100%; display: flex; justify-content: center; margin-bottom: 120px; }
-        .buscador { width: 90%; max-width: 450px; padding: 15px 20px; border: 1px solid var(--azul); border-radius: 0; outline: none; font-family: 'Georgia', 'Times New Roman', serif; font-size: 16px; background: transparent; color: var(--negro); text-align: center; }
+        .buscador-container { width: 100%; display: flex; justify-content: center; margin-bottom: 60px; }
+        .buscador {
+            width: 85%;
+            max-width: 400px;
+            padding: 12px 20px;
+            border: 1px solid var(--borde);
+            background: rgba(255,255,255,0.05);
+            color: #ffffff;
+            text-align: center;
+            font-family: 'Georgia', serif;
+        }
     </style>
 </head>
 <body>
@@ -49,48 +65,12 @@
         <h1 class="logo">Montaguth Institute</h1>
     </header>
 
-    <main class="seccion-bienvenida">
-        <p>Llega un punto exacto en el que buscar respuestas se convierte en el problema.</p>
-        <p>Has leído los libros. Has escuchado los consejos. Has intentado aplicar filosofías que prometían claridad, solo para descubrir que la verdad de alguien contradice por completo la verdad de otro.</p>
-        <p>Y al final del día, te quedas con una colección de teorías y una parálisis silenciosa. No sabes qué camino tomar, no por falta de opciones, sino porque hay demasiadas.</p>
-        <p>Esa confusión que sientes no es un defecto tuyo. No es falta de voluntad ni de capacidad.</p>
-        <p>Es la consecuencia biológica y lógica de vivir en un ecosistema donde todos gritan tener la razón al mismo tiempo. Es el agotamiento natural de quien busca certezas en un mundo saturado de opiniones.</p>
-        <p>Cuando nosotros llegamos a ese mismo nivel de saturación, nos hicimos una pregunta inevitable: ante tanto ruido, ¿quién tiene entonces la verdad?</p>
-        <p>La salida a esa parálisis no la encontramos en un nuevo autor de moda, ni en un método revolucionario que prometiera darnos la respuesta definitiva en tres pasos.</p>
-        <p>La encontramos en el único lugar que no necesita que creas en él para funcionar.</p>
-        <p>Un terreno que no grita para ser escuchado. Que no depende del carisma de quien lo explica y que existe mucho antes y mucho después de cualquier debate humano.</p>
-        <p>La ciencia. Lo comprobado.</p>
-        <p>Pero no la ciencia vista como una institución fría, distante o escrita en un lenguaje indescifrable para quien no usa bata blanca.</p>
-        <p>Hablamos de la ciencia como el único filtro real que tenemos para apagar el ruido. Como el único sistema humano diseñado específicamente para separar lo que de verdad funciona de lo que solo suena inspirador.</p>
-        <p>De esa necesidad de pisar tierra firme nació Montaguth Institute.</p>
-        <p>No somos una plataforma de autoayuda. Somos un lugar donde la psicología, la neurociencia y la comunicación se abordan exclusivamente desde la evidencia.</p>
-        <p>Aquí vas a encontrar información respaldada por estudios reales. Y cuando algo no esté comprobado o tenga limitaciones, te lo diremos de frente. No tenemos ningún interés en venderte certezas disfrazadas.</p>
-        <p>Hacemos esto por una razón muy simple: creemos que antes de intentar cambiar algo de ti, de corregir un hábito o de exigirte ser mejor, primero necesitas entender por qué te pasa lo que te pasa.</p>
-        <p>Comprender tu propia mente es el paso obligatorio e innegociable para poder vivir en paz con ella.</p>
-        <p>En este proceso, no queremos que te quedes solo con la teoría. No nos interesan los monólogos corporativos donde nadie escucha del otro lado.</p>
-        <p>Por eso, al final de cada ensayo que leas, vas a encontrar una invitación para escribirnos directamente.</p>
-        <p>Si un texto te deja pensando, si tienes una duda sobre tu propio proceso, o incluso si hay una pregunta que ni siquiera sabes cómo formular bien todavía, envíanos un correo.</p>
-        <p>Te va a responder una persona, no una máquina. Recibirás una respuesta real, cálida y fundamentada en la misma evidencia que defendemos.</p>
-        <p>Esta es nuestra casa y la puerta está abierta. Aquí hemos reunido todo lo que encontramos al otro lado del ruido. Pasa, lee a tu propio ritmo, y úsalo como mejor te sirva.</p>
+    <main class="contenedor-manifiesto">
+        <p>Llega un punto exacto en el que buscar respuestas se convierte en el problema. Has leído los libros. Has escuchado los consejos. Has intentado aplicar filosofías que prometían claridad, solo para descubrir que la verdad de alguien contradice por completo la verdad de otro. Y al final del día, te quedas con una colección de teorías y una parálisis silenciosa. No sabes qué camino tomar, no por falta de opciones, sino porque hay demasiadas. Esa confusión que sientes no es un defecto tuyo. No es falta de voluntad ni de capacidad. Es la consecuencia biológica y lógica de vivir en un ecosistema donde todos gritan tener la razón al mismo tiempo. Es el agotamiento natural de quien busca certezas en un mundo saturado de opiniones. Cuando nosotros llegamos a ese mismo nivel de saturación, nos hicimos una pregunta inevitable: ante tanto ruido, ¿quién tiene entonces la verdad? La salida a esa parálisis no la encontramos en un nuevo autor de moda, ni en un método revolucionario que prometiera darnos la respuesta definitiva en tres pasos. La encontramos en el único lugar que no necesita que creas en él para funcionar. Un terreno que no grita para ser escuchado. Que no depende del carisma de quien lo explica y que existe mucho antes y mucho después de cualquier debate humano. La ciencia. Lo comprobado. Pero no la ciencia vista como una institución fría, distante o escrita en un lenguaje indescifrable para quien no usa bata blanca. Hablamos de la ciencia como el único filtro real que tenemos para apagar el ruido. Como el único sistema humano diseñado específicamente para separar lo que de verdad funciona de lo que solo suena inspirador. De esa necesidad de pisar tierra firme nació Montaguth Institute. No somos una plataforma de autoayuda. Somos un lugar donde la psicología, la neurociencia y la comunicación se abordan exclusivamente desde la evidencia. Aquí vas a encontrar información respaldada por estudios reales. Y cuando algo no esté comprobado o tenga limitaciones, te lo diremos de frente. No tenemos ningún interés en venderte certezas disfrazadas. Hacemos esto por una razón muy simple: creemos que antes de intentar cambiar algo de ti, de corregir un hábito o de exigirte ser mejor, primero necesitas entender por qué te pasa lo que te pasa. Comprender tu propia mente es el paso obligatorio e innegociable para poder vivir en paz con ella. En este proceso, no queremos que te quedes solo con la teoría. No nos interesan los monólogos corporativos donde nadie escucha del otro lado. Por eso, al final de cada ensayo que leas, vas a encontrar una invitación para escribirnos directamente. Si un texto te deja pensando, si tienes una duda sobre tu propio proceso, o incluso si hay una pregunta que ni siquiera sabes cómo formular bien todavía, envíanos un correo. Te va a responder una persona, no una máquina. Recibirás una respuesta real, cálida y fundamentada en la misma evidencia que defendemos. Esta es nuestra casa y la puerta está abierta. Aquí hemos reunido todo lo que encontramos al otro lado del ruido. Pasa, lee a tu propio ritmo, y úsalo como mejor te sirva.</p>
     </main>
 
-    <hr class="linea-divisoria">
-
-    <h2 class="preludio">Lo que la ciencia sabe sobre ti.</h2>
-
-    <section class="lista-ensayos">
-        <div class="ensayo-item">
-            <a href="#" class="ensayo-titulo">La arquitectura de la parálisis: Por qué más opciones te hacen menos libre.</a>
-            <span class="ensayo-fecha">15 de mayo, 2026</span>
-        </div>
-        <div class="ensayo-item">
-            <a href="#" class="ensayo-titulo">El mito de la fuerza de voluntad.</a>
-            <span class="ensayo-fecha">10 de mayo, 2026</span>
-        </div>
-    </section>
-
     <div class="buscador-container">
-        <input type="text" class="buscador" placeholder="Busca un tema, una pregunta, una duda...">
+        <input type="text" class="buscador" placeholder="Busca un tema, una pregunta...">
     </div>
 
 </body>
