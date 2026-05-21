@@ -34,16 +34,16 @@
 
         #texto-manifiesto {
             font-size: 16px; line-height: 1.8; text-align: justify;
-            margin: 0; transition: max-height 0.3s ease;
         }
 
         .oculto { display: none; }
 
         .btn-leer-mas {
             display: block; width: 100%; text-align: center;
-            margin-top: 20px; color: var(--azul-acento);
+            margin-top: 25px; color: var(--azul-acento);
             cursor: pointer; font-size: 14px; text-transform: uppercase;
-            letter-spacing: 1px; border: none; background: none;
+            letter-spacing: 2px; border: 1px solid var(--azul-acento); 
+            padding: 10px; background: transparent;
         }
 
         .buscador-container { width: 100%; display: flex; justify-content: center; margin-bottom: 60px; }
@@ -68,7 +68,7 @@
             </span>
             </p>
         </div>
-        <button id="btn-toggle" class="btn-leer-mas" onclick="toggleTexto()">Leer más ↓</button>
+        <button id="btn-toggle" class="btn-leer-mas" onclick="toggleTexto()">Leer más</button>
     </main>
 
     <div class="buscador-container">
@@ -81,10 +81,10 @@
             var btnText = document.getElementById("btn-toggle");
             if (dots.classList.contains("oculto")) {
                 dots.classList.remove("oculto");
-                btnText.innerHTML = "Leer menos ↑";
+                btnText.innerHTML = "Leer menos";
             } else {
                 dots.classList.add("oculto");
-                btnText.innerHTML = "Leer más ↓";
+                btnText.innerHTML = "Leer más";
             }
         }
     </script>
