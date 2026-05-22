@@ -40,14 +40,123 @@
             font-size: 12px; transition: 0.3s;
             margin-bottom: 50px;
         }
-        .btn-filosofia:hover { background: var(--azul-acento); color: var(--fondo); }
+        <div class="search-container" style="position: relative; max-width: 600px; margin: 40px auto; text-align: left;">
+    <div style="position: relative; display: flex; align-items: center;">
+        <input type="text" id="main-search" placeholder="Busca un tema... ↵ (Presiona Enter)" 
+            style="width: 100%; padding: 15px 20px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; color: #fff; font-family: sans-serif; font-size: 16px; outline: none; transition: 0.3s;">
+        <span style="position: absolute; right: 20px; color: #475569; font-family: sans-serif; font-size: 14px; pointer-events: none;">↵</span>
+    </div>
+    <div id="search-suggestions" style="position: absolute; top: 100%; left: 0; width: 100%; background: #050a14; border: 1px solid rgba(255,255,255,0.1); border-top: none; z-index: 10; display: none; border-radius: 0 0 4px 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);"></div>
+</div>
+
+<script>
+    // Base de datos semántica del Instituto Montaguth
+    const mapaBusqueda = [
+        {
+            keywords: ['alarma', 'despertador', 'reloj', 'ruido', 'mañana', 'madrugar', 'forzado', 'pereza', 'flojera', 'voluntad', 'disciplina', 'tassi', 'muzet', 'inercia', 'sueño'],
+            titulo: 'La Fisiología del Despertar Forzado (Ensayo Completo)',
+            url: 'investigacion-alarmas.html'
+        },
+        {
+            keywords: ['inteligencia', 'cortocircuito', 'cerebro', 'amigdala', 'adrenalina', 'balkin', 'prefrontal', 'asfixia', 'sangre', 'adenosina', 'torpeza', 'decisiones', 'wright', 'jama'],
+            titulo: 'El Cortocircuito de la Inteligencia Matutina',
+            url: 'investigacion-alarmas.html#seccion-2'
+        },
+        {
+            keywords: ['snooze', 'posponer', 'retrasar', 'cinco minutos', 'tina sundelin', 'herejia', 'escalera', 'dormir mas', 'descanso'],
+            titulo: 'La Herejía del Snooze: ¿Es realmente malo?',
+            url: 'investigacion-alarmas.html#seccion-6'
+        },
+        {
+            keywords: ['hack', 'solucion', 'simulador', 'amanecer', 'luz', 'gafas', 'melodica', 'mcfarlane', 'bpm', 'musica', 'ritmo', 'evitar', 'arreglar'],
+            titulo: 'El Hack Biológico: Simuladores de Amanecer',
+            url: 'investigacion-alarmas.html#seccion-7'
+        }
+    ];
+
+    const searchInput = document.getElementById('main-search');
+    const suggestionsContainer = document.getElementById('search-suggestions');
+
+    // Escuchar lo que escribe el usuario
+    searchInput.addEventListener('input', () => {
+        const query = searchInput.value.toLowerCase().trim();
+        suggestionsContainer.innerHTML = '';
         
-        .buscador-container { text-align: center; width: 100%; margin-bottom: 60px; }
-        .buscador {
-            width: 85%; max-width: 400px; padding: 15px; 
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--borde); color: var(--gris-secundario);
-            text-align: center; font-family: 'Georgia', serif; font-size: 14px;
+        if (query.length < 2) {
+            suggestionsContainer.style.display = 'none';
+            return;
+        }
+
+        // Filtrar coincidencias por palabras clave
+        const resultados = mapaBusqueda.filter(item => 
+            item.keywords.some(keyword => keyword.includes(query)) || 
+            item.titulo.toLowerCase().includes(query)
+        );
+
+        if (resultados.length > 0) {
+            resultados.forEach(item => {
+                const div = document.createElement('div');
+                div.textContent = item.titulo;
+                div.style.padding = '12px 20px';
+                div.style.cursor = 'pointer';
+                div.style.color = '#94a3b8';
+                div.style.fontFamily = 'sans-serif';
+                div.style.fontSize = '14px';
+                div.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+                div.style.transition = 'background 0.2s, color 0.2s';
+
+                // Efecto Hover premium (Azul eléctrico del instituto)
+                div.addEventListener('mouseenter', () => {
+                    div.style.background = 'rgba(56, 189, 248, 0.05)';
+                    div.style.color = '#38bdf8';
+                });
+                div.addEventListener('mouseleave', () => {
+                    div.style.background = 'transparent';
+                    div.style.color = '#94a3b8';
+                });
+
+                // Al hacer clic en la sugerencia, redirige de inmediato
+                div.addEventListener('click', () => {
+                    window.location.href = item.url;
+                });
+
+                suggestionsContainer.appendChild(div);
+            });
+            suggestionsContainer.style.display = 'block';
+        } else {
+            // Si no hay coincidencias exactas, sugerir la investigación general
+            suggestionsContainer.innerHTML = `<div style="padding: 12px 20px; color: #475569; font-family: sans-serif; font-size: 14px;">No se encontraron dudas exactas. Presiona Enter para buscar en el Instituto.</div>`;
+            suggestionsContainer.style.display = 'block';
+        }
+    });
+
+    // Escuchar la tecla Enter
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const query = searchInput.value.toLowerCase().trim();
+            if (query.length === 0) return;
+
+            // Buscar la mejor coincidencia
+            const mejorCoincidencia = mapaBusqueda.find(item => 
+                item.keywords.some(keyword => keyword.includes(query))
+            );
+
+            if (mejorCoincidencia) {
+                window.location.href = mejorCoincidencia.url;
+            } else {
+                // Redirección por defecto si escribe algo aleatorio
+                window.location.href = 'investigacion-alarmas.html';
+            }
+        }
+    });
+
+    // Cerrar sugerencias si hacen clic fuera del buscador
+    document.addEventListener('click', (e) => {
+        if (e.target !== searchInput && e.target !== suggestionsContainer) {
+            suggestionsContainer.style.display = 'none';
+        }
+    });
+</script>
         }
 
         /* CONTENEDOR DE LA INVESTIGACIÓN */
