@@ -3,212 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Montaguth Institute — Realismo Informativo</title>
+    <title>Montaguth Institute</title>
     <style>
         :root {
-            --fondo: #030712;
-            --texto-principal: #ffffff;
-            --texto-secundario: #9ca3af;
-            --gris-oscuro: #1f2937;
-            --borde: rgba(255, 255, 255, 0.08);
+            --fondo: #050a14;
             --azul-acento: #38bdf8;
+            --texto-principal: #f8fafc;
+            --gris-secundario: #94a3b8;
+            --gris-tenue: #475569;
+            --borde: rgba(255,255,255,0.1);
         }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
+        html { scroll-behavior: smooth; }
         body {
             background-color: var(--fondo);
             color: var(--texto-principal);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding-bottom: 120px;
-        }
-
-        /* Encabezado Institucional Premium */
-        .header-brand {
-            margin-top: 60px;
-            text-align: center;
-        }
-
-        .brand-logo {
-            font-size: 20px;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 8px;
-            color: #ffffff;
-            opacity: 0.9;
-        }
-
-        /* Frase Principal - Impacto Subconsciente Magnético (Imagen 1) */
-        .hero-section {
-            max-width: 900px;
-            width: 90%;
-            margin-top: 90px;
-            text-align: center;
-        }
-
-        .hero-title {
             font-family: 'Georgia', serif;
-            font-size: 46px;
-            font-weight: 400;
-            line-height: 1.3;
-            color: var(--texto-principal);
-            letter-spacing: -0.5px;
+            margin: 0; padding: 0;
+            display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh; padding-bottom: 80px;
         }
-
-        /* Botón de Filosofía Minimalista */
-        .philosophy-container {
-            margin-top: 45px;
-            text-align: center;
+        .header { margin-top: 60px; margin-bottom: 40px; }
+        .logo {
+            font-family: sans-serif; font-size: 18px;
+            letter-spacing: 8px; text-transform: uppercase;
+            color: var(--gris-secundario); margin: 0;
         }
-
-        .philosophy-btn {
-            display: inline-block;
-            background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: var(--texto-secundario);
-            text-transform: uppercase;
-            font-size: 11px;
-            letter-spacing: 3px;
-            padding: 14px 35px;
-            text-decoration: none;
-            transition: all 0.3s ease;
+        .frase-hero {
+            max-width: 800px; width: 90%; text-align: center;
+            font-size: 32px; line-height: 1.4; margin-bottom: 40px; font-weight: 300;
         }
-
-        .philosophy-btn:hover {
-            border-color: #ffffff;
-            color: #ffffff;
-            background: rgba(255, 255, 255, 0.02);
+        .btn-filosofia {
+            background: transparent; color: var(--azul-acento);
+            border: 1px solid var(--azul-acento);
+            padding: 12px 30px; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 2px;
+            font-size: 12px; transition: 0.3s;
+            margin-bottom: 50px;
         }
-
-        /* Umbral Elegante: Espacio generoso y línea fina sugerida por el experto */
-        .divider-section {
-            width: 85%;
-            max-width: 850px;
-            margin-top: 140px;
-            margin-bottom: 40px;
+        .btn-filosofia:hover { background: var(--azul-acento); color: var(--fondo); }
+        
+        /* EL UMBLAL DEL EXPERTO (REEMPLAZO DEL BUSCADOR) */
+        .seccion-umbral {
+            width: 90%;
+            max-width: 650px;
+            margin-top: 40px;
+            margin-bottom: 20px;
         }
-
-        .divider-line {
+        .linea-umbral {
             border: none;
             border-top: 1px solid var(--borde);
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
-
-        .section-label {
+        .texto-umbral {
+            font-family: sans-serif;
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 4px;
-            color: #4b5563;
+            color: var(--gris-tenue);
             font-weight: 600;
         }
 
-        /* Bloques de Investigaciones Activas con el botón + (Imagen 1) */
-        .content-container {
-            width: 85%;
-            max-width: 850px;
-        }
-
-        .investigation-card {
+        /* CONTENEDOR DE LA INVESTIGACIÓN */
+        .investigacion-box {
+            width: 90%; max-width: 650px;
             border: 1px solid var(--borde);
+            padding: 35px;
             background: rgba(255, 255, 255, 0.01);
-            padding: 35px 40px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            position: relative;
+        }
+        .investigacion-header { display: flex; align-items: center; gap: 20px; }
+        .btn-desplegable {
+            background: transparent; color: var(--azul-acento);
+            border: 1px solid var(--azul-acento);
+            width: 30px; height: 30px; cursor: pointer; 
+            font-family: sans-serif; font-size: 16px;
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.3s; padding: 0;
+        }
+        .titulo-investigacion { font-size: 22px; margin: 0; color: #fff; font-weight: 400; line-height: 1.3; }
+        .fecha { font-size: 12px; color: var(--gris-tenue); display: block; margin-top: 8px; margin-left: 50px; }
+
+        /* CONTENIDO DESPLEGABLE */
+        .investigacion-contenido {
+            display: none;
+            margin-top: 30px;
+            border-top: 1px solid var(--borde);
+            padding-top: 25px;
+        }
+        .investigacion-contenido.activo { display: block; }
+        
+        .descripcion-investigacion {
+            font-size: 16px; line-height: 1.6; color: var(--texto-principal);
+            margin-bottom: 25px; text-align: justify;
+        }
+        .btn-leer {
+            display: inline-block; color: var(--azul-acento);
+            text-decoration: none; font-size: 15px; font-weight: bold;
+            margin-bottom: 35px; transition: 0.3s;
+        }
+        .btn-leer:hover { opacity: 0.8; }
+
+        /* SECCIÓN DE PREGUNTAS ZEIGARNIK OPTIMIZADA */
+        .seccion-preguntas { margin-bottom: 35px; }
+        .titulo-preguntas {
+            font-size: 13px; color: var(--gris-secundario);
+            text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 18px;
+            font-family: sans-serif;
+        }
+        .lista-preguntas { list-style: none; padding: 0; margin: 0; }
+        .lista-preguntas li { margin-bottom: 16px; line-height: 1.5; }
+        .link-pregunta {
+            color: #e2e8f0; text-decoration: none;
+            font-size: 15px; transition: 0.2s; display: inline;
+        }
+        .link-pregunta:hover { color: var(--azul-acento); border-bottom: 1px solid var(--azul-acento); }
+
+        /* ANCLA HUMANA */
+        .nota-instituto {
+            background: rgba(56, 189, 248, 0.03);
+            border-left: 2px solid var(--azul-acento);
+            padding: 15px 20px; margin-top: 25px;
+        }
+        .nota-instituto p {
+            margin: 0; font-size: 14px; line-height: 1.6;
+            color: var(--gris-secundario); font-style: italic;
         }
 
-        .investigation-card:hover {
-            border-color: rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .card-info {
-            flex: 1;
-            padding-right: 30px;
-        }
-
-        .card-title {
-            font-family: 'Georgia', serif;
-            font-size: 24px;
-            font-weight: 400;
-            color: var(--texto-principal);
-            margin-bottom: 8px;
-            line-height: 1.4;
-        }
-
-        .card-date {
-            font-size: 12px;
-            color: #4b5563;
-        }
-
-        /* El icónico botón + de la Imagen 1 */
-        .expand-icon-btn {
-            width: 36px;
-            height: 36px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--azul-acento);
-            font-size: 18px;
-            font-weight: 300;
-            transition: all 0.3s ease;
-            background: transparent;
-        }
-
-        .investigation-card:hover .expand-icon-btn {
-            border-color: var(--azul-acento);
-            background: rgba(56, 189, 248, 0.05);
-        }
-
-        /* Optimización Responsive para móviles */
-        @media (max-width: 768px) {
-            .hero-title { font-size: 32px; }
-            .card-title { font-size: 20px; }
-            .investigation-card { padding: 25px 20px; }
-            .divider-section { margin-top: 90px; }
-        }
+        @media (min-width: 768px) { .frase-hero { font-size: 42px; } }
     </style>
 </head>
 <body>
-
-    <header class="header-brand">
-        <div class="brand-logo">Montaguth Institute</div>
+    <header class="header">
+        <h1 class="logo">Montaguth Institute</h1>
     </header>
+    
+    <h2 class="frase-hero">Llega un punto exacto en el que buscar respuestas se convierte en el problema.</h2>
+    
+    <button class="btn-filosofia" onclick="window.location.href='filosofia.html'">Nuestra Filosofía</button>
 
-    <section class="hero-section">
-        <h1 class="hero-title">Llega un punto exacto en el que buscar respuestas se convierte en el problema.</h1>
-    </section>
-
-    <div class="philosophy-container">
-        <a href="#manifiesto" class="philosophy-btn">Nuestra Filosofía</a>
+    <div class="seccion-umbral">
+        <hr class="linea-umbral">
+        <div class="texto-umbral">Investigaciones Activas</div>
     </div>
 
-    <div class="divider-section">
-        <hr class="divider-line">
-        <div class="section-label">Investigaciones Activas</div>
-    </div>
+    <div class="investigacion-box">
+        <div class="investigacion-header">
+            <button class="btn-desplegable" id="toggleBtn" onclick="toggleInvestigacion()">+</button>
+            <h3 class="titulo-investigacion">La fisiología del despertar forzado y el trauma metabólico de las alarmas</h3>
+        </div>
+        <span class="fecha">Publicado el 22 de mayo de 2026</span>
 
-    <main class="content-container">
-        <a href="investigacion-alarmas.html" class="investigation-card">
-            <div class="card-info">
-                <h2 class="card-title">La fisiología del despertar forzado y el trauma metabólico de las alarmas</h2>
-                <span class="card-date">Publicado el 22 de mayo de 2026</span>
+        <div class="investigacion-contenido" id="investigacionContenido">
+            <p class="descripcion-investigacion">
+                Durante toda tu vida te han convencido de que no poder saltar de la cama es un defecto de tu voluntad. La neurociencia moderna tiene un diagnóstico muy distinto: tu alarma no te está despertando, está provocando un trauma metabólico en tu cerebro. Descubre por qué la pereza matutina es biológicamente imposible y cómo tu propio reloj genético está siendo asfixiado.
+            </p>
+
+            <a href="investigacion-alarmas.html" class="btn-leer">Acceder a la investigación →</a>
+
+            <div class="seccion-preguntas">
+                <h4 class="titulo-preguntas">Respuestas exactas que encontrarás en esta lectura:</h4>
+                <ul class="lista-preguntas">
+                    <li>
+                        <a href="investigacion-alarmas.html#seccion-2" class="link-pregunta">¿Por qué tu sistema nervioso confunde el tono de tu alarma con una amenaza letal en apenas cien milisegundos?</a>
+                    </td>
+                    <li>
+                        <a href="investigacion-alarmas.html#seccion-6" class="link-pregunta">¿Por qué la prohibición mundial de usar el botón de "snooze" (posponer) acaba de ser demostrada como una herejía médica?</a>
+                    </td>
+                    <li>
+                        <a href="investigacion-alarmas.html#seccion-7" class="link-pregunta">¿Cuál es la intervención clínica comprobada para engañar a tu reloj genético y despertar sin sufrir un trauma metabólico?</a>
+                    </td>
+                </ul>
             </div>
-            <div class="expand-icon-btn">+</div>
-        </a>
-    </main>
 
+            <div class="nota-instituto">
+                <p>
+                    <strong>Nota del Instituto:</strong> La ciencia no es un monólogo. Al final de la lectura encontrarás una línea directa hacia nosotros. Si la investigación detona una duda sobre tu propio proceso, escríbenos. Te responderá un ser humano, con calidez y respaldado por evidencia. Sin respuestas automáticas.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleInvestigacion() {
+            var contenido = document.getElementById("investigacionContenido");
+            var btn = document.getElementById("toggleBtn");
+            
+            if (contenido.classList.contains("activo")) {
+                contenido.classList.remove("activo");
+                btn.innerText = "+";
+            } else {
+                contenido.classList.add("activo");
+                btn.innerText = "−";
+            }
+        }
+    </script>
 </body>
 </html>
