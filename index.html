@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Montaguth Institute</title>
+    <title>Montaguth Institute — Realismo Informativo</title>
     <style>
         :root {
             --fondo: #050a14;
@@ -13,174 +13,329 @@
             --gris-tenue: #475569;
             --borde: rgba(255,255,255,0.1);
         }
+        
+        * { box-sizing: border-box; }
         html { scroll-behavior: smooth; }
+        
         body {
             background-color: var(--fondo);
             color: var(--texto-principal);
-            font-family: 'Georgia', serif;
+            font-family: sans-serif;
             margin: 0; padding: 0;
             display: flex; flex-direction: column; align-items: center;
-            min-height: 100vh; padding-bottom: 80px;
-        }
-        .header { margin-top: 60px; margin-bottom: 40px; }
-        .logo {
-            font-family: sans-serif; font-size: 18px;
-            letter-spacing: 8px; text-transform: uppercase;
-            color: var(--gris-secundario); margin: 0;
-        }
-        .frase-hero {
-            max-width: 800px; width: 90%; text-align: center;
-            font-size: 32px; line-height: 1.4; margin-bottom: 40px; font-weight: 300;
-        }
-        .btn-filosofia {
-            background: transparent; color: var(--azul-acento);
-            border: 1px solid var(--azul-acento);
-            padding: 12px 30px; cursor: pointer;
-            text-transform: uppercase; letter-spacing: 2px;
-            font-size: 12px; transition: 0.3s;
-            margin-bottom: 50px;
-        }
-        .btn-filosofia:hover { background: var(--azul-acento); color: var(--fondo); }
-        
-        .buscador-container { text-align: center; width: 100%; margin-bottom: 60px; }
-        .buscador {
-            width: 85%; max-width: 400px; padding: 15px; 
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--borde); color: var(--gris-secundario);
-            text-align: center; font-family: 'Georgia', serif; font-size: 14px;
+            min-height: 100vh;
         }
 
-        /* CONTENEDOR DE LA INVESTIGACIÓN */
-        .investigacion-box {
-            width: 90%; max-width: 650px;
+        /* Contenedor del Logo / Título Principal */
+        .brand-header {
+            margin-top: 80px;
+            text-align: center;
+        }
+        .brand-logo {
+            font-size: 28px;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            font-weight: 300;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+        .brand-tagline {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--gris-tenue);
+        }
+
+        /* Bloque del Manifiesto */
+        .manifesto-section {
+            max-width: 650px;
+            width: 90%;
+            margin-top: 60px;
+            text-align: center;
+        }
+        .manifesto-text {
+            font-family: 'Georgia', serif;
+            font-size: 20px;
+            line-height: 1.6;
+            color: var(--texto-principal);
+            font-style: italic;
+        }
+
+        /* Buscador Predictivo (UX Optimizado contra la fricción) */
+        .search-wrapper {
+            width: 90%;
+            max-width: 600px;
+            margin: 50px auto 80px auto;
+            position: relative;
+        }
+        .search-box-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .search-box-container input {
+            width: 100%;
+            padding: 16px 45px 16px 20px;
+            background: rgba(255,255,255,0.02);
             border: 1px solid var(--borde);
-            padding: 35px; margin-top: 20px;
-            background: rgba(255, 255, 255, 0.01);
+            border-radius: 4px;
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .investigacion-header { display: flex; align-items: center; gap: 20px; }
-        .btn-desplegable {
-            background: transparent; color: var(--azul-acento);
-            border: 1px solid var(--azul-acento);
-            width: 30px; height: 30px; cursor: pointer; 
-            font-family: sans-serif; font-size: 16px;
-            display: flex; align-items: center; justify-content: center;
-            transition: 0.3s; padding: 0;
+        .search-box-container input:focus {
+            border-color: var(--azul-acento);
+            background: rgba(255,255,255,0.04);
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);
         }
-        .titulo-investigacion { font-size: 22px; margin: 0; color: #fff; font-weight: 400; line-height: 1.3; }
-        .fecha { font-size: 12px; color: var(--gris-tenue); display: block; margin-top: 8px; margin-left: 50px; }
+        .search-indicator {
+            position: absolute;
+            right: 20px;
+            color: var(--gris-tenue);
+            font-size: 16px;
+            pointer-events: none;
+            user-select: none;
+            transition: color 0.3s;
+        }
+        .search-box-container input:focus + .search-indicator {
+            color: var(--azul-acento);
+        }
 
-        /* CONTENIDO DESPLEGABLE */
-        .investigacion-contenido {
+        /* Desplegable de Sugerencias en Tiempo Real */
+        .suggestions-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            background: #060d1a;
+            border: 1px solid var(--borde);
+            border-top: none;
+            z-index: 999;
             display: none;
-            margin-top: 30px;
-            border-top: 1px solid var(--borde);
-            padding-top: 25px;
+            border-radius: 0 0 4px 4px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            margin-top: 2px;
+            overflow: hidden;
         }
-        .investigacion-contenido.activo { display: block; }
+        .suggestion-item {
+            padding: 14px 20px;
+            cursor: pointer;
+            color: var(--gris-secundario);
+            font-size: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            transition: all 0.2s ease;
+        }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover {
+            background: rgba(56, 189, 248, 0.04);
+            color: var(--azul-acento);
+            padding-left: 25px;
+        }
+        .suggestion-empty {
+            padding: 14px 20px;
+            color: var(--gris-tenue);
+            font-size: 14px;
+            font-style: italic;
+        }
+
+        /* Secciones de Contenido Inicial (Efecto Zeigarnik) */
+        .content-hub {
+            width: 90%;
+            max-width: 700px;
+            margin-bottom: 100px;
+        }
+        .hub-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--gris-tenue);
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--borde);
+            padding-bottom: 10px;
+        }
+        .article-card {
+            background: rgba(255,255,255,0.01);
+            border: 1px solid var(--borde);
+            border-radius: 4px;
+            padding: 30px;
+            margin-bottom: 25px;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+        .article-card:hover {
+            border-color: rgba(56, 189, 248, 0.3);
+            transform: translateY(-2px);
+        }
+        .article-card h2 {
+            font-family: 'Georgia', serif;
+            font-size: 22px;
+            font-weight: 400;
+            margin: 0 0 15px 0;
+            color: #fff;
+        }
+        .zeigarnik-list {
+            list-style: none;
+            padding: 0; margin: 0 0 25px 0;
+        }
+        .zeigarnik-list li {
+            margin-bottom: 12px;
+        }
+        .zeigarnik-list a {
+            color: var(--azul-acento);
+            text-decoration: none;
+            font-size: 15px;
+            transition: opacity 0.2s;
+        }
+        .zeigarnik-list a:hover {
+            text-decoration: underline;
+        }
         
-        .descripcion-investigacion {
-            font-size: 16px; line-height: 1.6; color: var(--texto-principal);
-            margin-bottom: 25px; text-align: justify;
+        .main-cta-btn {
+            display: inline-block;
+            background: transparent;
+            border: 1px solid var(--azul-acento);
+            color: var(--azul-acento);
+            text-decoration: none;
+            padding: 12px 25px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-radius: 4px;
+            transition: all 0.3s;
         }
-        .btn-leer {
-            display: inline-block; color: var(--azul-acento);
-            text-decoration: none; font-size: 15px; font-weight: bold;
-            margin-bottom: 35px; transition: 0.3s;
+        .main-cta-btn:hover {
+            background: var(--azul-acento);
+            color: var(--fondo);
         }
-        .btn-leer:hover { opacity: 0.8; }
-
-        /* SECCIÓN DE PREGUNTAS ZEIGARNIK OPTIMIZADA */
-        .seccion-preguntas { margin-bottom: 35px; }
-        .titulo-preguntas {
-            font-size: 13px; color: var(--gris-secundario);
-            text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 18px;
-            font-family: sans-serif;
-        }
-        .lista-preguntas { list-style: none; padding: 0; margin: 0; }
-        .lista-preguntas li { margin-bottom: 16px; line-height: 1.5; }
-        .link-pregunta {
-            color: #e2e8f0; text-decoration: none;
-            font-size: 15px; transition: 0.2s; display: inline;
-        }
-        .link-pregunta:hover { color: var(--azul-acento); border-bottom: 1px solid var(--azul-acento); }
-
-        /* ANCLA HUMANA */
-        .nota-instituto {
-            background: rgba(56, 189, 248, 0.03);
-            border-left: 2px solid var(--azul-acento);
-            padding: 15px 20px; margin-top: 25px;
-        }
-        .nota-instituto p {
-            margin: 0; font-size: 14px; line-height: 1.6;
-            color: var(--gris-secundario); font-style: italic;
-        }
-
-        @media (min-width: 768px) { .frase-hero { font-size: 42px; } }
     </style>
 </head>
 <body>
-    <header class="header">
-        <h1 class="logo">Montaguth Institute</h1>
+
+    <header class="brand-header">
+        <div class="brand-logo">Montaguth Institute</div>
+        <div class="brand-tagline">Realismo Informativo & Divulgación Científica</div>
     </header>
-    
-    <h2 class="frase-hero">Llega un punto exacto en el que buscar respuestas se convierte en el problema.</h2>
-    
-    <button class="btn-filosofia" onclick="window.location.href='filosofia.html'">Nuestra Filosofía</button>
 
-    <div class="buscador-container">
-        <input type="text" class="buscador" placeholder="Busca un tema...">
+    <section class="manifesto-section">
+        <p class="manifesto-text">
+            "No pretendemos moldear tu comportamiento. Nuestra única promesa es entregarte la verdad biológica y psicológica del mundo moderno, respaldada rigurosamente por la ciencia."
+        </p>
+    </section>
+
+    <div class="search-wrapper">
+        <div class="search-box-container">
+            <input type="text" id="main-search" placeholder="Busca un tema... (Presiona Enter)" autocomplete="off">
+            <span class="search-indicator">↵</span>
+        </div>
+        <div id="search-suggestions" class="suggestions-dropdown"></div>
     </div>
 
-    <div class="investigacion-box">
-        <div class="investigacion-header">
-            <button class="btn-desplegable" id="toggleBtn" onclick="toggleInvestigacion()">+</button>
-            <h3 class="titulo-investigacion">La fisiología del despertar forzado y el trauma metabólico de las alarmas</h3>
+    <main class="content-hub">
+        <div class="hub-title">Investigaciones Activas</div>
+        
+        <div class="article-card">
+            <h2>La Fisiología del Despertar Forzado</h2>
+            <ul class="zeigarnik-list">
+                <li><a href="investigacion-alarmas.html#seccion-2">¿Por qué los primeros 10 minutos tras la alarma somos biológicamente menos inteligentes?</a></li>
+                <li><a href="investigacion-alarmas.html#seccion-6">La Herejía del Snooze: ¿Es retrasar la alarma un error o una salvación neuronal?</a></li>
+                <li><a href="investigacion-alarmas.html#seccion-7">El Hack Biológico: ¿Cómo los simuladores de amanecer evitan el shock tensional?</a></li>
+            </ul>
+            <a href="investigacion-alarmas.html" class="main-cta-btn">Acceder al Ensayo Completo</a>
         </div>
-        <span class="fecha">Publicado el 22 de mayo de 2026</span>
-
-        <div class="investigacion-contenido" id="investigacionContenido">
-            <p class="descripcion-investigacion">
-                Durante toda tu vida te han convencido de que no poder saltar de la cama es un defecto de tu voluntad. La neurociencia moderna tiene un diagnóstico muy distinto: tu alarma no te está despertando, está provocando un trauma metabólico en tu cerebro. Descubre por qué la pereza matutina es biológicamente imposible y cómo tu propio reloj genético está siendo asfixiado.
-            </p>
-
-            <a href="investigacion-alarmas.html" class="btn-leer">Acceder a la investigación →</a>
-
-            <div class="seccion-preguntas">
-                <h4 class="titulo-preguntas">Respuestas exactas que encontrarás en esta lectura:</h4>
-                <ul class="lista-preguntas">
-                    <li>
-                        <a href="investigacion-alarmas.html#seccion-2" class="link-pregunta">¿Por qué tu sistema nervioso confunde el tono de tu alarma con una amenaza letal en apenas cien milisegundos?</a>
-                    </li>
-                    <li>
-                        <a href="investigacion-alarmas.html#seccion-6" class="link-pregunta">¿Por qué la prohibición mundial de usar el botón de "snooze" (posponer) acaba de ser demostrada como una herejía médica?</a>
-                    </li>
-                    <li>
-                        <a href="investigacion-alarmas.html#seccion-7" class="link-pregunta">¿Cuál es la intervención clínica comprobada para engañar a tu reloj genético y despertar sin sufrir un trauma metabólico?</a>
-                    </li>
-                </ul>
-            </div>
-
-            <div class="nota-instituto">
-                <p>
-                    <strong>Nota del Instituto:</strong> La ciencia no es un monólogo. Al final de la lectura encontrarás una línea directa hacia nosotros. Si la investigación detona una duda sobre tu propio proceso, escríbenos. Te responderá un ser humano, con calidez y respaldado por evidencia. Sin respuestas automáticas.
-                </p>
-            </div>
-        </div>
-    </div>
-
+    </main>
     <script>
-        function toggleInvestigacion() {
-            var contenido = document.getElementById("investigacionContenido");
-            var btn = document.getElementById("toggleBtn");
-            
-            if (contenido.classList.contains("activo")) {
-                contenido.classList.remove("activo");
-                btn.innerText = "+";
-            } else {
-                contenido.classList.add("activo");
-                btn.innerText = "−";
+        // Base de datos semántica del Instituto Montaguth
+        const mapaBusqueda = [
+            {
+                keywords: ['alarma', 'despertador', 'reloj', 'ruido', 'mañana', 'madrugar', 'forzado', 'pereza', 'flojera', 'voluntad', 'disciplina', 'tassi', 'muzet', 'inercia', 'sueño', 'ensayo', 'investigacion'],
+                titulo: 'La Fisiología del Despertar Forzado (Ensayo Completo)',
+                url: 'investigacion-alarmas.html'
+            },
+            {
+                keywords: ['inteligencia', 'cortocircuito', 'cerebro', 'amigdala', 'adrenalina', 'balkin', 'prefrontal', 'asfixia', 'sangre', 'adenosina', 'torpeza', 'decisiones', 'wright', 'jama', 'bruto', 'tonto', 'pensar'],
+                titulo: '¿Por qué somos menos inteligentes tras la alarma? (Sección 2)',
+                url: 'investigacion-alarmas.html#seccion-2'
+            },
+            {
+                keywords: ['snooze', 'posponer', 'retrasar', 'cinco minutos', 'tina sundelin', 'herejia', 'escalera', 'dormir mas', 'descanso', 'reloj'],
+                titulo: 'La Herejía del Snooze: ¿Error o salvación? (Sección 6)',
+                url: 'investigacion-alarmas.html#seccion-6'
+            },
+            {
+                keywords: ['hack', 'solucion', 'simulador', 'amanecer', 'luz', 'gafas', 'melodica', 'mcfarlane', 'bpm', 'musica', 'ritmo', 'evitar', 'arreglar', 'despertar bien'],
+                titulo: 'El Hack Biológico: Simuladores de Amanecer (Sección 7)',
+                url: 'investigacion-alarmas.html#seccion-7'
             }
-        }
+        ];
+
+        const searchInput = document.getElementById('main-search');
+        const suggestionsContainer = document.getElementById('search-suggestions');
+
+        // Procesamiento en tiempo real mientras el usuario escribe
+        searchInput.addEventListener('input', () => {
+            const query = searchInput.value.toLowerCase().trim();
+            suggestionsContainer.innerHTML = '';
+            
+            if (query.length < 2) {
+                suggestionsContainer.style.display = 'none';
+                return;
+            }
+
+            // Filtrar las coincidencias semánticas
+            const resultados = mapaBusqueda.filter(item => 
+                item.keywords.some(keyword => keyword.includes(query)) || 
+                item.titulo.toLowerCase().includes(query)
+            );
+
+            if (resultados.length > 0) {
+                resultados.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'suggestion-item';
+                    div.textContent = item.titulo;
+
+                    // Redirección inmediata al hacer clic en la sugerencia
+                    div.addEventListener('click', () => {
+                        window.location.href = item.url;
+                    });
+
+                    suggestionsContainer.appendChild(div);
+                });
+                suggestionsContainer.style.display = 'block';
+            } else {
+                // Estado de "no encontrado" estético
+                const empty = document.createElement('div');
+                empty.className = 'suggestion-empty';
+                empty.textContent = 'Presiona Enter para buscar en el índice general...';
+                suggestionsContainer.appendChild(empty);
+                suggestionsContainer.style.display = 'block';
+            }
+        });
+
+        // Ejecutar búsqueda predictiva con la tecla Enter
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const query = searchInput.value.toLowerCase().trim();
+                if (query.length === 0) return;
+
+                const mejorCoincidencia = mapaBusqueda.find(item => 
+                    item.keywords.some(keyword => keyword.includes(query))
+                );
+
+                if (mejorCoincidencia) {
+                    window.location.href = mejorCoincidencia.url;
+                } else {
+                    // Fallback: si no hay coincidencia exacta, lo lleva al ensayo maestro
+                    window.location.href = 'investigacion-alarmas.html';
+                }
+            }
+        });
+
+        // Ocultar el menú desplegable si el usuario hace clic en otra parte de la pantalla
+        document.addEventListener('click', (e) => {
+            if (e.target !== searchInput && e.target !== suggestionsContainer) {
+                suggestionsContainer.style.display = 'none';
+            }
+        });
     </script>
 </body>
 </html>
