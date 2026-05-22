@@ -42,17 +42,17 @@
         }
         .btn-filosofia:hover { background: var(--azul-acento); color: var(--fondo); }
         
-        /* EL UMBLAL DEL EXPERTO (REEMPLAZO DEL BUSCADOR) */
+        /* EL UMBRAL DEL EXPERTO CON EL MICRO-AJUSTE DE AIRE DE LUJO */
         .seccion-umbral {
             width: 90%;
             max-width: 650px;
             margin-top: 40px;
-            margin-bottom: 20px;
+            margin-bottom: 30px; /* Le da espacio hacia la caja de abajo */
         }
         .linea-umbral {
             border: none;
             border-top: 1px solid var(--borde);
-            margin-bottom: 20px;
+            margin-bottom: 0; /* Quitamos este margen para controlarlo con el padding */
         }
         .texto-umbral {
             font-family: sans-serif;
@@ -61,6 +61,7 @@
             letter-spacing: 4px;
             color: var(--gris-tenue);
             font-weight: 600;
+            padding-top: 18px; /* ¡AQUÍ ESTÁ EL AIRE MÁGICO! Separa el texto de la línea superior */
         }
 
         /* CONTENEDOR DE LA INVESTIGACIÓN */
