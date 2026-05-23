@@ -1,0 +1,605 @@
+/* ============================================================
+   MONTAGUTH INSTITUTE — ESTILOS GLOBALES
+   Versión 1.0 — Mayo 2026
+   
+   INSTRUCCIÓN: No modificar este archivo sin razón estratégica.
+   Contiene la identidad visual completa del proyecto.
+   Cualquier cambio aquí afecta TODAS las páginas simultáneamente.
+   ============================================================ */
+
+/* ── FUENTES ── */
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap');
+
+/* ── VARIABLES GLOBALES ── */
+:root {
+  --bg:      #050a14;
+  --text:    #f8fafc;
+  --accent:  #38bdf8;
+  --muted:   #94a3b8;
+  --dim:     #1e293b;
+  --border:  rgba(56, 189, 248, 0.18);
+  --borde-suave: rgba(255, 255, 255, 0.1);
+  --gris-tenue: #475569;
+  --compra:  #8B0000;   /* SOLO para botones de compra */
+}
+
+/* ── RESET ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html { scroll-behavior: smooth; }
+
+/* ── BASE ── */
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 18px;
+  line-height: 1.85;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── EFECTOS AMBIENTALES (grain + glow) ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: -20vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70vw;
+  height: 60vh;
+  background: radial-gradient(ellipse at center, rgba(56,189,248,0.04) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── LOGO / MARCA ── */
+.logo {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 18px;
+  letter-spacing: 8px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* ── NAVEGACIÓN ── */
+.back-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+.back-link:hover { opacity: 1; }
+
+/* ── ETIQUETAS Y METADATOS ── */
+.label-tag {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 20px;
+  display: block;
+}
+
+.meta-line {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+}
+
+/* ── TÍTULOS ── */
+h1 {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: clamp(28px, 5vw, 46px);
+  font-weight: 500;
+  line-height: 1.18;
+  color: var(--text);
+  margin-bottom: 18px;
+  letter-spacing: -0.3px;
+}
+
+h2 {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: clamp(22px, 3.5vw, 30px);
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.25;
+  margin-bottom: 28px;
+  letter-spacing: -0.2px;
+}
+
+/* ── PÁRRAFOS ── */
+p {
+  text-align: justify;
+  color: #dde4ef;
+  margin-bottom: 1.4em;
+  max-width: 700px;
+}
+
+/* ── SUBTÍTULO HERO (usado en ensayos) ── */
+.subtitle-hero {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-style: italic;
+  font-size: 19px;
+  color: var(--muted);
+  line-height: 1.55;
+  margin-bottom: 28px;
+  border-left: 2px solid var(--accent);
+  padding-left: 18px;
+}
+
+/* ── SECCIONES DE ENSAYO ── */
+section { padding-top: 64px; }
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.section-number {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.section-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── PULL QUOTE ── */
+.pull-quote {
+  margin: 40px 0;
+  padding: 28px 32px;
+  border-left: 3px solid var(--accent);
+  background: rgba(56,189,248,0.04);
+  font-family: 'EB Garamond', Georgia, serif;
+  font-style: italic;
+  font-size: 20px;
+  color: #c8d8f0;
+  line-height: 1.6;
+  max-width: 700px;
+}
+
+/* ── STAT BLOCK ── */
+.stat-block {
+  margin: 36px 0;
+  padding: 24px 28px;
+  background: rgba(56,189,248,0.05);
+  border: 1px solid rgba(56,189,248,0.14);
+  border-radius: 2px;
+  max-width: 700px;
+}
+
+.stat-block .stat-number {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 38px;
+  font-weight: 300;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.stat-block .stat-desc {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0;
+  text-align: left;
+}
+
+/* ── NOTA DEL INSTITUTO ── */
+.nota-instituto-final {
+  margin-top: 56px;
+  margin-bottom: 56px;
+  padding: 24px;
+  background: rgba(56,189,248,0.05);
+  border-left: 2px solid var(--accent);
+  max-width: 700px;
+}
+
+.nota-instituto-final p {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  color: #b0c4de;
+  line-height: 1.7;
+  margin: 0;
+  text-align: left;
+}
+
+/* ── REFERENCIAS ── */
+.referencias {
+  padding-top: 64px;
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+}
+
+.ref-item {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 18px;
+  padding-left: 24px;
+  position: relative;
+  text-align: left;
+  max-width: 700px;
+}
+
+.ref-item::before {
+  content: attr(data-num);
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-weight: 500;
+  font-size: 11px;
+}
+
+.ref-item a {
+  color: var(--accent);
+  text-decoration: none;
+  word-break: break-all;
+}
+.ref-item a:hover { text-decoration: underline; }
+
+/* ── NOTA ACADÉMICA ── */
+.nota-academica {
+  margin-top: 36px;
+  padding: 20px 24px;
+  border: 1px solid rgba(148,163,184,0.15);
+  background: rgba(255,255,255,0.015);
+  max-width: 700px;
+}
+
+.nota-academica p {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.65;
+  margin: 0;
+  text-align: left;
+}
+
+/* ── DIVISOR ── */
+.divider {
+  width: 48px;
+  height: 1px;
+  background: var(--accent);
+  margin: 40px 0;
+  opacity: 0.5;
+}
+
+/* ── BOTÓN DE COMPRA (solo productos) ── */
+.btn-compra {
+  display: inline-block;
+  background: var(--compra);
+  color: #fff;
+  text-decoration: none;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 12px 28px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.btn-compra:hover { opacity: 0.85; }
+
+/* ── BOTÓN LEER MÁS ── */
+.btn-leer {
+  display: inline-block;
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: bold;
+  margin-bottom: 35px;
+  transition: 0.3s;
+}
+.btn-leer:hover { opacity: 0.8; }
+
+/* ── FOOTER ── */
+footer {
+  position: relative;
+  z-index: 10;
+  border-top: 1px solid var(--border);
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+footer span {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+}
+
+/* ── INTRO BLOCK (ensayos) ── */
+.intro-block { padding: 48px 0 0; }
+
+.intro-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 18px;
+  display: block;
+}
+
+/* ── LAYOUT ENSAYO ── */
+.ensayo-header {
+  position: relative;
+  z-index: 10;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 40px 24px 0;
+}
+
+.ensayo-hero {
+  position: relative;
+  z-index: 10;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 52px 24px 48px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ensayo-main {
+  position: relative;
+  z-index: 10;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 24px 80px;
+}
+
+/* ── LAYOUT ÍNDICE ── */
+.indice-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 80px;
+}
+
+.indice-header { margin-top: 60px; margin-bottom: 40px; }
+
+.frase-hero {
+  max-width: 800px;
+  width: 90%;
+  text-align: center;
+  font-size: 32px;
+  line-height: 1.4;
+  margin-bottom: 40px;
+  font-weight: 300;
+  font-family: 'EB Garamond', Georgia, serif;
+  color: var(--text);
+}
+
+.btn-filosofia {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 12px 30px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  transition: 0.3s;
+  margin-bottom: 50px;
+}
+.btn-filosofia:hover { background: var(--accent); color: var(--bg); }
+
+/* ── SECCIÓN UMBRAL (índice) ── */
+.seccion-umbral {
+  width: 90%;
+  max-width: 650px;
+  margin-top: 40px;
+  margin-bottom: 30px;
+}
+
+.linea-umbral {
+  border: none;
+  border-top: 1px solid var(--borde-suave);
+  margin-bottom: 0;
+}
+
+.texto-umbral {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  color: var(--gris-tenue);
+  font-weight: 600;
+  padding-top: 18px;
+}
+
+/* ── CAJA DE INVESTIGACIÓN (índice) ── */
+.investigacion-box {
+  width: 90%;
+  max-width: 650px;
+  border: 1px solid var(--borde-suave);
+  padding: 35px;
+  background: rgba(255,255,255,0.01);
+}
+
+.investigacion-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.btn-desplegable {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.3s;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.titulo-investigacion {
+  font-size: 22px;
+  margin: 0;
+  color: #fff;
+  font-weight: 400;
+  line-height: 1.3;
+  font-family: 'EB Garamond', Georgia, serif;
+}
+
+.fecha {
+  font-size: 12px;
+  color: var(--gris-tenue);
+  display: block;
+  margin-top: 8px;
+  margin-left: 50px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.investigacion-contenido {
+  display: none;
+  margin-top: 30px;
+  border-top: 1px solid var(--borde-suave);
+  padding-top: 25px;
+}
+.investigacion-contenido.activo { display: block; }
+
+.descripcion-investigacion {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text);
+  margin-bottom: 25px;
+  text-align: justify;
+}
+
+/* ── PREGUNTAS ZEIGARNIK ── */
+.seccion-preguntas { margin-bottom: 35px; }
+
+.titulo-preguntas {
+  font-size: 13px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 18px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.lista-preguntas { list-style: none; padding: 0; margin: 0; }
+.lista-preguntas li { margin-bottom: 16px; line-height: 1.5; }
+
+.link-pregunta {
+  color: #e2e8f0;
+  text-decoration: none;
+  font-size: 15px;
+  transition: 0.2s;
+  display: inline;
+  font-family: 'EB Garamond', Georgia, serif;
+}
+.link-pregunta:hover {
+  color: var(--accent);
+  border-bottom: 1px solid var(--accent);
+}
+
+/* ── ANCLA HUMANA (índice) ── */
+.nota-instituto {
+  background: rgba(56,189,248,0.03);
+  border-left: 2px solid var(--accent);
+  padding: 15px 20px;
+  margin-top: 25px;
+}
+
+.nota-instituto p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+  font-style: italic;
+  font-family: 'EB Garamond', Georgia, serif;
+}
+
+/* ── LAYOUT FILOSOFÍA ── */
+.filosofia-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 20px;
+}
+
+.filosofia-contenedor {
+  max-width: 650px;
+  width: 100%;
+}
+
+.filosofia-titulo {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 24px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #fff;
+  margin-bottom: 50px;
+}
+
+.filosofia-parrafo {
+  font-size: 17px;
+  margin-bottom: 25px;
+  text-align: justify;
+  color: #e2e8f0;
+  font-family: 'EB Garamond', Georgia, serif;
+  line-height: 1.8;
+  max-width: 100%;
+}
+
+/* ── RESPONSIVE ── */
+@media (min-width: 768px) {
+  .frase-hero { font-size: 42px; }
+}
