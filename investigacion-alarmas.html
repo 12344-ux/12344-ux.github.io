@@ -1,365 +1,26 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Por qué odiamos las alarmas — Montaguth Institute</title>
-<link rel="icon" type="image/png" href="favicon.png">
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap');
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg: #050a14;
-    --text: #f8fafc;
-    --accent: #38bdf8;
-    --muted: #94a3b8;
-    --dim: #1e293b;
-    --border: rgba(56,189,248,0.18);
-  }
-
-  html { scroll-behavior: smooth; }
-
-  body {
-    background-color: var(--bg);
-    color: var(--text);
-    font-family: 'EB Garamond', Georgia, serif;
-    font-size: 18px;
-    line-height: 1.85;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* Grain overlay */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-    opacity: 0.4;
-  }
-
-  /* Ambient glow */
-  body::after {
-    content: '';
-    position: fixed;
-    top: -20vh;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 70vw;
-    height: 60vh;
-    background: radial-gradient(ellipse at center, rgba(56,189,248,0.04) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  /* ── HEADER ── */
-  header {
-    position: relative;
-    z-index: 10;
-    max-width: 760px;
-    margin: 0 auto;
-    padding: 40px 24px 0;
-  }
-
-  .back-link {
-    color: var(--accent);
-    text-decoration: none;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    font-weight: 400;
-    letter-spacing: 0.5px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    opacity: 0.85;
-    transition: opacity 0.2s;
-  }
-  .back-link:hover { opacity: 1; }
-
-  /* ── HERO ── */
-  .hero {
-    position: relative;
-    z-index: 10;
-    max-width: 760px;
-    margin: 0 auto;
-    padding: 52px 24px 48px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .label-tag {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 2.5px;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 20px;
-    display: block;
-  }
-
-  h1 {
-    font-family: 'EB Garamond', Georgia, serif;
-    font-size: clamp(28px, 5vw, 46px);
-    font-weight: 500;
-    line-height: 1.18;
-    color: var(--text);
-    margin-bottom: 18px;
-    letter-spacing: -0.3px;
-  }
-
-  .subtitle-hero {
-    font-family: 'EB Garamond', Georgia, serif;
-    font-style: italic;
-    font-size: 19px;
-    color: var(--muted);
-    line-height: 1.55;
-    margin-bottom: 28px;
-    border-left: 2px solid var(--accent);
-    padding-left: 18px;
-  }
-
-  .meta-line {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 11px;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 1.2px;
-  }
-
-  /* ── MAIN CONTENT ── */
-  main {
-    position: relative;
-    z-index: 10;
-    max-width: 760px;
-    margin: 0 auto;
-    padding: 0 24px 80px;
-  }
-
-  /* ── INTRO BLOCK ── */
-  .intro-block {
-    padding: 48px 0 0;
-  }
-
-  .intro-label {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 10px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 18px;
-    display: block;
-  }
-
-  p {
-    text-align: justify;
-    color: #dde4ef;
-    margin-bottom: 1.4em;
-    max-width: 700px;
-  }
-
-  /* ── SECTIONS ── */
-  section {
-    padding-top: 64px;
-  }
-
-  .section-header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 32px;
-  }
-
-  .section-number {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--accent);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    white-space: nowrap;
-  }
-
-  .section-rule {
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
-
-  h2 {
-    font-family: 'EB Garamond', Georgia, serif;
-    font-size: clamp(22px, 3.5vw, 30px);
-    font-weight: 500;
-    color: var(--text);
-    line-height: 1.25;
-    margin-bottom: 28px;
-    letter-spacing: -0.2px;
-  }
-
-  /* ── PULL QUOTE ── */
-  .pull-quote {
-    margin: 40px 0;
-    padding: 28px 32px;
-    border-left: 3px solid var(--accent);
-    background: rgba(56,189,248,0.04);
-    font-family: 'EB Garamond', Georgia, serif;
-    font-style: italic;
-    font-size: 20px;
-    color: #c8d8f0;
-    line-height: 1.6;
-    max-width: 700px;
-  }
-
-  /* ── STAT CALLOUT ── */
-  .stat-block {
-    margin: 36px 0;
-    padding: 24px 28px;
-    background: rgba(56,189,248,0.05);
-    border: 1px solid rgba(56,189,248,0.14);
-    border-radius: 2px;
-    max-width: 700px;
-  }
-
-  .stat-block .stat-number {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 38px;
-    font-weight: 300;
-    color: var(--accent);
-    line-height: 1;
-    margin-bottom: 8px;
-  }
-
-  .stat-block .stat-desc {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin: 0;
-    text-align: left;
-  }
-
-  /* ── REFERENCES ── */
-  .referencias {
-    padding-top: 64px;
-    border-top: 1px solid var(--border);
-    margin-top: 24px;
-  }
-
-  .ref-item {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    color: var(--muted);
-    line-height: 1.7;
-    margin-bottom: 18px;
-    padding-left: 24px;
-    position: relative;
-    text-align: left;
-    max-width: 700px;
-  }
-
-  .ref-item::before {
-    content: attr(data-num);
-    position: absolute;
-    left: 0;
-    color: var(--accent);
-    font-weight: 500;
-    font-size: 11px;
-  }
-
-  .ref-item a {
-    color: var(--accent);
-    text-decoration: none;
-    word-break: break-all;
-  }
-  .ref-item a:hover { text-decoration: underline; }
-
-  /* ── NOTA FINAL INSTITUTO ── */
-  .nota-instituto-final {
-    margin-top: 56px;
-    margin-bottom: 56px;
-    padding: 24px;
-    background: rgba(56,189,248,0.05);
-    border-left: 2px solid var(--accent);
-    max-width: 700px;
-  }
-
-  .nota-instituto-final p {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    color: #b0c4de;
-    line-height: 1.7;
-    margin: 0;
-    text-align: left;
-  }
-
-  /* ── FOOTER ── */
-  footer {
-    position: relative;
-    z-index: 10;
-    border-top: 1px solid var(--border);
-    max-width: 760px;
-    margin: 0 auto;
-    padding: 32px 24px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  footer span {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 12px;
-    color: var(--muted);
-    letter-spacing: 0.5px;
-  }
-
-  /* ── NOTA ACADÉMICA ── */
-  .nota-academica {
-    margin-top: 36px;
-    padding: 20px 24px;
-    border: 1px solid rgba(148,163,184,0.15);
-    background: rgba(255,255,255,0.015);
-    max-width: 700px;
-  }
-
-  .nota-academica p {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    color: var(--muted);
-    line-height: 1.65;
-    margin: 0;
-    text-align: left;
-  }
-
-  /* ── DIVIDER ── */
-  .divider {
-    width: 48px;
-    height: 1px;
-    background: var(--accent);
-    margin: 40px 0;
-    opacity: 0.5;
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Por qué odiamos las alarmas — Montaguth Institute</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
 
-<header>
-  <a href="index.html" class="back-link">← Volver al Inicio</a>
+<header class="ensayo-header">
+  <a href="índice.html" class="back-link">← Volver al Inicio</a>
 </header>
 
-<div class="hero">
+<div class="ensayo-hero">
   <span class="label-tag">Investigación Científica</span>
   <h1>La fisiología del despertar forzado y el trauma metabólico de las alarmas</h1>
   <p class="subtitle-hero">El deterioro cognitivo inmediato tras una alarma supera neurológicamente al de veinticuatro horas de privación de sueño.</p>
   <p class="meta-line">Investigación Académica &nbsp;•&nbsp; Publicado el 22 de mayo de 2026 &nbsp;•&nbsp; Montaguth Institute</p>
 </div>
 
-<main>
+<main class="ensayo-main">
 
   <!-- INTRODUCCIÓN -->
   <div class="intro-block">
@@ -617,7 +278,6 @@
 
     <p>Serán estudiados en los libros de historia como métodos brutales, bienintencionados pero completamente equivocados, que intentaban curar superficialmente el síntoma de la impuntualidad mientras enfermaban de forma lenta y silenciosa nuestro corazón y nuestra mente. Hasta que ese día llegue y nuestra cultura evolucione, la próxima vez que la alarma estalle y sientas una pesadez irracional anclándote al colchón, recuerda que no eres una máquina a la que le falta disciplina, sino un organismo maravillosamente complejo sobreviviendo al secuestro temporal de su propia consciencia.</p>
 
-    <!-- BLOQUE ESTRATÉGICO FINAL -->
     <div class="nota-instituto-final">
       <p><strong>Nota del Instituto:</strong> Si esta investigación ha detonado una duda sobre tu propio proceso biológico o deseas someter tu caso al análisis de nuestro equipo, comunícate con nosotros al correo: <a href="mailto:contacto@montaguth.institute" style="color: #38bdf8; text-decoration: none; font-weight: bold;">contacto@montaguth.institute</a>. Te responderá un ser humano, con calidez y rigor científico.</p>
     </div>
@@ -631,52 +291,20 @@
     </div>
     <h2>Referencias completas</h2>
 
-    <div class="ref-item" data-num="1.">
-      Balkin, T. J., Braun, A. R., Wesensten, N. J., Jeffries, K., Varga, M., Baldwin, P., Belenky, G., &amp; Herscovitch, P. (2002). The process of awakening: A PET study of regional brain activity patterns mediating the re-establishment of alertness and consciousness. <em>Brain, 125</em>(10), 2308–2319. <a href="https://doi.org/10.1093/brain/awf228" target="_blank" rel="noopener">https://doi.org/10.1093/brain/awf228</a>
-    </div>
-
-    <div class="ref-item" data-num="2.">
-      Fritz, J., VoPham, T., Wright, K. P., &amp; Vetter, C. (2020). A chronobiological evaluation of the acute effects of daylight saving time on traffic accident risk. <em>Current Biology, 30</em>(4), 729–735.e2. <a href="https://doi.org/10.1016/j.cub.2019.12.045" target="_blank" rel="noopener">https://doi.org/10.1016/j.cub.2019.12.045</a>
-    </div>
-
-    <div class="ref-item" data-num="3.">
-      Gabel, V., Maire, M., Reichert, C. F., Chellappa, S. L., Schmidt, C., Hommes, V., Cajochen, C., &amp; Viola, A. U. (2013). Effects of artificial dawn and morning blue light on daytime cognitive performance, well-being, resting EEG and salivary cortisol. <em>Chronobiology International, 30</em>(8), 988–997. <a href="https://doi.org/10.3109/07420528.2013.793196" target="_blank" rel="noopener">https://doi.org/10.3109/07420528.2013.793196</a>
-    </div>
-
-    <div class="ref-item" data-num="4.">
-      Kim, Y., Howie-Esquivel, J., Mattos, M. K., Davis, E. M., &amp; Logan, J. (2024). The impact of forced awakening on morning blood pressure surge. <em>Heart &amp; Lung: The Journal of Cardiopulmonary and Acute Care, 68</em>, 92–97. <a href="https://doi.org/10.1016/j.hrtlng.2024.06.011" target="_blank" rel="noopener">https://doi.org/10.1016/j.hrtlng.2024.06.011</a>
-    </div>
-
-    <div class="ref-item" data-num="5.">
-      Klaas, S., Upton, T. J., Zavala, E., Lawton, M., Bensing, S., Berinder, K., Botusan, I., Grytaas, M., Methlie, P., Øksnes, M., Russell, G., Vassiliadi, D. A., &amp; Lightman, S. L. (2025). Awakening not associated with an increased rate of cortisol secretion. <em>Proceedings of the Royal Society B: Biological Sciences, 292</em>(2038). <a href="https://doi.org/10.1098/rspb.2024.1844" target="_blank" rel="noopener">https://doi.org/10.1098/rspb.2024.1844</a>
-    </div>
-
-    <div class="ref-item" data-num="6.">
-      McFarlane, S. J., Garcia, J. E., Verhagen, D. S., &amp; Dyer, A. G. (2020). Alarm tones, music and their elements: Analysis of reported waking sounds to counteract sleep inertia. <em>PLoS ONE, 15</em>(1), e0215788. <a href="https://doi.org/10.1371/journal.pone.0215788" target="_blank" rel="noopener">https://doi.org/10.1371/journal.pone.0215788</a>
-    </div>
-
-    <div class="ref-item" data-num="7.">
-      Roenneberg, T., Allebrandt, K. V., Merrow, M., &amp; Vetter, C. (2012). Social jetlag and obesity. <em>Current Biology, 22</em>(10), 939–943. <a href="https://doi.org/10.1016/j.cub.2012.03.038" target="_blank" rel="noopener">https://doi.org/10.1016/j.cub.2012.03.038</a>
-    </div>
-
-    <div class="ref-item" data-num="8.">
-      Sandhu, A., Seth, M., &amp; Gurm, H. S. (2014). Daylight savings time and myocardial infarction. <em>Open Heart, 1</em>(1), e000019. <a href="http://dx.doi.org/10.1136/openhrt-2013-000019" target="_blank" rel="noopener">http://dx.doi.org/10.1136/openhrt-2013-000019</a>
-    </div>
-
-    <div class="ref-item" data-num="9.">
-      Sundelin, T., Landry, S., &amp; Axelsson, J. (2023). Is snoozing losing? Why intermittent morning alarms are used and how they affect sleep, cognition, cortisol, and mood. <em>Journal of Sleep Research, 33</em>(3), e14054. <a href="https://doi.org/10.1111/jsr.14054" target="_blank" rel="noopener">https://doi.org/10.1111/jsr.14054</a>
-    </div>
-
-    <div class="ref-item" data-num="10.">
-      Tassi, P., &amp; Muzet, A. (2000). Sleep inertia. <em>Sleep Medicine Reviews, 4</em>(4), 341–353. <a href="https://doi.org/10.1053/smrv.2000.0098" target="_blank" rel="noopener">https://doi.org/10.1053/smrv.2000.0098</a>
-    </div>
-
-    <div class="ref-item" data-num="11.">
-      Wertz, A. T., Ronda, J. M., Czeisler, C. A., &amp; Wright, K. P. (2006). Effects of sleep inertia on cognition. <em>JAMA, 295</em>(2), 163–164. <a href="https://doi.org/10.1001/jama.295.2.163" target="_blank" rel="noopener">https://doi.org/10.1001/jama.295.2.163</a>
-    </div>
+    <div class="ref-item" data-num="1.">Balkin, T. J., et al. (2002). The process of awakening. <em>Brain, 125</em>(10), 2308–2319. <a href="https://doi.org/10.1093/brain/awf228" target="_blank" rel="noopener">https://doi.org/10.1093/brain/awf228</a></div>
+    <div class="ref-item" data-num="2.">Fritz, J., et al. (2020). A chronobiological evaluation of daylight saving time on traffic accident risk. <em>Current Biology, 30</em>(4), 729–735. <a href="https://doi.org/10.1016/j.cub.2019.12.045" target="_blank" rel="noopener">https://doi.org/10.1016/j.cub.2019.12.045</a></div>
+    <div class="ref-item" data-num="3.">Gabel, V., et al. (2013). Effects of artificial dawn on daytime cognitive performance. <em>Chronobiology International, 30</em>(8), 988–997. <a href="https://doi.org/10.3109/07420528.2013.793196" target="_blank" rel="noopener">https://doi.org/10.3109/07420528.2013.793196</a></div>
+    <div class="ref-item" data-num="4.">Kim, Y., et al. (2024). The impact of forced awakening on morning blood pressure surge. <em>Heart &amp; Lung, 68</em>, 92–97. <a href="https://doi.org/10.1016/j.hrtlng.2024.06.011" target="_blank" rel="noopener">https://doi.org/10.1016/j.hrtlng.2024.06.011</a></div>
+    <div class="ref-item" data-num="5.">Klaas, S., et al. (2025). Awakening not associated with an increased rate of cortisol secretion. <em>Proceedings of the Royal Society B, 292</em>(2038). <a href="https://doi.org/10.1098/rspb.2024.1844" target="_blank" rel="noopener">https://doi.org/10.1098/rspb.2024.1844</a></div>
+    <div class="ref-item" data-num="6.">McFarlane, S. J., et al. (2020). Alarm tones, music and their elements. <em>PLoS ONE, 15</em>(1), e0215788. <a href="https://doi.org/10.1371/journal.pone.0215788" target="_blank" rel="noopener">https://doi.org/10.1371/journal.pone.0215788</a></div>
+    <div class="ref-item" data-num="7.">Roenneberg, T., et al. (2012). Social jetlag and obesity. <em>Current Biology, 22</em>(10), 939–943. <a href="https://doi.org/10.1016/j.cub.2012.03.038" target="_blank" rel="noopener">https://doi.org/10.1016/j.cub.2012.03.038</a></div>
+    <div class="ref-item" data-num="8.">Sandhu, A., et al. (2014). Daylight savings time and myocardial infarction. <em>Open Heart, 1</em>(1), e000019. <a href="http://dx.doi.org/10.1136/openhrt-2013-000019" target="_blank" rel="noopener">http://dx.doi.org/10.1136/openhrt-2013-000019</a></div>
+    <div class="ref-item" data-num="9.">Sundelin, T., et al. (2023). Is snoozing losing? <em>Journal of Sleep Research, 33</em>(3), e14054. <a href="https://doi.org/10.1111/jsr.14054" target="_blank" rel="noopener">https://doi.org/10.1111/jsr.14054</a></div>
+    <div class="ref-item" data-num="10.">Tassi, P., &amp; Muzet, A. (2000). Sleep inertia. <em>Sleep Medicine Reviews, 4</em>(4), 341–353. <a href="https://doi.org/10.1053/smrv.2000.0098" target="_blank" rel="noopener">https://doi.org/10.1053/smrv.2000.0098</a></div>
+    <div class="ref-item" data-num="11.">Wertz, A. T., et al. (2006). Effects of sleep inertia on cognition. <em>JAMA, 295</em>(2), 163–164. <a href="https://doi.org/10.1001/jama.295.2.163" target="_blank" rel="noopener">https://doi.org/10.1001/jama.295.2.163</a></div>
 
     <div class="nota-academica">
-      <p><strong style="color: var(--text);">Nota para uso académico:</strong> Si utilizas este ensayo como punto de partida para una investigación universitaria o trabajo académico, te recomendamos citar directamente las fuentes primarias listadas en esta sección. Cada referencia incluye el DOI para acceder al estudio original publicado en la revista científica correspondiente. Montaguth Institute no reemplaza la consulta de literatura científica primaria, sino que facilita el acceso a ella.</p>
+      <p><strong style="color: var(--text);">Nota para uso académico:</strong> Si utilizas este ensayo como punto de partida para una investigación universitaria o trabajo académico, te recomendamos citar directamente las fuentes primarias listadas en esta sección. Cada referencia incluye el DOI para acceder al estudio original. Montaguth Institute no reemplaza la consulta de literatura científica primaria, sino que facilita el acceso a ella.</p>
     </div>
   </section>
 
