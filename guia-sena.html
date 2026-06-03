@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>El Computador Mental · Reglamento del Aprendiz SENA (Acuerdo 0009 de 2024)</title>
+<style>
+  :root{
+    --amarillo:#FFC400; --amarillo-suave:#FFF6D6;
+    --azul:#1E73E8; --azul-suave:#E1ECFF;
+    --rojo:#E23B3B; --rojo-suave:#FCE0E0;
+    --tinta:#1d2330; --gris:#5b6577; --linea:#e6e9f0;
+    --verde:#1faa59; --verde-suave:#e1f6ea;
+    --fondo:#f4f6fb;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--fondo); color:var(--tinta);
+    font-family:"Segoe UI",Tahoma,Verdana,Arial,sans-serif; line-height:1.55;
+  }
+  .wrap{max-width:1000px; margin:0 auto; padding:24px 18px 80px;}
+  h1,h2,h3{line-height:1.2;}
+  a{color:var(--azul);}
+
+  /* PORTADA */
+  .portada{
+    background:linear-gradient(135deg,#10203f,#1E73E8);
+    color:#fff; border-radius:22px; padding:38px 30px; text-align:center;
+    box-shadow:0 14px 40px rgba(16,32,63,.35);
+  }
+  .portada .pc{font-size:64px; line-height:1;}
+  .portada h1{font-size:30px; margin:14px 0 6px;}
+  .portada p{margin:6px 0; opacity:.95;}
+  .badges{margin-top:16px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;}
+  .badge{background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.4);
+    padding:6px 12px; border-radius:999px; font-size:13px;}
+  .semaforo{font-size:26px; letter-spacing:6px; margin-top:14px;}
+
+  /* SECCIONES */
+  section{margin-top:34px;}
+  .titulo-seccion{
+    display:flex; align-items:center; gap:12px; margin-bottom:6px;
+    border-bottom:3px solid var(--linea); padding-bottom:10px;
+  }
+  .titulo-seccion .ico{font-size:30px;}
+  .titulo-seccion h2{margin:0; font-size:23px;}
+  .subnota{color:var(--gris); font-size:14px; margin:4px 0 18px;}
+
+  .panel{
+    background:#fff; border:1px solid var(--linea); border-radius:16px;
+    padding:18px 20px; box-shadow:0 4px 14px rgba(20,30,60,.05);
+  }
+  .panel + .panel{margin-top:14px;}
+
+  .clave{background:var(--amarillo-suave); border-left:6px solid var(--amarillo);
+    padding:10px 14px; border-radius:8px; margin:10px 0;}
+  .clave.azul{background:var(--azul-suave); border-color:var(--azul);}
+  .clave.verde{background:var(--verde-suave); border-color:var(--verde);}
+
+  /* TARJETAS DE ARTÍCULO */
+  .grupo-cap{margin-top:10px;}
+  .cap-encabezado{
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    background:#10203f; color:#fff; border-radius:14px; padding:14px 18px; margin:26px 0 14px;
+  }
+  .cap-encabezado .em{font-size:30px;}
+  .cap-encabezado h2{margin:0; font-size:20px;}
+  .cap-encabezado small{display:block; opacity:.85; font-weight:normal; font-size:13px;}
+
+  .tecla{
+    background:#fff; border:1px solid var(--linea); border-left-width:10px;
+    border-radius:14px; padding:0; margin:14px 0; overflow:hidden;
+    box-shadow:0 6px 18px rgba(20,30,60,.06);
+  }
+  .tecla.amarillo{border-left-color:var(--amarillo);}
+  .tecla.azul{border-left-color:var(--azul);}
+  .tecla.rojo{border-left-color:var(--rojo);}
+
+  .tecla-top{display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    padding:14px 18px; border-bottom:1px dashed var(--linea);}
+  .dot{width:20px; height:20px; border-radius:50%; flex:none;
+    box-shadow:0 0 0 4px rgba(0,0,0,.05);}
+  .dot.amarillo{background:var(--amarillo);}
+  .dot.azul{background:var(--azul);}
+  .dot.rojo{background:var(--rojo);}
+  .tecla-top .nart{font-weight:800; font-size:18px;}
+  .tecla-top .nombre{font-weight:700; color:var(--tinta);}
+  .codigo{margin-left:auto; background:#10203f; color:#fff; font-weight:700;
+    padding:6px 12px; border-radius:999px; font-size:13px; letter-spacing:.5px;}
+
+  .zonas{display:grid; grid-template-columns:1fr; gap:0;}
+  .zona{padding:14px 18px; border-bottom:1px solid var(--linea);}
+  .zona:last-child{border-bottom:none;}
+  .zona .et{display:flex; align-items:center; gap:8px; font-weight:800; font-size:13px;
+    text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px; color:var(--gris);}
+  .zona.monitor{background:#0b1220; color:#d7f5e3;}
+  .zona.monitor .et{color:#7fe3a8;}
+  .zona.monitor b{color:#fff;}
+  .zona.altavoz{background:var(--amarillo-suave);}
+  .zona.altavoz .dibujo{font-size:34px; line-height:1.1;}
+  .chispa{background:var(--azul-suave); border-radius:10px; padding:10px 12px; margin-top:8px;
+    font-size:14px;}
+  .chispa b{color:var(--azul);}
+
+  ul.mini{margin:6px 0 0; padding-left:20px;}
+  ul.mini li{margin:3px 0;}
+
+  /* TECLADO COMPLETO */
+  .teclado{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px;}
+  .keycap{
+    width:74px; height:74px; border-radius:12px; background:#fff; border:2px solid var(--linea);
+    border-bottom-width:5px; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; text-align:center; font-size:11px; color:var(--gris);
+    box-shadow:0 3px 0 rgba(0,0,0,.04);
+  }
+  .keycap .kn{font-weight:800; font-size:16px; color:var(--tinta);}
+  .keycap.amarillo{border-color:var(--amarillo);}
+  .keycap.azul{border-color:var(--azul);}
+  .keycap.rojo{border-color:var(--rojo);}
+  .keycap .km{font-size:18px;}
+
+  table.resumen{width:100%; border-collapse:collapse; margin-top:14px; font-size:14px; background:#fff;}
+  table.resumen th, table.resumen td{border:1px solid var(--linea); padding:8px 10px; text-align:left;}
+  table.resumen th{background:#10203f; color:#fff;}
+  table.resumen tr:nth-child(even){background:#f7f9fd;}
+
+  .leyenda{display:flex; gap:14px; flex-wrap:wrap; margin:12px 0;}
+  .leyenda span{display:inline-flex; align-items:center; gap:8px; font-weight:600; font-size:14px;}
+
+  .nota-final{background:#10203f; color:#fff; border-radius:16px; padding:22px; margin-top:30px;}
+  .nota-final h2{margin-top:0;}
+
+  @media (max-width:560px){
+    .codigo{margin-left:0;}
+    .keycap{width:64px; height:64px;}
+  }
+  @media print{
+    body{background:#fff;}
+    .tecla,.panel,.portada{box-shadow:none;}
+    .tecla{page-break-inside:avoid;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===================== PORTADA ===================== -->
+  <div class="portada">
+    <div class="pc">🖥️⌨️🔊</div>
+    <h1>EL COMPUTADOR MENTAL</h1>
+    <p><strong>Reglamento del Aprendiz SENA</strong></p>
+    <p>Acuerdo No. 0009 de 2024 · Consejo Directivo Nacional</p>
+    <div class="semaforo">🟡 🔵 🔴</div>
+    <div class="badges">
+      <span class="badge">⌨️ Teclado = qué busco</span>
+      <span class="badge">🖥️ Monitor = qué significa</span>
+      <span class="badge">🔊 Altavoces = la imagen</span>
+    </div>
+    <p style="margin-top:16px; font-size:14px; opacity:.9;">5 Capítulos · 53 Artículos · 1 solo computador para recordarlos todos</p>
+  </div>
+
+  <!-- ===================== CÓMO USAR ===================== -->
+  <section>
+    <div class="titulo-seccion"><span class="ico">🧠</span><h2>Cómo funciona tu computador mental</h2></div>
+    <p class="subnota">La idea es sencilla: cada norma es una <b>tecla</b>. Al "presionarla" aparece su significado en el <b>monitor</b> y suena/se ve una <b>imagen</b> por los <b>altavoces</b>. Así puedes recordar de adelante hacia atrás, de atrás hacia adelante o saltando entre normas.</p>
+
+    <div class="panel">
+      <p>🎨 <b>El semáforo de colores (amarillo → azul → rojo → y vuelve a empezar)</b></p>
+      <p>Las teclas llevan un punto de color que rota siempre en el mismo orden: <b>🟡 amarillo, 🔵 azul, 🔴 rojo</b>. No es decoración: es un <b>ritmo</b>. Si recuerdas el color de una norma, recuerdas las vecinas (la anterior y la siguiente). Tu cerebro memoriza ritmos mejor que listas.</p>
+      <ul class="mini">
+        <li><b>🟡 Amarillo</b> = la 1.ª de cada trío (Art. 1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34, 37, 40, 43, 46, 49, 52).</li>
+        <li><b>🔵 Azul</b> = la 2.ª de cada trío (Art. 2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35, 38, 41, 44, 47, 50, 53).</li>
+        <li><b>🔴 Rojo</b> = la 3.ª de cada trío (Art. 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51).</li>
+      </ul>
+      <p class="subnota" style="margin-bottom:0;">Truco infantil: cuenta 1-2-3 con los dedos pintados de amarillo, azul y rojo. El número de la norma dividido en tríos te dice el color.</p>
+    </div>
+
+    <div class="panel">
+      <p>🔢 <b>El CÓDIGO de cada tecla</b></p>
+      <p>En la esquina de cada tecla hay un número (el CÓDIGO). Son <b>los números que de verdad hay que memorizar</b> de esa norma (cuántas cosas hay, cuántos días tienes, qué edad, etc.). Si te aprendes el código, te aprendes lo más preguntado.</p>
+    </div>
+
+    <div class="panel">
+      <p>🧩 <b>Las tres partes del computador (tu analogía)</b></p>
+      <div class="leyenda">
+        <span>⌨️ <b>TECLADO</b>: el índice. Color + número + nombre corto.</span>
+        <span>🖥️ <b>MONITOR</b>: el significado explicado como para un niño.</span>
+        <span>🔊 <b>ALTAVOCES</b>: un dibujo/imagen fácil de "ver" en tu mente.</span>
+      </div>
+      <p class="subnota" style="margin-bottom:0;">Y al final del documento verás <b>el computador completo</b>: todas las teclas juntas y ordenadas, no un computador por norma.</p>
+    </div>
+  </section>
+
+  <!-- ===================== CABLE DE PODER ===================== -->
+  <section>
+    <div class="titulo-seccion"><span class="ico">🔌</span><h2>El cable de poder (lo que enciende todo)</h2></div>
+    <p class="subnota">Es el Acuerdo 0009 de 2024 en sí: la "corriente" que da vida al reglamento.</p>
+    <div class="panel">
+      <ul class="mini">
+        <li>📅 <b>Nace</b>: 5 de noviembre de 2024, firmado por el Consejo Directivo Nacional del SENA.</li>
+        <li>🎯 <b>Para qué</b>: adopta el nuevo <b>Reglamento del Aprendiz</b> para todas las personas matriculadas en cualquier modalidad.</li>
+        <li>🗑️ <b>Apaga (deroga) 4 acuerdos viejos</b>: 07 de 2012, 02 de 2014, 06 de 2023 y 02 de 2024. <span class="codigo" style="margin-left:0;">CÓDIGO 7-2-6-2</span></li>
+        <li>🔁 <b>Transición</b>: si ya estabas matriculado, sigues con el reglamento de tu matrícula; en lo disciplinario manda la norma más favorable al aprendiz.</li>
+      </ul>
+      <div class="clave verde">🔊 <b>Imagen:</b> un enchufe gigante que enciende un computador nuevo y, al hacerlo, apaga 4 computadores viejos y polvorientos (2012, 2014, 2023, 2024).</div>
+    </div>
+  </section>
+
+  <!-- ===================== PLACA MADRE ===================== -->
+  <section>
+    <div class="titulo-seccion"><span class="ico">🧰</span><h2>La placa madre (las leyes que lo sostienen)</h2></div>
+    <p class="subnota">Sobre estas leyes "está soldado" todo el reglamento. Saberlas te da la visión crítica para entender el porqué de cada norma.</p>
+    <div class="panel">
+      <ul class="mini">
+        <li>🏛️ <b>Constitución, Art. 54 y 67</b>: el Estado debe ofrecer formación, y la educación es un derecho con función social.</li>
+        <li>🎓 <b>Ley 30 de 1992</b>: organiza la Educación Superior; el SENA queda adscrito y ajusta su régimen académico.</li>
+        <li>📘 <b>Ley 115 de 1994</b>: ley general de educación (formación permanente e integral).</li>
+        <li>🛠️ <b>Ley 119 de 1994</b>: reestructura el SENA y define su misión y objetivos.</li>
+        <li>♿ <b>Ley 361 de 1997</b>: integración social de personas con discapacidad.</li>
+        <li>🤰 <b>Ley 2394 de 2024</b>: protege a estudiantes gestantes, en lactancia y en licencia de paternidad.</li>
+        <li>📜 <b>Decreto 249 de 2004</b>: faculta al Consejo Directivo para expedir este reglamento.</li>
+        <li>🛡️ <b>Ley 2365 de 2024</b>: prevención y atención del acoso sexual (rutas de protección).</li>
+        <li>⚖️ <b>Ley 1437 de 2011</b>: procedimiento administrativo (notificaciones y recursos).</li>
+      </ul>
+      <div class="clave verde">🔊 <b>Imagen:</b> una placa madre verde con chips etiquetados 54, 67, 30, 115, 119, 361, 249, 1437… todos conectados por cables que llegan al chip central que dice "APRENDIZ".</div>
+    </div>
+  </section>
+
+
+  <!-- ===================== CAPÍTULO I ===================== -->
+  <section class="grupo-cap">
+    <div class="cap-encabezado">
+      <span class="em">🟢</span>
+      <div><h2>CAPÍTULO I · DEFINICIONES <small>El ENCENDIDO: conocer quién eres y dónde estás (Arts. 1 a 4)</small></h2></div>
+    </div>
+
+    <!-- ART 1 -->
+    <div class="tecla amarillo">
+      <div class="tecla-top">
+        <span class="dot amarillo"></span>
+        <span class="nart">Art. 1</span>
+        <span class="nombre">Definiciones</span>
+        <span class="codigo">CÓDIGO 5</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          <b>5 palabras mágicas</b> que tienes que conocer antes de empezar:
+          <ul class="mini">
+            <li><b>1) Formación profesional integral:</b> aprender teoría + práctica + valores para la vida y el trabajo.</li>
+            <li><b>2) Comunidad educativa SENA:</b> todos juntos (aprendices, instructores, administrativos, familias, empresas, comunidades diversas).</li>
+            <li><b>3) Aspirante:</b> el que aún está intentando entrar.</li>
+            <li><b>4) Aprendiz:</b> el que ya está matriculado.</li>
+            <li><b>5) Grupo:</b> los compañeros del mismo centro/programa/jornada con un número.</li>
+          </ul>
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🧱🧱🧱🧱🧱</span>
+          <div>Imagina <b>5 fichas de lego</b> que al unirse forman la palabra <b>SENA</b>. Cada ficha es una definición.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 2 -->
+    <div class="tecla azul">
+      <div class="tecla-top">
+        <span class="dot azul"></span>
+        <span class="nart">Art. 2</span>
+        <span class="nombre">Alcance del reglamento</span>
+        <span class="codigo">CÓDIGO 2 (aspirante + aprendiz)</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Estas reglas te cubren <b>siempre</b>: al <b>aspirante</b> (cuando entra) y al <b>aprendiz</b> (todo su estudio y certificación), en <b>todas</b> las sedes, jornadas, niveles y modalidades, y también <b>fuera</b> del SENA cuando estés en actividades de formación.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">☂️</span>
+          <div>Un <b>paraguas gigante</b> que te sigue a todas partes: dentro y fuera del SENA, te mojes donde te mojes, te cubre.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 3 -->
+    <div class="tecla rojo">
+      <div class="tecla-top">
+        <span class="dot rojo"></span>
+        <span class="nart">Art. 3</span>
+        <span class="nombre">Principios orientadores</span>
+        <span class="codigo">CÓDIGO 8</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          <b>8 brújulas</b> que guían todo: <b>1)</b> Autonomía, <b>2)</b> Dignidad, <b>3)</b> Inclusión, <b>4)</b> Enfoque diferencial, <b>5)</b> Enfoque territorial, <b>6)</b> Participación, <b>7)</b> Desarrollo sostenible, <b>8)</b> Solidaridad.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🧭</span>
+          <div>Una <b>brújula con 8 puntas</b>. Cada punta apunta a un principio para no perder el rumbo.</div>
+        </div>
+      </div>
+      <div class="zona"><div class="chispa">🧠 <b>Chispa crítica:</b> ¿por qué la "Dignidad" va de primera entre las brújulas reales? Porque sin trato digno, ningún otro principio funciona.</div></div>
+    </div>
+
+    <!-- ART 4 -->
+    <div class="tecla amarillo">
+      <div class="tecla-top">
+        <span class="dot amarillo"></span>
+        <span class="nart">Art. 4</span>
+        <span class="nombre">Centro de Convivencia</span>
+        <span class="codigo">CÓDIGO 2 (cama + plato)</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Es un apoyo extra: da <b>alojamiento</b> y <b>alimentación</b> a aprendices seleccionados. El centro que lo tenga debe tener su propio <b>manual de convivencia</b>.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🏠🛏️🍽️</span>
+          <div>Una <b>casita</b> con una <b>cama</b> y un <b>plato de comida</b>: dormir y comer para poder estudiar.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CAPÍTULO II ===================== -->
+  <section class="grupo-cap">
+    <div class="cap-encabezado">
+      <span class="em">🎁</span>
+      <div><h2>CAPÍTULO II · DERECHOS DEL APRENDIZ <small>Lo que el computador te DA (Arts. 5 a 7)</small></h2></div>
+    </div>
+
+    <!-- ART 5 -->
+    <div class="tecla azul">
+      <div class="tecla-top">
+        <span class="dot azul"></span>
+        <span class="nart">Art. 5</span>
+        <span class="nombre">Derechos del aprendiz</span>
+        <span class="codigo">CÓDIGO 24</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Tienes <b>24 derechos</b>. Los más importantes para recordar:
+          <ul class="mini">
+            <li>Recibir <b>inducción</b> y conocer el reglamento.</li>
+            <li>Recibir <b>formación de calidad</b> y usar la infraestructura.</li>
+            <li>Recibir <b>elementos de protección personal (EPP)</b>.</li>
+            <li>Disfrutar del <b>bienestar al aprendiz</b>.</li>
+            <li><b>Debido proceso</b>, defensa y ser notificado.</li>
+            <li>Ser <b>evaluado objetivamente</b> y conocer resultados en <b>8 días hábiles</b>.</li>
+            <li><b>Trato digno</b> y libertad de expresión con respeto.</li>
+            <li>Obtener tu <b>certificación o título</b> al cumplir requisitos.</li>
+          </ul>
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🌞</span>
+          <div>Un <b>sol con 24 rayos</b>. Cada rayo es un derecho que te calienta y protege.</div>
+        </div>
+      </div>
+      <div class="zona"><div class="chispa">🧠 <b>Chispa crítica:</b> los derechos (24) y los deberes (Art. 8, también 24) están <b>en equilibrio</b>: por cada cosa que recibes, hay una que aportas.</div></div>
+    </div>
+
+    <!-- ART 6 -->
+    <div class="tecla rojo">
+      <div class="tecla-top">
+        <span class="dot rojo"></span>
+        <span class="nart">Art. 6</span>
+        <span class="nombre">Reconocimientos formativos</span>
+        <span class="codigo">CÓDIGO 4</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Son <b>premios</b> que da el <b>Subdirector</b> por hacerlo muy bien. Hay <b>4</b>:
+          <ul class="mini">
+            <li><b>1)</b> Mención de honor.</li>
+            <li><b>2)</b> Representar al SENA en eventos/concursos.</li>
+            <li><b>3)</b> Ser elegido para práctica o evento nacional/internacional.</li>
+            <li><b>4)</b> Ser monitor de un tema.</li>
+          </ul>
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🏅🏆🎖️🥇</span>
+          <div>Una <b>vitrina con 4 trofeos</b> brillando. ¡Te los ganaste por buen desempeño!</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 7 -->
+    <div class="tecla amarillo">
+      <div class="tecla-top">
+        <span class="dot amarillo"></span>
+        <span class="nart">Art. 7</span>
+        <span class="nombre">Representatividad de los aprendices</span>
+        <span class="codigo">CÓDIGO 3 rutas · mes 9 (septiembre)</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Puedes elegir y ser elegido. Hay <b>3 rutas</b>: <b>1)</b> representantes de centro (por jornada/modalidad), <b>2)</b> voceros de grupo, <b>3)</b> voceros de poblaciones diferenciales (indígena, NARP, LGTBIQ+, campesino, discapacidad, mujer). La elección es en <b>septiembre</b>.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🗳️</span>
+          <div>Una <b>urna de votación con 3 puertas</b>, y en la pared un calendario marcado en <b>septiembre (mes 9)</b>.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ===================== CAPÍTULO III ===================== -->
+  <section class="grupo-cap">
+    <div class="cap-encabezado">
+      <span class="em">⚖️</span>
+      <div><h2>CAPÍTULO III · DEBERES Y PROHIBICIONES <small>Lo que SÍ debes hacer y lo que NUNCA (Arts. 8 a 9)</small></h2></div>
+    </div>
+
+    <!-- ART 8 -->
+    <div class="tecla azul">
+      <div class="tecla-top">
+        <span class="dot azul"></span>
+        <span class="nart">Art. 8</span>
+        <span class="nombre">Deberes del aprendiz</span>
+        <span class="codigo">CÓDIGO 24</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Son <b>24 deberes</b> (igual número que los derechos: ¡equilibrio!). Los clave:
+          <ul class="mini">
+            <li>Firmar el <b>acta de compromiso</b> al matricularte.</li>
+            <li><b>Conocer y cumplir</b> el reglamento.</li>
+            <li>Asistir con <b>puntualidad</b> y entregar evidencias a tiempo.</li>
+            <li><b>Justificar</b> tus inasistencias.</li>
+            <li>Cuidar los <b>bienes y ambientes</b> del SENA.</li>
+            <li>Hacer trabajos con <b>autoría propia</b> (no copiar).</li>
+            <li>Usar los <b>EPP</b> y cumplir bioseguridad.</li>
+            <li>Mantener tus <b>datos actualizados</b> y entregar documentos verdaderos.</li>
+          </ul>
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🎒🛠️</span>
+          <div>Una <b>mochila con 24 herramientas</b>. Cada herramienta es un deber que cargas para construir tu aprendizaje.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 9 -->
+    <div class="tecla rojo">
+      <div class="tecla-top">
+        <span class="dot rojo"></span>
+        <span class="nart">Art. 9</span>
+        <span class="nombre">Prohibiciones</span>
+        <span class="codigo">CÓDIGO 14</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          <b>14 cosas prohibidas</b>. Las más graves:
+          <ul class="mini">
+            <li><b>Falsificar</b> documentos o dar datos falsos.</li>
+            <li><b>Suplantar</b> identidad.</li>
+            <li><b>Plagiar</b> trabajos.</li>
+            <li>Mal uso de internet (contenido peligroso, acoso).</li>
+            <li><b>Alcohol o drogas</b> en el SENA.</li>
+            <li><b>Armas</b> u objetos peligrosos.</li>
+            <li>Proselitismo político o religioso.</li>
+            <li>Dañar bienes; saltar muros/entrar por sitios no permitidos.</li>
+            <li><b>Discriminar</b> a cualquier persona.</li>
+          </ul>
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🚫</span>
+          <div>Una <b>señal roja de PROHIBIDO</b> con 14 cruces dentro. ¡Lo rojo siempre dice "ALTO"!</div>
+        </div>
+      </div>
+      <div class="zona"><div class="chispa">🧠 <b>Chispa crítica:</b> casi todas las prohibiciones (Art. 9) y los deberes (Art. 8) son <b>las dos caras de la misma moneda</b>. Si entiendes un deber, adivinas su prohibición.</div></div>
+    </div>
+  </section>
+
+  <!-- ===================== CAPÍTULO IV ===================== -->
+  <section class="grupo-cap">
+    <div class="cap-encabezado">
+      <span class="em">🛤️</span>
+      <div><h2>CAPÍTULO IV · INGRESO, PERMANENCIA Y CERTIFICACIÓN <small>El VIAJE del aprendiz, paso a paso (Arts. 10 a 38)</small></h2></div>
+    </div>
+
+    <!-- ART 10 -->
+    <div class="tecla amarillo">
+      <div class="tecla-top">
+        <span class="dot amarillo"></span>
+        <span class="nart">Art. 10</span>
+        <span class="nombre">Reglas generales de ingreso</span>
+        <span class="codigo">CÓDIGO 4 etapas · 14 años</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Para entrar pasas por <b>4 etapas</b>: <b>1) Registro → 2) Inscripción → 3) Selección → 4) Matrícula</b>. Edad mínima: <b>14 años</b>. Técnico/operario/auxiliar: <b>sin título</b>. Tecnólogo: <b>bachiller + ICFES (Saber 11)</b>. Menores de edad: papá/acudiente firma <b>consentimiento</b> y el menor su <b>asentimiento</b>.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🚪1️⃣2️⃣3️⃣4️⃣</span>
+          <div>Una <b>puerta con 4 escalones</b> numerados. Para entrar subes los 4, y un cartel dice "14".</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 11 -->
+    <div class="tecla azul">
+      <div class="tecla-top">
+        <span class="dot azul"></span>
+        <span class="nart">Art. 11</span>
+        <span class="nombre">Etapa 1: Registro</span>
+        <span class="codigo">CÓDIGO 1 (único)</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Escribes tus datos en el sistema. Es <b>único, personal e intransferible</b>, con tu documento <b>vigente</b>. Si cambias algo (nombre, documento), <b>tú</b> lo actualizas.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">📝🔒</span>
+          <div>Un <b>formulario con un candado</b>: solo tú tienes la llave de tu registro.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 12 -->
+    <div class="tecla rojo">
+      <div class="tecla-top">
+        <span class="dot rojo"></span>
+        <span class="nart">Art. 12</span>
+        <span class="nombre">Etapa 2: Inscripción</span>
+        <span class="codigo">CÓDIGO programa elegido</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Ya registrado, <b>eliges el programa</b> que quieres. Necesitas usuario y contraseña. Si eres menor, tu representante autoriza el <b>tratamiento de datos</b> (Ley 1581 de 2012).
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🛒</span>
+          <div>Un <b>carrito de compras</b> donde metes el programa que más te gusta.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 13 -->
+    <div class="tecla amarillo">
+      <div class="tecla-top">
+        <span class="dot amarillo"></span>
+        <span class="nart">Art. 13</span>
+        <span class="nombre">Restricciones para inscribirse</span>
+        <span class="codigo">CÓDIGO 5</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          <b>5 casos</b> en que NO puedes inscribirte: <b>1)</b> ya tienes otra inscripción vigente; <b>2)</b> te citaron a pruebas; <b>3)</b> presentaste pruebas y te seleccionaron; <b>4)</b> te convocaron a matrícula; <b>5)</b> lo prohíbe una norma superior.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🚦🔴</span>
+          <div>Un <b>semáforo en rojo con 5 luces</b>: por ahora no puedes avanzar a otra inscripción.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 14 -->
+    <div class="tecla azul">
+      <div class="tecla-top">
+        <span class="dot azul"></span>
+        <span class="nart">Art. 14</span>
+        <span class="nombre">Etapa 3: Selección</span>
+        <span class="codigo">CÓDIGO 2 fases (I web · II taller)</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Se revisan tus aptitudes con <b>2 pruebas</b>: <b>Fase I</b> (en la web/online) y <b>Fase II</b> (taller o prueba controlada, que el centro aplica si quiere). Las pruebas son secretas: copiarlas te excluye.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🔍📝</span>
+          <div>Una <b>lupa sobre dos exámenes</b>: el primero en pantalla, el segundo en papel.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 15 -->
+    <div class="tecla rojo">
+      <div class="tecla-top">
+        <span class="dot rojo"></span>
+        <span class="nart">Art. 15</span>
+        <span class="nombre">Etapa 4: Matrícula</span>
+        <span class="codigo">CÓDIGO 0 cupos reservados</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Es la <b>formalización</b>: firmas el compromiso, aceptas el reglamento y te conviertes en <b>aprendiz</b>. El SENA <b>no reserva cupos</b> a nadie. Sin matrícula, no puedes asistir.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">✍️🪪</span>
+          <div>Una <b>firma</b> que se convierte en tu <b>carné de aprendiz</b>. ¡Ya eres oficial!</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 16 -->
+    <div class="tecla amarillo">
+      <div class="tecla-top">
+        <span class="dot amarillo"></span>
+        <span class="nart">Art. 16</span>
+        <span class="nombre">Trámites durante la formación</span>
+        <span class="codigo">CÓDIGO 6 trámites</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Durante tu estudio puedes pedir <b>6 trámites</b>: <b>traslado, aplazamiento, reintegro, retiro voluntario, certificación y reingreso</b>.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🏛️🪟</span>
+          <div>Una <b>ventanilla de trámites</b> con 6 botones para pedir lo que necesitas.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 17 -->
+    <div class="tecla azul">
+      <div class="tecla-top">
+        <span class="dot azul"></span>
+        <span class="nart">Art. 17</span>
+        <span class="nombre">Trámite de novedades (paso a paso)</span>
+        <span class="codigo">CÓDIGO 7 pasos · 8 días</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          <b>7 pasos</b>: 1) registrar la solicitud; 2) radicarla a la Subdirección; 3) el <b>Comité de Evaluación y Seguimiento</b> la analiza; 4) hace acta y el Subdirector la firma (acto administrativo); 5) el Coordinador te <b>notifica</b>; 6) se registra en el sistema en <b>8 días calendario</b>; 7) puedes interponer <b>recurso</b>.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🏭➡️</span>
+          <div>Una <b>línea de ensamblaje con 7 estaciones</b>: tu solicitud entra por una punta y sale resuelta por la otra.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 18 -->
+    <div class="tecla rojo">
+      <div class="tecla-top">
+        <span class="dot rojo"></span>
+        <span class="nart">Art. 18</span>
+        <span class="nombre">Novedades durante la formación</span>
+        <span class="codigo">CÓDIGO 4 · 20 días · 3+3 meses</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Las <b>4 novedades</b> y sus números clave:
+          <ul class="mini">
+            <li><b>1) Traslado:</b> cambiar de grupo/jornada/centro/modalidad. Solo <b>1 vez</b>, tras el <b>1.er trimestre</b> y sin sanciones vigentes.</li>
+            <li><b>2) Aplazamiento:</b> pausar si faltas <b>20+ días</b> seguidos por causa justa. Dura hasta <b>3 meses</b> (+ <b>3 meses</b> más).</li>
+            <li><b>3) Reintegro:</b> volver del aplazamiento; pídelo <b>5 días hábiles</b> antes de que venza.</li>
+            <li><b>4) Retiro voluntario:</b> irte definitivamente. Sin causa justa = <b>falta grave</b> = cancelación de matrícula.</li>
+          </ul>
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🔀⏸️↩️🚪</span>
+          <div><b>4 botones</b>: mezclar (traslado), pausa (aplazamiento), volver (reintegro) y puerta de salida (retiro).</div>
+        </div>
+      </div>
+      <div class="zona"><div class="chispa">🧠 <b>Chispa crítica:</b> el número <b>20 días</b> aparece muchas veces (aplazamiento, incapacidad, deserción virtual). Es el "número estrella" del reglamento: ¡memorízalo bien!</div></div>
+    </div>
+
+    <!-- ART 19 -->
+    <div class="tecla amarillo">
+      <div class="tecla-top">
+        <span class="dot amarillo"></span>
+        <span class="nart">Art. 19</span>
+        <span class="nombre">Certificación</span>
+        <span class="codigo">CÓDIGO 30 días</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Es el <b>reconocimiento formal</b> de lo aprobado. Requisitos: estar "<b>por certificar</b>"; los tecnólogos, presentar pruebas del MEN; estar en la <b>Agencia Pública de Empleo</b> (menos complementaria). El centro tiene <b>30 días calendario</b> para expedir el certificado.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">📜🏅</span>
+          <div>Un <b>diploma con sello dorado</b> y un calendario marcado en <b>30</b>.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <section class="grupo-cap">
+    <!-- ART 20 -->
+    <div class="tecla azul">
+      <div class="tecla-top">
+        <span class="dot azul"></span>
+        <span class="nart">Art. 20</span>
+        <span class="nombre">Expedición de documentos académicos</span>
+        <span class="codigo">CÓDIGO año 2010</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Los documentos son <b>gratis</b>. Desde el <b>año 2010</b> puedes <b>descargarlos digitales</b> del portal. Los de <b>antes de 2010</b> se piden en el centro y pagan <b>tarifa de reexpedición</b>.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🖨️📄</span>
+          <div>Una <b>impresora</b> que saca tu diploma; en la pantalla dice "2010 = gratis online".</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 21 -->
+    <div class="tecla rojo">
+      <div class="tecla-top">
+        <span class="dot rojo"></span>
+        <span class="nart">Art. 21</span>
+        <span class="nombre">Validación (apostilla)</span>
+        <span class="codigo">CÓDIGO 15-sep-2020</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Para usar tu título en el <b>exterior</b>: antes del <b>2000</b>, firma física; del 2000 al <b>15 de sept. de 2020</b>, se reexpide digital; <b>después del 15-sep-2020</b>, ya <b>no</b> necesita validación del SENA (acuerdo con la Cancillería).
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">✈️🏷️</span>
+          <div>Un <b>avión</b> que lleva tu diploma a otro país con un <b>sello de apostilla</b>.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 22 -->
+    <div class="tecla amarillo">
+      <div class="tecla-top">
+        <span class="dot amarillo"></span>
+        <span class="nart">Art. 22</span>
+        <span class="nombre">Trámite de reingreso</span>
+        <span class="codigo">CÓDIGO 1 sola vez</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Si te retiraste o te cancelaron la matrícula, puedes pedir <b>volver</b> para terminar. Solo se puede <b>una única vez</b>. Puede ser al mismo centro/programa o a otro de la misma línea.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">↩️</span>
+          <div>Una <b>flecha en forma de U</b>: das la vuelta y regresas… pero solo te dan <b>un</b> boleto de regreso.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 23 -->
+    <div class="tecla azul">
+      <div class="tecla-top">
+        <span class="dot azul"></span>
+        <span class="nart">Art. 23</span>
+        <span class="nombre">Condiciones para reingreso</span>
+        <span class="codigo">CÓDIGO 4</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          <b>4 condiciones:</b> <b>1)</b> haber cursado sin certificarte; <b>2)</b> estar desvinculado en el sistema; <b>3)</b> pedirlo <b>por escrito</b>; <b>4)</b> aceptar las condiciones del programa actual. <b>No aplica</b> a formación complementaria.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">✅✅✅✅</span>
+          <div>Una <b>lista con 4 casillas</b> que debes marcar antes de volver.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 24 -->
+    <div class="tecla rojo">
+      <div class="tecla-top">
+        <span class="dot rojo"></span>
+        <span class="nart">Art. 24</span>
+        <span class="nombre">Procedimiento de reingreso</span>
+        <span class="codigo">CÓDIGO 8 pasos · 15 / 30 días</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          <b>8 pasos</b>. El Subdirector responde en <b>15 días hábiles</b>. Si aceptas, legalizas el reingreso en <b>30 días calendario</b>. Te asignan ruta reconociendo lo ya aprobado.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🪜↩️</span>
+          <div>Una <b>escalera de 8 peldaños en forma de U</b>: subes para regresar a tu formación.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 25 -->
+    <div class="tecla amarillo">
+      <div class="tecla-top">
+        <span class="dot amarillo"></span>
+        <span class="nart">Art. 25</span>
+        <span class="nombre">Seguimiento al reingreso</span>
+        <span class="codigo">CÓDIGO semestral</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Las Subdirecciones <b>reportan cada semestre</b> a la Regional y a la Dirección de Formación cómo va el reingreso.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🔍📅</span>
+          <div>Una <b>lupa sobre un calendario</b> partido en 2 mitades (los 2 semestres).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 26 -->
+    <div class="tecla azul">
+      <div class="tecla-top">
+        <span class="dot azul"></span>
+        <span class="nart">Art. 26</span>
+        <span class="nombre">El proceso de formación</span>
+        <span class="codigo">CÓDIGO 2 etapas · 15 años</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          La ruta tiene <b>2 etapas</b>: <b>lectiva</b> (aprender teoría-práctica) y <b>productiva</b> (aplicar en lo real). Edad mínima para la productiva: <b>15 años</b> (con permiso del inspector de trabajo). Alternativas de la productiva: contrato de aprendizaje, vínculo formativo, proyecto productivo, vínculo laboral, monitoría, prácticas en economía popular/campesina.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🚲</span>
+          <div>Una <b>bicicleta de 2 ruedas</b>: la rueda de adelante es la etapa lectiva, la de atrás la productiva. Las dos te llevan a la meta.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 27 -->
+    <div class="tecla rojo">
+      <div class="tecla-top">
+        <span class="dot rojo"></span>
+        <span class="nart">Art. 27</span>
+        <span class="nombre">Cumplimiento satisfactorio</span>
+        <span class="codigo">CÓDIGO evidencias + asistencia</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Cumples bien si entregas <b>evidencias buenas y a tiempo</b> y <b>asistes/participas</b>. Si no lo haces, hay <b>incumplimiento</b> (que puede ser justificado o no).
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">✅</span>
+          <div>Un <b>chulo verde grande</b>: tareas entregadas + presente = todo bien.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 28 -->
+    <div class="tecla amarillo">
+      <div class="tecla-top">
+        <span class="dot amarillo"></span>
+        <span class="nart">Art. 28</span>
+        <span class="nombre">Incumplimiento justificado</span>
+        <span class="codigo">CÓDIGO avisar: 1 día antes / 5 días después</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Faltar <b>con excusa válida</b>. Dos tipos:
+          <ul class="mini">
+            <li><b>Programadas</b> (citas médicas, votar, religión, licencia, representar al SENA…): avisa <b>1 día antes</b>.</li>
+            <li><b>No programadas</b> (muerte de familiar, calamidad, seguridad, salud, embarazo): avisa máx. <b>5 días hábiles</b> después, con soportes.</li>
+          </ul>
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">📄🩹</span>
+          <div>Una <b>nota de excusa con sello</b>: tu falta queda "curada" porque la justificaste.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 29 -->
+    <div class="tecla azul">
+      <div class="tecla-top">
+        <span class="dot azul"></span>
+        <span class="nart">Art. 29</span>
+        <span class="nombre">Incumplimiento injustificado</span>
+        <span class="codigo">CÓDIGO sin excusa válida</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Es cuando <b>no avisas</b> (ni antes ni en 5 días hábiles), o avisas pero tu razón <b>no es válida</b>. Esto sí cuenta como falta.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">📄❌</span>
+          <div>Una <b>nota tachada con X roja</b>: no hay excusa que valga.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 30 -->
+    <div class="tecla rojo">
+      <div class="tecla-top">
+        <span class="dot rojo"></span>
+        <span class="nart">Art. 30</span>
+        <span class="nombre">Deserción (abandono)</span>
+        <span class="codigo">CÓDIGO 3 · 5 · 20 · 10%</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Es <b>abandonar</b> la formación. Los números por modalidad:
+          <ul class="mini">
+            <li><b>Presencial:</b> <b>3 días</b> seguidos o <b>5</b> no seguidos sin justificar.</li>
+            <li><b>Virtual (lectiva):</b> no asistir a <b>3 citaciones</b> o no entrar <b>20 días</b> seguidos.</li>
+            <li><b>A distancia:</b> no justificar <b>3 encuentros</b>.</li>
+            <li><b>Etapa productiva:</b> <b>3 días</b> seguidos sin ir a la empresa.</li>
+            <li><b>Complementaria presencial:</b> no cumplir el <b>10%</b> de las horas.</li>
+          </ul>
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🪑💨</span>
+          <div>Una <b>silla vacía</b> con polvo: el aprendiz se fue. Recuerda los números <b>3-5-20-10%</b>.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 31 -->
+    <div class="tecla amarillo">
+      <div class="tecla-top">
+        <span class="dot amarillo"></span>
+        <span class="nart">Art. 31</span>
+        <span class="nombre">Procedimiento en deserción</span>
+        <span class="codigo">CÓDIGO Comité → falta grave</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          El instructor reporta al <b>Comité de Evaluación y Seguimiento</b>. El comité confirma el abandono, lo califica como <b>falta grave</b> y recomienda <b>cancelar la matrícula</b>, siempre con <b>debido proceso</b>.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">👥🔍</span>
+          <div>Un <b>comité con una lupa</b> revisando la silla vacía para confirmar que sí se fue.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 32 -->
+    <div class="tecla azul">
+      <div class="tecla-top">
+        <span class="dot azul"></span>
+        <span class="nart">Art. 32</span>
+        <span class="nombre">Evaluación del aprendizaje</span>
+        <span class="codigo">CÓDIGO cualitativa</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Aprendiz e instructor <b>comparan juntos</b> los avances. No se mide solo la teoría, sino cómo <b>aplicas</b> lo aprendido. La evaluación es <b>cualitativa</b> (no con notas de 1 a 5).
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">⚖️</span>
+          <div>Una <b>balanza</b> donde tú y el instructor ponen pesas para ver cómo vas.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 33 -->
+    <div class="tecla rojo">
+      <div class="tecla-top">
+        <span class="dot rojo"></span>
+        <span class="nart">Art. 33</span>
+        <span class="nombre">Evidencias de aprendizaje</span>
+        <span class="codigo">CÓDIGO 3 tipos</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          <b>3 tipos</b> de evidencias: de <b>conocimiento</b> (saber), de <b>desempeño</b> (saber hacer) y de <b>producto</b> (lo que entregas). Juntas muestran el <b>saber, saber hacer y ser</b>.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🧠🙌❤️</span>
+          <div><b>3 cajas</b>: cerebro (saber), manos (saber hacer) y corazón (ser).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 34 -->
+    <div class="tecla amarillo">
+      <div class="tecla-top">
+        <span class="dot amarillo"></span>
+        <span class="nart">Art. 34</span>
+        <span class="nombre">Principios de la evaluación</span>
+        <span class="codigo">CÓDIGO 4 (P-V-T-C)</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          <b>4 principios:</b> <b>P</b>articipación, <b>V</b>alidez, <b>T</b>ransparencia, <b>C</b>onfiabilidad. Truco: <b>"P-V-T-C"</b>.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🏛️</span>
+          <div>Un <b>templo con 4 columnas</b>; si quitas una, la evaluación se cae.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 35 -->
+    <div class="tecla azul">
+      <div class="tecla-top">
+        <span class="dot azul"></span>
+        <span class="nart">Art. 35</span>
+        <span class="nombre">Acompañamiento evaluativo</span>
+        <span class="codigo">CÓDIGO retroalimentación</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          El instructor revisa tu avance, te dice tus <b>logros y dificultades</b> y te <b>retroalimenta</b> para mejorar. En articulación y dual también participan docente o tutor de empresa.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🧑‍🏫🤝</span>
+          <div>Un <b>instructor con la mano en tu hombro</b>, guiándote.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 36 -->
+    <div class="tecla rojo">
+      <div class="tecla-top">
+        <span class="dot rojo"></span>
+        <span class="nart">Art. 36</span>
+        <span class="nombre">Juicios de evaluación</span>
+        <span class="codigo">CÓDIGO 2</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Solo hay <b>2 resultados</b>: <b>APROBADO</b> o <b>NO APROBADO</b>. (Solo para movilidad a otra entidad se pone una nota numérica equivalente.)
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">✅❌</span>
+          <div><b>2 sellos</b>: uno verde (aprobado) y uno rojo (no aprobado).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 37 -->
+    <div class="tecla amarillo">
+      <div class="tecla-top">
+        <span class="dot amarillo"></span>
+        <span class="nart">Art. 37</span>
+        <span class="nombre">Seguimiento de resultados</span>
+        <span class="codigo">CÓDIGO medidas formativas</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Si <b>no logras</b> los resultados, el instructor aplica <b>medidas formativas académicas</b> para ayudarte a alcanzarlos (no es castigo, es apoyo).
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🥅</span>
+          <div>Una <b>red de seguridad</b> que te atrapa si te caes, para que sigas intentando.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 38 -->
+    <div class="tecla azul">
+      <div class="tecla-top">
+        <span class="dot azul"></span>
+        <span class="nart">Art. 38</span>
+        <span class="nombre">Inconformidad y revisión</span>
+        <span class="codigo">CÓDIGO 2 · 2 · 5 días hábiles</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Si no estás de acuerdo con una evaluación: <b>1)</b> pides revisión al instructor en <b>2 días hábiles</b>; <b>2)</b> él responde en <b>2 días hábiles</b>; <b>3)</b> si sigues en desacuerdo, pides un <b>segundo evaluador</b>, que decide en <b>5 días hábiles</b>.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🔍🧑‍🤝‍🧑</span>
+          <div>Una <b>lupa</b> y un <b>segundo profe</b>. Recuerda el ritmo <b>2-2-5</b>.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ===================== CAPÍTULO V ===================== -->
+  <section class="grupo-cap">
+    <div class="cap-encabezado">
+      <span class="em">🛡️</span>
+      <div><h2>CAPÍTULO V · FALTAS, MEDIDAS Y SANCIONES <small>El ANTIVIRUS: qué pasa si algo sale mal (Arts. 39 a 53)</small></h2></div>
+    </div>
+
+    <!-- ART 39 -->
+    <div class="tecla rojo">
+      <div class="tecla-top">
+        <span class="dot rojo"></span>
+        <span class="nart">Art. 39</span>
+        <span class="nombre">Principios del régimen</span>
+        <span class="codigo">CÓDIGO 4</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          <b>4 principios</b> que protegen al aprendiz: <b>1)</b> Confidencialidad (tu info es reservada); <b>2)</b> Debido proceso; <b>3)</b> Culpabilidad (solo por <b>dolo</b> = a propósito, o <b>culpa</b> = descuido); <b>4)</b> No doble sanción (no te castigan 2 veces por lo mismo).
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🛡️</span>
+          <div>Un <b>escudo dividido en 4 partes</b>: te defiende de injusticias.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 40 -->
+    <div class="tecla amarillo">
+      <div class="tecla-top">
+        <span class="dot amarillo"></span>
+        <span class="nart">Art. 40</span>
+        <span class="nombre">Las medidas (qué son)</span>
+        <span class="codigo">CÓDIGO según la falta</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Las medidas (formativas, académicas, disciplinarias o sancionatorias) se aplican <b>según el tipo de falta</b> cometida. Aplican dentro y fuera del SENA cuando representas a la entidad.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🧰⚖️</span>
+          <div>Una <b>caja de herramientas de la justicia</b>: para cada falta, una herramienta distinta.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 41 -->
+    <div class="tecla azul">
+      <div class="tecla-top">
+        <span class="dot azul"></span>
+        <span class="nart">Art. 41</span>
+        <span class="nombre">Faltas</span>
+        <span class="codigo">CÓDIGO 2 tipos</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Una falta es una acción que daña la formación o la convivencia. Hay <b>2 tipos</b>: <b>académicas</b> (incumplir deberes de estudio) y <b>disciplinarias</b> (mal comportamiento).
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">📚🚨 / 🙅🚨</span>
+          <div><b>2 alarmas</b>: una sobre un libro (académica) y otra sobre una persona (disciplinaria).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 42 -->
+    <div class="tecla rojo">
+      <div class="tecla-top">
+        <span class="dot rojo"></span>
+        <span class="nart">Art. 42</span>
+        <span class="nombre">Calificación de faltas (gravedad)</span>
+        <span class="codigo">CÓDIGO 3 grados · 6+6</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          <b>3 grados</b> de gravedad: <b>Leves</b> (pequeñas, se corrigen), <b>Graves</b> (afectan la convivencia → condicionamiento o cancelación) y <b>Gravísimas</b> (a propósito contra derechos/vida → cancelación). Además hay <b>6 atenuantes</b> (bajan la falta) y <b>6 agravantes</b> (la suben).
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🌡️</span>
+          <div>Un <b>termómetro de 3 niveles</b>: tibio (leve), caliente (grave), hirviendo (gravísima).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 43 -->
+    <div class="tecla amarillo">
+      <div class="tecla-top">
+        <span class="dot amarillo"></span>
+        <span class="nart">Art. 43</span>
+        <span class="nombre">Aspectos para calificar la falta</span>
+        <span class="codigo">CÓDIGO 7</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          <b>7 cosas</b> que agravan: reincidir; dañar bienes comunes; hacerlo por recompensa; móviles de intolerancia/discriminación; usar un medio de peligro común; aprovechar tiempo/modo/lugar para esconderse; y obrar con <b>intención de hacer daño</b>.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🚩</span>
+          <div><b>7 banderas rojas</b> clavadas: cada una hace la falta más seria.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 44 -->
+    <div class="tecla azul">
+      <div class="tecla-top">
+        <span class="dot azul"></span>
+        <span class="nart">Art. 44</span>
+        <span class="nombre">Criterios para calificar</span>
+        <span class="codigo">CÓDIGO 6</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          <b>6 criterios</b>: el <b>daño</b> causado; tu <b>grado de participación</b>; tus <b>antecedentes</b>; si <b>resarciste</b> el daño; si <b>devolviste/reparaste</b> el bien; y los parámetros del reglamento.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">⚖️</span>
+          <div>Una <b>balanza con 6 pesas</b> que decide qué tan grave fue.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 45 -->
+    <div class="tecla rojo">
+      <div class="tecla-top">
+        <span class="dot rojo"></span>
+        <span class="nart">Art. 45</span>
+        <span class="nombre">Medidas formativas</span>
+        <span class="codigo">CÓDIGO corrigen sin castigar</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Son acciones para <b>corregir faltas menores</b> o prevenirlas, <b>sin quitarte derechos</b>. Aplican a formación laboral y tecnológica, <b>menos</b> a la complementaria.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🩹</span>
+          <div>Una <b>curita</b>: cura el problema pequeño antes de que crezca.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 46 -->
+    <div class="tecla amarillo">
+      <div class="tecla-top">
+        <span class="dot amarillo"></span>
+        <span class="nart">Art. 46</span>
+        <span class="nombre">Tipos de medidas formativas</span>
+        <span class="codigo">CÓDIGO 2 llamados → plan · 20 días</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Dos clases:
+          <ul class="mini">
+            <li><b>Académicas:</b> hasta <b>2 llamados de atención</b> por fase → luego <b>plan de mejoramiento</b> (máx <b>2 por fase</b>, dura máx <b>20 días</b> calendario).</li>
+            <li><b>Disciplinarias:</b> hasta <b>2 llamados</b> → luego <b>plan de mejoramiento</b> con acta (máx <b>1 por etapa</b>).</li>
+          </ul>
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🧰🧰</span>
+          <div><b>2 botiquines</b>: uno para lo académico y otro para lo disciplinario. Recuerda: <b>2 llamados, luego plan</b>.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 47 -->
+    <div class="tecla azul">
+      <div class="tecla-top">
+        <span class="dot azul"></span>
+        <span class="nart">Art. 47</span>
+        <span class="nombre">Medidas sancionatorias</span>
+        <span class="codigo">CÓDIGO 2 condic. · 6 meses · 3 meses</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          <b>2 sanciones serias:</b>
+          <ul class="mini">
+            <li><b>Condicionamiento de matrícula:</b> máximo <b>2</b> en tu proceso; si superas ese número → cancelación.</li>
+            <li><b>Cancelación de matrícula:</b> te retiran. Para volver: esperar <b>6 meses</b> (laboral/tecnológica) o <b>3 meses</b> (complementaria).</li>
+          </ul>
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🟨🟥</span>
+          <div>Como en el fútbol: <b>tarjeta amarilla</b> (condicionamiento) y <b>tarjeta roja</b> (cancelación).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 48 -->
+    <div class="tecla rojo">
+      <div class="tecla-top">
+        <span class="dot rojo"></span>
+        <span class="nart">Art. 48</span>
+        <span class="nombre">Equipos de valoración</span>
+        <span class="codigo">CÓDIGO 2 equipos · 1 vez/mes</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          <b>2 equipos</b> revisan las faltas: <b>1)</b> el <b>Equipo ejecutor</b> del grupo (instructores + vocero), que aplica medidas formativas; <b>2)</b> el <b>Comité de Evaluación y Seguimiento</b>, que recomienda sanciones y se reúne <b>al menos 1 vez al mes</b>.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">👥👥</span>
+          <div><b>2 mesas redondas</b>: la pequeña (equipo ejecutor) y la grande (comité).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 49 -->
+    <div class="tecla amarillo">
+      <div class="tecla-top">
+        <span class="dot amarillo"></span>
+        <span class="nart">Art. 49</span>
+        <span class="nombre">Instancias decisorias</span>
+        <span class="codigo">CÓDIGO 2 instancias</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          <b>2 niveles</b> para decidir: <b>1.ª instancia</b> = la <b>Subdirección del Centro</b>; <b>2.ª instancia</b> = la <b>Dirección Regional</b>. (Hay reglas especiales para centros en territorios apartados.)
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🪜👤👑</span>
+          <div><b>2 escalones</b>: el jefe (Subdirección) y el súper-jefe (Regional).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 50 -->
+    <div class="tecla azul">
+      <div class="tecla-top">
+        <span class="dot azul"></span>
+        <span class="nart">Art. 50</span>
+        <span class="nombre">Criterios para sancionar</span>
+        <span class="codigo">CÓDIGO 8</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          <b>8 reglas de un juez justo:</b> Publicidad, Contradicción, <b>Presunción de inocencia</b>, Valoración integral de pruebas, Motivación de la decisión, <b>Proporcionalidad</b>, Impugnación y Oportunidad.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">👨‍⚖️</span>
+          <div>Un <b>juez con 8 estrellas</b> en la toga: solo sanciona si cumple las 8.</div>
+        </div>
+      </div>
+      <div class="zona"><div class="chispa">🧠 <b>Chispa crítica:</b> "Presunción de inocencia" significa que <b>la duda favorece al aprendiz</b>. Quien acusa debe probar, no tú.</div></div>
+    </div>
+
+    <!-- ART 51 -->
+    <div class="tecla rojo">
+      <div class="tecla-top">
+        <span class="dot rojo"></span>
+        <span class="nart">Art. 51</span>
+        <span class="nombre">Procedimiento para sancionar</span>
+        <span class="codigo">CÓDIGO 7 fases · 3·10·15·5 días</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          <b>7 fases</b> con sus tiempos:
+          <ul class="mini">
+            <li><b>1) Queja/Informe</b> → se abre expediente.</li>
+            <li><b>2) Citación al aprendiz</b> (en <b>3 días hábiles</b>).</li>
+            <li><b>3) Sesión del Comité</b> (dentro de <b>10 días hábiles</b> de la queja).</li>
+            <li><b>4) Acto administrativo</b> (en <b>15 días hábiles</b>).</li>
+            <li><b>5) Notificación</b> al aprendiz.</li>
+            <li><b>6) Recurso</b>: reposición (al Subdirector) y apelación (a la Regional).</li>
+            <li><b>7) Firmeza</b>: se registra en <b>5 días hábiles</b>.</li>
+          </ul>
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🚂🚃🚃</span>
+          <div>Un <b>tren de 7 vagones</b>: avanza por las estaciones 3 → 10 → 15 → 5.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 52 -->
+    <div class="tecla amarillo">
+      <div class="tecla-top">
+        <span class="dot amarillo"></span>
+        <span class="nart">Art. 52</span>
+        <span class="nombre">Certificación de conducta y sanciones</span>
+        <span class="codigo">CÓDIGO 5 años</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          El SENA solo entrega tu historial de sanciones <b>si TÚ lo autorizas</b>. Y solo deja constancia de sanciones <b>vigentes</b> o de los <b>últimos 5 años</b>.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">🗂️🔒</span>
+          <div>Un <b>expediente con candado</b> y un reloj que borra todo después de <b>5 años</b>.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ART 53 -->
+    <div class="tecla azul">
+      <div class="tecla-top">
+        <span class="dot azul"></span>
+        <span class="nart">Art. 53</span>
+        <span class="nombre">Sujeción a la Constitución y la ley</span>
+        <span class="codigo">CÓDIGO la base de todo</span>
+      </div>
+      <div class="zonas">
+        <div class="zona monitor">
+          <div class="et">🖥️ Monitor · qué significa</div>
+          Todo el reglamento se aplica <b>respetando la Constitución y las leyes</b>. Lo que no esté escrito aquí se resuelve con las normas y principios generales.
+        </div>
+        <div class="zona altavoz">
+          <div class="et">🔊 Altavoces · la imagen</div>
+          <span class="dibujo">⚓📕</span>
+          <div>Un <b>ancla</b> amarrada a un gran libro (la Constitución): el reglamento nunca se suelta de ahí.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ===================== EL COMPUTADOR COMPLETO ===================== -->
+  <section>
+    <div class="titulo-seccion"><span class="ico">🖥️</span><h2>EL COMPUTADOR COMPLETO</h2></div>
+    <p class="subnota">Aquí está todo armado: un solo teclado con las 53 teclas en orden. Pasa el dedo de la 1 a la 53 (cronológico) o salta por colores y números (acronológico). No memorizas 53 cosas sueltas: memorizas <b>un computador</b>.</p>
+
+    <div class="leyenda">
+      <span><span class="dot amarillo"></span> 🟡 Amarillo = 1.ª del trío</span>
+      <span><span class="dot azul"></span> 🔵 Azul = 2.ª del trío</span>
+      <span><span class="dot rojo"></span> 🔴 Rojo = 3.ª del trío</span>
+    </div>
+
+    <div class="panel">
+      <p style="margin-top:0;"><b>⌨️ EL TECLADO (las 53 teclas)</b></p>
+      <div class="teclado">
+        <div class="keycap amarillo"><span class="kn">1</span><span class="km">🧱</span>Definir</div>
+        <div class="keycap azul"><span class="kn">2</span><span class="km">☂️</span>Alcance</div>
+        <div class="keycap rojo"><span class="kn">3</span><span class="km">🧭</span>Principios</div>
+        <div class="keycap amarillo"><span class="kn">4</span><span class="km">🏠</span>Convivencia</div>
+        <div class="keycap azul"><span class="kn">5</span><span class="km">🌞</span>Derechos</div>
+        <div class="keycap rojo"><span class="kn">6</span><span class="km">🏅</span>Premios</div>
+        <div class="keycap amarillo"><span class="kn">7</span><span class="km">🗳️</span>Voceros</div>
+        <div class="keycap azul"><span class="kn">8</span><span class="km">🎒</span>Deberes</div>
+        <div class="keycap rojo"><span class="kn">9</span><span class="km">🚫</span>Prohíbe</div>
+        <div class="keycap amarillo"><span class="kn">10</span><span class="km">🚪</span>Ingreso</div>
+        <div class="keycap azul"><span class="kn">11</span><span class="km">📝</span>Registro</div>
+        <div class="keycap rojo"><span class="kn">12</span><span class="km">🛒</span>Inscribir</div>
+        <div class="keycap amarillo"><span class="kn">13</span><span class="km">🚦</span>Restric.</div>
+        <div class="keycap azul"><span class="kn">14</span><span class="km">🔍</span>Selección</div>
+        <div class="keycap rojo"><span class="kn">15</span><span class="km">✍️</span>Matrícula</div>
+        <div class="keycap amarillo"><span class="kn">16</span><span class="km">🪟</span>Trámites</div>
+        <div class="keycap azul"><span class="kn">17</span><span class="km">🏭</span>Novedad</div>
+        <div class="keycap rojo"><span class="kn">18</span><span class="km">🔀</span>4 noved.</div>
+        <div class="keycap amarillo"><span class="kn">19</span><span class="km">📜</span>Certific.</div>
+        <div class="keycap azul"><span class="kn">20</span><span class="km">🖨️</span>Documen.</div>
+        <div class="keycap rojo"><span class="kn">21</span><span class="km">✈️</span>Apostilla</div>
+        <div class="keycap amarillo"><span class="kn">22</span><span class="km">↩️</span>Reingreso</div>
+        <div class="keycap azul"><span class="kn">23</span><span class="km">✅</span>Condic.</div>
+        <div class="keycap rojo"><span class="kn">24</span><span class="km">🪜</span>Proced.</div>
+        <div class="keycap amarillo"><span class="kn">25</span><span class="km">📅</span>Seguim.</div>
+        <div class="keycap azul"><span class="kn">26</span><span class="km">🚲</span>Formac.</div>
+        <div class="keycap rojo"><span class="kn">27</span><span class="km">✔️</span>Cumple</div>
+        <div class="keycap amarillo"><span class="kn">28</span><span class="km">📄</span>Justific.</div>
+        <div class="keycap azul"><span class="kn">29</span><span class="km">❌</span>Injustif.</div>
+        <div class="keycap rojo"><span class="kn">30</span><span class="km">🪑</span>Deserción</div>
+        <div class="keycap amarillo"><span class="kn">31</span><span class="km">👥</span>Proc.des.</div>
+        <div class="keycap azul"><span class="kn">32</span><span class="km">⚖️</span>Evaluar</div>
+        <div class="keycap rojo"><span class="kn">33</span><span class="km">🧠</span>Evidenc.</div>
+        <div class="keycap amarillo"><span class="kn">34</span><span class="km">🏛️</span>Princ.ev.</div>
+        <div class="keycap azul"><span class="kn">35</span><span class="km">🤝</span>Acompañ.</div>
+        <div class="keycap rojo"><span class="kn">36</span><span class="km">👍</span>2 juicios</div>
+        <div class="keycap amarillo"><span class="kn">37</span><span class="km">🥅</span>Seguim.</div>
+        <div class="keycap azul"><span class="kn">38</span><span class="km">🔁</span>Revisión</div>
+        <div class="keycap rojo"><span class="kn">39</span><span class="km">🛡️</span>Princ.rég</div>
+        <div class="keycap amarillo"><span class="kn">40</span><span class="km">🧰</span>Medidas</div>
+        <div class="keycap azul"><span class="kn">41</span><span class="km">🚨</span>Faltas</div>
+        <div class="keycap rojo"><span class="kn">42</span><span class="km">🌡️</span>Gravedad</div>
+        <div class="keycap amarillo"><span class="kn">43</span><span class="km">🚩</span>7 aspect.</div>
+        <div class="keycap azul"><span class="kn">44</span><span class="km">⚖️</span>6 criter.</div>
+        <div class="keycap rojo"><span class="kn">45</span><span class="km">🩹</span>Formativ.</div>
+        <div class="keycap amarillo"><span class="kn">46</span><span class="km">🧰</span>Tipos f.</div>
+        <div class="keycap azul"><span class="kn">47</span><span class="km">🟥</span>Sanción</div>
+        <div class="keycap rojo"><span class="kn">48</span><span class="km">👥</span>2 equipos</div>
+        <div class="keycap amarillo"><span class="kn">49</span><span class="km">👑</span>Instancia</div>
+        <div class="keycap azul"><span class="kn">50</span><span class="km">👨‍⚖️</span>8 reglas</div>
+        <div class="keycap rojo"><span class="kn">51</span><span class="km">🚂</span>7 fases</div>
+        <div class="keycap amarillo"><span class="kn">52</span><span class="km">🗂️</span>5 años</div>
+        <div class="keycap azul"><span class="kn">53</span><span class="km">⚓</span>Constituc.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <p style="margin-top:0;"><b>🧭 EL VIAJE (lectura cronológica, de principio a fin)</b></p>
+      <p style="margin-bottom:0;">
+        🟢 <b>Enciendo</b> y conozco lo básico (1-4) → 🎁 descubro lo que <b>me dan</b> (5-7) → ⚖️ aprendo lo que <b>debo y no debo</b> (8-9) → 🚪 <b>entro</b> (10-15) → 🪟 hago <b>trámites</b> y manejo <b>novedades</b> (16-18) → 📜 me <b>certifico</b> y manejo documentos (19-25) → 🚲 vivo el <b>proceso de formación</b> y la <b>evaluación</b> (26-38) → 🛡️ si algo falla, actúa el <b>antivirus</b> de faltas y sanciones (39-53).
+      </p>
+    </div>
+
+    <div class="panel">
+      <p style="margin-top:0;"><b>🔢 TABLA DE NÚMEROS CLAVE</b> (lo más preguntado, para repasar en 2 minutos)</p>
+      <table class="resumen">
+        <tr><th>Art.</th><th>Tema</th><th>Número(s) clave</th></tr>
+        <tr><td>1</td><td>Definiciones</td><td><b>5</b> conceptos</td></tr>
+        <tr><td>3</td><td>Principios orientadores</td><td><b>8</b> principios</td></tr>
+        <tr><td>5</td><td>Derechos</td><td><b>24</b> · resultados en <b>8</b> días hábiles</td></tr>
+        <tr><td>6</td><td>Reconocimientos</td><td><b>4</b></td></tr>
+        <tr><td>7</td><td>Representatividad</td><td><b>3</b> rutas · elección en <b>septiembre</b></td></tr>
+        <tr><td>8</td><td>Deberes</td><td><b>24</b></td></tr>
+        <tr><td>9</td><td>Prohibiciones</td><td><b>14</b></td></tr>
+        <tr><td>10</td><td>Ingreso</td><td><b>4</b> etapas · edad <b>14</b> años</td></tr>
+        <tr><td>13</td><td>Restricciones inscripción</td><td><b>5</b></td></tr>
+        <tr><td>14</td><td>Selección</td><td><b>2</b> fases (I web · II taller)</td></tr>
+        <tr><td>18</td><td>Novedades</td><td><b>4</b> · aplazar <b>20</b> días · hasta <b>3+3</b> meses · reintegro <b>5</b> días hábiles antes</td></tr>
+        <tr><td>19</td><td>Certificación</td><td><b>30</b> días calendario</td></tr>
+        <tr><td>20</td><td>Documentos</td><td>digitales desde <b>2010</b></td></tr>
+        <tr><td>21</td><td>Apostilla</td><td>sin validación desde <b>15-sep-2020</b></td></tr>
+        <tr><td>22</td><td>Reingreso</td><td><b>1</b> sola vez</td></tr>
+        <tr><td>23</td><td>Condiciones reingreso</td><td><b>4</b></td></tr>
+        <tr><td>24</td><td>Procedimiento reingreso</td><td><b>8</b> pasos · responde <b>15</b> hábiles · legaliza <b>30</b> calendario</td></tr>
+        <tr><td>26</td><td>Proceso de formación</td><td><b>2</b> etapas · productiva desde <b>15</b> años</td></tr>
+        <tr><td>28</td><td>Incumplimiento justificado</td><td>avisar <b>1</b> día antes / <b>5</b> días hábiles después</td></tr>
+        <tr><td>30</td><td>Deserción</td><td><b>3</b> seguidos · <b>5</b> no seguidos · <b>20</b> días virtual · <b>10%</b> complementaria</td></tr>
+        <tr><td>33</td><td>Evidencias</td><td><b>3</b> tipos (saber / hacer / ser)</td></tr>
+        <tr><td>34</td><td>Principios evaluación</td><td><b>4</b> (P-V-T-C)</td></tr>
+        <tr><td>36</td><td>Juicios</td><td><b>2</b> (Aprobado / No aprobado)</td></tr>
+        <tr><td>38</td><td>Revisión evaluación</td><td><b>2 - 2 - 5</b> días hábiles</td></tr>
+        <tr><td>39</td><td>Principios del régimen</td><td><b>4</b></td></tr>
+        <tr><td>42</td><td>Gravedad de faltas</td><td><b>3</b> grados · <b>6</b> atenuantes + <b>6</b> agravantes</td></tr>
+        <tr><td>43</td><td>Aspectos para calificar</td><td><b>7</b></td></tr>
+        <tr><td>44</td><td>Criterios para calificar</td><td><b>6</b></td></tr>
+        <tr><td>46</td><td>Medidas formativas</td><td><b>2</b> llamados → plan · máx <b>20</b> días</td></tr>
+        <tr><td>47</td><td>Sanciones</td><td>máx <b>2</b> condicionamientos · esperar <b>6</b> meses / <b>3</b> meses</td></tr>
+        <tr><td>48</td><td>Equipos</td><td><b>2</b> · comité <b>1</b> vez/mes</td></tr>
+        <tr><td>49</td><td>Instancias</td><td><b>2</b> (Subdirección · Regional)</td></tr>
+        <tr><td>50</td><td>Criterios para sancionar</td><td><b>8</b></td></tr>
+        <tr><td>51</td><td>Procedimiento sancionatorio</td><td><b>7</b> fases · <b>3 - 10 - 15 - 5</b> días hábiles</td></tr>
+        <tr><td>52</td><td>Certificado de conducta</td><td>guarda <b>5</b> años</td></tr>
+      </table>
+    </div>
+
+    <div class="panel">
+      <p style="margin-top:0;"><b>🎮 Cómo entrenar tu memoria (3 jugadas)</b></p>
+      <ul class="mini">
+        <li><b>Jugada 1 · Color:</b> di un número de artículo y adivina su color (cuenta de 3 en 3). Acierta el color → recuerda los vecinos.</li>
+        <li><b>Jugada 2 · Imagen:</b> tapa el monitor y mira solo el dibujo del altavoz. ¿Puedes explicar la norma viendo solo la imagen?</li>
+        <li><b>Jugada 3 · Número:</b> repasa solo la tabla de números clave. Son los que más caen en evaluaciones.</li>
+      </ul>
+      <div class="clave">⭐ <b>Número estrella:</b> el <b>20</b> aparece muchísimo (aplazamiento, incapacidad, deserción virtual, plan de mejoramiento). Si dudas, piensa primero en el <b>20</b>.</div>
+    </div>
+  </section>
+
+  <!-- ===================== CIERRE ===================== -->
+  <div class="nota-final">
+    <h2>🧠 Tu superpoder final</h2>
+    <p>Ya no tienes 53 normas sueltas: tienes <b>un computador</b>. El <b>teclado</b> te dice qué buscar (color + número), el <b>monitor</b> te lo explica fácil, y los <b>altavoces</b> te lo muestran en imágenes. Puedes recorrerlo del 1 al 53 (el viaje del aprendiz) o saltar a cualquier tecla cuando la necesites.</p>
+    <p style="margin-bottom:0;">Cuando puedas explicarle este computador a otra persona usando solo los dibujos, significa que ya conoces el Reglamento del Aprendiz SENA <b>al derecho y al revés</b>. 🟡🔵🔴</p>
+  </div>
+
+  <p class="subnota" style="text-align:center; margin-top:24px;">Guía de estudio elaborada a partir del Acuerdo No. 0009 de 2024 (Reglamento del Aprendiz SENA). Material pedagógico de apoyo; ante cualquier duda, prevalece el texto oficial del Acuerdo.</p>
+
+</div>
+</body>
+</html>
