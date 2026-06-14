@@ -3,10 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>¡Pago confirmado! · Sube tus apuntes · Stramont</title>
+  <title>¡Pago confirmado! · Tu Kit Stramont · Stramont</title>
   <meta name="robots" content="noindex">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="stylesheet" href="estilos.css?v=4">
+  <style>
+    .pasos-conf{width:90%;max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:20px;}
+    .paso-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px;box-shadow:0 6px 20px rgba(15,23,42,.07);}
+    .paso-card .paso-tag{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#fff;background:var(--c2);border-radius:30px;padding:5px 14px;margin-bottom:14px;}
+    .paso-card.b .paso-tag{background:var(--c1);}
+    .paso-card h3{font-size:20px;color:#0f1620;margin-bottom:8px;}
+    .paso-card p{font-size:15px;color:var(--text-dim);margin-bottom:16px;}
+    .btn-kit{display:inline-flex;align-items:center;gap:10px;background:#0f1620;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:16px 26px;border-radius:12px;transition:.2s;}
+    .btn-kit:hover{transform:translateY(-2px);color:#fff;}
+    .soporte{font-size:13px;color:var(--muted);background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:6px;line-height:1.55;}
+  </style>
 </head>
 <body class="band band-light">
 
@@ -20,39 +31,50 @@
     </nav>
   </header>
 
-  <section class="section" id="subir">
-    <span class="section-eyebrow">Paso final</span>
-    <h2 class="section-title">✅ ¡Pago confirmado! Ahora sube tus apuntes</h2>
-    <p class="section-lead">Sube fotos o PDF de tus apuntes y empezamos a crear tu guía. La recibirás en menos de 24 horas en tu correo.</p>
+  <section class="section" id="conf">
+    <span class="section-eyebrow">Acceso confirmado</span>
+    <h2 class="section-title">✅ ¡Pago confirmado! Ya eres parte de Stramont</h2>
+    <p class="section-lead">Sigue estos dos pasos. El primero es para hoy; el segundo, para después de tu clase.</p>
 
-    <div class="subir-wrap">
-      <!-- El envío de archivos se hace por FormSubmit (llegan a contacto@montaguth.institute) -->
-      <form id="formSubir" action="https://formsubmit.co/contacto@montaguth.institute" method="POST" enctype="multipart/form-data">
-        <input type="hidden" name="_subject" value="Apuntes recibidos · pedido Stramont">
-        <input type="hidden" name="_captcha" value="false">
-        <input type="hidden" name="_next" value="https://montaguth.institute/gracias.html?ok=1">
-        <input type="text" name="_honey" style="display:none">
+    <div class="pasos-conf">
 
-        <input class="form-field" type="email" name="email" placeholder="Tu correo (el mismo del pago) *" required autocomplete="email">
-        <input class="form-field" type="text" name="materia" placeholder="¿De qué clase/materia son los apuntes?">
+      <!-- PASO A -->
+      <div class="paso-card a">
+        <span class="paso-tag">Paso A · Ahora</span>
+        <h3>Descarga tu Kit de Plantillas</h3>
+        <p>Tu plantilla científica en todos los formatos: imprimir (A4), tablet (GoodNotes/Notability), Word/Google Docs y Notion, con un mini-instructivo de uso.</p>
+        <a href="kit-stramont.zip" download class="btn-kit">📥 Descargar Kit de Plantillas Stramont (.ZIP)</a>
+      </div>
 
-        <div class="dropzone" id="dropzone">
-          <span class="dz-ico">📎</span>
-          <strong>Arrastra aquí tus apuntes</strong><br>
-          o toca para elegir (fotos o PDF)
-        </div>
-        <input id="fileInput" type="file" name="attachment" accept="image/*,application/pdf" multiple hidden>
-        <ul class="filelist" id="fileList"></ul>
+      <!-- PASO B -->
+      <div class="paso-card b">
+        <span class="paso-tag">Paso B · Después de tu clase</span>
+        <h3>Sube tus apuntes</h3>
+        <p>Cuando termines de tomar notas en tu plantilla, súbelas aquí (foto o archivo). En menos de 24 horas recibirás tu Guía de Alta Retención en tu correo.</p>
 
-        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:16px;">Enviar mis apuntes →</button>
-      </form>
+        <form id="formSubir" action="https://formsubmit.co/contacto@montaguth.institute" method="POST" enctype="multipart/form-data">
+          <input type="hidden" name="_subject" value="Apuntes recibidos · pedido Stramont">
+          <input type="hidden" name="_captcha" value="false">
+          <input type="hidden" name="_next" value="https://montaguth.institute/gracias.html?ok=1">
+          <input type="text" name="_honey" style="display:none">
 
-      <p class="subir-nota">
-        ¿Los archivos pesan mucho o no cargan? También puedes enviárnoslos por
-        <a href="https://wa.me/573223643728" target="_blank" style="color:var(--c1);">WhatsApp</a> o
-        <a href="https://instagram.com/montaguth.institute" target="_blank" style="color:var(--c1);">Instagram</a>
-        con el correo de tu pago.
-      </p>
+          <input class="form-field" type="email" name="email" placeholder="Tu correo (el mismo del pago) *" required autocomplete="email">
+          <input class="form-field" type="text" name="materia" placeholder="¿De qué clase/materia son los apuntes?">
+
+          <div class="dropzone" id="dropzone">
+            <span class="dz-ico">📎</span>
+            <strong>Arrastra aquí tus apuntes</strong><br>
+            o toca para elegir (fotos o PDF)
+          </div>
+          <input id="fileInput" type="file" name="attachment" accept="image/*,application/pdf" multiple hidden>
+          <ul class="filelist" id="fileList"></ul>
+
+          <button type="submit" class="btn btn-primary" style="width:100%;margin-top:16px;">Enviar mis apuntes →</button>
+        </form>
+
+        <p class="soporte">💡 ¿Aún no has ido a clase? Guarda el enlace de esta página en tus marcadores y sube tus apuntes aquí apenas los tengas listos. ¿Los archivos pesan mucho? Envíalos por <a href="https://wa.me/573223643728" target="_blank" style="color:var(--c1);">WhatsApp</a> o <a href="https://instagram.com/montaguth.institute" target="_blank" style="color:var(--c1);">Instagram</a> con el correo de tu pago.</p>
+      </div>
+
     </div>
   </section>
 
@@ -68,21 +90,18 @@
   <script>
     (function(){
       var params = new URLSearchParams(location.search);
-      // Estado de éxito tras enviar los apuntes
       if (params.get('ok') === '1') {
-        var sec = document.getElementById('subir');
+        var sec = document.getElementById('conf');
         if (sec) {
           sec.innerHTML = '<div class="ok-box"><h2 class="section-title">📨 ¡Apuntes recibidos!</h2>'
-            + '<p class="section-lead" style="margin-bottom:0;">Ya estamos trabajando en tu guía. La recibirás en tu correo en menos de 24 horas. ¡Gracias por confiar en Stramont!</p>'
-            + '<p style="margin-top:22px;"><a href="index.html" class="btn btn-dark">Volver al inicio</a></p></div>';
+            + '<p class="section-lead" style="margin-bottom:0;">Ya estamos creando tu Guía de Alta Retención. La recibirás en tu correo en menos de 24 horas. ¡Gracias por confiar en Stramont!</p>'
+            + '<p style="margin-top:22px;"><a href="kit-stramont.zip" download class="btn btn-dark">Volver a descargar mi Kit</a></p></div>';
         }
         return;
       }
-
       var dz = document.getElementById('dropzone');
       var input = document.getElementById('fileInput');
       var list = document.getElementById('fileList');
-
       function render(){
         list.innerHTML = '';
         Array.prototype.forEach.call(input.files, function(f){
@@ -93,12 +112,8 @@
       }
       dz.addEventListener('click', function(){ input.click(); });
       input.addEventListener('change', render);
-      ['dragenter','dragover'].forEach(function(ev){
-        dz.addEventListener(ev, function(e){ e.preventDefault(); dz.classList.add('over'); });
-      });
-      ['dragleave','drop'].forEach(function(ev){
-        dz.addEventListener(ev, function(e){ e.preventDefault(); dz.classList.remove('over'); });
-      });
+      ['dragenter','dragover'].forEach(function(ev){ dz.addEventListener(ev, function(e){ e.preventDefault(); dz.classList.add('over'); }); });
+      ['dragleave','drop'].forEach(function(ev){ dz.addEventListener(ev, function(e){ e.preventDefault(); dz.classList.remove('over'); }); });
       dz.addEventListener('drop', function(e){
         var dt = new DataTransfer();
         Array.prototype.forEach.call(e.dataTransfer.files, function(f){ dt.items.add(f); });
