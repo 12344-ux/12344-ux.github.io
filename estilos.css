@@ -332,3 +332,36 @@ body{background:#0b0f16;}
 /* ===== CTA final claro + escasez ámbar ===== */
 .band-light .cta-final{background:linear-gradient(135deg,#ffffff,#eaf1fb);border:1px solid rgba(15,23,42,.1);}
 .scarcity-text{color:#d98a1f;font-weight:700;font-size:14.5px;margin-top:18px;}
+
+
+/* ============================================================
+   PULIDO PREMIUM + FLUJO DE PAGO (v4)
+   ============================================================ */
+/* Hero: contenedor "Tus apuntes" neutro (quitar rojo) */
+.mock-notes{border-color:rgba(255,255,255,.12);}
+.mock-notes .mock-label{color:var(--muted);}
+
+/* "Antes" en gris apagado (desorden), "Después" en turquesa de marca */
+.col-antes{border-top-color:#46505f;}
+.band-light .col-antes{background:rgba(15,23,42,.03);}
+.col-antes h3{color:var(--muted);}
+.ic-x{background:rgba(125,138,158,.16);color:#8a97ad;}
+.demo-before{border-top-color:#46505f;}
+.demo-before .dl{color:#8a97ad;}
+
+/* Botón negro de alto peso visual */
+.btn-dark,.band-light .btn-dark{background:#0f1620;color:#fff;border:1px solid #0f1620;}
+.btn-dark:hover{opacity:.92;color:#fff;transform:translateY(-2px);}
+
+/* ===== Página de confirmación: Drag & Drop ===== */
+.subir-wrap{width:90%;max-width:640px;margin:0 auto;}
+.dropzone{border:2px dashed var(--line-strong);border-radius:14px;padding:42px 24px;text-align:center;color:var(--muted);cursor:pointer;transition:.2s;background:var(--surface);}
+.dropzone:hover{border-color:var(--c1);color:var(--c1);}
+.dropzone.over{border-color:var(--c1);color:var(--c1);background:rgba(42,157,143,.07);}
+.dropzone .dz-ico{font-size:34px;display:block;margin-bottom:8px;}
+.filelist{list-style:none;padding:0;margin:14px 0 0;}
+.filelist li{font-size:14px;color:var(--text-dim);padding:7px 12px;background:var(--surface2);border:1px solid var(--line);border-radius:8px;margin-bottom:8px;}
+.form-field{width:100%;background:var(--surface);border:1px solid var(--line);color:var(--text);font-size:15px;padding:13px 16px;border-radius:10px;margin-bottom:14px;}
+.form-field:focus{outline:none;border-color:var(--c1);}
+.subir-nota{font-size:13px;color:var(--muted);margin-top:16px;line-height:1.6;}
+.ok-box{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--c1);border-radius:16px;padding:40px 30px;text-align:center;}

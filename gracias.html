@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>¡Pago confirmado! · Sube tus apuntes · Stramont</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="estilos.css?v=4">
+</head>
+<body class="band band-light">
+
+  <header class="site-header">
+    <a href="index.html" class="brand">
+      <span class="brand-mark">🖥️</span>
+      <span class="brand-name">Stramont</span>
+    </a>
+    <nav class="nav-links">
+      <a href="index.html">Inicio</a>
+    </nav>
+  </header>
+
+  <section class="section" id="subir">
+    <span class="section-eyebrow">Paso final</span>
+    <h2 class="section-title">✅ ¡Pago confirmado! Ahora sube tus apuntes</h2>
+    <p class="section-lead">Sube fotos o PDF de tus apuntes y empezamos a crear tu guía. La recibirás en menos de 24 horas en tu correo.</p>
+
+    <div class="subir-wrap">
+      <!-- El envío de archivos se hace por FormSubmit (llegan a contacto@montaguth.institute) -->
+      <form id="formSubir" action="https://formsubmit.co/contacto@montaguth.institute" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="_subject" value="Apuntes recibidos · pedido Stramont">
+        <input type="hidden" name="_captcha" value="false">
+        <input type="hidden" name="_next" value="https://montaguth.institute/gracias.html?ok=1">
+        <input type="text" name="_honey" style="display:none">
+
+        <input class="form-field" type="email" name="email" placeholder="Tu correo (el mismo del pago) *" required autocomplete="email">
+        <input class="form-field" type="text" name="materia" placeholder="¿De qué clase/materia son los apuntes?">
+
+        <div class="dropzone" id="dropzone">
+          <span class="dz-ico">📎</span>
+          <strong>Arrastra aquí tus apuntes</strong><br>
+          o toca para elegir (fotos o PDF)
+        </div>
+        <input id="fileInput" type="file" name="attachment" accept="image/*,application/pdf" multiple hidden>
+        <ul class="filelist" id="fileList"></ul>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:16px;">Enviar mis apuntes →</button>
+      </form>
+
+      <p class="subir-nota">
+        ¿Los archivos pesan mucho o no cargan? También puedes enviárnoslos por
+        <a href="https://wa.me/573223643728" target="_blank" style="color:var(--c1);">WhatsApp</a> o
+        <a href="https://instagram.com/montaguth.institute" target="_blank" style="color:var(--c1);">Instagram</a>
+        con el correo de tu pago.
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    <span>🖥️ Stramont</span>
+    <span>
+      <a href="https://instagram.com/montaguth.institute" target="_blank" style="color:var(--c1);text-decoration:none;">@montaguth.institute</a>
+      &nbsp;·&nbsp;
+      <a href="privacidad.html" style="color:var(--muted);text-decoration:none;">Privacidad</a>
+    </span>
+  </footer>
+
+  <script>
+    (function(){
+      var params = new URLSearchParams(location.search);
+      // Estado de éxito tras enviar los apuntes
+      if (params.get('ok') === '1') {
+        var sec = document.getElementById('subir');
+        if (sec) {
+          sec.innerHTML = '<div class="ok-box"><h2 class="section-title">📨 ¡Apuntes recibidos!</h2>'
+            + '<p class="section-lead" style="margin-bottom:0;">Ya estamos trabajando en tu guía. La recibirás en tu correo en menos de 24 horas. ¡Gracias por confiar en Stramont!</p>'
+            + '<p style="margin-top:22px;"><a href="index.html" class="btn btn-dark">Volver al inicio</a></p></div>';
+        }
+        return;
+      }
+
+      var dz = document.getElementById('dropzone');
+      var input = document.getElementById('fileInput');
+      var list = document.getElementById('fileList');
+
+      function render(){
+        list.innerHTML = '';
+        Array.prototype.forEach.call(input.files, function(f){
+          var li = document.createElement('li');
+          li.textContent = '📄 ' + f.name;
+          list.appendChild(li);
+        });
+      }
+      dz.addEventListener('click', function(){ input.click(); });
+      input.addEventListener('change', render);
+      ['dragenter','dragover'].forEach(function(ev){
+        dz.addEventListener(ev, function(e){ e.preventDefault(); dz.classList.add('over'); });
+      });
+      ['dragleave','drop'].forEach(function(ev){
+        dz.addEventListener(ev, function(e){ e.preventDefault(); dz.classList.remove('over'); });
+      });
+      dz.addEventListener('drop', function(e){
+        var dt = new DataTransfer();
+        Array.prototype.forEach.call(e.dataTransfer.files, function(f){ dt.items.add(f); });
+        input.files = dt.files;
+        render();
+      });
+    })();
+  </script>
+
+</body>
+</html>
