@@ -179,3 +179,104 @@ footer span{font-size:12.5px;color:var(--muted);letter-spacing:.3px;}
 .empezar-nota{margin-top:18px;font-size:13px;color:var(--c3);font-weight:600;}
 
 @media(max-width:680px){.compara{grid-template-columns:1fr;}.pasos-mini{grid-template-columns:1fr;}}
+
+
+/* ============================================================
+   REDISEÑO DE CONVERSIÓN — Startup educativa respaldada por ciencia
+   Turquesa (--c1) = color de ATENCIÓN (CTA, beneficios, 24h, datos)
+   ============================================================ */
+.btn-primary{background:var(--c1);color:#06221f;}
+.btn-primary:hover{opacity:.92;}
+.section-eyebrow{color:var(--muted);}
+.hl{color:var(--c1);}
+
+/* Ritmo / jerarquía de secciones */
+.section--lg{padding:84px 0;}
+.section--xl{padding:92px 0;}
+.section--feature{background:linear-gradient(180deg, rgba(42,157,143,.05), transparent 85%);}
+
+/* ===== HERO con mockup ===== */
+.hero-split{display:grid;grid-template-columns:1.05fr .95fr;gap:46px;align-items:center;text-align:left;}
+.hero-text .eyebrow{text-align:left;}
+.hero-text h1{text-align:left;margin:0 0 18px;max-width:none;}
+.hero-text .hero-sub{font-size:18px;color:var(--text-dim);line-height:1.6;margin:0 0 28px;max-width:540px;}
+.hero-text .hero-cta{justify-content:flex-start;}
+.hero-badge24{display:inline-flex;align-items:center;gap:9px;margin-top:20px;font-size:13px;font-weight:700;color:var(--c1);}
+.hero-badge24 .dotp{width:9px;height:9px;border-radius:50%;background:var(--c1);box-shadow:0 0 0 4px rgba(42,157,143,.18);}
+
+.mock{display:flex;align-items:center;gap:14px;justify-content:center;}
+.mock-card{flex:1;border-radius:14px;padding:18px;min-height:220px;border:1px solid var(--line);}
+.mock-label{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:12px;}
+.mock-notes{background:#12161d;}
+.mock-notes .mock-label{color:#e3837e;}
+.mock-scribble{font-size:12.5px;color:#6b7689;line-height:2;}
+.mock-scribble .strike{text-decoration:line-through;opacity:.6;}
+.mock-scribble .tilt{display:inline-block;transform:rotate(-3deg);}
+.mock-arrow{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;color:var(--c1);font-weight:800;font-size:24px;}
+.mock-arrow span{font-size:11px;letter-spacing:1px;background:rgba(42,157,143,.15);border:1px solid rgba(42,157,143,.4);border-radius:20px;padding:2px 9px;margin-bottom:5px;color:var(--c1);}
+.mock-guide{background:var(--surface);border-left:5px solid var(--c1);}
+.mock-guide .mock-label{color:var(--c1);}
+.mg-tab{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:var(--c1);color:#06221f;font-weight:800;font-size:14px;}
+.mg-title{font-weight:800;color:#fff;margin:8px 0 8px;font-size:15px;}
+.mg-line{height:8px;border-radius:4px;background:rgba(255,255,255,.08);margin:7px 0;}
+.mg-line.short{width:62%;}
+.mg-check{margin-top:12px;font-size:13px;color:var(--c1);font-weight:700;}
+
+/* ===== DEMOSTRACIÓN (protagonista) ===== */
+.demo-split{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:26px;}
+.demo-card{border:1px solid var(--line);border-radius:16px;padding:26px;min-height:300px;}
+.demo-before{background:#12161d;border-top:3px solid #d9655f;}
+.demo-after{background:var(--surface);border-top:3px solid var(--c1);}
+.demo-card .dl{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:16px;}
+.demo-before .dl{color:#e3837e;} .demo-after .dl{color:var(--c1);}
+.demo-before .mock-scribble{font-size:14px;}
+.demo-after .mg-title{font-size:17px;}
+.demo-center{text-align:center;}
+
+/* ===== PROCESO ===== */
+.proceso-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+.proc{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:26px;}
+.proc .pn{width:34px;height:34px;border-radius:9px;background:var(--c2);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;margin-bottom:14px;}
+.proc h3{font-size:17px;color:#fff;margin-bottom:6px;}
+.proc p{font-size:14.5px;color:var(--text-dim);margin:0;line-height:1.5;}
+.proceso-msg{margin-top:26px;text-align:center;font-size:16px;color:var(--c1);font-weight:700;}
+
+/* ===== VELOCIDAD 24h ===== */
+.velocidad{background:linear-gradient(135deg, rgba(42,157,143,.12), rgba(74,99,196,.08));border:1px solid var(--line);border-radius:18px;padding:42px;text-align:center;}
+.velocidad .big24{font-size:clamp(42px,8vw,76px);font-weight:900;color:var(--c1);line-height:1;}
+.velocidad .big24 small{font-size:.34em;font-weight:700;color:var(--text-dim);letter-spacing:1px;}
+.beneficios{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:24px;padding:0;}
+.beneficios li{list-style:none;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:30px;padding:10px 18px;font-size:14px;color:var(--text-dim);}
+.beneficios li .ck{color:var(--c1);font-weight:800;}
+
+/* ===== CONFIANZA ===== */
+.confianza-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.conf{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:26px;text-align:center;}
+.conf .ic{font-size:32px;}
+.conf h4{font-size:16px;color:#fff;margin:10px 0 4px;}
+.conf p{font-size:13.5px;color:var(--text-dim);margin:0;line-height:1.5;}
+
+/* ===== CIENCIA (tarjetas de beneficio) ===== */
+.bene-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:22px;}
+.bene-card .bi{font-size:28px;display:block;margin-bottom:10px;}
+.bene-card h4{font-size:16px;color:#fff;margin-bottom:6px;}
+.bene-card p{font-size:14px;color:var(--text-dim);margin:0;line-height:1.5;}
+.refs-min{text-align:center;margin-top:26px;font-size:13px;color:var(--muted);}
+.refs-min a{color:var(--c1);text-decoration:none;}
+
+/* ===== EMOCIONAL ===== */
+.emocional{text-align:center;max-width:720px;margin:0 auto;}
+.emocional h2{font-size:clamp(26px,4.6vw,40px);font-weight:800;color:#fff;line-height:1.2;margin-bottom:18px;}
+.emocional p{font-size:18px;color:var(--text-dim);line-height:1.7;}
+
+/* ===== CTA FINAL ===== */
+.cta-final{background:linear-gradient(135deg, rgba(42,157,143,.16), rgba(74,99,196,.12));border:1px solid var(--line);border-radius:20px;padding:56px 34px;text-align:center;}
+.cta-final h2{font-size:clamp(28px,5vw,44px);font-weight:900;color:#fff;line-height:1.15;margin-bottom:12px;}
+.cta-final .sub24{font-size:18px;color:var(--c1);font-weight:700;margin-bottom:28px;}
+
+@media(max-width:760px){
+  .hero-split{grid-template-columns:1fr;}
+  .demo-split,.proceso-grid,.confianza-grid{grid-template-columns:1fr;}
+  .mock{flex-direction:column;}
+  .mock-arrow{transform:rotate(90deg);margin:4px 0;}
+}
