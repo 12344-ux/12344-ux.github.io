@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Computador Mental · Segmentación de Mercados</title>
+<style>
+  :root{
+    --amarillo:#f5c518;
+    --azul:#2d7ff9;
+    --rojo:#e63946;
+    --tinta:#1b1f2a;
+    --papel:#f4f6fb;
+    --monitor:#10131c;
+    --monitor-txt:#e9eefc;
+    --altavoz:#fff3bf;
+    --suave:#ffffff;
+    --linea:#dde3ee;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+    background:var(--papel);
+    color:var(--tinta);
+    line-height:1.55;
+  }
+  a{color:var(--azul);text-decoration:none;}
+  h1,h2,h3{line-height:1.2;}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 18px;}
+
+  /* ====== PORTADA ====== */
+  .portada{
+    background:linear-gradient(135deg,#10131c 0%,#1b2440 55%,#2d7ff9 140%);
+    color:#fff;
+    padding:70px 20px 60px;
+    text-align:center;
+    border-bottom:8px solid var(--amarillo);
+  }
+  .portada .compu{font-size:72px;line-height:1;margin-bottom:6px;}
+  .portada h1{font-size:42px;margin:6px 0 4px;letter-spacing:.5px;}
+  .portada .sub{font-size:19px;opacity:.92;font-weight:400;}
+  .portada .meta{
+    margin-top:26px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;
+  }
+  .chip{
+    background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+    padding:7px 14px;border-radius:30px;font-size:13px;
+  }
+  .semaforo-portada{margin-top:30px;font-size:15px;opacity:.95;}
+  .dot{display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:middle;margin:0 4px;}
+  .d-am{background:var(--amarillo);}
+  .d-az{background:var(--azul);}
+  .d-ro{background:var(--rojo);}
+
+  /* ====== SECCIONES ====== */
+  section{padding:42px 0;border-bottom:1px solid var(--linea);}
+  .titulo-seccion{
+    font-size:27px;margin:0 0 6px;display:flex;align-items:center;gap:12px;
+  }
+  .titulo-seccion .num{
+    background:var(--tinta);color:#fff;border-radius:10px;font-size:16px;
+    padding:4px 11px;
+  }
+  .intro-seccion{color:#5a6377;margin:0 0 22px;font-size:15px;}
+
+  /* ====== ÍNDICE ====== */
+  .indice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .indice-grid a{
+    display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--linea);
+    border-radius:10px;padding:10px 13px;color:var(--tinta);font-size:14px;
+    transition:.15s;
+  }
+  .indice-grid a:hover{transform:translateX(4px);border-color:var(--azul);}
+  .mini-dot{width:12px;height:12px;border-radius:50%;flex:0 0 auto;}
+
+  /* ====== FICHAS ====== */
+  .ficha{
+    background:var(--suave);border-radius:16px;margin:0 0 26px;overflow:hidden;
+    box-shadow:0 6px 18px rgba(20,30,60,.07);border:1px solid var(--linea);
+    border-left:10px solid #ccc;
+  }
+  .ficha.am{border-left-color:var(--amarillo);}
+  .ficha.az{border-left-color:var(--azul);}
+  .ficha.ro{border-left-color:var(--rojo);}
+
+  /* TECLADO (índice de la ficha) */
+  .teclado{
+    display:flex;align-items:center;gap:14px;padding:16px 20px;background:#fbfcff;
+    border-bottom:1px dashed var(--linea);
+  }
+  .tecla{
+    display:flex;align-items:center;justify-content:center;flex-direction:column;
+    width:62px;height:62px;border-radius:12px;font-weight:800;font-size:22px;color:#fff;
+    box-shadow:inset 0 -4px 0 rgba(0,0,0,.18);flex:0 0 auto;
+  }
+  .tecla.am{background:var(--amarillo);color:#5a4500;}
+  .tecla.az{background:var(--azul);}
+  .tecla.ro{background:var(--rojo);}
+  .tecla small{font-size:10px;font-weight:600;opacity:.8;}
+  .teclado .nombre{font-size:21px;font-weight:800;}
+  .teclado .etq{font-size:12px;color:#8a93a6;text-transform:uppercase;letter-spacing:1px;}
+  .color-label{margin-left:auto;font-size:12px;color:#8a93a6;text-align:right;}
+
+  /* MONITOR */
+  .monitor{
+    background:var(--monitor);color:var(--monitor-txt);padding:18px 22px;position:relative;
+  }
+  .monitor .lente{font-size:12px;letter-spacing:2px;color:#6fe0a6;text-transform:uppercase;margin-bottom:6px;display:block;}
+  .monitor p{margin:0;font-size:15.5px;}
+
+  /* ALTAVOCES */
+  .altavoces{
+    background:var(--altavoz);padding:14px 22px;display:flex;align-items:center;gap:16px;
+  }
+  .altavoces .emoji{font-size:40px;flex:0 0 auto;}
+  .altavoces .img-txt{font-size:14px;color:#6b5800;}
+  .altavoces .lente{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#a07b00;display:block;margin-bottom:2px;font-weight:700;}
+
+  /* ====== TECLADO COMPLETO ====== */
+  .teclado-completo{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;
+  }
+  .key{
+    border-radius:12px;padding:12px 12px 14px;color:#fff;text-align:left;display:block;
+    box-shadow:inset 0 -5px 0 rgba(0,0,0,.18);min-height:92px;transition:.15s;
+  }
+  .key:hover{transform:translateY(-3px);}
+  .key.am{background:var(--amarillo);color:#5a4500;}
+  .key.az{background:var(--azul);color:#fff;}
+  .key.ro{background:var(--rojo);color:#fff;}
+  .key .k-num{font-size:24px;font-weight:900;}
+  .key .k-name{font-size:13px;font-weight:700;display:block;margin-top:2px;line-height:1.25;}
+  .leyenda{display:flex;gap:18px;flex-wrap:wrap;margin:0 0 18px;font-size:13px;}
+  .leyenda span{display:flex;align-items:center;gap:6px;}
+
+  /* ====== TABLA ====== */
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;
+    box-shadow:0 6px 18px rgba(20,30,60,.07);font-size:14.5px;}
+  th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--linea);}
+  th{background:var(--tinta);color:#fff;font-size:13px;letter-spacing:.5px;}
+  tbody tr:nth-child(even){background:#f8fafe;}
+  td .nstar{color:var(--rojo);font-weight:800;}
+
+  /* ====== ESTRELLA ====== */
+  .estrella-box{
+    background:linear-gradient(135deg,#fff8e1,#ffe9a8);border:2px solid var(--amarillo);
+    border-radius:16px;padding:24px;text-align:center;
+  }
+  .estrella-box .big{font-size:74px;font-weight:900;color:#d49a00;line-height:1;}
+  .estrella-box ul{display:inline-block;text-align:left;margin:14px 0 0;}
+
+  /* ====== REPASO ====== */
+  .repaso-card{
+    background:#fff;border:1px solid var(--linea);border-radius:14px;padding:18px 20px;margin-bottom:16px;
+    border-top:5px solid var(--azul);
+  }
+  .repaso-card h3{margin:0 0 8px;font-size:18px;display:flex;align-items:center;gap:8px;}
+  .ruta{font-family:"Courier New",monospace;background:#10131c;color:#7fe3a4;padding:10px 12px;
+    border-radius:8px;font-size:13px;overflow-x:auto;white-space:nowrap;}
+
+  /* ====== CHISPAS ====== */
+  .chispa{
+    background:#fff;border-left:6px solid var(--rojo);border-radius:0 12px 12px 0;
+    padding:14px 18px;margin-bottom:14px;box-shadow:0 4px 12px rgba(20,30,60,.06);
+  }
+  .chispa b{color:var(--rojo);}
+
+  .nota-clase{
+    background:#eaf2ff;border:1px dashed var(--azul);border-radius:12px;padding:14px 18px;
+    font-size:14px;color:#22427a;margin-bottom:24px;
+  }
+
+  footer{padding:30px 18px;text-align:center;color:#8a93a6;font-size:13px;}
+
+  /* ====== BOTÓN VOLVER ====== */
+  .top-link{display:inline-block;margin-top:10px;font-size:13px;color:#8a93a6;}
+
+  @media (max-width:640px){
+    .indice-grid{grid-template-columns:1fr;}
+    .portada h1{font-size:32px;}
+    .tecla{width:54px;height:54px;font-size:18px;}
+  }
+
+  /* ====== IMPRESIÓN / PDF ====== */
+  @media print{
+    body{background:#fff;}
+    .portada{padding:40px 10px;}
+    section{page-break-inside:auto;border-bottom:none;padding:24px 0;}
+    .ficha{page-break-inside:avoid;box-shadow:none;}
+    .key:hover,.indice-grid a:hover{transform:none;}
+    a{color:var(--tinta);}
+    .top-link{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== PORTADA ===================== -->
+<header class="portada" id="inicio">
+  <div class="compu">🖥️⌨️🔊</div>
+  <h1>EL COMPUTADOR MENTAL</h1>
+  <div class="sub">Guía visual de estudio · <b>Segmentación de Mercados</b></div>
+  <div class="meta">
+    <span class="chip">🎓 Carrera: Dirección de Ventas</span>
+    <span class="chip">📘 Materia: Proyectar Mercados</span>
+    <span class="chip">🧩 Clase 1</span>
+    <span class="chip">👦 Nivel: lo entiende un niño de 9 años</span>
+  </div>
+  <div class="semaforo-portada">
+    Ritmo del semáforo para memorizar:
+    <span class="dot d-am"></span> Amarillo →
+    <span class="dot d-az"></span> Azul →
+    <span class="dot d-ro"></span> Rojo &nbsp;(y se repite)
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ===================== CÓMO USAR ===================== -->
+  <section id="como-usar">
+    <h2 class="titulo-seccion"><span class="num">★</span> Cómo funciona tu Computador Mental</h2>
+    <p class="intro-seccion">Todo el conocimiento es UN computador. Cada idea es una "ficha" con 3 niveles de lectura. Léela siempre en este orden:</p>
+
+    <div class="ficha am">
+      <div class="teclado">
+        <div class="tecla am">⌨️</div>
+        <div>
+          <div class="etq">Nivel 1 · lo que busco y presiono</div>
+          <div class="nombre">TECLADO = el índice</div>
+        </div>
+      </div>
+      <div class="monitor">
+        <span class="lente">🖥️ Nivel 2 · Monitor (fondo oscuro)</span>
+        <p>Es el <b>significado</b> explicado tan simple que un niño de 7 años lo entiende. Aquí "comprendes".</p>
+      </div>
+      <div class="altavoces">
+        <div class="emoji">🔊</div>
+        <div class="img-txt"><span class="lente">Nivel 3 · Altavoces (fondo amarillo)</span>Una <b>imagen o emoji</b> sencillo para que tu memoria lo "escuche" y lo asocie. Aquí "recuerdas".</div>
+      </div>
+    </div>
+
+    <div class="nota-clase">
+      🟡◦● <b>El truco del semáforo:</b> cada ficha tiene un punto de color que rota siempre igual (amarillo → azul → rojo). No es adorno: es un <b>ritmo</b>. Si recuerdas el color de una ficha, recuerdas a sus vecinas. Ficha 1 = amarillo, 2 = azul, 3 = rojo, 4 = amarillo otra vez…
+    </div>
+  </section>
+
+  <!-- ===================== ÍNDICE NAVEGABLE ===================== -->
+  <section id="indice">
+    <h2 class="titulo-seccion"><span class="num">≡</span> Índice navegable</h2>
+    <p class="intro-seccion">Presiona cualquier ficha para saltar a ella (como las teclas de un teclado real).</p>
+    <div class="indice-grid">
+      <a href="#f01"><span class="mini-dot d-am"></span><b>01</b> · Mercado</a>
+      <a href="#f02"><span class="mini-dot d-az"></span><b>02</b> · Segmento</a>
+      <a href="#f03"><span class="mini-dot d-ro"></span><b>03</b> · Segmentación de Mercado</a>
+      <a href="#f04"><span class="mini-dot d-am"></span><b>04</b> · Importancia estratégica</a>
+      <a href="#f05"><span class="mini-dot d-az"></span><b>05</b> · Criterios de segmentación</a>
+      <a href="#f06"><span class="mini-dot d-ro"></span><b>06</b> · Tipo 1: Geográfica</a>
+      <a href="#f07"><span class="mini-dot d-am"></span><b>07</b> · Tipo 2: Demográfica</a>
+      <a href="#f08"><span class="mini-dot d-az"></span><b>08</b> · Tipo 3: Psicográfica</a>
+      <a href="#f09"><span class="mini-dot d-ro"></span><b>09</b> · Tipo 4: Conductual</a>
+      <a href="#f10"><span class="mini-dot d-am"></span><b>10</b> · Más allá de los 4</a>
+      <a href="#f11"><span class="mini-dot d-az"></span><b>11</b> · Hipersegmentación</a>
+      <a href="#f12"><span class="mini-dot d-ro"></span><b>12</b> · MASA (filtro de calidad)</a>
+      <a href="#f13"><span class="mini-dot d-am"></span><b>13</b> · FODA</a>
+      <a href="#f14"><span class="mini-dot d-az"></span><b>14</b> · Medidas de tendencia</a>
+      <a href="#f15"><span class="mini-dot d-ro"></span><b>15</b> · Proyección de demanda</a>
+      <a href="#f16"><span class="mini-dot d-am"></span><b>16</b> · Estrategias de segmentación</a>
+      <a href="#f17"><span class="mini-dot d-az"></span><b>17</b> · Innovación y creatividad</a>
+      <a href="#f18"><span class="mini-dot d-ro"></span><b>18</b> · Aplicación a casos reales</a>
+      <a href="#teclado-completo"><span class="mini-dot" style="background:#1b1f2a"></span>⌨️ El TECLADO completo</a>
+      <a href="#tabla"><span class="mini-dot" style="background:#1b1f2a"></span>📊 Tabla resumen</a>
+      <a href="#estrella"><span class="mini-dot" style="background:#1b1f2a"></span>⭐ Dato estrella</a>
+      <a href="#repaso"><span class="mini-dot" style="background:#1b1f2a"></span>🔁 Guía de repaso</a>
+      <a href="#chispas"><span class="mini-dot" style="background:#1b1f2a"></span>⚡ Chispas críticas</a>
+    </div>
+  </section>
+
+  <!-- ===================== LAS FICHAS ===================== -->
+  <section id="fichas">
+    <h2 class="titulo-seccion"><span class="num">18</span> Las fichas, una por una</h2>
+    <p class="intro-seccion">El orden es la "historia" de la clase: empieza en el mercado grande y termina aplicándolo a empresas reales.</p>
+
+    <!-- 01 -->
+    <div class="ficha am" id="f01">
+      <div class="teclado">
+        <div class="tecla am">01<small>🟡 AM</small></div>
+        <div><div class="etq">Punto de partida</div><div class="nombre">MERCADO</div></div>
+        <div class="color-label">🟡 amarillo</div>
+      </div>
+      <div class="monitor"><span class="lente">🖥️ Qué significa</span>
+        <p>El mercado son <b>TODAS</b> las personas (o empresas) que podrían querer y poder comprar algo. Imagina a toda la gente de tu ciudad que tiene sed: ese es el "mercado de las bebidas". Es la bolsa grande y mezclada.</p>
+      </div>
+      <div class="altavoces"><div class="emoji">🌍🧑‍🤝‍🧑</div><div class="img-txt"><span class="lente">🔊 Imagen para recordar</span>Una multitud enorme dentro de un planeta: muchísima gente distinta junta.</div></div>
+    </div>
+
+    <!-- 02 -->
+    <div class="ficha az" id="f02">
+      <div class="teclado">
+        <div class="tecla az">02<small>◦ AZ</small></div>
+        <div><div class="etq">La pieza pequeña</div><div class="nombre">SEGMENTO</div></div>
+        <div class="color-label">◦ azul</div>
+      </div>
+      <div class="monitor"><span class="lente">🖥️ Qué significa</span>
+        <p>Un segmento es un <b>grupito de personas que se parecen entre sí</b> dentro del mercado grande. Por ejemplo, dentro de "los que tienen sed", el grupo de "niños deportistas que quieren bebida con vitaminas". Mismo gusto, misma necesidad.</p>
+      </div>
+      <div class="altavoces"><div class="emoji">🍊</div><div class="img-txt"><span class="lente">🔊 Imagen para recordar</span>Una naranja partida: cada <b>gajo</b> es un segmento distinto del mismo fruto.</div></div>
+    </div>
+
+    <!-- 03 -->
+    <div class="ficha ro" id="f03">
+      <div class="teclado">
+        <div class="tecla ro">03<small>● RO</small></div>
+        <div><div class="etq">La acción principal</div><div class="nombre">SEGMENTACIÓN DE MERCADO</div></div>
+        <div class="color-label">● rojo</div>
+      </div>
+      <div class="monitor"><span class="lente">🖥️ Qué significa (¡objetivo de la clase!)</span>
+        <p>Es la <b>acción de cortar</b> el mercado grande en grupitos parecidos para venderles mejor. Como separar una bolsa de caramelos mezclados por colores. En vez de hablarle igual a todos, le hablas a cada grupo en su idioma.</p>
+      </div>
+      <div class="altavoces"><div class="emoji">🍕✂️</div><div class="img-txt"><span class="lente">🔊 Imagen para recordar</span>Una pizza que cortas en porciones con tijeras: una sola masa, varias rebanadas.</div></div>
+    </div>
+
+    <!-- 04 -->
+    <div class="ficha am" id="f04">
+      <div class="teclado">
+        <div class="tecla am">04<small>🟡 AM</small></div>
+        <div><div class="etq">El "para qué"</div><div class="nombre">IMPORTANCIA ESTRATÉGICA</div></div>
+        <div class="color-label">🟡 amarillo</div>
+      </div>
+      <div class="monitor"><span class="lente">🖥️ Qué significa</span>
+        <p>Si le hablas a todos igual, <b>nadie se siente especial</b> y gastas mucho. Si divides, le das a cada grupo justo lo que quiere: vendes más, gastas menos y tienes clientes más fieles. Refrán: "el que mucho abarca, poco aprieta".</p>
+      </div>
+      <div class="altavoces"><div class="emoji">🎯</div><div class="img-txt"><span class="lente">🔊 Imagen para recordar</span>Una flecha clavada justo en el centro de la diana: puntería en vez de disparar al aire.</div></div>
+    </div>
+
+    <!-- 05 -->
+    <div class="ficha az" id="f05">
+      <div class="teclado">
+        <div class="tecla az">05<small>◦ AZ</small></div>
+        <div><div class="etq">Las reglas para dividir</div><div class="nombre">CRITERIOS DE SEGMENTACIÓN</div></div>
+        <div class="color-label">◦ azul</div>
+      </div>
+      <div class="monitor"><span class="lente">🖥️ Qué significa</span>
+        <p>Son las <b>preguntas</b> que usamos para separar a la gente: ¿dónde viven? ¿cuántos años tienen? ¿qué les gusta? ¿cómo compran? Cada pregunta es un "criterio". Los 4 tipos que siguen (fichas 06–09) son las 4 familias de criterios.</p>
+      </div>
+      <div class="altavoces"><div class="emoji">🔍✅</div><div class="img-txt"><span class="lente">🔊 Imagen para recordar</span>Una lupa con una lista de chequeo: voy marcando preguntas para clasificar.</div></div>
+    </div>
+
+    <!-- 06 -->
+    <div class="ficha ro" id="f06">
+      <div class="teclado">
+        <div class="tecla ro">06<small>● RO</small></div>
+        <div><div class="etq">Tipo principal 1 de 4</div><div class="nombre">SEGMENTACIÓN GEOGRÁFICA</div></div>
+        <div class="color-label">● rojo</div>
+      </div>
+      <div class="monitor"><span class="lente">🖥️ Qué significa</span>
+        <p>Dividir según el <b>LUGAR</b> donde está la gente: país, ciudad, clima, campo o ciudad. A los de clima frío les vendes abrigos; a los de playa, protector solar. Responde: <i>¿dónde están?</i></p>
+      </div>
+      <div class="altavoces"><div class="emoji">🗺️📍</div><div class="img-txt"><span class="lente">🔊 Imagen para recordar</span>Un mapa con un pin clavado: el lugar manda.</div></div>
+    </div>
+
+    <!-- 07 -->
+    <div class="ficha am" id="f07">
+      <div class="teclado">
+        <div class="tecla am">07<small>🟡 AM</small></div>
+        <div><div class="etq">Tipo principal 2 de 4</div><div class="nombre">SEGMENTACIÓN DEMOGRÁFICA</div></div>
+        <div class="color-label">🟡 amarillo</div>
+      </div>
+      <div class="monitor"><span class="lente">🖥️ Qué significa</span>
+        <p>Dividir según los <b>DATOS</b> de la persona: edad, sexo, dinero que gana, estudios, religión, tamaño de la familia. Es la <b>más fácil de medir</b> porque son números y se consiguen rápido. Responde: <i>¿cómo es por fuera?</i></p>
+      </div>
+      <div class="altavoces"><div class="emoji">👨‍👩‍👧‍👦🪪</div><div class="img-txt"><span class="lente">🔊 Imagen para recordar</span>Una familia junto a una cédula/credencial: los datos de identidad.</div></div>
+    </div>
+
+    <!-- 08 -->
+    <div class="ficha az" id="f08">
+      <div class="teclado">
+        <div class="tecla az">08<small>◦ AZ</small></div>
+        <div><div class="etq">Tipo principal 3 de 4</div><div class="nombre">SEGMENTACIÓN PSICOGRÁFICA</div></div>
+        <div class="color-label">◦ azul</div>
+      </div>
+      <div class="monitor"><span class="lente">🖥️ Qué significa</span>
+        <p>Dividir según cómo es la persona <b>POR DENTRO</b>: su personalidad, valores, gustos y estilo de vida. Dos personas de la misma edad pueden ser opuestas: una aventurera, otra tranquila. Responde: <i>¿cómo es su mente y su corazón?</i></p>
+      </div>
+      <div class="altavoces"><div class="emoji">🧠💭</div><div class="img-txt"><span class="lente">🔊 Imagen para recordar</span>Una cabeza con un globo de pensamiento: lo invisible de la persona.</div></div>
+    </div>
+
+    <!-- 09 -->
+    <div class="ficha ro" id="f09">
+      <div class="teclado">
+        <div class="tecla ro">09<small>● RO</small></div>
+        <div><div class="etq">Tipo principal 4 de 4</div><div class="nombre">SEGMENTACIÓN CONDUCTUAL</div></div>
+        <div class="color-label">● rojo</div>
+      </div>
+      <div class="monitor"><span class="lente">🖥️ Qué significa</span>
+        <p>Dividir según lo que la persona <b>HACE</b> al comprar: ¿cada cuánto compra? ¿es fiel a una marca? ¿busca precio o calidad? ¿en qué ocasión usa el producto? Responde: <i>¿cómo se comporta cuando compra?</i></p>
+      </div>
+      <div class="altavoces"><div class="emoji">🛒👣</div><div class="img-txt"><span class="lente">🔊 Imagen para recordar</span>Un carrito de compras siguiendo huellas: rastreo lo que hace.</div></div>
+    </div>
+
+    <!-- 10 -->
+    <div class="ficha am" id="f10">
+      <div class="teclado">
+        <div class="tecla am">10<small>🟡 AM</small></div>
+        <div><div class="etq">Expandir más allá</div><div class="nombre">MÁS ALLÁ DE LOS 4</div></div>
+        <div class="color-label">🟡 amarillo</div>
+      </div>
+      <div class="monitor"><span class="lente">🖥️ Qué significa</span>
+        <p>Los 4 tipos son la base, pero hay más: por <b>BENEFICIO</b> que busca el cliente (salud, ahorro, estatus), por <b>OCASIÓN</b> (Navidad, cumpleaños) y, para vender a empresas, la <b>FIRMOGRÁFICA</b> (tamaño y sector de la empresa). Puedes combinar varios criterios a la vez.</p>
+      </div>
+      <div class="altavoces"><div class="emoji">➕🧰</div><div class="img-txt"><span class="lente">🔊 Imagen para recordar</span>Una caja de herramientas: los 4 tipos son tus herramientas base, pero puedes sumar más.</div></div>
+    </div>
+
+    <!-- 11 -->
+    <div class="ficha az" id="f11">
+      <div class="teclado">
+        <div class="tecla az">11<small>◦ AZ</small></div>
+        <div><div class="etq">El extremo moderno</div><div class="nombre">HIPERSEGMENTACIÓN</div></div>
+        <div class="color-label">◦ azul</div>
+      </div>
+      <div class="monitor"><span class="lente">🖥️ Qué significa</span>
+        <p>Es segmentar <b>muchísimo</b>, hasta llegar casi a UNA sola persona, usando tecnología y datos (internet, apps, IA). Es lo que hace YouTube o Netflix cuando te recomiendan algo "justo para ti". El segmento más pequeño posible: tú.</p>
+      </div>
+      <div class="altavoces"><div class="emoji">🎯➡️👤</div><div class="img-txt"><span class="lente">🔊 Imagen para recordar</span>Una diana cuyo centro es UNA persona: puntería de francotirador.</div></div>
+    </div>
+
+    <!-- 12 -->
+    <div class="ficha ro" id="f12">
+      <div class="teclado">
+        <div class="tecla ro">12<small>● RO</small></div>
+        <div><div class="etq">Filtro de calidad · palabra clave</div><div class="nombre">M.A.S.A.</div></div>
+        <div class="color-label">● rojo</div>
+      </div>
+      <div class="monitor"><span class="lente">🖥️ Qué significa</span>
+        <p>Regla para saber si un segmento <b>SIRVE de verdad</b>. <b>MASA</b> = <b>M</b>edible (puedo contarlo), <b>A</b>ccesible (puedo llegar a ellos), <b>S</b>ustancial (es lo bastante grande para ganar dinero), <b>A</b>ccionable (puedo hacer algo concreto por ellos). Si falla una letra, el segmento no vale.</p>
+      </div>
+      <div class="altavoces"><div class="emoji">🥖</div><div class="img-txt"><span class="lente">🔊 Imagen para recordar</span>Una <b>masa</b> de pan creciendo: solo sirve si tiene buen tamaño (4 ingredientes: M-A-S-A).</div></div>
+    </div>
+
+    <!-- 13 -->
+    <div class="ficha am" id="f13">
+      <div class="teclado">
+        <div class="tecla am">13<small>🟡 AM</small></div>
+        <div><div class="etq">Herramienta de análisis</div><div class="nombre">FODA</div></div>
+        <div class="color-label">🟡 amarillo</div>
+      </div>
+      <div class="monitor"><span class="lente">🖥️ Qué significa</span>
+        <p>Una tabla de 4 casillas para mirar cada segmento: <b>F</b>ortalezas y <b>D</b>ebilidades (lo que tengo YO, adentro) más <b>O</b>portunidades y <b>A</b>menazas (lo que pasa AFUERA). Ayuda a decidir a qué segmento conviene "atacar".</p>
+      </div>
+      <div class="altavoces"><div class="emoji">🪟🪞</div><div class="img-txt"><span class="lente">🔊 Imagen para recordar</span>Un espejo (adentro: F y D) y una ventana (afuera: O y A), en un cuadro de 4.</div></div>
+    </div>
+
+    <!-- 14 -->
+    <div class="ficha az" id="f14">
+      <div class="teclado">
+        <div class="tecla az">14<small>◦ AZ</small></div>
+        <div><div class="etq">Los números que describen</div><div class="nombre">MEDIDAS DE TENDENCIA</div></div>
+        <div class="color-label">◦ azul</div>
+      </div>
+      <div class="monitor"><span class="lente">🖥️ Qué significa</span>
+        <p>Tres números que <b>resumen a un grupo</b>: la <b>MEDIA</b> (el promedio), la <b>MEDIANA</b> (el del medio cuando los ordenas) y la <b>MODA</b> (lo que más se repite). Sirven para describir al segmento: "mi cliente promedio tiene 25 años y compra 3 veces al mes".</p>
+      </div>
+      <div class="altavoces"><div class="emoji">📊📏</div><div class="img-txt"><span class="lente">🔊 Imagen para recordar</span>Una regla midiendo barras: 3 números que pintan al cliente típico.</div></div>
+    </div>
+
+    <!-- 15 -->
+    <div class="ficha ro" id="f15">
+      <div class="teclado">
+        <div class="tecla ro">15<small>● RO</small></div>
+        <div><div class="etq">Mirar al futuro</div><div class="nombre">PROYECCIÓN DE DEMANDA</div></div>
+        <div class="color-label">● rojo</div>
+      </div>
+      <div class="monitor"><span class="lente">🖥️ Qué significa</span>
+        <p>Calcular (con números) <b>cuánto va a comprar</b> un segmento en el futuro. Si sé cuántas personas son y cuánto compra cada una, estimo cuánto puedo vender. Por eso la materia se llama "Proyectar Mercados": mirar hacia adelante con datos, no adivinando.</p>
+      </div>
+      <div class="altavoces"><div class="emoji">🔮📈</div><div class="img-txt"><span class="lente">🔊 Imagen para recordar</span>Una bola de cristal con una flecha que sube: el futuro de las ventas, pero con matemáticas.</div></div>
+    </div>
+
+    <!-- 16 -->
+    <div class="ficha am" id="f16">
+      <div class="teclado">
+        <div class="tecla am">16<small>🟡 AM</small></div>
+        <div><div class="etq">El plan de ataque</div><div class="nombre">ESTRATEGIAS DE SEGMENTACIÓN</div></div>
+        <div class="color-label">🟡 amarillo</div>
+      </div>
+      <div class="monitor"><span class="lente">🖥️ Qué significa</span>
+        <p>Cómo decido a quién atacar: a <b>TODOS</b> igual (indiferenciada), a <b>VARIOS</b> grupos con ofertas distintas (diferenciada), a <b>UN solo</b> grupo a fondo (concentrada), o a <b>casi cada persona</b> (micromarketing). Elegir bien = ganar sin desperdiciar.</p>
+      </div>
+      <div class="altavoces"><div class="emoji">♟️</div><div class="img-txt"><span class="lente">🔊 Imagen para recordar</span>Piezas de ajedrez: cada jugada es una estrategia distinta según el rival.</div></div>
+    </div>
+
+    <!-- 17 -->
+    <div class="ficha az" id="f17">
+      <div class="teclado">
+        <div class="tecla az">17<small>◦ AZ</small></div>
+        <div><div class="etq">Crear conocimiento nuevo</div><div class="nombre">INNOVACIÓN Y CREATIVIDAD</div></div>
+        <div class="color-label">◦ azul</div>
+      </div>
+      <div class="monitor"><span class="lente">🖥️ Qué significa</span>
+        <p>Buscar segmentos que <b>nadie ha visto</b> o nuevas formas de dividir. La creatividad encuentra "huecos" en el mercado donde no hay competencia. Pensar distinto = vender donde otros ni miran. Aquí dejas de copiar y empiezas a crear.</p>
+      </div>
+      <div class="altavoces"><div class="emoji">💡🎨</div><div class="img-txt"><span class="lente">🔊 Imagen para recordar</span>Una bombilla encendida junto a una paleta de pintor: idea + arte.</div></div>
+    </div>
+
+    <!-- 18 -->
+    <div class="ficha ro" id="f18">
+      <div class="teclado">
+        <div class="tecla ro">18<small>● RO</small></div>
+        <div><div class="etq">Llevarlo a la realidad</div><div class="nombre">APLICACIÓN A CASOS REALES</div></div>
+        <div class="color-label">● rojo</div>
+      </div>
+      <div class="monitor"><span class="lente">🖥️ Qué significa</span>
+        <p>Practicar con empresas de verdad: ¿cómo segmenta Coca-Cola? ¿y un gimnasio del barrio? Tomas todo lo aprendido (fichas 01–17) y lo usas para resolver un problema real de ventas. El cierre de la clase.</p>
+      </div>
+      <div class="altavoces"><div class="emoji">🏢🔧</div><div class="img-txt"><span class="lente">🔊 Imagen para recordar</span>Un edificio con una llave/herramienta: la teoría se vuelve trabajo real.</div></div>
+    </div>
+
+    <a class="top-link" href="#inicio">↑ Volver al inicio</a>
+  </section>
+
+  <!-- ===================== TECLADO COMPLETO ===================== -->
+  <section id="teclado-completo">
+    <h2 class="titulo-seccion"><span class="num">⌨️</span> EL teclado completo</h2>
+    <p class="intro-seccion">UN solo computador con TODAS las teclas juntas y ordenadas. Mira el ritmo del semáforo de izquierda a derecha. Presiona una tecla para ir a su ficha.</p>
+    <div class="leyenda">
+      <span><span class="mini-dot d-am"></span> Amarillo (1,4,7,10,13,16)</span>
+      <span><span class="mini-dot d-az"></span> Azul (2,5,8,11,14,17)</span>
+      <span><span class="mini-dot d-ro"></span> Rojo (3,6,9,12,15,18)</span>
+    </div>
+    <div class="teclado-completo">
+      <a class="key am" href="#f01"><span class="k-num">01</span><span class="k-name">Mercado</span></a>
+      <a class="key az" href="#f02"><span class="k-num">02</span><span class="k-name">Segmento</span></a>
+      <a class="key ro" href="#f03"><span class="k-num">03</span><span class="k-name">Segmentación</span></a>
+      <a class="key am" href="#f04"><span class="k-num">04</span><span class="k-name">Importancia</span></a>
+      <a class="key az" href="#f05"><span class="k-num">05</span><span class="k-name">Criterios</span></a>
+      <a class="key ro" href="#f06"><span class="k-num">06</span><span class="k-name">Geográfica</span></a>
+      <a class="key am" href="#f07"><span class="k-num">07</span><span class="k-name">Demográfica</span></a>
+      <a class="key az" href="#f08"><span class="k-num">08</span><span class="k-name">Psicográfica</span></a>
+      <a class="key ro" href="#f09"><span class="k-num">09</span><span class="k-name">Conductual</span></a>
+      <a class="key am" href="#f10"><span class="k-num">10</span><span class="k-name">Más allá de 4</span></a>
+      <a class="key az" href="#f11"><span class="k-num">11</span><span class="k-name">Hipersegment.</span></a>
+      <a class="key ro" href="#f12"><span class="k-num">12</span><span class="k-name">MASA</span></a>
+      <a class="key am" href="#f13"><span class="k-num">13</span><span class="k-name">FODA</span></a>
+      <a class="key az" href="#f14"><span class="k-num">14</span><span class="k-name">Medidas tend.</span></a>
+      <a class="key ro" href="#f15"><span class="k-num">15</span><span class="k-name">Proyección</span></a>
+      <a class="key am" href="#f16"><span class="k-num">16</span><span class="k-name">Estrategias</span></a>
+      <a class="key az" href="#f17"><span class="k-num">17</span><span class="k-name">Innovación</span></a>
+      <a class="key ro" href="#f18"><span class="k-num">18</span><span class="k-name">Casos reales</span></a>
+    </div>
+  </section>
+
+  <!-- ===================== TABLA RESUMEN ===================== -->
+  <section id="tabla">
+    <h2 class="titulo-seccion"><span class="num">📊</span> Tabla resumen · datos clave para memorizar</h2>
+    <p class="intro-seccion">Lo más importante en números. Si memorizas esta tabla, tienes el esqueleto de toda la clase.</p>
+    <table>
+      <thead>
+        <tr><th>Dato / Número</th><th>Cuánto</th><th>De qué se trata</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Tipos principales de segmentación</td><td><span class="nstar">4</span></td><td>Geográfica · Demográfica · Psicográfica · Conductual</td></tr>
+        <tr><td>Letras del filtro MASA</td><td><span class="nstar">4</span></td><td>Medible · Accesible · Sustancial · Accionable</td></tr>
+        <tr><td>Cuadrantes del FODA</td><td><span class="nstar">4</span></td><td>Fortalezas · Oportunidades · Debilidades · Amenazas</td></tr>
+        <tr><td>Estrategias de segmentación</td><td><span class="nstar">4</span></td><td>Indiferenciada · Diferenciada · Concentrada · Micromarketing</td></tr>
+        <tr><td>Medidas de tendencia</td><td>3</td><td>Media · Mediana · Moda</td></tr>
+        <tr><td>Colores del semáforo</td><td>3</td><td>🟡 Amarillo · ◦ Azul · ● Rojo</td></tr>
+        <tr><td>Niveles de cada ficha</td><td>3</td><td>⌨️ Teclado · 🖥️ Monitor · 🔊 Altavoces</td></tr>
+        <tr><td>Total de fichas de la clase</td><td>18</td><td>Del Mercado (01) a los Casos reales (18)</td></tr>
+        <tr><td>Segmento más pequeño posible</td><td>1</td><td>Hipersegmentación: una sola persona</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ===================== DATO ESTRELLA ===================== -->
+  <section id="estrella">
+    <h2 class="titulo-seccion"><span class="num">⭐</span> El dato estrella</h2>
+    <div class="estrella-box">
+      <div class="big">4</div>
+      <p style="max-width:560px;margin:6px auto 0;font-size:16px;">
+        El número <b>4</b> es la estrella de esta clase: se repite por todas partes. Si recuerdas "4", recuerdas casi todo.
+      </p>
+      <ul>
+        <li><b>4</b> tipos principales de segmentación</li>
+        <li><b>4</b> letras en MASA (M-A-S-A)</li>
+        <li><b>4</b> cuadrantes del FODA</li>
+        <li><b>4</b> estrategias de segmentación</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===================== GUÍA DE REPASO ===================== -->
+  <section id="repaso">
+    <h2 class="titulo-seccion"><span class="num">🔁</span> Guía de repaso (4 formas de recorrer la clase)</h2>
+    <p class="intro-seccion">Repasa el mismo tema desde distintos caminos. Si lo entiendes en todas las direcciones, ya es tuyo.</p>
+
+    <div class="repaso-card">
+      <h3>1) 📖 Cronológica (la historia, de principio a fin)</h3>
+      <p>Sigue el orden natural: del mercado grande hasta aplicarlo a una empresa real.</p>
+      <div class="ruta">01 Mercado → 02 Segmento → 03 Segmentación → 04 Importancia → 05 Criterios → 06→07→08→09 (los 4 tipos) → 10 Más allá → 11 Hipersegmentación → 12 MASA → 13 FODA → 14 Medidas → 15 Proyección → 16 Estrategias → 17 Innovación → 18 Casos reales</div>
+    </div>
+
+    <div class="repaso-card">
+      <h3>2) 🎨 Acronológica por colores (saltando con el semáforo)</h3>
+      <p>Repasa todas las del mismo color de un tirón. Te entrena a recordar "vecinos" por color.</p>
+      <div class="ruta">🟡 AMARILLOS: 01 · 04 · 07 · 10 · 13 · 16</div>
+      <div class="ruta" style="margin-top:8px;color:#7fb8ff;">◦ AZULES: 02 · 05 · 08 · 11 · 14 · 17</div>
+      <div class="ruta" style="margin-top:8px;color:#ff9aa0;">● ROJOS: 03 · 06 · 09 · 12 · 15 · 18</div>
+    </div>
+
+    <div class="repaso-card">
+      <h3>3) ↔️ Al derecho y al revés</h3>
+      <p><b>Al derecho:</b> di el número y recuerda el nombre (01 → "Mercado"). <b>Al revés:</b> empieza por la 18 y baja hasta la 01, o di el nombre y recuerda el número ("MASA" → 12). Esto comprueba que de verdad lo sabes y no solo lo lees seguido.</p>
+      <div class="ruta">REVÉS: 18 → 17 → 16 → 15 → 14 → 13 → 12 → 11 → 10 → 09 → 08 → 07 → 06 → 05 → 04 → 03 → 02 → 01</div>
+    </div>
+
+    <div class="repaso-card">
+      <h3>4) 🧩 Por bloques con sentido (agrupando ideas)</h3>
+      <p>Otra forma acronológica: agrupa por temas, sin importar el número.</p>
+      <div class="ruta">BASE: 01·02·03·04 | TIPOS: 05·06·07·08·09·10·11 | FILTROS Y ANÁLISIS: 12·13·14 | FUTURO Y ACCIÓN: 15·16·17·18</div>
+    </div>
+  </section>
+
+  <!-- ===================== CHISPAS CRÍTICAS ===================== -->
+  <section id="chispas">
+    <h2 class="titulo-seccion"><span class="num">⚡</span> Chispas críticas (pensar, no solo memorizar)</h2>
+    <p class="intro-seccion">Preguntas e ideas para crear conocimiento NUEVO a partir de la clase. Aquí está la diferencia entre repetir y comprender.</p>
+
+    <div class="chispa"><b>¿Segmentar siempre es mejor?</b> No. Cada segmento extra necesita su propia campaña, su propio producto y su propio costo. Llega un punto donde dividir más cuesta más de lo que produce. La pregunta de oro: <i>¿este segmento paga lo que cuesta atenderlo?</i> (es la "S" de Sustancial en MASA).</div>
+
+    <div class="chispa"><b>El lado oscuro de la hipersegmentación.</b> Para conocerte tanto que te recomiendan algo "perfecto", las apps recogen muchísimos datos tuyos. Más puntería = menos privacidad. ¿Hasta dónde es justo? Aquí marketing se cruza con ética.</div>
+
+    <div class="chispa"><b>La demográfica es fácil pero engañosa.</b> Dos personas de 30 años pueden ser totalmente opuestas (una minimalista, otra fanática del lujo). Por eso la <b>psicográfica</b> y la <b>conductual</b> existen: completan lo que la edad y el sexo no explican. Contraste clave: <i>fácil de medir ≠ lo que mejor explica</i>.</div>
+
+    <div class="chispa"><b>Los segmentos no se "encuentran", también se crean.</b> En parte la empresa inventa el segmento al decidir dónde trazar la línea. Por eso la <b>creatividad</b> (ficha 17) es estratégica: quien define un segmento nuevo juega solo, sin competencia. Relación directa con innovación.</div>
+
+    <div class="chispa"><b>El puente entre conocer y predecir.</b> Las <b>medidas de tendencia</b> (14) describen el segmento de HOY; la <b>proyección de demanda</b> (15) usa esos números para estimar el MAÑANA. Una mira el presente, la otra el futuro: juntas son el corazón de "Proyectar Mercados".</div>
+
+    <div class="chispa"><b>"Si tu segmento es todo el mundo, en realidad no tienes segmento."</b> Querer venderle a todos suele terminar en no conectar con nadie. Contradice directamente la ficha 04: la importancia de la segmentación nace justo de renunciar a parte del mercado para ganar de verdad en otra.</div>
+
+    <div class="chispa"><b>MASA + FODA trabajan en equipo.</b> MASA filtra <i>¿este segmento sirve?</i>; FODA decide <i>¿me conviene a MÍ atacarlo?</i>. Un segmento puede pasar MASA (es bueno) pero fallar en tu FODA (no tienes fuerzas para ganarlo). Comprender esto evita perseguir clientes imposibles.</div>
+  </section>
+
+</div>
+
+<footer>
+  🖥️⌨️🔊 Computador Mental · Segmentación de Mercados · Clase 1 de "Proyectar Mercados"<br>
+  Documento autónomo · Ábrelo en el navegador o imprímelo como PDF (Ctrl/Cmd + P).
+</footer>
+
+</body>
+</html>
