@@ -124,7 +124,16 @@
       Cero spam: solo material de estudio y, de vez en cuando, una oferta del proyecto.
     </p>
 
-    <form class="suscribir-box" action="https://formspree.io/f/TU_ID_AQUI" method="POST">
+    <form class="suscribir-box" action="https://formsubmit.co/contacto@montaguth.institute" method="POST">
+      <!-- Configuración de FormSubmit (no requiere cuenta) -->
+      <input type="hidden" name="_subject" value="Nuevo suscriptor · Computador Mental">
+      <input type="hidden" name="_template" value="table">
+      <input type="hidden" name="_captcha" value="false">
+      <input type="hidden" name="_autoresponse" value="Gracias por unirte a Computador Mental. Te avisare apenas salga una guia nueva. Mientras tanto, puedes descargar la guia de Segmentacion de Mercados en montaguth.institute. A estudiar con claridad!">
+      <input type="hidden" name="_next" value="https://montaguth.institute/gracias.html">
+      <!-- Honeypot anti-spam: debe quedar vacío -->
+      <input type="text" name="_honey" style="display:none">
+
       <div class="form-row">
         <input class="form-input" type="text" name="nombre" placeholder="Tu nombre (opcional)" autocomplete="name">
         <input class="form-input" type="email" name="email" placeholder="Tu correo *" required autocomplete="email">
