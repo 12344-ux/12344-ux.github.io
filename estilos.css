@@ -603,3 +603,219 @@ footer span {
 @media (min-width: 768px) {
   .frase-hero { font-size: 42px; }
 }
+
+
+/* ============================================================
+   GUÍAS DE ESTUDIO — sección académica (guias.html)
+   Añadido como módulo independiente. Reutiliza las variables
+   globales; no altera ninguna regla existente.
+   ============================================================ */
+
+/* ── LAYOUT ── */
+.guias-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 20px;
+}
+
+.guias-wrap {
+  width: 100%;
+  max-width: 720px;
+}
+
+/* ── HERO ── */
+.guias-hero {
+  text-align: center;
+  margin: 28px 0 10px;
+}
+
+.guias-hero h1 { margin-bottom: 16px; }
+
+.guias-intro {
+  font-size: 17px;
+  color: #cdd7e6;
+  line-height: 1.7;
+  text-align: center;
+  margin: 0 auto;
+  max-width: 620px;
+}
+
+/* ── UMBRAL (ajuste de centrado para esta página) ── */
+.guias-umbral {
+  width: 100%;
+  max-width: 720px;
+  margin-top: 50px;
+}
+
+/* ── GRID DE GUÍAS ── */
+.guias-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.guia-card {
+  position: relative;
+  border: 1px solid var(--borde-suave);
+  background: rgba(255, 255, 255, 0.015);
+  padding: 30px;
+  transition: border-color 0.3s, transform 0.3s;
+}
+.guia-card:hover {
+  border-color: var(--border);
+  transform: translateY(-2px);
+}
+
+.guia-card--proxima {
+  border-style: dashed;
+  opacity: 0.78;
+}
+
+.guia-num {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  display: block;
+}
+
+.badge-free {
+  position: absolute;
+  top: 26px;
+  right: 28px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #6ee7b7;
+  border: 1px solid rgba(110, 231, 183, 0.4);
+  border-radius: 999px;
+  padding: 3px 12px;
+}
+
+.guia-titulo {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 25px;
+  font-weight: 500;
+  color: #fff;
+  margin: 8px 0 14px;
+  line-height: 1.25;
+}
+
+.guia-desc {
+  font-size: 16px;
+  color: #dde4ef;
+  line-height: 1.65;
+  text-align: justify;
+  margin: 0 0 22px;
+  max-width: 100%;
+}
+
+.guia-acciones {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ── BOTONES DE GUÍA ── */
+.btn-descarga {
+  display: inline-block;
+  background: var(--accent);
+  color: var(--bg);
+  text-decoration: none;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 12px 24px;
+  transition: opacity 0.2s;
+}
+.btn-descarga:hover { opacity: 0.85; }
+
+.btn-ver {
+  display: inline-block;
+  color: var(--accent);
+  text-decoration: none;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 12px 6px;
+  transition: opacity 0.2s;
+}
+.btn-ver:hover { opacity: 0.7; }
+
+/* ── CAJA DE APOYO / CAFECITO ── */
+.apoyo-box {
+  border: 1px solid var(--borde-suave);
+  border-left: 2px solid var(--accent);
+  background: rgba(56, 189, 248, 0.04);
+  padding: 28px 30px;
+}
+
+.apoyo-titulo {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 22px;
+  font-weight: 500;
+  color: #fff;
+  margin: 0 0 14px;
+}
+
+.apoyo-desc {
+  font-size: 16px;
+  color: #dde4ef;
+  line-height: 1.65;
+  text-align: left;
+  margin: 0 0 18px;
+  max-width: 100%;
+}
+
+.apoyo-datos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.apoyo-dato {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--borde-suave);
+  padding: 10px 16px;
+}
+.apoyo-dato strong { color: var(--accent); }
+
+.apoyo-nota {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+  text-align: left;
+  margin: 0;
+  max-width: 100%;
+}
+
+/* ── BOTÓN DE NAVEGACIÓN AL HUB (índice) ── */
+.btn-guias {
+  background: var(--accent);
+  color: var(--bg);
+  border: 1px solid var(--accent);
+  padding: 12px 30px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  transition: 0.3s;
+  margin-bottom: 50px;
+}
+.btn-guias:hover { opacity: 0.85; }
