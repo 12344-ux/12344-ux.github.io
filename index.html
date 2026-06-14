@@ -19,6 +19,7 @@
     <nav class="nav-links">
       <a href="#metodo">El método</a>
       <a href="#guias">Guías</a>
+      <a href="#suscribirse">Recibir guías</a>
       <a href="#apoyo">Apoyar</a>
     </nav>
   </header>
@@ -115,6 +116,41 @@
     </div>
   </section>
 
+  <!-- ── SUSCRIPCIÓN / LISTA PROPIA (imán de leads) ── -->
+  <section class="section" id="suscribirse">
+    <span class="section-eyebrow">Únete a la lista</span>
+    <h2 class="section-title">Recibe cada guía nueva en tu correo</h2>
+    <p class="section-lead">
+      Déjanos tu correo y te avisamos apenas salga una guía nueva, antes que nadie.
+      Cero spam: solo material de estudio y, de vez en cuando, una oferta del proyecto.
+    </p>
+
+    <form class="suscribir-box" action="https://formspree.io/f/TU_ID_AQUI" method="POST">
+      <div class="form-row">
+        <input class="form-input" type="text" name="nombre" placeholder="Tu nombre (opcional)" autocomplete="name">
+        <input class="form-input" type="email" name="email" placeholder="Tu correo *" required autocomplete="email">
+      </div>
+      <div class="form-row">
+        <input class="form-input" type="tel" name="whatsapp" placeholder="WhatsApp (opcional)" autocomplete="tel">
+      </div>
+
+      <label class="form-consent">
+        <input type="checkbox" name="consentimiento" value="si" required>
+        <span>
+          Autorizo a Computador Mental a guardar mis datos para enviarme guías y novedades
+          del proyecto, conforme a la <a href="privacidad.html" target="_blank">Política de Privacidad</a>.
+          Puedo darme de baja cuando quiera.
+        </span>
+      </label>
+
+      <button type="submit" class="btn btn-amarillo">Quiero recibir las guías →</button>
+
+      <p class="form-nota">
+        🔒 Tus datos son tuyos. <strong>Nunca</strong> los vendemos ni los compartimos con terceros.
+      </p>
+    </form>
+  </section>
+
   <!-- ── APOYO ── -->
   <section class="section" id="apoyo">
     <span class="section-eyebrow">Apoya el proyecto</span>
@@ -141,7 +177,7 @@
   <!-- ── FOOTER ── -->
   <footer>
     <span>🖥️ Computador Mental</span>
-    <span>Guías de estudio visuales · Método propio</span>
+    <span><a href="privacidad.html" style="color:var(--muted);">Política de Privacidad</a> · Método propio</span>
   </footer>
 
 </body>
