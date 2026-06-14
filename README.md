@@ -1,4 +1,4 @@
-# Computador Mental
+# Stramont
 
 Plataforma de **guías de estudio visuales** que convierten los temas más confusos
 de la carrera en algo que hasta un niño de 9 años entiende.
