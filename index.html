@@ -3,83 +3,146 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Montaguth Institute</title>
+  <title>Computador Mental · Entiende cualquier clase en minutos</title>
+  <meta name="description" content="Guías de estudio visuales que convierten los temas más confusos de tu carrera en algo que hasta un niño de 9 años entiende. Método del Computador Mental.">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="stylesheet" href="estilos.css">
 </head>
-<body class="indice-body">
+<body>
 
-  <header class="indice-header">
-    <h1 class="logo">Montaguth Institute</h1>
+  <!-- ── HEADER ── -->
+  <header class="site-header">
+    <a href="index.html" class="brand">
+      <span class="brand-mark">🖥️</span>
+      <span class="brand-name">Computador Mental</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#metodo">El método</a>
+      <a href="#guias">Guías</a>
+      <a href="#apoyo">Apoyar</a>
+    </nav>
   </header>
 
-  <h2 class="frase-hero">Llega un punto exacto en el que buscar respuestas se convierte en el problema.</h2>
-
-  <button class="btn-filosofia" onclick="window.location.href='filosofia.html'">Nuestra Filosofía</button>
-  <button class="btn-guias" onclick="window.location.href='guias.html'">Guías de Estudio</button>
-
-  <div class="seccion-umbral">
-    <hr class="linea-umbral">
-    <div class="texto-umbral">Investigaciones Activas</div>
-  </div>
-
-  <!-- ════════════════════════════════════════════════════
-       ENSAYO 01 — La fisiología del despertar forzado
-       Para agregar un nuevo ensayo: copia este bloque
-       completo desde aquí hasta el cierre de </div>
-       y cambia el contenido. No toques nada más.
-  ════════════════════════════════════════════════════ -->
-  <div class="investigacion-box">
-    <div class="investigacion-header">
-      <button class="btn-desplegable" id="toggleBtn1" onclick="toggle('investigacion1', 'toggleBtn1')">+</button>
-      <h3 class="titulo-investigacion">La fisiología del despertar forzado y el trauma metabólico de las alarmas</h3>
+  <!-- ── HERO ── -->
+  <section class="hero">
+    <span class="eyebrow">Guías de estudio visuales</span>
+    <h1>Entiende cualquier clase <span class="acento-az">en minutos</span>, no en noches enteras.</h1>
+    <p class="hero-sub">
+      Tomamos los temas más confusos de tu carrera y los convertimos en guías visuales
+      tan simples que hasta un niño de 9 años las entiende. Sin ruido. Solo claridad.
+    </p>
+    <div class="hero-cta">
+      <a href="#guias" class="btn btn-primary">Ver las guías</a>
+      <a href="#metodo" class="btn btn-ghost">Cómo funciona</a>
     </div>
-    <span class="fecha">Publicado el 22 de mayo de 2026</span>
+  </section>
 
-    <div class="investigacion-contenido" id="investigacion1">
-      <p class="descripcion-investigacion">
-        Durante toda tu vida te han convencido de que no poder saltar de la cama es un defecto de tu voluntad. La neurociencia moderna tiene un diagnóstico muy distinto: tu alarma no te está despertando, está provocando un trauma metabólico en tu cerebro. Descubre por qué la pereza matutina es biológicamente imposible y cómo tu propio reloj genético está siendo asfixiado.
-      </p>
+  <!-- ── MÉTODO ── -->
+  <section class="section" id="metodo">
+    <span class="section-eyebrow">El método</span>
+    <h2 class="section-title">Tu cabeza, como un computador</h2>
+    <p class="section-lead">
+      Cada idea se convierte en una "ficha" con tres niveles de lectura. Buscas, entiendes y recuerdas.
+    </p>
 
-      <a href="investigacion-alarmas.html" class="btn-leer">Acceder a la investigación →</a>
-
-      <div class="seccion-preguntas">
-        <h4 class="titulo-preguntas">Respuestas exactas que encontrarás en esta lectura:</h4>
-        <ul class="lista-preguntas">
-          <li><a href="investigacion-alarmas.html#seccion-2" class="link-pregunta">¿Por qué tu sistema nervioso confunde el tono de tu alarma con una amenaza letal en apenas cien milisegundos?</a></li>
-          <li><a href="investigacion-alarmas.html#seccion-6" class="link-pregunta">¿Por qué la prohibición mundial de usar el botón de "snooze" acaba de ser demostrada como una herejía médica?</a></li>
-          <li><a href="investigacion-alarmas.html#seccion-7" class="link-pregunta">¿Cuál es la intervención clínica comprobada para engañar a tu reloj genético y despertar sin sufrir un trauma metabólico?</a></li>
-        </ul>
+    <div class="metodo-grid">
+      <div class="metodo-card c-am">
+        <span class="metodo-emoji">⌨️</span>
+        <h3>Teclado</h3>
+        <p>El índice: un color, un número y un nombre corto. Es lo que buscas y presionas.</p>
       </div>
+      <div class="metodo-card c-az">
+        <span class="metodo-emoji">🖥️</span>
+        <h3>Monitor</h3>
+        <p>El significado explicado tan simple que un niño de 7 años lo entiende. Aquí comprendes.</p>
+      </div>
+      <div class="metodo-card c-ro">
+        <span class="metodo-emoji">🔊</span>
+        <h3>Altavoces</h3>
+        <p>Una imagen o emoji para asociar y memorizar sin esfuerzo. Aquí recuerdas.</p>
+      </div>
+    </div>
 
-      <div class="nota-instituto">
-        <p>
-          <strong>Nota del Instituto:</strong> La ciencia no es un monólogo. Al final de la lectura encontrarás una línea directa hacia nosotros. Si la investigación detona una duda sobre tu propio proceso, escríbenos. Te responderá un ser humano, con calidez y respaldado por evidencia. Sin respuestas automáticas.
+    <div class="semaforo-strip">
+      <strong style="color:#fff;">El semáforo:</strong>
+      <span><span class="dot dot-am"></span> amarillo</span> →
+      <span><span class="dot dot-az"></span> azul</span> →
+      <span><span class="dot dot-ro"></span> rojo</span>
+      &nbsp;— un ritmo de colores para que, si recuerdas uno, recuerdes a sus vecinos.
+    </div>
+  </section>
+
+  <!-- ── GUÍAS ── -->
+  <section class="section" id="guias">
+    <span class="section-eyebrow">Catálogo · Proyectar Mercados</span>
+    <h2 class="section-title">Guías disponibles</h2>
+    <p class="section-lead">
+      Las guías base son gratis. Descárgalas, estúdialas en el celular o imprímelas.
+    </p>
+
+    <div class="guias-grid">
+
+      <!-- GUÍA 01 -->
+      <div class="guia-card">
+        <span class="guia-num">Clase 01 · Segmentación</span>
+        <span class="badge-free">Gratis</span>
+        <h3 class="guia-titulo">Segmentación de Mercados</h3>
+        <p class="guia-desc">
+          Qué es segmentar, su importancia estratégica, los 4 tipos principales, la
+          hipersegmentación, el filtro MASA, FODA, medidas de tendencia y proyección de demanda.
+          Todo con fichas de 3 niveles y el semáforo de colores.
         </p>
+        <div class="guia-acciones">
+          <a href="segmentacion-de-mercados.pdf" class="btn-descarga" download>⬇ Descargar PDF</a>
+          <a href="segmentacion-de-mercados.html" class="btn-ver">Ver online →</a>
+        </div>
       </div>
+
+      <!-- PRÓXIMA -->
+      <div class="guia-card guia-card--proxima">
+        <span class="guia-num">Próximamente</span>
+        <h3 class="guia-titulo">¿Qué tema no entendiste?</h3>
+        <p class="guia-desc">
+          Cada nueva clase se convierte en una guía como esta. Si hay un tema que se te
+          atravesó, pídelo y será la siguiente en salir.
+        </p>
+        <div class="guia-acciones">
+          <!-- TODO: reemplaza por tu WhatsApp real: https://wa.me/57XXXXXXXXXX -->
+          <a href="mailto:contacto@montaguth.institute?subject=Quiero%20una%20gu%C3%ADa" class="btn-ver">Pedir un tema →</a>
+        </div>
+      </div>
+
     </div>
-  </div>
-  <!-- ════ FIN ENSAYO 01 ════ -->
+  </section>
 
+  <!-- ── APOYO ── -->
+  <section class="section" id="apoyo">
+    <span class="section-eyebrow">Apoya el proyecto</span>
+    <h2 class="section-title">☕ Invítame un cafecito</h2>
 
-  <!-- ════════════════════════════════════════════════════
-     ENSAYO 04 —suguiente ensayo eliminar esto y ponerlo ahi
-════════════════════════════════════════════════════ -->
+    <div class="apoyo-box">
+      <h3 class="apoyo-titulo">Mantén las guías vivas</h3>
+      <p class="apoyo-desc">
+        Las guías base son y serán <strong>gratis</strong> para todos. Crearlas toma tiempo:
+        si alguna te ahorró una noche de estudio y quieres apoyar para que sigan saliendo,
+        cualquier aporte voluntario suma. Sin presión, con cariño.
+      </p>
+      <!-- TODO: reemplaza con tu dato real de pago -->
+      <div class="apoyo-datos">
+        <span class="apoyo-dato"><strong>Nequi / Daviplata:</strong> [tu número aquí]</span>
+      </div>
+      <p class="apoyo-nota">
+        ¿Quieres el <strong>pack pre-parcial</strong> (todas las guías del semestre en un solo
+        archivo)? Escríbeme y te cuento.
+      </p>
+    </div>
+  </section>
 
-
-  <script>
-    function toggle(idContenido, idBtn) {
-      var contenido = document.getElementById(idContenido);
-      var btn = document.getElementById(idBtn);
-      if (contenido.classList.contains("activo")) {
-        contenido.classList.remove("activo");
-        btn.innerText = "+";
-      } else {
-        contenido.classList.add("activo");
-        btn.innerText = "−";
-      }
-    }
-  </script>
+  <!-- ── FOOTER ── -->
+  <footer>
+    <span>🖥️ Computador Mental</span>
+    <span>Guías de estudio visuales · Método propio</span>
+  </footer>
 
 </body>
 </html>
