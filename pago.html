@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pago por Nequi · Stramont</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="estilos.css?v=4">
+  <style>
+    .pago-wrap{width:90%;max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:18px;}
+    .paso-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:26px;box-shadow:0 6px 20px rgba(15,23,42,.07);}
+    .paso-card .paso-tag{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#fff;background:var(--c2);border-radius:30px;padding:5px 14px;margin-bottom:14px;}
+    .paso-card.b .paso-tag{background:var(--c1);}
+    .paso-card h3{font-size:19px;color:#0f1620;margin-bottom:10px;}
+    .paso-card p{font-size:15px;color:var(--text-dim);margin-bottom:14px;}
+    .nequi-box{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:16px 18px;flex-wrap:wrap;}
+    .nequi-box .lbl{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:700;}
+    .nequi-box .num{font-size:24px;font-weight:800;color:#0f1620;letter-spacing:.5px;}
+    .nequi-box .val{font-size:20px;font-weight:800;color:var(--c1);}
+    .copybtn{background:#0f1620;color:#fff;border:none;border-radius:9px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer;transition:.2s;}
+    .copybtn:hover{opacity:.9;}
+    .nequi-tag{display:inline-block;margin-top:10px;font-size:12px;color:var(--muted);}
+    .btn-wa{display:inline-flex;align-items:center;gap:9px;background:#25D366;color:#063b1e;text-decoration:none;font-weight:700;font-size:15px;padding:14px 22px;border-radius:12px;transition:.2s;}
+    .btn-wa:hover{transform:translateY(-2px);}
+    .ou{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:6px 0;}
+    .ou::before,.ou::after{content:"";flex:1;height:1px;background:var(--line);}
+  </style>
+</head>
+<body class="band band-light">
+
+  <header class="site-header">
+    <a href="index.html" class="brand">
+      <span class="brand-mark">🖥️</span>
+      <span class="brand-name">Stramont</span>
+    </a>
+    <nav class="nav-links"><a href="index.html">Inicio</a></nav>
+  </header>
+
+  <section class="section" id="pago">
+    <span class="section-eyebrow">Último paso</span>
+    <h2 class="section-title">Activa tu acceso por Nequi</h2>
+    <p class="section-lead">Es un proceso rápido: pagas a nuestro Nequi y nos envías el comprobante. Te damos acceso y, en menos de 24 horas tras subir tus apuntes, recibes tu guía.</p>
+
+    <div class="pago-wrap">
+
+      <!-- PASO 1 -->
+      <div class="paso-card a">
+        <span class="paso-tag">Paso 1 · Paga</span>
+        <h3>Envía el pago a este Nequi</h3>
+        <div class="nequi-box">
+          <div>
+            <div class="lbl">Nequi</div>
+            <div class="num" id="nequiNum">322 364 3728</div>
+          </div>
+          <div>
+            <div class="lbl">Valor</div>
+            <!-- TODO PRECIO: reemplaza por el valor real, ej: $8.000 -->
+            <div class="val" id="valor">$ [definir]</div>
+          </div>
+          <button class="copybtn" id="copyBtn" type="button">Copiar número</button>
+        </div>
+        <span class="nequi-tag">📲 También puedes pagar desde otra app/banco a ese mismo número (Nequi).</span>
+      </div>
+
+      <!-- PASO 2 -->
+      <div class="paso-card b">
+        <span class="paso-tag">Paso 2 · Envía el comprobante</span>
+        <h3>Sube tu comprobante y activa el acceso</h3>
+        <p>Sube la captura del pago con tu correo. Apenas lo verifiquemos, tu acceso queda activo (recibirás el Kit en la siguiente pantalla).</p>
+
+        <form action="https://formsubmit.co/contacto@montaguth.institute" method="POST" enctype="multipart/form-data">
+          <input type="hidden" name="_subject" value="Comprobante de pago Nequi · Stramont">
+          <input type="hidden" name="_captcha" value="false">
+          <input type="hidden" name="_next" value="https://montaguth.institute/gracias.html">
+          <input type="text" name="_honey" style="display:none">
+
+          <input class="form-field" type="email" name="email" placeholder="Tu correo *" required autocomplete="email">
+          <div class="dropzone" id="dropzone">
+            <span class="dz-ico">🧾</span>
+            <strong>Arrastra aquí tu comprobante</strong><br>
+            o toca para elegir la captura
+          </div>
+          <input id="fileInput" type="file" name="attachment" accept="image/*,application/pdf" required hidden>
+          <ul class="filelist" id="fileList"></ul>
+
+          <button type="submit" class="btn btn-primary" style="width:100%;margin-top:16px;">Ya pagué · Activar mi acceso →</button>
+        </form>
+
+        <div class="ou">o</div>
+        <a href="https://wa.me/573223643728?text=Hola,%20ya%20pagu%C3%A9%20mi%20guía%20Stramont%20por%20Nequi,%20te%20env%C3%ADo%20el%20comprobante" target="_blank" class="btn-wa">📲 Enviar comprobante por WhatsApp</a>
+      </div>
+
+    </div>
+  </section>
+
+  <footer>
+    <span>🖥️ Stramont</span>
+    <span>
+      <a href="https://instagram.com/montaguth.institute" target="_blank" style="color:var(--c1);text-decoration:none;">@montaguth.institute</a>
+      &nbsp;·&nbsp;
+      <a href="privacidad.html" style="color:var(--muted);text-decoration:none;">Privacidad</a>
+    </span>
+  </footer>
+
+  <script>
+    (function(){
+      // Copiar número de Nequi
+      var btn = document.getElementById('copyBtn');
+      btn.addEventListener('click', function(){
+        var n = document.getElementById('nequiNum').textContent.replace(/\s/g,'');
+        navigator.clipboard.writeText(n).then(function(){
+          btn.textContent = '¡Copiado! ✓';
+          setTimeout(function(){ btn.textContent = 'Copiar número'; }, 1800);
+        });
+      });
+      // Drag & drop comprobante
+      var dz = document.getElementById('dropzone');
+      var input = document.getElementById('fileInput');
+      var list = document.getElementById('fileList');
+      function render(){
+        list.innerHTML = '';
+        Array.prototype.forEach.call(input.files, function(f){
+          var li = document.createElement('li'); li.textContent = '📄 ' + f.name; list.appendChild(li);
+        });
+      }
+      dz.addEventListener('click', function(){ input.click(); });
+      input.addEventListener('change', render);
+      ['dragenter','dragover'].forEach(function(ev){ dz.addEventListener(ev, function(e){ e.preventDefault(); dz.classList.add('over'); }); });
+      ['dragleave','drop'].forEach(function(ev){ dz.addEventListener(ev, function(e){ e.preventDefault(); dz.classList.remove('over'); }); });
+      dz.addEventListener('drop', function(e){
+        var dt = new DataTransfer();
+        Array.prototype.forEach.call(e.dataTransfer.files, function(f){ dt.items.add(f); });
+        input.files = dt.files; render();
+      });
+    })();
+  </script>
+
+</body>
+</html>
