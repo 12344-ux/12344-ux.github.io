@@ -562,3 +562,19 @@ footer span {
   font-size: 13px !important;
   color: var(--muted) !important;
 }
+
+
+/* ── Instagram en el hero ── */
+.hero-ig {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  color: var(--muted);
+  text-align: center;
+  margin: 22px 0 0;
+}
+.hero-ig a {
+  color: var(--az);
+  text-decoration: none;
+  font-weight: 600;
+}
+.hero-ig a:hover { text-decoration: underline; }
