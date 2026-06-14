@@ -148,3 +148,34 @@ footer span{font-size:12.5px;color:var(--muted);letter-spacing:.3px;}
   .nav-links{gap:14px;}
   .hero{padding:54px 0 40px;}
 }
+
+
+/* ============================================================
+   LANZAMIENTO — Transformación (antes/después) + Servicio de pago
+   ============================================================ */
+.compara{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.col{border:1px solid var(--line);border-radius:14px;padding:26px;}
+.col-antes{border-top:3px solid #d9655f;background:rgba(217,101,95,.06);}
+.col-despues{border-top:3px solid var(--c1);background:rgba(42,157,143,.06);}
+.col h3{font-size:18px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.col-antes h3{color:#e3837e;}
+.col-despues h3{color:var(--c1);}
+.lista-cambio{list-style:none;margin:0;padding:0;}
+.lista-cambio li{display:flex;gap:10px;align-items:flex-start;font-size:15px;color:var(--text-dim);margin-bottom:13px;line-height:1.45;}
+.lista-cambio li .ic{flex:0 0 auto;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;margin-top:1px;}
+.ic-x{background:rgba(217,101,95,.18);color:#e3837e;}
+.ic-v{background:rgba(42,157,143,.18);color:var(--c1);}
+
+.prueba{margin-top:30px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:30px 28px;text-align:center;}
+.prueba h3{font-size:20px;color:#fff;margin-bottom:10px;}
+.prueba p{color:var(--text-dim);max-width:640px;margin:0 auto 20px;}
+
+.empezar-box{background:linear-gradient(135deg,rgba(42,157,143,.12),rgba(74,99,196,.10));border:1px solid var(--line);border-radius:16px;padding:36px 30px;text-align:center;}
+.pasos-mini{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:24px 0 28px;}
+.pmini{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;}
+.pmini .pn{width:30px;height:30px;border-radius:8px;background:var(--c2);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;}
+.pmini p{font-size:14px;color:var(--text-dim);margin:0;line-height:1.5;}
+.empezar-cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;}
+.empezar-nota{margin-top:18px;font-size:13px;color:var(--c3);font-weight:600;}
+
+@media(max-width:680px){.compara{grid-template-columns:1fr;}.pasos-mini{grid-template-columns:1fr;}}
