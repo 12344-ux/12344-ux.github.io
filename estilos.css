@@ -205,6 +205,25 @@ footer span{font-size:12.5px;color:var(--muted);letter-spacing:.3px;}
 .vs-bridge-text{display:inline-block;padding:11px 24px;border-radius:30px;background:rgba(42,157,143,.10);border:1px solid rgba(42,157,143,.40);color:var(--c1);font-weight:700;font-size:14.5px;letter-spacing:.3px;}
 @media(max-width:680px){.vs{grid-template-columns:1fr;}}
 
+/* ===== Reveal interactivo en El cambio: foto real (antes) / guía (después) ===== */
+.reveal{margin-top:18px;border-top:1px solid rgba(15,23,42,.08);padding-top:16px;}
+.reveal summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:10px;font-size:13.5px;font-weight:800;letter-spacing:.3px;padding:10px 18px;border-radius:30px;user-select:none;transition:background .2s,transform .15s;}
+.reveal summary::-webkit-details-marker{display:none;}
+.reveal summary:hover{transform:translateY(-1px);}
+.reveal-bad summary{color:#cf5048;background:rgba(214,90,84,.10);border:1px solid rgba(214,90,84,.32);}
+.reveal-good summary{color:#2f56c9;background:rgba(47,86,201,.09);border:1px solid rgba(47,86,201,.30);}
+.rv-arrow{width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);animation:rvBounce 1.1s ease-in-out infinite;}
+@keyframes rvBounce{0%,100%{transform:translateY(-2px) rotate(45deg);}50%{transform:translateY(3px) rotate(45deg);}}
+.reveal[open] .rv-arrow{animation:none;transform:rotate(-135deg);}
+.reveal-body{margin-top:16px;animation:revealIn .35s ease;}
+@keyframes revealIn{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:none;}}
+.reveal-figure{margin:0;}
+.reveal-figure img{width:100%;height:auto;display:block;border-radius:12px;border:1px solid rgba(15,23,42,.12);box-shadow:0 12px 30px rgba(16,28,51,.12);}
+.reveal-figure figcaption,.reveal-cap{margin:12px 0 0;font-size:14px;font-style:italic;color:#41506a;text-align:center;}
+/* Enlace a la guía completa */
+.gp-link{display:inline-block;margin-top:14px;font-size:13.5px;font-weight:700;color:#2f56c9;text-decoration:none;}
+.gp-link:hover{text-decoration:underline;}
+
 /* ============================================================
    CÓMO FUNCIONA — 2 pasos pequeños + paso 3 protagonista
    El valor está en el paso 3 (la guía), por eso pesa visualmente más.
