@@ -261,16 +261,26 @@
       return info;
     }
 
-    // Aviso de compra a contacto@montaguth.institute (para reenviar el enlace al comprador)
+    // Aviso de compra a contacto@ + correo de agradecimiento con el Kit (regalo) al comprador
     async function notificar(email, info){
       try{
+        var regalo =
+          "Hola " + (estado.nombre || "") + ",\n\n" +
+          "¡Gracias por confiar en Stramont! Ya estamos trabajando en tus apuntes para convertirlos en tu material de estudio de alta retención. Te llegará tu enlace de acceso exclusivo en menos de 24 horas.\n\n" +
+          "Estamos comprometidos con que de verdad veas resultados. Por eso queremos regalarte algo que puede cambiar por completo tu forma de estudiar: diseñamos un Kit de plantillas exclusivo para tomar apuntes con método científico (basado en recuperación activa y repaso espaciado).\n\n" +
+          "Descarga tu Kit aquí (incluye plantilla para imprimir A4, version para tablet/GoodNotes, Word, Notion y un instructivo de uso):\n" +
+          "https://montaguth.institute/kit-stramont.zip\n\n" +
+          "Cualquier duda o reporte, escríbenos a contacto@montaguth.institute\n\n" +
+          "Un abrazo,\nEquipo Stramont · montaguth.institute";
+
         await fetch('https://formsubmit.co/ajax/contacto@montaguth.institute', {
           method:'POST',
           headers:{ 'Content-Type':'application/json' },
           body: JSON.stringify({
             _subject: '💸 NUEVA COMPRA · Stramont (' + estado.plan + ')',
+            _autoresponse: regalo,
             comprador_nombre: estado.nombre || '(sin nombre)',
-            comprador: email,
+            email: email,
             plan: estado.plan + ' · ' + estado.precio,
             alojamiento: estado.dias + ' días',
             archivos: info.names.join(', ') || '(sin nombre)',
@@ -292,7 +302,7 @@
         var now = new Date();
         estado.recibo = 'STR-' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '-' + String(now.getTime()).slice(-4);
         estado.fecha = now.toLocaleString('es-CO');
-        document.getElementById('exitoMsg').innerHTML = '¡Gracias, ' + estado.nombre + '! Recibimos tu documento. Te enviaremos tu <strong>enlace de acceso exclusivo</strong> a tu correo en <strong>menos de 24 horas</strong> (disponible ' + estado.dias + ' días).';
+        document.getElementById('exitoMsg').innerHTML = '¡Gracias, ' + estado.nombre + '! Recibimos tu documento. Te enviaremos tu <strong>enlace de acceso exclusivo</strong> a tu correo en <strong>menos de 24 horas</strong> (disponible ' + estado.dias + ' días).<br><br>🎁 Además, revisa tu correo: te enviamos un <strong>regalo</strong> por confiar en nosotros.';
         setTimeout(function(){ spin.style.display='none'; goto(4); }, 700);
       }catch(e){
         spin.style.display='none'; btn.disabled=false;
