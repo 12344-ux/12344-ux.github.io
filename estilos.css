@@ -56,6 +56,10 @@ body::after{
 .nav-links{display:flex;gap:20px;align-items:center;flex-wrap:wrap;}
 .nav-links a{font-size:12.5px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-decoration:none;transition:color .2s;}
 .nav-links a:hover{color:var(--text);}
+/* Menú hamburguesa (solo móvil) */
+.nav-burger{display:none;flex-direction:column;justify-content:center;gap:5px;width:46px;height:42px;padding:11px 10px;cursor:pointer;border-radius:11px;border:1px solid rgba(65,224,201,.40);background:rgba(65,224,201,.10);transition:background .2s;}
+.nav-burger:hover{background:rgba(65,224,201,.18);}
+.nav-burger span{display:block;height:2.5px;width:100%;background:#41e0c9;border-radius:3px;transition:transform .25s ease,opacity .2s ease;}
 
 /* ===== HERO ===== */
 .hero{position:relative;z-index:10;width:90%;max-width:960px;margin:0 auto;padding:72px 0 50px;text-align:center;}
@@ -532,13 +536,13 @@ body{background:#0b0f16;}
    HERO CENTRADO (layout estilo referencia, colores Stramont)
    ============================================================ */
 .hero-centrado{
-  min-height:88vh;
+  min-height:96vh;
   display:flex;
   flex-direction:column;
   align-items:center;
   justify-content:center;
   text-align:center;
-  padding:48px 0 30px;
+  padding:48px 0 72px;
 }
 .hero-centrado .eyebrow{ text-align:center; margin-bottom:22px; }
 .hero-centrado h1{
@@ -558,6 +562,7 @@ body{background:#0b0f16;}
 }
 .hero-centrado .hero-cta{ justify-content:center; }
 .hero-centrado .hero-badge24{ margin-top:22px; }
+.hero-sub-strong{ color:#ffffff; font-weight:700; }
 .hero-scroll{
   display:inline-flex;
   margin-top:44px;
@@ -570,4 +575,26 @@ body{background:#0b0f16;}
 @keyframes flechaBaja{
   0%,100%{ transform:translateY(0); opacity:.5; }
   50%{ transform:translateY(8px); opacity:1; }
+}
+
+
+
+/* ============================================================
+   MENÚ MÓVIL — hamburguesa desplegable (turquesa, resalta en oscuro)
+   ============================================================ */
+@media(max-width:760px){
+  .site-header{flex-wrap:nowrap;padding:18px 0 0;}
+  .nav-burger{display:flex;}
+  .nav-links{
+    position:absolute;top:calc(100% + 12px);left:0;right:0;
+    display:none;flex-direction:column;align-items:stretch;gap:6px;
+    background:#0a1018;border:1px solid rgba(255,255,255,.10);border-radius:16px;
+    padding:10px;box-shadow:0 22px 50px rgba(0,0,0,.55);z-index:30;
+  }
+  #nav-toggle:checked ~ .nav-links{display:flex;}
+  .nav-links a{font-size:14.5px;letter-spacing:.5px;color:var(--text);padding:14px 16px;border-radius:11px;}
+  .nav-links a:hover,.nav-links a:active{background:rgba(65,224,201,.12);color:#41e0c9;}
+  #nav-toggle:checked ~ .nav-burger span:nth-child(1){transform:translateY(7.5px) rotate(45deg);}
+  #nav-toggle:checked ~ .nav-burger span:nth-child(2){opacity:0;}
+  #nav-toggle:checked ~ .nav-burger span:nth-child(3){transform:translateY(-7.5px) rotate(-45deg);}
 }
