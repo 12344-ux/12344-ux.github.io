@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulación · Stramont (Sandbox)</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="favicon.png">
+<style>
+  :root{
+    --bg:#0a0e16; --panel:#121826; --panel2:#19202f; --line:rgba(255,255,255,.09);
+    --text:#eef2f8; --dim:#aeb9cc; --muted:#7e8aa0;
+    --azul:#1a3a8f; --azul-2:#2f54c9; --ok:#27c093;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:"DM Sans","Segoe UI",system-ui,Arial,sans-serif;line-height:1.6;min-height:100vh;}
+  a{color:var(--azul-2);}
+  .topbar{display:flex;align-items:center;justify-content:space-between;max-width:760px;margin:0 auto;padding:22px 20px;}
+  .brand{font-weight:800;letter-spacing:3px;text-transform:uppercase;font-size:14px;}
+  .brand b{color:var(--azul-2);}
+  .sandbox-badge{font-size:11px;letter-spacing:1px;text-transform:uppercase;font-weight:700;color:#ffd27a;background:rgba(255,180,60,.12);border:1px solid rgba(255,180,60,.4);border-radius:30px;padding:4px 12px;}
+
+  .wrap{max-width:760px;margin:0 auto;padding:10px 20px 70px;}
+
+  /* progreso */
+  .steps{display:flex;gap:8px;margin:8px 0 28px;}
+  .steps .s{flex:1;height:5px;border-radius:4px;background:var(--panel2);}
+  .steps .s.on{background:var(--azul-2);}
+
+  .pane{display:none;animation:fade .35s ease;}
+  .pane.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+
+  h1{font-size:27px;font-weight:800;margin-bottom:6px;}
+  .lead{color:var(--dim);margin-bottom:24px;}
+  .eyebrow{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:10px;display:block;}
+
+  /* paquetes */
+  .planes{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .plan{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;cursor:pointer;transition:.2s;}
+  .plan:hover{border-color:var(--azul-2);transform:translateY(-3px);}
+  .plan.sel{border-color:var(--azul-2);box-shadow:0 0 0 2px rgba(47,84,201,.4);}
+  .plan .pn{font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--azul-2);font-weight:700;}
+  .plan .precio{font-size:32px;font-weight:900;margin:8px 0 2px;}
+  .plan .precio small{font-size:13px;color:var(--muted);font-weight:600;}
+  .plan .desc{font-size:14px;color:var(--dim);margin-top:8px;}
+  .plan .pick{margin-top:16px;font-size:13px;font-weight:700;color:var(--azul-2);}
+
+  /* form */
+  .field{width:100%;background:var(--panel);border:1px solid var(--line);color:var(--text);font-size:15px;padding:14px 16px;border-radius:11px;margin-bottom:14px;}
+  .field:focus{outline:none;border-color:var(--azul-2);}
+  .dz{border:2px dashed var(--line);border-radius:14px;padding:40px 22px;text-align:center;color:var(--muted);cursor:pointer;transition:.2s;background:var(--panel);}
+  .dz:hover,.dz.over{border-color:var(--azul-2);color:var(--azul-2);background:rgba(47,84,201,.06);}
+  .dz .i{font-size:34px;display:block;margin-bottom:8px;}
+  .flist{list-style:none;margin:14px 0 0;}
+  .flist li{font-size:14px;color:var(--dim);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:8px;}
+
+  .btn{display:inline-block;width:100%;text-align:center;background:var(--azul-2);color:#fff;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;transition:.2s;text-decoration:none;}
+  .btn:hover{opacity:.92;}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--text);}
+  .row{display:flex;gap:12px;margin-top:8px;}
+
+  .resumen{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;}
+  .resumen .v{font-weight:800;color:var(--azul-2);}
+  .modo-prueba{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#ffd27a;background:rgba(255,180,60,.1);border:1px solid rgba(255,180,60,.35);border-radius:30px;padding:6px 14px;margin-bottom:18px;}
+  .spinner{display:none;width:22px;height:22px;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .exito{text-align:center;padding:24px 0;}
+  .exito .check{width:78px;height:78px;border-radius:50%;background:rgba(39,192,147,.14);border:2px solid var(--ok);color:var(--ok);font-size:38px;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;}
+  .exito h1{font-size:26px;}
+  .nota{font-size:13px;color:var(--muted);margin-top:18px;}
+  .err{color:#ff9a9a;font-size:13px;margin-top:10px;display:none;}
+  footer{max-width:760px;margin:0 auto;padding:20px;text-align:center;color:var(--muted);font-size:12px;}
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand">STR<b>A</b>MONT</div>
+    <span class="sandbox-badge">● Modo simulación</span>
+  </div>
+
+  <div class="wrap">
+    <div class="steps">
+      <div class="s on" data-s="1"></div>
+      <div class="s" data-s="2"></div>
+      <div class="s" data-s="3"></div>
+      <div class="s" data-s="4"></div>
+    </div>
+
+    <!-- PASO 1: PAQUETE -->
+    <div class="pane active" id="p1">
+      <span class="eyebrow">Paso 1 de 4 · Elige tu plan</span>
+      <h1>Elige tu paquete</h1>
+      <p class="lead">Selecciona el plan con el que quieres transformar tus apuntes.</p>
+      <div class="planes">
+        <div class="plan" data-plan="Esencial" data-precio="$14.900 / mes">
+          <div class="pn">Esencial</div>
+          <div class="precio">$14.900<small> / mes</small></div>
+          <div class="desc">5 créditos mensuales. Ideal para una materia.</div>
+          <div class="pick">Seleccionar →</div>
+        </div>
+        <div class="plan" data-plan="Pro" data-precio="$29.900 / mes">
+          <div class="pn">Pro</div>
+          <div class="precio">$29.900<small> / mes</small></div>
+          <div class="desc">10 créditos mensuales. Para todo el semestre.</div>
+          <div class="pick">Seleccionar →</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PASO 2: CARGA -->
+    <div class="pane" id="p2">
+      <span class="eyebrow">Paso 2 de 4 · Sube tus apuntes</span>
+      <h1>Sube tus apuntes</h1>
+      <p class="lead">Ingresa tu correo y arrastra tus apuntes (PDF o imágenes). Los subimos primero y luego confirmas el pago.</p>
+      <input class="field" type="email" id="email" placeholder="Tu correo *" autocomplete="email">
+      <div class="dz" id="dz">
+        <span class="i">📎</span>
+        <strong>Arrastra aquí tus apuntes</strong><br>
+        o toca para elegir (PDF o imágenes)
+      </div>
+      <input type="file" id="file" accept="image/*,application/pdf" multiple hidden>
+      <ul class="flist" id="flist"></ul>
+      <div class="err" id="err2"></div>
+      <div class="row">
+        <button class="btn btn-ghost" data-go="1" style="flex:0 0 120px;">← Atrás</button>
+        <button class="btn" id="toPago">Continuar al pago →</button>
+      </div>
+    </div>
+
+    <!-- PASO 3: PAGO SIMULADO -->
+    <div class="pane" id="p3">
+      <span class="eyebrow">Paso 3 de 4 · Pago</span>
+      <h1>Confirma tu pago</h1>
+      <div class="modo-prueba">🧪 Modo de prueba · no se cobrará dinero real</div>
+      <div class="resumen">
+        <div>Plan <span id="rPlan">—</span></div>
+        <div class="v" id="rPrecio">—</div>
+      </div>
+      <button class="btn" id="pagar">Simular pago exitoso →</button>
+      <div class="spinner" id="spin" style="margin-top:18px;"></div>
+      <div class="err" id="err3"></div>
+      <div class="row">
+        <button class="btn btn-ghost" data-go="2">← Atrás</button>
+      </div>
+    </div>
+
+    <!-- PASO 4: ÉXITO -->
+    <div class="pane" id="p4">
+      <div class="exito">
+        <div class="check">✓</div>
+        <h1>¡Pago confirmado!</h1>
+        <p class="lead">Recibimos tus apuntes correctamente. Tu documento interactivo estará listo en <strong>menos de 24 horas</strong> y lo recibirás en tu correo.</p>
+        <p class="nota">¿Dudas o soporte durante esta prueba? Escríbenos a <a href="mailto:contacto@montaguth.institute">contacto@montaguth.institute</a></p>
+        <p style="margin-top:24px;"><a href="index.html" class="btn btn-ghost" style="display:inline-block;width:auto;padding:12px 26px;">Volver al inicio</a></p>
+      </div>
+    </div>
+  </div>
+
+  <footer>Stramont · Entorno de simulación (Sandbox) · montaguth.institute</footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+  (function(){
+    /* ====== CONFIG DE ALMACENAMIENTO ======
+       Pega aquí tu proyecto de Supabase para que los archivos lleguen a tu bucket.
+       (La anon key es PÚBLICA, es seguro ponerla aquí.) */
+    var SUPABASE_URL = "https://ifvnuvjvlzpdaimelmbm.supabase.co";
+    var SUPABASE_ANON_KEY = "sb_publishable_VqJi_KckupruFwz1DWynVA_qt-wlZLU";
+    var BUCKET = "apuntes";
+    var SUPA_READY = SUPABASE_URL.indexOf("TU-PROYECTO") === -1 && SUPABASE_ANON_KEY !== "TU_ANON_KEY";
+    /* ======================================= */
+
+    var estado = { plan:null, precio:null };
+    var fileInput = document.getElementById('file');
+
+    function goto(n){
+      document.querySelectorAll('.pane').forEach(function(p){ p.classList.remove('active'); });
+      document.getElementById('p'+n).classList.add('active');
+      document.querySelectorAll('.steps .s').forEach(function(s){
+        s.classList.toggle('on', parseInt(s.dataset.s) <= n);
+      });
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+    document.querySelectorAll('[data-go]').forEach(function(b){
+      b.addEventListener('click', function(){ goto(parseInt(b.dataset.go)); });
+    });
+
+    // Paso 1: elegir plan
+    document.querySelectorAll('.plan').forEach(function(card){
+      card.addEventListener('click', function(){
+        estado.plan = card.dataset.plan;
+        estado.precio = card.dataset.precio;
+        document.getElementById('rPlan').textContent = estado.plan;
+        document.getElementById('rPrecio').textContent = estado.precio;
+        goto(2);
+      });
+    });
+
+    // Paso 2: carga
+    var dz = document.getElementById('dz');
+    var flist = document.getElementById('flist');
+    function render(){
+      flist.innerHTML = '';
+      Array.prototype.forEach.call(fileInput.files, function(f){
+        var li=document.createElement('li'); li.textContent='📄 '+f.name; flist.appendChild(li);
+      });
+    }
+    dz.addEventListener('click', function(){ fileInput.click(); });
+    fileInput.addEventListener('change', render);
+    ['dragenter','dragover'].forEach(function(ev){ dz.addEventListener(ev,function(e){e.preventDefault();dz.classList.add('over');}); });
+    ['dragleave','drop'].forEach(function(ev){ dz.addEventListener(ev,function(e){e.preventDefault();dz.classList.remove('over');}); });
+    dz.addEventListener('drop', function(e){
+      var dt=new DataTransfer();
+      Array.prototype.forEach.call(e.dataTransfer.files,function(f){dt.items.add(f);});
+      fileInput.files=dt.files; render();
+    });
+
+    document.getElementById('toPago').addEventListener('click', function(){
+      var email=document.getElementById('email').value.trim();
+      var err=document.getElementById('err2');
+      if(!/^[^@]+@[^@]+\.[^@]+$/.test(email)){ err.textContent='Ingresa un correo válido.'; err.style.display='block'; return; }
+      if(fileInput.files.length===0){ err.textContent='Adjunta al menos un archivo.'; err.style.display='block'; return; }
+      err.style.display='none';
+      goto(3);
+    });
+
+    // Paso 3: pago simulado + subida real
+    async function subirArchivos(email){
+      if(!SUPA_READY) return { demo:true };  // sin config: no se sube (modo demo visual)
+      var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      var carpeta = email.toLowerCase().replace(/[^a-z0-9@._-]/g,'_');
+      for (var i=0;i<fileInput.files.length;i++){
+        var f = fileInput.files[i];
+        var path = carpeta + '/' + Date.now() + '_' + f.name.replace(/\s+/g,'_');
+        var res = await sb.storage.from(BUCKET).upload(path, f, { upsert:false });
+        if(res.error) throw res.error;
+      }
+      return { demo:false };
+    }
+
+    document.getElementById('pagar').addEventListener('click', async function(){
+      var btn=this, spin=document.getElementById('spin'), err=document.getElementById('err3');
+      err.style.display='none'; btn.disabled=true; spin.style.display='block';
+      try{
+        await subirArchivos(document.getElementById('email').value.trim());
+        setTimeout(function(){ spin.style.display='none'; goto(4); }, 700); // simula procesamiento
+      }catch(e){
+        spin.style.display='none'; btn.disabled=false;
+        err.textContent='No se pudieron subir los archivos: '+(e.message||e)+'. Revisa la configuración del bucket.';
+        err.style.display='block';
+      }
+    });
+  })();
+  </script>
+
+</body>
+</html>
