@@ -3,14 +3,13 @@
 // Sirve una guía HTML desde un bucket PRIVADO ("guias"),
 // RENDERIZADA (content-type: text/html), solo si el link
 // tiene una firma válida (HMAC) y NO ha caducado.
+// Incluye "modo subir" (protegido por LINK_SECRET) para
+// guardar guías sin exponer la service_role.
 //
-// Variables que usa:
+// Variables:
 //   - SUPABASE_URL                (la inyecta Supabase sola)
 //   - SUPABASE_SERVICE_ROLE_KEY   (la inyecta Supabase sola)
 //   - LINK_SECRET                 (la pones tú en "Secrets")
-//
-// URL pública de esta función (tu proyecto):
-//   https://ifvnuvjvlzpdaimelmbm.supabase.co/functions/v1/entrega
 // ============================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -20,7 +19,13 @@ const FUNCTION_URL =
 const BUCKET = "guias";
 const enc = new TextEncoder();
 
-// Firma HMAC-SHA256 en hexadecimal
+function sb() {
+  return createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+}
+
 async function firmar(secreto: string, mensaje: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
@@ -44,14 +49,30 @@ Deno.serve(async (req) => {
     return new Response("Falta configurar LINK_SECRET.", { status: 500 });
   }
 
-  // ---------- MODO MINT: generar el link del cliente ----------
-  // Solo tú, que conoces LINK_SECRET, puedes generar links.
-  // Ej: ...?mint=1&f=cliente-juan.html&days=30&key=TU_LINK_SECRET
+  // ---------- MODO SUBIR: guarda una guía en el bucket ----------
+  // POST ...?upload=1&f=archivo.html&key=TU_SECRETO   (body = HTML)
+  if (url.searchParams.get("upload") === "1") {
+    if (req.method !== "POST") return new Response("Usa POST.", { status: 405 });
+    if (url.searchParams.get("key") !== SECRET) {
+      return new Response("No autorizado.", { status: 403 });
+    }
+    if (!f) return new Response("Falta f (nombre de archivo).", { status: 400 });
+    const html = await req.text();
+    const { error } = await sb().storage.from(BUCKET).upload(
+      f,
+      new Blob([html], { type: "text/html" }),
+      { contentType: "text/html", upsert: true },
+    );
+    if (error) return new Response("Error al subir: " + error.message, { status: 500 });
+    return new Response("OK: subido " + f, { status: 200 });
+  }
+
+  // ---------- MODO MINT: genera el link del cliente ----------
   if (url.searchParams.get("mint") === "1") {
     if (url.searchParams.get("key") !== SECRET) {
       return new Response("No autorizado.", { status: 403 });
     }
-    if (!f) return new Response("Falta el parámetro f (archivo).", { status: 400 });
+    if (!f) return new Response("Falta f (archivo).", { status: 400 });
     const days = parseInt(url.searchParams.get("days") || "30", 10);
     const exp = Math.floor(Date.now() / 1000) + days * 86400;
     const sig = await firmar(SECRET, `${f}.${exp}`);
@@ -62,7 +83,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  // ---------- MODO SERVIR: validar y entregar la guía ----------
+  // ---------- MODO SERVIR: valida y entrega la guía ----------
   const exp = parseInt(url.searchParams.get("exp") || "0", 10);
   const sig = url.searchParams.get("sig") || "";
   const esperada = await firmar(SECRET, `${f}.${exp}`);
@@ -74,11 +95,7 @@ Deno.serve(async (req) => {
     return new Response("Este enlace ha expirado.", { status: 410 });
   }
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
-  const { data, error } = await supabase.storage.from(BUCKET).download(f);
+  const { data, error } = await sb().storage.from(BUCKET).download(f);
   if (error || !data) {
     return new Response("Guía no encontrada.", { status: 404 });
   }
