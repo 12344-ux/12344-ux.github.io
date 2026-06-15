@@ -365,3 +365,54 @@ body{background:#0b0f16;}
 .form-field:focus{outline:none;border-color:var(--c1);}
 .subir-nota{font-size:13px;color:var(--muted);margin-top:16px;line-height:1.6;}
 .ok-box{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--c1);border-radius:16px;padding:40px 30px;text-align:center;}
+
+
+/* ============================================================
+   HERO MOCKUP v2 — foto real + Método Stramont interactivo
+   ============================================================ */
+.mock-foto{
+  width:100%;
+  border-radius:8px;
+  display:block;
+  margin-top:6px;
+  border:1px solid var(--line);
+  box-shadow:0 8px 22px rgba(0,0,0,.35);
+}
+.mg-titulo{
+  font-weight:800;
+  color:#fff;
+  font-size:16px;
+  line-height:1.25;
+  margin:6px 0 14px;
+}
+.mg-benes{list-style:none;margin:0;padding:0;}
+.mg-benes li{
+  display:flex;align-items:center;gap:10px;
+  font-size:14px;color:var(--text-dim);
+  background:rgba(255,255,255,.03);
+  border:1px solid var(--line);
+  border-radius:9px;
+  padding:9px 12px;
+  margin-bottom:8px;
+  transition:transform .18s, border-color .18s, background .18s, color .18s;
+  cursor:default;
+  opacity:0; transform:translateY(8px);
+  animation:beneIn .45s ease forwards;
+}
+.mg-benes li:hover{
+  border-color:var(--c1);
+  background:rgba(42,157,143,.12);
+  transform:translateX(5px);
+  color:#fff;
+}
+.mg-benes li .ck{
+  color:var(--c1);font-weight:800;
+  flex:0 0 auto;width:20px;height:20px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(42,157,143,.16);font-size:12px;
+}
+.mg-benes li:nth-child(1){animation-delay:.05s;}
+.mg-benes li:nth-child(2){animation-delay:.15s;}
+.mg-benes li:nth-child(3){animation-delay:.25s;}
+.mg-benes li:nth-child(4){animation-delay:.35s;}
+@keyframes beneIn{to{opacity:1;transform:none;}}
