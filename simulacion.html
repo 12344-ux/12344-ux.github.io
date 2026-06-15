@@ -117,6 +117,7 @@
       <h1>Sube tu documento</h1>
       <p class="lead">Ingresa tu correo y arrastra tu archivo (PDF o imágenes).</p>
       <div class="planinfo" id="planInfo">—</div>
+      <input class="field" type="text" id="nombre" placeholder="Tu nombre completo *" autocomplete="name">
       <input class="field" type="email" id="email" placeholder="Tu correo *" autocomplete="email">
       <div class="dz" id="dz">
         <span class="i">📎</span>
@@ -154,10 +155,8 @@
         <div class="check">✓</div>
         <h1>¡Pago confirmado!</h1>
         <p class="lead" id="exitoMsg">Recibimos tu documento correctamente.</p>
-        <div class="linkbox" id="linkBox" style="display:none;">
-          <strong>🔗 Tu enlace exclusivo</strong> <span id="linkVigencia"></span>
-          <a class="lk" id="linkUrl" href="#" target="_blank"></a>
-        </div>
+        <div class="linkbox" id="linkBox" style="display:none;"></div>
+        <button id="btnRecibo" class="btn" style="display:inline-block;width:auto;padding:13px 28px;margin-top:4px;">📄 Descargar mi comprobante (PDF)</button>
         <p class="nota">¿Dudas o soporte durante esta prueba? Escríbenos a <a href="mailto:contacto@montaguth.institute">contacto@montaguth.institute</a></p>
         <p style="margin-top:24px;"><a href="index.html" class="btn btn-ghost" style="display:inline-block;width:auto;padding:12px 26px;">Volver al inicio</a></p>
       </div>
@@ -166,6 +165,7 @@
 
   <footer>Stramont · Entorno de simulación (Sandbox) · montaguth.institute</footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
   (function(){
@@ -225,8 +225,10 @@
     });
 
     document.getElementById('toPago').addEventListener('click', function(){
+      var nombre=document.getElementById('nombre').value.trim();
       var email=document.getElementById('email').value.trim();
       var err=document.getElementById('err2');
+      if(nombre.length<2){ err.textContent='Ingresa tu nombre completo.'; err.style.display='block'; return; }
       if(!/^[^@]+@[^@]+\.[^@]+$/.test(email)){ err.textContent='Ingresa un correo válido.'; err.style.display='block'; return; }
       if(fileInput.files.length===0){ err.textContent='Adjunta al menos un archivo.'; err.style.display='block'; return; }
       var max = estado.limitMB*1048576;
@@ -267,6 +269,7 @@
           headers:{ 'Content-Type':'application/json' },
           body: JSON.stringify({
             _subject: '💸 NUEVA COMPRA · Stramont (' + estado.plan + ')',
+            comprador_nombre: estado.nombre || '(sin nombre)',
             comprador: email,
             plan: estado.plan + ' · ' + estado.precio,
             alojamiento: estado.dias + ' días',
@@ -282,10 +285,14 @@
       var btn=this, spin=document.getElementById('spin'), err=document.getElementById('err3');
       err.style.display='none'; btn.disabled=true; spin.style.display='block';
       try{
-        var email = document.getElementById('email').value.trim();
-        var r = await procesar(email);
-        await notificar(email, r);
-        document.getElementById('exitoMsg').innerHTML = 'Recibimos tu documento correctamente. Te enviaremos tu <strong>enlace de acceso exclusivo</strong> a tu correo en <strong>menos de 24 horas</strong> (disponible ' + estado.dias + ' días).';
+        estado.email = document.getElementById('email').value.trim();
+        estado.nombre = (document.getElementById('nombre').value.trim() || 'Cliente');
+        var r = await procesar(estado.email);
+        await notificar(estado.email, r);
+        var now = new Date();
+        estado.recibo = 'STR-' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '-' + String(now.getTime()).slice(-4);
+        estado.fecha = now.toLocaleString('es-CO');
+        document.getElementById('exitoMsg').innerHTML = '¡Gracias, ' + estado.nombre + '! Recibimos tu documento. Te enviaremos tu <strong>enlace de acceso exclusivo</strong> a tu correo en <strong>menos de 24 horas</strong> (disponible ' + estado.dias + ' días).';
         setTimeout(function(){ spin.style.display='none'; goto(4); }, 700);
       }catch(e){
         spin.style.display='none'; btn.disabled=false;
@@ -293,6 +300,55 @@
         err.style.display='block';
       }
     });
+    // Comprobante de pago en PDF (jsPDF)
+    function generarRecibo(){
+      var jsPDF = window.jspdf.jsPDF;
+      var doc = new jsPDF({ unit:'pt', format:'a4' });
+      var W = doc.internal.pageSize.getWidth();
+
+      doc.setFillColor(10,14,22); doc.rect(0,0,W,96,'F');
+      doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(24);
+      doc.text('STRAMONT', 40, 52);
+      doc.setFont('helvetica','normal'); doc.setFontSize(12); doc.setTextColor(150,165,190);
+      doc.text('Comprobante de pago', 40, 74);
+      doc.setFontSize(10);
+      doc.text('No. ' + (estado.recibo||''), W-40, 46, { align:'right' });
+      doc.text(estado.fecha||'', W-40, 64, { align:'right' });
+
+      var y=142;
+      doc.setTextColor(15,22,32); doc.setFont('helvetica','bold'); doc.setFontSize(16);
+      doc.text('Gracias por tu compra, ' + (estado.nombre||'') + '.', 40, y); y+=24;
+      doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(70,80,100);
+      doc.text('Tu pago fue confirmado. Recibiras tu enlace de acceso exclusivo en tu', 40, y); y+=16;
+      doc.text('correo en menos de 24 horas.', 40, y); y+=26;
+
+      doc.setDrawColor(225,231,239); doc.setFillColor(247,249,252);
+      doc.roundedRect(40, y, W-80, 168, 8, 8, 'FD');
+      var by=y+34;
+      function row(k,v){
+        doc.setFont('helvetica','normal'); doc.setTextColor(120,130,150); doc.setFontSize(10);
+        doc.text(k, 60, by);
+        doc.setFont('helvetica','bold'); doc.setTextColor(20,30,45); doc.setFontSize(12);
+        doc.text(String(v), W-60, by, { align:'right' });
+        by+=30;
+      }
+      row('Cliente', estado.nombre||'');
+      row('Correo', estado.email||'');
+      row('Plan', estado.plan||'');
+      row('Alojamiento', (estado.dias||'') + ' dias');
+      row('Total pagado', estado.precio||'');
+      y += 168 + 32;
+
+      doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(110,120,140);
+      doc.text('Soporte y reportes: contacto@montaguth.institute  |  Instagram: @montaguth.institute', 40, y);
+
+      doc.setDrawColor(225,231,239); doc.line(40, 770, W-40, 770);
+      doc.setFontSize(9); doc.setTextColor(150,160,175);
+      doc.text('STRAMONT  |  montaguth.institute  |  Comprobante generado automaticamente', 40, 788);
+
+      doc.save('Comprobante-Stramont-' + (estado.recibo||'recibo') + '.pdf');
+    }
+    document.getElementById('btnRecibo').addEventListener('click', generarRecibo);
   })();
   </script>
 
