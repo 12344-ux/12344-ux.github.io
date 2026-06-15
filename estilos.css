@@ -416,3 +416,25 @@ body{background:#0b0f16;}
 .mg-benes li:nth-child(3){animation-delay:.25s;}
 .mg-benes li:nth-child(4){animation-delay:.35s;}
 @keyframes beneIn{to{opacity:1;transform:none;}}
+
+
+/* ============================================================
+   HERO MOCKUP v3 — Antes/Después: foto protagonista + zoom al hover
+   ============================================================ */
+.mock{align-items:stretch;}
+.mock-card{position:relative;transition:transform .25s ease, border-color .25s ease, box-shadow .25s ease;}
+.mock-card:hover{transform:scale(1.04);border-color:var(--c1);box-shadow:0 16px 44px rgba(0,0,0,.45);z-index:3;}
+
+/* Tarjeta de la foto: poco marco, imagen grande */
+.mock-notes{padding:12px;}
+.mock-foto{
+  width:100%;
+  height:260px;
+  object-fit:cover;
+  display:block;
+  border:0;
+  border-radius:8px;
+  margin-top:8px;
+  box-shadow:none;
+}
+@media(max-width:760px){ .mock-foto{height:200px;} }
