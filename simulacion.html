@@ -156,6 +156,13 @@
         <h1>¡Pago confirmado!</h1>
         <p class="lead" id="exitoMsg">Recibimos tu documento correctamente.</p>
         <div class="linkbox" id="linkBox" style="display:none;"></div>
+
+        <div class="linkbox" style="background:rgba(47,84,201,.08);border-color:rgba(47,84,201,.3);text-align:center;">
+          <strong>🎁 Tu regalo por confiar en nosotros</strong><br>
+          <span style="color:var(--dim);font-size:14px;">Kit de plantillas para tomar apuntes con método científico (A4, tablet, Word, Notion + instructivo).</span><br>
+          <a href="kit-stramont.zip" download class="btn" style="display:inline-block;width:auto;padding:12px 26px;margin-top:14px;">📥 Descargar mi Kit gratis</a>
+        </div>
+
         <button id="btnRecibo" class="btn" style="display:inline-block;width:auto;padding:13px 28px;margin-top:4px;">📄 Descargar mi comprobante (PDF)</button>
         <p class="nota">¿Dudas o soporte durante esta prueba? Escríbenos a <a href="mailto:contacto@montaguth.institute">contacto@montaguth.institute</a></p>
         <p style="margin-top:24px;"><a href="index.html" class="btn btn-ghost" style="display:inline-block;width:auto;padding:12px 26px;">Volver al inicio</a></p>
@@ -302,7 +309,7 @@
         var now = new Date();
         estado.recibo = 'STR-' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '-' + String(now.getTime()).slice(-4);
         estado.fecha = now.toLocaleString('es-CO');
-        document.getElementById('exitoMsg').innerHTML = '¡Gracias, ' + estado.nombre + '! Recibimos tu documento. Te enviaremos tu <strong>enlace de acceso exclusivo</strong> a tu correo en <strong>menos de 24 horas</strong> (disponible ' + estado.dias + ' días).<br><br>🎁 Además, revisa tu correo: te enviamos un <strong>regalo</strong> por confiar en nosotros.';
+        document.getElementById('exitoMsg').innerHTML = '¡Gracias, ' + estado.nombre + '! Recibimos tu documento. Te enviaremos tu <strong>enlace de acceso exclusivo</strong> a tu correo en <strong>menos de 24 horas</strong> (disponible ' + estado.dias + ' días).<br><br>🎁 Y como regalo por confiar en nosotros, aquí tienes tu <strong>Kit de plantillas</strong> 👇';
         setTimeout(function(){ spin.style.display='none'; goto(4); }, 700);
       }catch(e){
         spin.style.display='none'; btn.disabled=false;
