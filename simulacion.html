@@ -121,8 +121,8 @@
       <input class="field" type="email" id="email" placeholder="Tu correo *" autocomplete="email">
       <div class="dz" id="dz">
         <span class="i">📎</span>
-        <strong>Arrastra aquí tu documento</strong><br>
-        o toca para elegir (PDF o imágenes)
+        <strong>Arrastra aquí tus apuntes</strong><br>
+        o toca para elegir · puedes subir <strong>varias imágenes</strong> o un PDF
       </div>
       <input type="file" id="file" accept="image/*,application/pdf" multiple hidden>
       <ul class="flist" id="flist"></ul>
@@ -185,6 +185,7 @@
 
     var estado = { plan:null, precio:null, limitMB:0, dias:0 };
     var fileInput = document.getElementById('file');
+    var seleccionados = [];
 
     function goto(n){
       document.querySelectorAll('.pane').forEach(function(p){ p.classList.remove('active'); });
@@ -195,7 +196,8 @@
     document.querySelectorAll('[data-go]').forEach(function(b){ b.addEventListener('click', function(){ goto(parseInt(b.dataset.go)); }); });
 
     function fmt(bytes){ return (bytes/1048576).toFixed(1)+' MB'; }
-    function totalBytes(){ var t=0; Array.prototype.forEach.call(fileInput.files,function(f){t+=f.size;}); return t; }
+    function totalBytes(){ var t=0; seleccionados.forEach(function(f){ t+=f.size; }); return t; }
+    function limpiar(s){ return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]/g,'_').replace(/_{2,}/g,'_'); }
 
     // Paso 1
     document.querySelectorAll('.plan').forEach(function(card){
@@ -212,24 +214,28 @@
       });
     });
 
-    // Paso 2
+    // Paso 2 (acumula varios archivos: imágenes y/o PDF; con opción de quitar)
     var dz = document.getElementById('dz'), flist = document.getElementById('flist');
     function render(){
       flist.innerHTML = '';
-      Array.prototype.forEach.call(fileInput.files, function(f){
+      seleccionados.forEach(function(f, idx){
         var li=document.createElement('li');
-        li.innerHTML = '<span>📄 '+f.name+'</span><span class="peso">'+fmt(f.size)+'</span>';
+        li.innerHTML = '<span>📄 '+f.name+'</span><span class="peso">'+fmt(f.size)+' <a href="#" data-rm="'+idx+'" title="Quitar" style="color:#ff9a9a;text-decoration:none;margin-left:10px;">✕</a></span>';
         flist.appendChild(li);
       });
+      flist.querySelectorAll('[data-rm]').forEach(function(a){
+        a.addEventListener('click', function(e){ e.preventDefault(); seleccionados.splice(parseInt(a.dataset.rm),1); render(); });
+      });
+    }
+    function agregar(lista){
+      Array.prototype.forEach.call(lista, function(f){ seleccionados.push(f); });
+      render();
     }
     dz.addEventListener('click', function(){ fileInput.click(); });
-    fileInput.addEventListener('change', render);
+    fileInput.addEventListener('change', function(){ agregar(this.files); this.value=''; });
     ['dragenter','dragover'].forEach(function(ev){ dz.addEventListener(ev,function(e){e.preventDefault();dz.classList.add('over');}); });
     ['dragleave','drop'].forEach(function(ev){ dz.addEventListener(ev,function(e){e.preventDefault();dz.classList.remove('over');}); });
-    dz.addEventListener('drop', function(e){
-      var dt=new DataTransfer(); Array.prototype.forEach.call(e.dataTransfer.files,function(f){dt.items.add(f);});
-      fileInput.files=dt.files; render();
-    });
+    dz.addEventListener('drop', function(e){ agregar(e.dataTransfer.files); });
 
     document.getElementById('toPago').addEventListener('click', function(){
       var nombre=document.getElementById('nombre').value.trim();
@@ -237,7 +243,7 @@
       var err=document.getElementById('err2');
       if(nombre.length<2){ err.textContent='Ingresa tu nombre completo.'; err.style.display='block'; return; }
       if(!/^[^@]+@[^@]+\.[^@]+$/.test(email)){ err.textContent='Ingresa un correo válido.'; err.style.display='block'; return; }
-      if(fileInput.files.length===0){ err.textContent='Adjunta al menos un archivo.'; err.style.display='block'; return; }
+      if(seleccionados.length===0){ err.textContent='Adjunta al menos un archivo.'; err.style.display='block'; return; }
       var max = estado.limitMB*1048576;
       if(totalBytes() > max){
         err.textContent='Tu archivo pesa '+fmt(totalBytes())+'. El plan '+estado.plan+' permite hasta '+estado.limitMB+' MB. Elige el plan Premium o reduce el tamaño.';
@@ -253,10 +259,10 @@
       if(!SUPA_READY) return info;
       info.demo = false;
       var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      var carpeta = email.toLowerCase().replace(/[^a-z0-9@._-]/g,'_');
-      for (var i=0;i<fileInput.files.length;i++){
-        var f = fileInput.files[i];
-        var path = carpeta + '/' + Date.now() + '_' + f.name.replace(/\s+/g,'_');
+      var carpeta = limpiar(email.toLowerCase());
+      for (var i=0;i<seleccionados.length;i++){
+        var f = seleccionados[i];
+        var path = carpeta + '/' + Date.now() + '_' + i + '_' + limpiar(f.name);
         var up = await sb.storage.from(BUCKET).upload(path, f, { upsert:false });
         if(up.error) throw up.error;
         info.paths.push(path); info.names.push(f.name);
