@@ -290,7 +290,7 @@ footer span{font-size:12.5px;color:var(--muted);letter-spacing:.3px;}
 .proc .pn{width:34px;height:34px;border-radius:9px;background:var(--c2);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;margin-bottom:14px;}
 .proc h3{font-size:17px;color:#fff;margin-bottom:6px;}
 .proc p{font-size:14.5px;color:var(--text-dim);margin:0;line-height:1.5;}
-.proceso-msg{margin-top:26px;text-align:center;font-size:16px;color:var(--c1);font-weight:700;}
+.proceso-msg{margin:36px auto 0;text-align:center;font-size:clamp(18px,2.6vw,23px);font-weight:800;color:var(--c1);background:rgba(42,157,143,.08);border:1px solid rgba(42,157,143,.35);border-radius:16px;padding:24px 30px;line-height:1.4;max-width:780px;}
 
 /* ===== VELOCIDAD 24h ===== */
 .velocidad{background:linear-gradient(135deg, rgba(42,157,143,.12), rgba(74,99,196,.08));border:1px solid var(--line);border-radius:18px;padding:42px;text-align:center;}
@@ -301,11 +301,14 @@ footer span{font-size:12.5px;color:var(--muted);letter-spacing:.3px;}
 .beneficios li .ck{color:var(--c1);font-weight:800;}
 
 /* ===== CONFIANZA ===== */
-.confianza-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
-.conf{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:26px;text-align:center;}
-.conf .ic{font-size:32px;}
-.conf h4{font-size:16px;color:#fff;margin:10px 0 4px;}
-.conf p{font-size:13.5px;color:var(--text-dim);margin:0;line-height:1.5;}
+.confianza-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:stretch;}
+.conf{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:30px 26px;text-align:center;}
+.conf .ic{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;line-height:1;margin:0 auto 16px;background:var(--surface2);}
+.conf h4{font-size:16.5px;color:#fff;margin:0 0 8px;line-height:1.3;}
+.conf p{font-size:14px;color:var(--text-dim);margin:0;line-height:1.55;}
+.conf--feature{border:1.5px solid rgba(42,157,143,.5);background:linear-gradient(180deg,rgba(42,157,143,.07),var(--surface) 72%);}
+.conf--feature .ic{background:rgba(42,157,143,.16);}
+.band-light .conf--feature{box-shadow:0 20px 46px rgba(42,157,143,.14);}
 
 /* ===== CIENCIA (tarjetas de beneficio) ===== */
 .bene-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:22px;}
@@ -383,6 +386,19 @@ body{background:#0b0f16;}
 /* ===== CTA final claro + escasez ámbar ===== */
 .band-light .cta-final{background:linear-gradient(135deg,#ffffff,#eaf1fb);border:1px solid rgba(15,23,42,.1);}
 .scarcity-text{color:#d98a1f;font-weight:700;font-size:14.5px;margin-top:18px;}
+
+/* ===== CIERRE — sección final de decisión (cierre de la narrativa) ===== */
+.cierre{padding:100px 0;}
+.cierre-inner{max-width:720px;margin:0 auto;text-align:center;background:linear-gradient(180deg,#ffffff,#eaf1fb);border:1px solid rgba(15,23,42,.10);border-radius:26px;padding:66px 50px;box-shadow:0 30px 80px rgba(42,157,143,.12),0 12px 30px rgba(16,28,51,.08);}
+.cierre-title{font-size:clamp(28px,4.6vw,44px);font-weight:900;line-height:1.14;color:#0f1620;margin:0 auto 20px;max-width:620px;}
+.cierre-sub{font-size:18px;color:#41506a;line-height:1.6;max-width:560px;margin:0 auto 32px;}
+.cierre-benes{list-style:none;display:flex;flex-wrap:wrap;gap:12px;justify-content:center;padding:0;margin:0 auto 38px;}
+.cierre-benes li{display:inline-flex;align-items:center;gap:9px;font-size:14.5px;font-weight:700;color:#243043;background:#fff;border:1px solid rgba(15,23,42,.12);border-radius:30px;padding:11px 20px;}
+.cb-ck{flex:0 0 auto;width:20px;height:20px;border-radius:50%;background:rgba(42,157,143,.16);color:var(--c1);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+.btn-cierre{font-size:18px;padding:22px 54px;border-radius:14px;box-shadow:0 16px 42px rgba(42,157,143,.36);}
+.btn-cierre:hover{transform:translateY(-3px);}
+.cierre-micro{margin-top:20px;font-size:14.5px;font-weight:700;color:#d98a1f;}
+@media(max-width:680px){.cierre{padding:64px 0;}.cierre-inner{padding:44px 22px;}.btn-cierre{padding:20px 30px;font-size:16px;width:100%;}}
 
 
 /* ============================================================
