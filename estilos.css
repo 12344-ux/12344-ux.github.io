@@ -180,6 +180,28 @@ footer span{font-size:12.5px;color:var(--muted);letter-spacing:.3px;}
 
 @media(max-width:680px){.compara{grid-template-columns:1fr;}.pasos-mini{grid-template-columns:1fr;}}
 
+/* ============================================================
+   EL CAMBIO — Antes vs Después (alto contraste, tarjetas oscuras)
+   Rojo = "problema" (apagado), no "error fatal". Turquesa = solución.
+   ============================================================ */
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:stretch;}
+.vs-card{border-radius:16px;padding:28px 26px;}
+.vs-card h3{font-size:19px;font-weight:800;margin-bottom:18px;display:flex;align-items:center;gap:10px;}
+.vs-bad{background:#2a1316;border:1px solid rgba(214,120,114,.30);}
+.vs-bad h3{color:#e0928c;}
+.vs-good{background:#0f2d2a;border:1px solid rgba(63,200,180,.34);}
+.vs-good h3{color:#3fcdbb;}
+.vs-list{list-style:none;margin:0;padding:0;}
+.vs-list li{display:flex;gap:11px;align-items:flex-start;font-size:15.5px;color:#cdd6e4;margin-bottom:14px;line-height:1.45;}
+.vs-list li:last-child{margin-bottom:0;}
+.vs-ic{flex:0 0 auto;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;margin-top:2px;}
+.vs-ic-x{background:rgba(214,120,114,.16);color:#d99a95;}
+.vs-ic-v{background:rgba(63,200,180,.16);color:#43d3c1;}
+.vs-bridge{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:28px;text-align:center;}
+.vs-arrow{font-size:26px;line-height:1;}
+.vs-bridge-text{display:inline-block;padding:11px 24px;border-radius:30px;background:rgba(42,157,143,.14);border:1px solid rgba(42,157,143,.45);color:var(--c1);font-weight:700;font-size:14.5px;letter-spacing:.3px;}
+@media(max-width:680px){.vs{grid-template-columns:1fr;}}
+
 
 /* ============================================================
    REDISEÑO DE CONVERSIÓN — Startup educativa respaldada por ciencia
