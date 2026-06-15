@@ -238,36 +238,54 @@
       goto(3);
     });
 
-    // Paso 3: subir + firmar enlace con caducidad
+    // Paso 3: subir, firmar enlace y avisarte a TI por correo
     async function procesar(email){
-      if(!SUPA_READY) return { demo:true, links:[] };
+      var info = { demo:true, links:[], paths:[], names:[] };
+      if(!SUPA_READY) return info;
+      info.demo = false;
       var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       var carpeta = email.toLowerCase().replace(/[^a-z0-9@._-]/g,'_');
-      var links=[];
       for (var i=0;i<fileInput.files.length;i++){
         var f = fileInput.files[i];
         var path = carpeta + '/' + Date.now() + '_' + f.name.replace(/\s+/g,'_');
         var up = await sb.storage.from(BUCKET).upload(path, f, { upsert:false });
         if(up.error) throw up.error;
+        info.paths.push(path); info.names.push(f.name);
         try{
           var s = await sb.storage.from(BUCKET).createSignedUrl(path, estado.dias*86400);
-          if(s.data && s.data.signedUrl) links.push(s.data.signedUrl);
+          if(s.data && s.data.signedUrl) info.links.push(s.data.signedUrl);
         }catch(e){ /* falta policy SELECT: el archivo igual queda subido */ }
       }
-      return { demo:false, links:links };
+      return info;
+    }
+
+    // Aviso de compra a contacto@montaguth.institute (para reenviar el enlace al comprador)
+    async function notificar(email, info){
+      try{
+        await fetch('https://formsubmit.co/ajax/contacto@montaguth.institute', {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({
+            _subject: '💸 NUEVA COMPRA · Stramont (' + estado.plan + ')',
+            comprador: email,
+            plan: estado.plan + ' · ' + estado.precio,
+            alojamiento: estado.dias + ' días',
+            archivos: info.names.join(', ') || '(sin nombre)',
+            ruta_supabase: info.paths.join(' | '),
+            enlace_para_reenviar: info.links.length ? info.links.join('   ') : '(genera el enlace desde Supabase Storage → falta policy SELECT)'
+          })
+        });
+      }catch(e){ /* si el correo falla, no bloqueamos el flujo del comprador */ }
     }
 
     document.getElementById('pagar').addEventListener('click', async function(){
       var btn=this, spin=document.getElementById('spin'), err=document.getElementById('err3');
       err.style.display='none'; btn.disabled=true; spin.style.display='block';
       try{
-        var r = await procesar(document.getElementById('email').value.trim());
-        document.getElementById('exitoMsg').innerHTML = 'Recibimos tu documento correctamente. Estará disponible <strong>'+estado.dias+' días</strong> en tu enlace exclusivo, que también enviaremos a tu correo.';
-        if(r.links && r.links.length){
-          document.getElementById('linkVigencia').textContent = '(válido '+estado.dias+' días)';
-          var a=document.getElementById('linkUrl'); a.href=r.links[0]; a.textContent=r.links[0];
-          document.getElementById('linkBox').style.display='block';
-        }
+        var email = document.getElementById('email').value.trim();
+        var r = await procesar(email);
+        await notificar(email, r);
+        document.getElementById('exitoMsg').innerHTML = 'Recibimos tu documento correctamente. Te enviaremos tu <strong>enlace de acceso exclusivo</strong> a tu correo en <strong>menos de 24 horas</strong> (disponible ' + estado.dias + ' días).';
         setTimeout(function(){ spin.style.display='none'; goto(4); }, 700);
       }catch(e){
         spin.style.display='none'; btn.disabled=false;
