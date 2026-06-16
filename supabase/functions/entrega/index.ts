@@ -5,6 +5,13 @@
 // - El visor (entrega.html en la web) las renderiza en un iframe.
 //   La función responde con CORS para que el visor pueda leerla.
 //
+// Modos (todos los de gestión van con ?key=LINK_SECRET):
+//   POST ?upload=1&f=archivo.html&key=...    -> sube la guía (body = HTML)
+//   GET  ?mint=1&f=archivo.html&days=30&key=...-> devuelve el link del visor
+//   GET  ?list=1&key=...                      -> lista las guías del bucket (JSON)
+//   POST ?delete=1&f=archivo.html&key=...      -> borra una guía del bucket
+//   GET  ?f=...&exp=...&sig=...                -> sirve la guía (lo llama el visor)
+//
 // Variables:
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  (Supabase las inyecta)
 //   LINK_SECRET                              (la pones tú en Secrets)
@@ -67,6 +74,33 @@ Deno.serve(async (req) => {
     const sig = await firmar(SECRET, `${f}.${exp}`);
     const link = `${VIEWER_URL}?f=${encodeURIComponent(f)}&exp=${exp}&sig=${sig}`;
     return new Response(link, { headers: { ...CORS, "content-type": "text/plain; charset=utf-8" } });
+  }
+
+  // ---------- MODO LISTAR (ver qué guías hay en el bucket) ----------
+  if (url.searchParams.get("list") === "1") {
+    if (url.searchParams.get("key") !== SECRET) return new Response("No autorizado.", { status: 403, headers: CORS });
+    const { data, error } = await sb().storage.from(BUCKET).list("", {
+      limit: 1000, sortBy: { column: "name", order: "asc" },
+    });
+    if (error) return new Response("Error al listar: " + error.message, { status: 500, headers: CORS });
+    const archivos = (data || [])
+      .filter((o) => o.name && o.id !== null) // ignora carpetas/placeholder
+      .map((o) => ({ nombre: o.name, actualizado: o.updated_at, bytes: o.metadata?.size ?? null }));
+    return new Response(JSON.stringify(archivos, null, 2), {
+      headers: { ...CORS, "content-type": "application/json; charset=utf-8" },
+    });
+  }
+
+  // ---------- MODO BORRAR (elimina una guía del bucket) ----------
+  if (url.searchParams.get("delete") === "1") {
+    if (req.method !== "POST" && req.method !== "DELETE") {
+      return new Response("Usa POST o DELETE.", { status: 405, headers: CORS });
+    }
+    if (url.searchParams.get("key") !== SECRET) return new Response("No autorizado.", { status: 403, headers: CORS });
+    if (!f) return new Response("Falta f.", { status: 400, headers: CORS });
+    const { error } = await sb().storage.from(BUCKET).remove([f]);
+    if (error) return new Response("Error al borrar: " + error.message, { status: 500, headers: CORS });
+    return new Response("OK: borrado " + f, { status: 200, headers: CORS });
   }
 
   // ---------- MODO SERVIR (lo lee el visor) ----------
