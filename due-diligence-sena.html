@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Due Diligence Institucional · SENA (Servicio Nacional de Aprendizaje)</title>
+<style>
+  :root{
+    --amarillo:#FFC400; --amarillo-suave:#FFF6D6;
+    --azul:#1E73E8; --azul-suave:#E1ECFF;
+    --rojo:#E23B3B; --rojo-suave:#FCE0E0;
+    --tinta:#1d2330; --gris:#5b6577; --linea:#e6e9f0;
+    --verde:#1faa59; --verde-suave:#e1f6ea;
+    --naranja:#e8860c; --naranja-suave:#fdeccf;
+    --fondo:#f4f6fb;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--fondo); color:var(--tinta);
+    font-family:"Segoe UI",Tahoma,Verdana,Arial,sans-serif; line-height:1.55;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  @page{ size:A4; margin:12mm 10mm 14mm 10mm; }
+  .wrap{max-width:1000px; margin:0 auto; padding:24px 18px 80px;}
+  h1,h2,h3{line-height:1.2;}
+  a{color:var(--azul); word-break:break-word;}
+
+  /* PORTADA */
+  .portada{
+    background:linear-gradient(135deg,#0a1730,#1E73E8);
+    color:#fff; border-radius:22px; padding:40px 30px; text-align:center;
+    box-shadow:0 14px 40px rgba(16,32,63,.35);
+  }
+  .portada .ico{font-size:60px; line-height:1;}
+  .portada h1{font-size:30px; margin:14px 0 4px;}
+  .portada .sub{font-size:17px; opacity:.95; margin:2px 0;}
+  .portada .meta{margin-top:10px; font-size:13px; opacity:.85;}
+  .semaforo{font-size:24px; letter-spacing:6px; margin-top:16px;}
+  .badges{margin-top:16px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;}
+  .badge{background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.4);
+    padding:6px 12px; border-radius:999px; font-size:13px;}
+
+  /* SECCIONES */
+  section{margin-top:34px;}
+  .titulo-seccion{
+    display:flex; align-items:center; gap:12px; margin-bottom:6px;
+    border-bottom:3px solid var(--linea); padding-bottom:10px;
+  }
+  .titulo-seccion .ico{font-size:28px;}
+  .titulo-seccion h2{margin:0; font-size:22px;}
+  .subnota{color:var(--gris); font-size:14px; margin:4px 0 18px;}
+
+  .panel{
+    background:#fff; border:1px solid var(--linea); border-radius:16px;
+    padding:18px 20px; box-shadow:0 4px 14px rgba(20,30,60,.05);
+  }
+  .panel + .panel{margin-top:14px;}
+  .panel h3{margin:4px 0 8px; font-size:17px;}
+
+  .clave{background:var(--amarillo-suave); border-left:6px solid var(--amarillo);
+    padding:10px 14px; border-radius:8px; margin:10px 0;}
+  .clave.azul{background:var(--azul-suave); border-color:var(--azul);}
+  .clave.verde{background:var(--verde-suave); border-color:var(--verde);}
+  .clave.rojo{background:var(--rojo-suave); border-color:var(--rojo);}
+
+  /* CABECERA DE CAPÍTULO */
+  .cap-encabezado{
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    background:#0a1730; color:#fff; border-radius:14px; padding:14px 18px; margin:30px 0 14px;
+  }
+  .cap-encabezado .em{font-size:28px;}
+  .cap-encabezado h2{margin:0; font-size:20px;}
+  .cap-encabezado small{display:block; opacity:.85; font-weight:normal; font-size:13px; margin-top:2px;}
+
+  /* TARJETAS TIPO "FICHA" */
+  .ficha{
+    background:#fff; border:1px solid var(--linea); border-left-width:10px;
+    border-radius:14px; margin:14px 0; overflow:hidden;
+    box-shadow:0 6px 18px rgba(20,30,60,.06);
+  }
+  .ficha.amarillo{border-left-color:var(--amarillo);}
+  .ficha.azul{border-left-color:var(--azul);}
+  .ficha.rojo{border-left-color:var(--rojo);}
+
+  .ficha-top{display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    padding:14px 18px; border-bottom:1px dashed var(--linea);}
+  .dot{width:18px; height:18px; border-radius:50%; flex:none;
+    box-shadow:0 0 0 4px rgba(0,0,0,.05);}
+  .dot.amarillo{background:var(--amarillo);}
+  .dot.azul{background:var(--azul);}
+  .dot.rojo{background:var(--rojo);}
+  .ficha-top .ref{font-weight:800; font-size:15px;}
+  .ficha-top .nombre{font-weight:700;}
+  .etiqueta{margin-left:auto; background:#0a1730; color:#fff; font-weight:700;
+    padding:5px 12px; border-radius:999px; font-size:12px; letter-spacing:.4px;}
+
+  .zona{padding:14px 18px; border-bottom:1px solid var(--linea);}
+  .zona:last-child{border-bottom:none;}
+  .zona .et{display:flex; align-items:center; gap:8px; font-weight:800; font-size:12px;
+    text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px; color:var(--gris);}
+  .zona.tecnico{background:#0b1220; color:#d7e3f5;}
+  .zona.tecnico .et{color:#7fb0e3;}
+  .zona.tecnico b{color:#fff;}
+  .zona.simple{background:var(--amarillo-suave);}
+  .zona.simple .dibujo{font-size:30px; line-height:1.1;}
+  .insight{background:var(--azul-suave); border-radius:10px; padding:10px 12px; margin-top:8px; font-size:14px;}
+  .insight b{color:var(--azul);}
+
+  ul.mini{margin:6px 0 0; padding-left:20px;}
+  ul.mini li{margin:4px 0;}
+
+  /* TABLAS */
+  table.tbl{width:100%; border-collapse:collapse; margin-top:12px; font-size:14px; background:#fff;}
+  table.tbl th, table.tbl td{border:1px solid var(--linea); padding:9px 11px; text-align:left; vertical-align:top;}
+  table.tbl th{background:#0a1730; color:#fff;}
+  table.tbl tr:nth-child(even){background:#f7f9fd;}
+  table.tbl caption{caption-side:top; text-align:left; font-weight:700; padding:6px 2px; color:var(--gris);}
+
+  /* MATRIZ DE RIESGO */
+  .rb{display:inline-block; padding:3px 9px; border-radius:999px; font-size:12px; font-weight:800; color:#fff; white-space:nowrap;}
+  .rb.alto{background:var(--rojo);}
+  .rb.medio{background:var(--naranja);}
+  .rb.bajo{background:var(--verde);}
+  .rb.info{background:var(--azul);}
+
+  .leyenda{display:flex; gap:14px; flex-wrap:wrap; margin:10px 0;}
+  .leyenda span{display:inline-flex; align-items:center; gap:8px; font-weight:600; font-size:13px;}
+
+  .toc{columns:2; column-gap:26px;}
+  .toc a{display:block; padding:4px 0; text-decoration:none; color:var(--tinta); font-size:14px; border-bottom:1px solid var(--linea);}
+  .toc a:hover{color:var(--azul);}
+  .toc .n{display:inline-block; width:26px; height:26px; line-height:26px; text-align:center;
+    background:#0a1730; color:#fff; border-radius:50%; font-weight:800; font-size:12px; margin-right:8px;}
+
+  .nota-final{background:#0a1730; color:#fff; border-radius:16px; padding:22px; margin-top:30px;}
+  .nota-final h2{margin-top:0;}
+  .nota-final a{color:#9cc4ff;}
+
+  .disclaimer{font-size:12.5px; color:var(--gris); background:#fff; border:1px dashed var(--linea);
+    border-radius:12px; padding:14px 16px; margin-top:18px;}
+
+  @media (max-width:600px){
+    .toc{columns:1;}
+    .etiqueta{margin-left:0;}
+  }
+  @media print{
+    body{background:#fff;}
+    .ficha,.panel,.portada,.cap-encabezado{box-shadow:none;}
+    .ficha,.panel,table.tbl{page-break-inside:avoid;}
+    a{color:#0a1730; text-decoration:none;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===================== PORTADA ===================== -->
+  <div class="portada">
+    <div class="ico">🏛️🔎📊</div>
+    <h1>DUE DILIGENCE INSTITUCIONAL</h1>
+    <p class="sub"><strong>Servicio Nacional de Aprendizaje — SENA</strong></p>
+    <p class="sub">Análisis jurídico, financiero y operativo de alta precisión</p>
+    <p class="meta">Diligencia Debida · Documento técnico de consulta profunda · Edición 2026</p>
+    <div class="semaforo">🟡 🔵 🔴</div>
+    <div class="badges">
+      <span class="badge">⚖️ Legal &amp; Compliance</span>
+      <span class="badge">💰 Financiero</span>
+      <span class="badge">🏗️ Estructura</span>
+      <span class="badge">📈 Impacto</span>
+      <span class="badge">⚠️ Matriz de riesgo</span>
+    </div>
+  </div>
+
+  <!-- ===================== CÓMO LEER ===================== -->
+  <section>
+    <div class="titulo-seccion"><span class="ico">🧭</span><h2>Cómo leer este informe</h2></div>
+    <p class="subnota">Mismo lenguaje visual de la guía anterior: cada hallazgo es una <b>ficha</b> con tres niveles de lectura, para que un experto y un principiante naveguen al ritmo que prefieran.</p>
+    <div class="panel">
+      <div class="leyenda">
+        <span><span class="dot azul"></span> 🖥️ <b>ANÁLISIS TÉCNICO</b>: la precisión jurídica/operativa.</span>
+        <span><span class="dot amarillo"></span> 🔊 <b>EN PALABRAS SIMPLES</b>: la idea explicada con una analogía.</span>
+      </div>
+      <p style="margin-bottom:0;">Además, el <b>semáforo de colores</b> en el borde de cada ficha marca un ritmo de lectura (🟡→🔵→🔴) y la <b>matriz final</b> usa los mismos colores para clasificar el riesgo: <span class="rb bajo">BAJO</span> <span class="rb medio">MEDIO</span> <span class="rb alto">ALTO</span>.</p>
+    </div>
+  </section>
+
+  <!-- ===================== TABLA DE CONTENIDO ===================== -->
+  <section>
+    <div class="titulo-seccion"><span class="ico">📑</span><h2>Contenido</h2></div>
+    <div class="panel">
+      <div class="toc">
+        <a href="#s0"><span class="n">0</span> Resumen ejecutivo</a>
+        <a href="#s1"><span class="n">1</span> ADN institucional: evolución y propósito</a>
+        <a href="#s2"><span class="n">2</span> Naturaleza jurídica y marco legal</a>
+        <a href="#s3"><span class="n">3</span> Estructura organizativa y gobierno</a>
+        <a href="#s4"><span class="n">4</span> Gestión financiera y presupuestaria</a>
+        <a href="#s5"><span class="n">5</span> Cumplimiento normativo (compliance)</a>
+        <a href="#s6"><span class="n">6</span> Impacto social y operativo</a>
+        <a href="#s7"><span class="n">7</span> Matriz de puntos críticos y conclusiones</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 0. RESUMEN EJECUTIVO ===================== -->
+  <section id="s0">
+    <div class="cap-encabezado">
+      <span class="em">📌</span>
+      <div><h2>0 · Resumen Ejecutivo <small>Lo esencial en una página</small></h2></div>
+    </div>
+    <div class="panel">
+      <p>El <b>SENA</b> es la entidad pública de formación profesional más grande de Colombia: nació en <b>1957</b> y hoy opera como un <b>establecimiento público del orden nacional</b> adscrito al <b>Ministerio del Trabajo</b>, con autonomía administrativa, personería jurídica y patrimonio propio. Su músculo financiero proviene principalmente de <b>aportes parafiscales</b> (un porcentaje de la nómina de los empleadores), lo que le da una fuente de ingresos estable pero <b>ligada al ciclo del empleo formal</b>.</p>
+      <p style="margin-bottom:0;">Desde una óptica de <b>diligencia debida</b>, el SENA combina <b>fortalezas notables</b> (cobertura nacional, gratuidad, marco legal robusto, función contracíclica) con <b>puntos críticos</b> típicos del sector público: dependencia de la formalidad laboral, exposición a la contratación estatal (Ley 80), litigiosidad laboral y administrativa, y el reto permanente de la <b>pertinencia</b> de su formación frente a un mercado que cambia rápido. La matriz de la Sección 7 resume todo en formato de riesgo/fortaleza/oportunidad.</p>
+    </div>
+    <table class="tbl">
+      <caption>Ficha de identificación rápida</caption>
+      <tr><th style="width:32%;">Atributo</th><th>Dato</th></tr>
+      <tr><td>Nombre</td><td>Servicio Nacional de Aprendizaje (SENA)</td></tr>
+      <tr><td>Creación</td><td>21 de junio de <b>1957</b> (Decreto-Ley 118 de 1957)</td></tr>
+      <tr><td>Naturaleza jurídica</td><td>Establecimiento público del orden nacional, con personería jurídica, patrimonio propio e independiente y autonomía administrativa</td></tr>
+      <tr><td>Adscripción</td><td>Ministerio del Trabajo</td></tr>
+      <tr><td>Norma estructural vigente</td><td>Ley 119 de 1994 (reestructuración) y Decreto 249 de 2004 (estructura)</td></tr>
+      <tr><td>Financiación principal</td><td>Aportes parafiscales (≈2% de la nómina) + Presupuesto General de la Nación + rendimientos</td></tr>
+      <tr><td>Cobertura aprox.</td><td>~33 regionales y ~117 centros de formación a nivel nacional</td></tr>
+      <tr><td>Servicios misionales</td><td>Formación profesional integral · Certificación de competencias · Agencia Pública de Empleo · Emprendimiento e innovación</td></tr>
+    </table>
+  </section>
+
+
+  <!-- ===================== 1. ADN INSTITUCIONAL ===================== -->
+  <section id="s1">
+    <div class="cap-encabezado">
+      <span class="em">🧬</span>
+      <div><h2>1 · ADN Institucional: Evolución y Propósito <small>De dónde viene, para qué existe y dónde está hoy</small></h2></div>
+    </div>
+
+    <!-- 1.1 Historia -->
+    <div class="ficha amarillo">
+      <div class="ficha-top">
+        <span class="dot amarillo"></span>
+        <span class="ref">1.1</span>
+        <span class="nombre">Análisis histórico: hitos de transformación</span>
+        <span class="etiqueta">1957 → hoy</span>
+      </div>
+      <div class="zona tecnico">
+        <div class="et">🖥️ Análisis técnico</div>
+        El SENA nace el <b>21 de junio de 1957</b> mediante <b>Decreto-Ley 118 de 1957</b>, fruto de un acuerdo tripartito poco común: <b>trabajadores organizados, empresarios y la Iglesia católica</b>, con apoyo técnico de la <b>OIT</b>. Su impulsor y primer director fue <b>Rodolfo Martínez Tono</b>. Hitos clave:
+        <ul class="mini">
+          <li><b>1957</b> — Creación por decreto durante la Junta Militar; se diseña como entidad financiada con aportes de empleadores (germen del modelo parafiscal).</li>
+          <li><b>1982 (Ley 21)</b> — Se ordena y formaliza el sistema de <b>aportes parafiscales</b> (SENA, ICBF, cajas), consolidando su sostenibilidad financiera.</li>
+          <li><b>1994 (Ley 119)</b> — <b>Reestructuración integral</b>: se redefine misión, objetivos y estructura; es la "partida de nacimiento moderna" del SENA.</li>
+          <li><b>1996 (Ley 344)</b> — Se destina parte de sus recursos a <b>competitividad, innovación y desarrollo tecnológico</b>.</li>
+          <li><b>2002–2003 (Ley 789 / Ley 812)</b> — Se moderniza el <b>contrato de aprendizaje</b> y se amplían cobertura y servicios de empleo.</li>
+          <li><b>2004 (Decreto 249)</b> — Se fija la <b>estructura orgánica</b> vigente.</li>
+          <li><b>2008 en adelante</b> — Internacionalización (miembro de <b>WorldSkills</b>), formación virtual masiva y Tecnoparques/Tecnoacademias.</li>
+        </ul>
+      </div>
+      <div class="zona simple">
+        <div class="et">🔊 En palabras simples</div>
+        <span class="dibujo">🌱➡️🌳</span>
+        <div>Piensa en un <b>árbol sembrado en 1957</b>. La <b>Ley 119 de 1994</b> fue la gran "poda" que le dio su forma actual; las demás leyes son <b>anillos de crecimiento</b> que muestran cómo se hizo más fuerte con los años.</div>
+      </div>
+      <div class="zona"><div class="insight">🧠 <b>Insight estratégico:</b> es frecuente atribuir su creación a "la Ley 1 de 1957", pero técnicamente nació por <b>decreto-ley</b>. Para una defensa institucional, citar la norma exacta (Decreto 118/1957 y Ley 119/1994) evita errores de fundamentación.</div></div>
+    </div>
+
+    <!-- 1.2 Misión/Visión -->
+    <div class="ficha azul">
+      <div class="ficha-top">
+        <span class="dot azul"></span>
+        <span class="ref">1.2</span>
+        <span class="nombre">Identidad misional: la misión como obligación legal</span>
+        <span class="etiqueta">Ley 119/1994, art. 2–4</span>
+      </div>
+      <div class="zona tecnico">
+        <div class="et">🖥️ Análisis técnico</div>
+        La misión del SENA <b>no es un eslogan: es un mandato legal</b>. La Ley 119 de 1994 le encarga <b>cumplir la función del Estado de invertir en el desarrollo social y técnico de los trabajadores</b>, ofreciendo y ejecutando <b>formación profesional integral</b> gratuita. De ahí derivan obligaciones exigibles:
+        <ul class="mini">
+          <li><b>Gratuidad y acceso</b>: la formación es un servicio público a cargo del Estado (Constitución, arts. 54 y 67).</li>
+          <li><b>Pertinencia y actualización</b>: debe modernizar permanentemente su oferta (objetivo legal, no opcional).</li>
+          <li><b>Enfoque inclusivo</b>: atención a población vulnerable y con discapacidad (Ley 361 de 1997 y normas recientes).</li>
+        </ul>
+        En clave de <b>due diligence</b>, esto significa que un incumplimiento misional no es solo "mala gestión": puede generar <b>responsabilidad estatal</b> y acciones judiciales (tutela, acción popular, etc.).
+      </div>
+      <div class="zona simple">
+        <div class="et">🔊 En palabras simples</div>
+        <span class="dibujo">📜🤝🎓</span>
+        <div>La misión es como un <b>contrato con el país</b>: el Estado prometió enseñar gratis a quien lo necesite, y le encargó esa promesa al SENA. Si no la cumple, le pueden "reclamar el contrato" ante un juez.</div>
+      </div>
+    </div>
+
+    <!-- 1.3 Contexto 2026 -->
+    <div class="ficha rojo">
+      <div class="ficha-top">
+        <span class="dot rojo"></span>
+        <span class="ref">1.3</span>
+        <span class="nombre">Contexto actual: el SENA en la competitividad de Colombia (2026)</span>
+        <span class="etiqueta">Visión país</span>
+      </div>
+      <div class="zona tecnico">
+        <div class="et">🖥️ Análisis técnico</div>
+        En 2026 el SENA es una pieza central de la <b>política de empleo y competitividad</b>. Su rol se entiende en tres frentes:
+        <ul class="mini">
+          <li><b>Capital humano:</b> principal proveedor de técnicos y tecnólogos; alimenta cadenas productivas (industria, agro, servicios, economía digital).</li>
+          <li><b>Cierre de brechas:</b> herramienta del Estado para reducir el desempleo juvenil y atender migración, ruralidad y reconversión laboral.</li>
+          <li><b>Sistema Nacional de Cualificaciones:</b> articula formación, certificación de competencias y reconocimiento de aprendizajes previos, alineándose con estándares internacionales.</li>
+        </ul>
+        El reto crítico es la <b>pertinencia</b>: que lo que enseña corresponda a lo que el mercado realmente demanda (automatización, IA, transición energética). También enfrenta la presión de la <b>reforma laboral</b>, que ajusta cuotas y condiciones del contrato de aprendizaje.
+      </div>
+      <div class="zona simple">
+        <div class="et">🔊 En palabras simples</div>
+        <span class="dibujo">🧩⚙️</span>
+        <div>El SENA es la <b>fábrica de talento</b> del país. Si fabrica las "piezas" (habilidades) que las empresas necesitan hoy, la economía encaja y crece; si fabrica piezas viejas, sobran trabajadores y faltan los que se necesitan.</div>
+      </div>
+      <div class="zona"><div class="insight">🧠 <b>Insight estratégico:</b> la mayor vulnerabilidad reputacional del SENA no es legal sino de <b>relevancia</b>: el debate público se centra en si su oferta sigue el ritmo del mercado. Cualquier análisis de defensa debe anticipar esta crítica con datos de empleabilidad de egresados.</div></div>
+    </div>
+  </section>
+
+
+  <!-- ===================== 2. NATURALEZA JURÍDICA ===================== -->
+  <section id="s2">
+    <div class="cap-encabezado">
+      <span class="em">⚖️</span>
+      <div><h2>2 · Naturaleza Jurídica y Marco Legal <small>Qué "tipo" de entidad es y qué normas la blindan</small></h2></div>
+    </div>
+
+    <!-- 2.1 Naturaleza -->
+    <div class="ficha amarillo">
+      <div class="ficha-top">
+        <span class="dot amarillo"></span>
+        <span class="ref">2.1</span>
+        <span class="nombre">Definición de la naturaleza jurídica</span>
+        <span class="etiqueta">Establecimiento público</span>
+      </div>
+      <div class="zona tecnico">
+        <div class="et">🖥️ Análisis técnico</div>
+        El SENA es un <b>establecimiento público del orden nacional</b>, lo que técnicamente implica tres atributos que conviene separar:
+        <ul class="mini">
+          <li><b>Personería jurídica:</b> es un "sujeto de derecho" propio; puede demandar, ser demandado, contratar y responder patrimonialmente por sí mismo.</li>
+          <li><b>Patrimonio propio e independiente:</b> tiene bienes y recursos separados del Tesoro general, aunque sigue siendo dinero público.</li>
+          <li><b>Autonomía administrativa:</b> se gestiona a sí mismo (organiza su planta, expide reglamentos como el del Aprendiz), pero <b>adscrito</b> al Ministerio del Trabajo, que ejerce tutela y orientación de política.</li>
+        </ul>
+        <b>Consecuencia jurídica clave:</b> al ser entidad estatal, le aplica el <b>derecho público</b> (control fiscal de la Contraloría, control disciplinario, contratación estatal, acciones contencioso-administrativas).
+      </div>
+      <div class="zona simple">
+        <div class="et">🔊 En palabras simples</div>
+        <span class="dibujo">🏛️🪪</span>
+        <div>Imagina al SENA como un <b>"hijo adulto" del Estado</b>: vive en casa del papá (Ministerio del Trabajo), pero tiene su <b>propia cédula, su propia billetera y toma sus propias decisiones</b> del día a día. Eso sí, debe rendir cuentas a sus padres.</div>
+      </div>
+    </div>
+
+    <!-- 2.2 Marco legal -->
+    <div class="ficha azul">
+      <div class="ficha-top">
+        <span class="dot azul"></span>
+        <span class="ref">2.2</span>
+        <span class="nombre">Las normas que blindan su operación</span>
+        <span class="etiqueta">Pirámide normativa</span>
+      </div>
+      <div class="zona tecnico">
+        <div class="et">🖥️ Análisis técnico</div>
+        El SENA se rige por una <b>pirámide normativa</b> ordenada de mayor a menor jerarquía:
+      </div>
+      <div class="zona">
+        <table class="tbl">
+          <tr><th>Nivel</th><th>Norma</th><th>Qué aporta al SENA</th></tr>
+          <tr><td><b>Constitucional</b></td><td>Constitución Política, arts. 54 y 67</td><td>Funda el deber del Estado de ofrecer formación y el derecho a la educación.</td></tr>
+          <tr><td rowspan="5"><b>Legal</b></td><td>Decreto-Ley 118 de 1957</td><td>Creación del SENA y origen de los aportes de empleadores.</td></tr>
+          <tr><td>Ley 21 de 1982</td><td>Régimen de aportes parafiscales (recaudo y destinación).</td></tr>
+          <tr><td>Ley 119 de 1994</td><td>Reestructuración: misión, objetivos y funciones vigentes.</td></tr>
+          <tr><td>Ley 344 de 1996</td><td>Destinación de recursos a competitividad e innovación.</td></tr>
+          <tr><td>Ley 789 de 2002</td><td>Contrato de aprendizaje y cuota de aprendices por empresa.</td></tr>
+          <tr><td rowspan="2"><b>Reglamentario</b></td><td>Decreto 249 de 2004</td><td>Estructura orgánica y funciones de cada dependencia.</td></tr>
+          <tr><td>Acuerdos del Consejo Directivo (p. ej. 0009 de 2024)</td><td>Reglamentación interna (Reglamento del Aprendiz, etc.).</td></tr>
+        </table>
+      </div>
+      <div class="zona simple">
+        <div class="et">🔊 En palabras simples</div>
+        <span class="dibujo">🧱🏗️</span>
+        <div>Es un <b>edificio de leyes</b>: la Constitución es el cimiento, las leyes son las columnas y los decretos/acuerdos son las paredes y la decoración. Si tocas un cimiento, tiembla todo; si cambias una pared (un acuerdo), el edificio sigue en pie.</div>
+      </div>
+      <div class="zona"><div class="insight">🧠 <b>Insight estratégico:</b> para una defensa legal, distinguir el <b>nivel</b> de la norma es decisivo: un acto interno del SENA no puede contradecir una ley, y una ley no puede contradecir la Constitución. Muchos litigios se ganan o pierden por esta jerarquía.</div></div>
+    </div>
+  </section>
+
+  <!-- ===================== 3. ESTRUCTURA ===================== -->
+  <section id="s3">
+    <div class="cap-encabezado">
+      <span class="em">🏗️</span>
+      <div><h2>3 · Estructura Organizativa y Gobierno <small>Quién manda, quién decide y cómo se reparte el territorio</small></h2></div>
+    </div>
+
+    <!-- 3.1 Jerarquía -->
+    <div class="ficha rojo">
+      <div class="ficha-top">
+        <span class="dot rojo"></span>
+        <span class="ref">3.1</span>
+        <span class="nombre">Jerarquía y órganos de gobierno</span>
+        <span class="etiqueta">Decreto 249/2004</span>
+      </div>
+      <div class="zona tecnico">
+        <div class="et">🖥️ Análisis técnico</div>
+        El gobierno del SENA combina una <b>cabeza ejecutiva</b> con <b>órganos colegiados</b> de dirección:
+        <ul class="mini">
+          <li><b>Consejo Directivo Nacional:</b> máximo órgano de dirección. Tiene composición <b>tripartita</b> (Gobierno, empleadores y trabajadores) más actores del sector educativo/social. Fija políticas y expide acuerdos (norma interna).</li>
+          <li><b>Dirección General:</b> el Director General es el representante legal y máxima autoridad ejecutiva; dirige la entidad y ejecuta las políticas del Consejo.</li>
+          <li><b>Direcciones de área (nivel central):</b> Formación Profesional, Empleo, Planeación, Jurídica, Administrativa y Financiera, entre otras.</li>
+          <li><b>Direcciones Regionales:</b> representan al SENA en cada departamento (p. ej. Regional Boyacá).</li>
+          <li><b>Centros de Formación Profesional:</b> la unidad operativa donde realmente ocurre la formación; los dirige un Subdirector de Centro.</li>
+        </ul>
+      </div>
+      <div class="zona simple">
+        <div class="et">🔊 En palabras simples</div>
+        <span class="dibujo">👥🏢🏫</span>
+        <div>Como una <b>cadena de colegios a nivel nacional</b>: hay una <b>junta</b> que decide las reglas (Consejo Directivo), un <b>rector general</b> que las ejecuta (Director General), <b>coordinadores por región</b> (Regionales) y, al final, <b>cada sede</b> donde se enseña (Centros de Formación).</div>
+      </div>
+    </div>
+
+    <!-- 3.2 Competencias territoriales -->
+    <div class="ficha amarillo">
+      <div class="ficha-top">
+        <span class="dot amarillo"></span>
+        <span class="ref">3.2</span>
+        <span class="nombre">Distribución de competencias territoriales</span>
+        <span class="etiqueta">~33 regionales · ~117 centros</span>
+      </div>
+      <div class="zona tecnico">
+        <div class="et">🖥️ Análisis técnico</div>
+        El SENA opera con un modelo <b>desconcentrado</b>: la sede nacional fija la política y las <b>Direcciones Regionales</b> la ejecutan en el territorio, adaptándola a la vocación productiva local. Por ejemplo, la <b>Regional Boyacá</b> orienta su oferta a agroindustria, minería y turismo, mientras una regional industrial prioriza manufactura o tecnología.
+        <ul class="mini">
+          <li><b>Nivel nacional:</b> diseño curricular, normas, presupuesto, estándares de calidad.</li>
+          <li><b>Nivel regional:</b> gestión de centros, alianzas con empresas locales, ejecución de cupos.</li>
+          <li><b>Decisiones disciplinarias/sancionatorias:</b> 1.ª instancia en la Subdirección de Centro y 2.ª instancia en la Dirección Regional (importante para el debido proceso del aprendiz).</li>
+        </ul>
+      </div>
+      <div class="zona simple">
+        <div class="et">🔊 En palabras simples</div>
+        <span class="dibujo">🗺️📍</span>
+        <div>La "receta" se escribe en Bogotá, pero <b>cada región cocina según los ingredientes que tiene</b>: Boyacá con su campo y minería, otra región con sus fábricas. Misma institución, sabor local.</div>
+      </div>
+      <div class="zona"><div class="insight">🧠 <b>Insight estratégico:</b> la desconcentración es una fortaleza (cercanía territorial) pero también un foco de <b>riesgo de heterogeneidad</b>: la calidad y los criterios pueden variar entre regionales, lo que abre la puerta a inconformidades y litigios por trato desigual.</div></div>
+    </div>
+  </section>
+
+
+  <!-- ===================== 4. FINANCIERA ===================== -->
+  <section id="s4">
+    <div class="cap-encabezado">
+      <span class="em">💰</span>
+      <div><h2>4 · Gestión Financiera y Presupuestaria <small>De dónde sale la plata y cómo se controla</small></h2></div>
+    </div>
+
+    <!-- 4.1 Fuentes -->
+    <div class="ficha azul">
+      <div class="ficha-top">
+        <span class="dot azul"></span>
+        <span class="ref">4.1</span>
+        <span class="nombre">Fuentes de financiación</span>
+        <span class="etiqueta">Parafiscales + PGN</span>
+      </div>
+      <div class="zona tecnico">
+        <div class="et">🖥️ Análisis técnico</div>
+        La columna vertebral financiera del SENA son los <b>aportes parafiscales</b>: contribuciones obligatorias de los empleadores equivalentes a aproximadamente <b>2% de la nómina</b>, recaudadas por las cajas de compensación (Ley 21 de 1982). A esto se suman:
+        <ul class="mini">
+          <li><b>Presupuesto General de la Nación (PGN):</b> apropiaciones y transferencias del Gobierno.</li>
+          <li><b>Rendimientos financieros</b> y recursos propios (venta de servicios, convenios, cooperación).</li>
+          <li><b>Destinaciones específicas:</b> por Ley 344 de 1996, un porcentaje se orienta a competitividad, innovación y desarrollo tecnológico.</li>
+        </ul>
+        <b>Naturaleza "parafiscal":</b> es un punto técnico crucial. No son impuestos ordinarios ni tasas; son contribuciones <b>con destinación específica</b> que solo pueden gastarse en los fines de la entidad. Usarlos para otra cosa es una irregularidad fiscal.
+      </div>
+      <div class="zona simple">
+        <div class="et">🔊 En palabras simples</div>
+        <span class="dibujo">🏢➡️🐷</span>
+        <div>Cada empresa formal echa una "monedita" (un % de lo que paga en sueldos) a una <b>alcancía especial</b>. Esa alcancía es del SENA y <b>solo</b> puede abrirse para enseñar y formar; no para otros gastos.</div>
+      </div>
+      <div class="zona"><div class="insight">🧠 <b>Insight estratégico:</b> al depender de la nómina formal, el presupuesto del SENA es <b>procíclico</b>: sube cuando hay empleo y baja en crisis. Paradójicamente, en recesión —cuando más se necesita formar y reentrenar— sus ingresos tienden a contraerse. Es su principal riesgo estructural-financiero.</div></div>
+    </div>
+
+    <!-- 4.2 Transparencia -->
+    <div class="ficha rojo">
+      <div class="ficha-top">
+        <span class="dot rojo"></span>
+        <span class="ref">4.2</span>
+        <span class="nombre">Transparencia y rendición de cuentas</span>
+        <span class="etiqueta">Control múltiple</span>
+      </div>
+      <div class="zona tecnico">
+        <div class="et">🖥️ Análisis técnico</div>
+        Por manejar recursos públicos, el SENA está sometido a <b>varias capas de control</b> simultáneas:
+        <ul class="mini">
+          <li><b>Control fiscal:</b> la <b>Contraloría General de la República</b> vigila el buen uso de los recursos (control posterior y selectivo).</li>
+          <li><b>Control disciplinario:</b> la <b>Procuraduría</b> y control interno disciplinario sobre los servidores.</li>
+          <li><b>Control interno:</b> oficina de control interno y sistema de gestión (MIPG).</li>
+          <li><b>Transparencia activa:</b> Ley 1712 de 2014 (Ley de Transparencia) obliga a publicar presupuesto, contratos y resultados.</li>
+          <li><b>Rendición de cuentas:</b> audiencias públicas periódicas y reportes a SECOP/portales oficiales.</li>
+        </ul>
+      </div>
+      <div class="zona simple">
+        <div class="et">🔊 En palabras simples</div>
+        <span class="dibujo">🔍🧾</span>
+        <div>Como manejan plata de todos, hay <b>varios "vigilantes" mirando al mismo tiempo</b>: uno revisa que la plata se gaste bien (Contraloría), otro que los funcionarios se porten bien (Procuraduría) y, además, todo debe publicarse para que cualquier ciudadano lo vea.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 5. COMPLIANCE ===================== -->
+  <section id="s5">
+    <div class="cap-encabezado">
+      <span class="em">🛡️</span>
+      <div><h2>5 · Cumplimiento Normativo (Legal Compliance) <small>Contratación pública, riesgos y defensa institucional</small></h2></div>
+    </div>
+
+    <!-- 5.1 Ley 80 -->
+    <div class="ficha amarillo">
+      <div class="ficha-top">
+        <span class="dot amarillo"></span>
+        <span class="ref">5.1</span>
+        <span class="nombre">Contratación pública (Ley 80 de 1993) aplicada al SENA</span>
+        <span class="etiqueta">Estatuto de contratación</span>
+      </div>
+      <div class="zona tecnico">
+        <div class="et">🖥️ Análisis técnico</div>
+        Como entidad estatal, el SENA contrata bajo el <b>Estatuto General de Contratación de la Administración Pública (Ley 80 de 1993)</b>, complementado por la Ley 1150 de 2007 y el Decreto 1082 de 2015. Esto le impone:
+        <ul class="mini">
+          <li><b>Principios obligatorios:</b> transparencia, economía, responsabilidad, selección objetiva y planeación.</li>
+          <li><b>Modalidades regladas:</b> licitación pública, selección abreviada, concurso de méritos, mínima cuantía y contratación directa (esta última, excepcional y motivada).</li>
+          <li><b>Publicidad total en SECOP:</b> todo el proceso debe quedar trazado.</li>
+          <li><b>Régimen sancionatorio:</b> multas, caducidad y declaratoria de incumplimiento a contratistas.</li>
+        </ul>
+        Por su escala (compra de equipos, dotación de talleres, infraestructura, servicios), el SENA es un <b>contratante de alto volumen</b>, lo que multiplica su exposición a controversias contractuales.
+      </div>
+      <div class="zona simple">
+        <div class="et">🔊 En palabras simples</div>
+        <span class="dibujo">📋⚖️</span>
+        <div>El SENA <b>no puede comprar "a dedo"</b> como una persona en una tienda. Para gastar plata pública debe hacer un <b>concurso con reglas claras</b>, publicarlo y elegir la mejor oferta. Saltarse esas reglas es la principal fuente de problemas legales del Estado.</div>
+      </div>
+      <div class="zona"><div class="insight">🧠 <b>Insight estratégico:</b> ~la mayoría de los hallazgos de control fiscal en entidades grandes se concentran en <b>contratación</b>. Un buen programa de compliance del SENA debe blindar especialmente la etapa de <b>planeación y estudios previos</b>, donde nacen casi todos los riesgos.</div></div>
+    </div>
+
+    <!-- 5.2 Riesgos y litigios -->
+    <div class="ficha azul">
+      <div class="ficha-top">
+        <span class="dot azul"></span>
+        <span class="ref">5.2</span>
+        <span class="nombre">Riesgos legales recurrentes, litigios típicos y defensa</span>
+        <span class="etiqueta">Mapa de litigiosidad</span>
+      </div>
+      <div class="zona tecnico">
+        <div class="et">🖥️ Análisis técnico</div>
+        Los frentes de litigio más habituales para una entidad como el SENA:
+      </div>
+      <div class="zona">
+        <table class="tbl">
+          <tr><th>Frente</th><th>Litigio típico</th><th>Mecanismo de defensa</th></tr>
+          <tr><td>Laboral / contractual</td><td>Demandas por nóminas paralelas, contratos de prestación de servicios "disfrazados", reintegros.</td><td>Política de planta clara; defensa probatoria de la real autonomía del contratista.</td></tr>
+          <tr><td>Contractual (Ley 80)</td><td>Controversias con proveedores, incumplimientos, equilibrio económico del contrato.</td><td>Estudios previos sólidos; supervisión documentada; cláusulas excepcionales.</td></tr>
+          <tr><td>Aportes parafiscales</td><td>Empleadores que evaden o discuten la cuota de aprendices/aportes.</td><td>Actos administrativos de fijación de cuota; cobro coactivo.</td></tr>
+          <tr><td>Administrativo (aprendices)</td><td>Tutelas y nulidades por debido proceso en sanciones o certificación.</td><td>Aplicar estrictamente el Reglamento del Aprendiz (Acuerdo 0009/2024) y la Ley 1437/2011.</td></tr>
+          <tr><td>Disciplinario / fiscal</td><td>Investigaciones a servidores por gestión contractual o presupuestal.</td><td>Control interno preventivo; trazabilidad y segregación de funciones.</td></tr>
+        </table>
+      </div>
+      <div class="zona simple">
+        <div class="et">🔊 En palabras simples</div>
+        <span class="dibujo">⚔️🛡️</span>
+        <div>Toda institución grande recibe "demandas" como un castillo recibe flechas. La defensa no es esquivarlas una por una, sino tener <b>muros bien construidos</b>: papeles en orden, procesos claros y decisiones bien motivadas.</div>
+      </div>
+      <div class="zona"><div class="insight">🧠 <b>Insight estratégico:</b> el mejor mecanismo de defensa institucional es <b>preventivo y documental</b>. En sede judicial, el SENA gana cuando puede demostrar con expediente que respetó el <b>debido proceso</b> y la <b>selección objetiva</b>; pierde cuando hay vacíos de motivación o de prueba.</div></div>
+    </div>
+  </section>
+
+
+  <!-- ===================== 6. IMPACTO ===================== -->
+  <section id="s6">
+    <div class="cap-encabezado">
+      <span class="em">📈</span>
+      <div><h2>6 · Evaluación del Impacto Social y Operativo <small>¿Cumple lo que la ley le manda?</small></h2></div>
+    </div>
+
+    <!-- 6.1 Funciones misionales -->
+    <div class="ficha rojo">
+      <div class="ficha-top">
+        <span class="dot rojo"></span>
+        <span class="ref">6.1</span>
+        <span class="nombre">Cumplimiento de funciones misionales</span>
+        <span class="etiqueta">3 grandes servicios</span>
+      </div>
+      <div class="zona tecnico">
+        <div class="et">🖥️ Análisis técnico</div>
+        El impacto del SENA se evalúa frente a sus <b>tres grandes mandatos</b>:
+        <ul class="mini">
+          <li><b>1) Formación profesional integral:</b> oferta masiva y gratuita (técnico, tecnólogo, complementaria) presencial, virtual, a distancia y dual. Métrica clave: cupos, cobertura territorial y, sobre todo, <b>empleabilidad de egresados</b>.</li>
+          <li><b>2) Certificación de competencias laborales:</b> reconoce formalmente el "saber hacer" de personas con experiencia pero sin título (incluida población migrante). Métrica: número de personas certificadas y pertinencia sectorial.</li>
+          <li><b>3) Servicios de empleo:</b> a través de la <b>Agencia Pública de Empleo</b>, conecta oferta y demanda laboral de forma gratuita. Métrica: vacantes gestionadas y colocaciones efectivas.</li>
+        </ul>
+        A esto se suman emprendimiento (Fondo Emprender) e innovación (Tecnoparques, Tecnoacademias).
+      </div>
+      <div class="zona simple">
+        <div class="et">🔊 En palabras simples</div>
+        <span class="dibujo">🎓🏷️🤝</span>
+        <div>El SENA hace tres cosas: <b>enseña</b> (formación), le pone un <b>"sello oficial"</b> a lo que ya sabes hacer (certificación) y te ayuda a <b>conseguir trabajo</b> (empleo). Si las tres funcionan bien, transforma vidas.</div>
+      </div>
+    </div>
+
+    <!-- 6.2 Lectura de impacto -->
+    <div class="ficha amarillo">
+      <div class="ficha-top">
+        <span class="dot amarillo"></span>
+        <span class="ref">6.2</span>
+        <span class="nombre">Lectura operativa: fortalezas y tensiones</span>
+        <span class="etiqueta">Balance crítico</span>
+      </div>
+      <div class="zona tecnico">
+        <div class="et">🖥️ Análisis técnico</div>
+        <ul class="mini">
+          <li><b>✔️ Escala y alcance:</b> presencia en todo el territorio, incluida zona rural (aulas móviles), con gratuidad real.</li>
+          <li><b>✔️ Función contracíclica social:</b> en crisis, es la herramienta del Estado para reentrenar y sostener empleabilidad.</li>
+          <li><b>⚠️ Pertinencia y rezago curricular:</b> riesgo de formar para empleos que se transforman o desaparecen.</li>
+          <li><b>⚠️ Calidad heterogénea:</b> variaciones entre regionales y centros.</li>
+          <li><b>⚠️ Medición de resultados:</b> el reto es pasar de medir <b>cobertura</b> (cuántos se forman) a medir <b>impacto</b> (cuántos consiguen y conservan empleo de calidad).</li>
+        </ul>
+      </div>
+      <div class="zona simple">
+        <div class="et">🔊 En palabras simples</div>
+        <span class="dibujo">📏🎯</span>
+        <div>No basta con contar <b>cuántas personas entran</b> al SENA; lo que importa es <b>cuántas salen con un buen trabajo</b>. Medir "asistentes" es fácil; medir "vidas mejoradas" es el verdadero reto.</div>
+      </div>
+      <div class="zona"><div class="insight">🧠 <b>Insight estratégico:</b> en una defensa institucional, los <b>indicadores de empleabilidad</b> son el activo más poderoso. Demostrar con datos que los egresados consiguen empleo neutraliza la crítica de "irrelevancia" y respalda la justificación del gasto parafiscal.</div></div>
+    </div>
+  </section>
+
+  <!-- ===================== 7. MATRIZ ===================== -->
+  <section id="s7">
+    <div class="cap-encabezado">
+      <span class="em">🧮</span>
+      <div><h2>7 · Matriz de Puntos Críticos y Conclusiones <small>Resumen ejecutivo para análisis de defensa</small></h2></div>
+    </div>
+
+    <div class="panel">
+      <div class="leyenda">
+        <span><span class="rb alto">ALTO</span> requiere acción prioritaria</span>
+        <span><span class="rb medio">MEDIO</span> vigilancia activa</span>
+        <span><span class="rb bajo">BAJO</span> controlado / fortaleza</span>
+        <span><span class="rb info">DATO</span> contexto</span>
+      </div>
+    </div>
+
+    <!-- Matriz de riesgos -->
+    <table class="tbl">
+      <caption>7.1 · Matriz de riesgos</caption>
+      <tr><th style="width:26%;">Punto crítico</th><th style="width:14%;">Nivel</th><th>Descripción y mitigación</th></tr>
+      <tr><td>Dependencia de la nómina formal</td><td><span class="rb alto">ALTO</span></td><td>Presupuesto procíclico: cae justo cuando más se necesita. Mitigación: diversificar ingresos y fondos de estabilización.</td></tr>
+      <tr><td>Riesgo en contratación (Ley 80)</td><td><span class="rb alto">ALTO</span></td><td>Alto volumen de contratos = foco de hallazgos fiscales. Mitigación: blindar estudios previos y supervisión documentada.</td></tr>
+      <tr><td>Pertinencia / rezago curricular</td><td><span class="rb medio">MEDIO</span></td><td>Riesgo reputacional y de impacto. Mitigación: actualización con sector productivo y datos de empleabilidad.</td></tr>
+      <tr><td>Litigiosidad laboral (contratistas)</td><td><span class="rb medio">MEDIO</span></td><td>Demandas por vínculos laborales encubiertos. Mitigación: política de planta y soporte probatorio.</td></tr>
+      <tr><td>Heterogeneidad entre regionales</td><td><span class="rb medio">MEDIO</span></td><td>Trato/calidad desigual. Mitigación: estandarización y auditoría interna.</td></tr>
+      <tr><td>Debido proceso de aprendices</td><td><span class="rb bajo">BAJO</span></td><td>Controlado vía Acuerdo 0009/2024 y Ley 1437/2011, si se aplica correctamente.</td></tr>
+    </table>
+
+    <table class="tbl">
+      <caption>7.2 · Fortalezas institucionales</caption>
+      <tr><th style="width:26%;">Fortaleza</th><th style="width:14%;">Valor</th><th>Por qué importa para la defensa</th></tr>
+      <tr><td>Marco legal robusto</td><td><span class="rb bajo">BAJO</span></td><td>Base normativa clara (Constitución + Ley 119/1994) que legitima su existencia y funciones.</td></tr>
+      <tr><td>Financiación con destinación específica</td><td><span class="rb bajo">BAJO</span></td><td>Recursos parafiscales blindados para formación: difícil de desviar legalmente.</td></tr>
+      <tr><td>Cobertura nacional y gratuidad</td><td><span class="rb bajo">BAJO</span></td><td>Argumento social potente: acceso universal y equidad territorial.</td></tr>
+      <tr><td>Autonomía administrativa</td><td><span class="rb info">DATO</span></td><td>Capacidad de autorregularse y reaccionar (expedir acuerdos, ajustar oferta).</td></tr>
+    </table>
+
+    <table class="tbl">
+      <caption>7.3 · Oportunidades</caption>
+      <tr><th style="width:26%;">Oportunidad</th><th style="width:14%;">Horizonte</th><th>Acción sugerida</th></tr>
+      <tr><td>Sistema Nacional de Cualificaciones</td><td><span class="rb info">2026+</span></td><td>Posicionarse como eje articulador de formación-certificación-empleo.</td></tr>
+      <tr><td>Transición digital y energética</td><td><span class="rb info">2026+</span></td><td>Renovar oferta (IA, automatización, energías limpias) para asegurar pertinencia.</td></tr>
+      <tr><td>Medición de impacto (empleabilidad)</td><td><span class="rb info">Inmediato</span></td><td>Construir y publicar indicadores de egresados como escudo reputacional.</td></tr>
+      <tr><td>Cooperación internacional</td><td><span class="rb info">2026+</span></td><td>Aprovechar WorldSkills y alianzas para benchmarking de calidad.</td></tr>
+    </table>
+
+    <div class="panel" style="margin-top:18px;">
+      <h3>🏁 Conclusión del Due Diligence</h3>
+      <p>El SENA es una institución <b>sólida en lo jurídico y estratégica en lo social</b>: su existencia está bien fundada, su financiación está protegida y su rol en la competitividad es difícil de reemplazar. Los riesgos relevantes <b>no amenazan su viabilidad</b>, sino su <b>eficiencia y reputación</b>: la dependencia del empleo formal, la exposición a la contratación pública y el reto permanente de la pertinencia.</p>
+      <p style="margin-bottom:0;">Para un análisis de <b>defensa legal</b>, la estrategia ganadora es <b>preventiva y basada en evidencia</b>: expedientes impecables en contratación, aplicación estricta del debido proceso e indicadores de empleabilidad que demuestren el cumplimiento de la misión. Bien gestionados estos frentes, el perfil de riesgo global del SENA es <b>moderado y manejable</b>.</p>
+    </div>
+  </section>
+
+  <!-- ===================== CIERRE ===================== -->
+  <div class="nota-final">
+    <h2>🎯 Síntesis final</h2>
+    <p>Este Due Diligence muestra a un SENA con <b>ADN legal fuerte</b>, <b>columna financiera protegida</b> y <b>misión socialmente estratégica</b>, cuyos verdaderos desafíos son operativos: mantenerse <b>pertinente</b>, <b>eficiente en la contratación</b> y <b>medible en su impacto</b>. La matriz de la Sección 7 es la herramienta de consulta rápida para priorizar acciones.</p>
+    <p style="margin-bottom:0;">🟡 Pasado (ADN) · 🔵 Presente (estructura y finanzas) · 🔴 Futuro (riesgos y oportunidades): el computador institucional completo, listo para decidir con criterio.</p>
+  </div>
+
+  <!-- ===================== FUENTES ===================== -->
+  <section>
+    <div class="titulo-seccion"><span class="ico">📚</span><h2>Fuentes y referencias</h2></div>
+    <div class="panel">
+      <ul class="mini">
+        <li>Marco normativo colombiano: Constitución Política (arts. 54 y 67); Decreto-Ley 118 de 1957; Ley 21 de 1982; Ley 119 de 1994; Ley 344 de 1996; Ley 789 de 2002; Decreto 249 de 2004; Ley 80 de 1993, Ley 1150 de 2007 y Decreto 1082 de 2015; Ley 1437 de 2011; Ley 1712 de 2014.</li>
+        <li>Naturaleza jurídica y datos institucionales: <a href="https://www.preventionweb.net/organization/servicio-nacional-de-aprendizaje-sena">PreventionWeb — SENA</a>; <a href="https://en.wikipedia.org/wiki/National_Training_Service_(Colombia)">Wikipedia — National Training Service (Colombia)</a>.</li>
+        <li>Historia y cobertura: <a href="https://worldskills.org/media/news/colombias-sena-celebrating-60-years/">WorldSkills — SENA 60 años</a>; <a href="https://www.bibb.de/en/9580.php">BIBB — SENA Colombia</a>.</li>
+        <li>Contrato de aprendizaje y reforma: <a href="https://caprendizaje.sena.edu.co/sgva/sgva_diseno/pag/login.aspx">SENA — Sistema de Gestión Virtual de Aprendices</a>; <a href="https://www.jdsupra.com/legalnews/colombia-s-labor-reform-sena-6795438/">JD Supra — Colombia's Labor Reform &amp; SENA Apprentices</a>.</li>
+      </ul>
+      <p class="subnota" style="margin:8px 0 0;">Contenido de fuentes externas reformulado y resumido para cumplir con restricciones de licencia.</p>
+    </div>
+
+    <div class="disclaimer">
+      <b>Aviso legal:</b> este documento es un <b>análisis técnico-educativo</b> elaborado con fines de estudio y consulta, a partir de normativa pública colombiana y fuentes abiertas. No constituye asesoría jurídica formal ni un dictamen oficial del SENA. Las cifras de cobertura y la tasa parafiscal son aproximadas y pueden variar según la vigencia; ante cualquier decisión legal, debe verificarse el texto oficial de las normas y los datos institucionales actualizados.
+    </div>
+
+    <p class="subnota" style="text-align:center; margin-top:18px;">Due Diligence Institucional · SENA · Documento técnico de consulta profunda · Estructura y diseño alineados con la "Guía del Computador Mental". 🟡🔵🔴</p>
+  </section>
+
+</div>
+</body>
+</html>
