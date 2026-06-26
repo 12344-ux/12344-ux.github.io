@@ -29,24 +29,44 @@
   h1{font-size:27px;font-weight:800;margin-bottom:6px;}
   .lead{color:var(--dim);margin-bottom:24px;}
   .eyebrow{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:10px;display:block;}
-  .planes{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-  .plan{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;cursor:pointer;transition:.2s;}
-  .plan:hover{border-color:var(--azul-2);transform:translateY(-3px);}
-  .plan .pn{font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--azul-2);font-weight:700;}
-  .plan .precio{font-size:32px;font-weight:900;margin:8px 0 2px;}
-  .plan .precio small{font-size:13px;color:var(--muted);font-weight:600;}
-  .plan .desc{font-size:14px;color:var(--dim);margin-top:8px;}
-  .plan ul{list-style:none;margin:12px 0 0;}
-  .plan li{font-size:13.5px;color:var(--dim);padding:4px 0;}
+  /* Linea de beneficio bajo el titulo */
+  .benefit{color:var(--dim);font-size:15.5px;margin-bottom:30px;max-width:600px;}
+  .benefit strong{color:var(--text);}
+
+  /* PLANES (premium, sin sensacion de "tiers") */
+  .planes{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .plan{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px 24px;cursor:pointer;transition:transform .18s, border-color .18s, box-shadow .18s;display:flex;flex-direction:column;}
+  .plan:hover{border-color:var(--azul-2);transform:translateY(-4px);box-shadow:0 14px 34px rgba(47,84,201,.18);}
+  .plan .pn{font-size:16px;font-weight:800;color:var(--text);letter-spacing:.2px;}
+  .plan .precio{font-size:34px;font-weight:900;margin:6px 0 0;}
+  .plan .precio small{font-size:13px;color:var(--muted);font-weight:600;letter-spacing:.5px;}
+  .plan .plan-uso{font-size:13.5px;color:var(--dim);margin:8px 0 2px;min-height:40px;}
+  .plan ul{list-style:none;margin:14px 0 0;border-top:1px solid var(--line);padding-top:14px;}
+  .plan li{font-size:13.5px;color:var(--dim);padding:4px 0;display:flex;align-items:center;gap:8px;}
   .plan li b{color:var(--text);}
-  .plan .pick{margin-top:16px;font-size:13px;font-weight:700;color:var(--azul-2);}
-  .explica{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-top:18px;}
-  .explica-t{font-size:14.5px;font-weight:800;color:var(--text);margin-bottom:6px;}
-  .explica .def{font-size:13.5px;color:var(--dim);margin-bottom:14px;}
-  .explica .def b{color:var(--text);}
-  .flujo{display:grid;gap:9px;}
-  .fp{display:flex;align-items:flex-start;gap:11px;font-size:13.5px;color:var(--dim);}
-  .fp .fn{flex:0 0 auto;width:23px;height:23px;border-radius:50%;background:rgba(47,84,201,.15);border:1px solid rgba(47,84,201,.45);color:var(--azul-2);font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;}
+  .plan li .ic{flex:0 0 auto;font-size:13px;}
+  .plan .pick{margin-top:auto;padding-top:18px;font-size:14px;font-weight:800;color:var(--azul-2);}
+
+  /* TODOS LOS PLANES INCLUYEN (bloque de confianza) */
+  .incluye{margin-top:30px;background:rgba(39,192,147,.05);border:1px solid rgba(39,192,147,.22);border-radius:16px;padding:22px 24px;}
+  .incluye-t{font-size:16px;font-weight:800;color:var(--text);}
+  .incluye-sub{font-size:13px;color:var(--dim);margin:4px 0 16px;}
+  .incluye-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px 22px;}
+  .inc{display:flex;align-items:flex-start;gap:10px;font-size:14px;color:var(--text);}
+  .inc .ck{flex:0 0 auto;width:20px;height:20px;border-radius:50%;background:rgba(39,192,147,.18);color:var(--ok);font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+
+  /* QUE PASARA DESPUES DE COMPRAR */
+  .despues{margin-top:36px;}
+  .despues-t{font-size:21px;font-weight:800;color:var(--text);margin-bottom:18px;}
+  .pasos{display:grid;gap:14px;}
+  .paso{display:flex;gap:15px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:17px 18px;}
+  .paso-n{flex:0 0 auto;width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,var(--azul-2),var(--azul));color:#fff;font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;}
+  .paso-c h3{font-size:15.5px;font-weight:800;color:var(--text);margin-bottom:3px;}
+  .paso-c p{font-size:13.5px;color:var(--dim);margin:0;}
+
+  /* MICRO-CONFIANZA */
+  .trust{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:28px;}
+  .trust span{font-size:12.5px;color:var(--dim);background:var(--panel2);border:1px solid var(--line);border-radius:30px;padding:7px 14px;display:inline-flex;align-items:center;gap:6px;}
   .field{width:100%;background:var(--panel);border:1px solid var(--line);color:var(--text);font-size:15px;padding:14px 16px;border-radius:11px;margin-bottom:14px;}
   .field:focus{outline:none;border-color:var(--azul-2);}
   .planinfo{font-size:13px;color:var(--azul-2);background:rgba(47,84,201,.08);border:1px solid rgba(47,84,201,.3);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-weight:600;}
@@ -99,40 +119,72 @@
     <!-- PASO 1: PAQUETE -->
     <div class="pane active" id="p1">
       <span class="eyebrow">Paso 1 de 4 · Elige tu plan</span>
-      <h1>Elige tu paquete</h1>
-      <p class="lead">Tus apuntes se convierten en una <strong>guía de estudio personalizada</strong>, basada en la ciencia del aprendizaje. Tú eliges por cuántos días la quieres disponible en tu enlace privado.</p>
+      <h1>Elige tu plan</h1>
+      <p class="benefit">En menos de 24 horas recibirás una <strong>guía personalizada</strong>, lista para estudiar y basada en la <strong>ciencia del aprendizaje</strong>.</p>
+
       <div class="planes">
-        <div class="plan" data-plan="Estándar" data-precio="$3 USD" data-limit="15" data-dias="10">
-          <div class="pn">Estándar</div>
+        <div class="plan" data-plan="Acceso 10 días" data-precio="$3 USD" data-limit="15" data-dias="10">
+          <div class="pn">Acceso 10 días</div>
           <div class="precio">$3<small> USD</small></div>
+          <div class="plan-uso">Ideal para preparar un examen próximo.</div>
           <ul>
-            <li>📦 Archivos hasta <b>15 MB</b></li>
-            <li>⏳ Disponible <b>10 días</b></li>
-            <li>🔗 Enlace exclusivo a tu correo</li>
+            <li><span class="ic">📎</span> Archivos hasta <b>15 MB</b></li>
+            <li><span class="ic">🔗</span> Enlace privado a tu correo</li>
           </ul>
-          <div class="pick">Seleccionar →</div>
+          <div class="pick">Elegir este →</div>
         </div>
-        <div class="plan" data-plan="Premium" data-precio="$5 USD" data-limit="45" data-dias="30">
-          <div class="pn">Premium</div>
+        <div class="plan" data-plan="Acceso 30 días" data-precio="$5 USD" data-limit="45" data-dias="30">
+          <div class="pn">Acceso 30 días</div>
           <div class="precio">$5<small> USD</small></div>
+          <div class="plan-uso">Perfecto para materias completas o varios repasos.</div>
           <ul>
-            <li>📦 Archivos hasta <b>45 MB</b></li>
-            <li>⏳ Disponible <b>30 días</b></li>
-            <li>🔗 Enlace exclusivo a tu correo</li>
+            <li><span class="ic">📎</span> Archivos hasta <b>45 MB</b></li>
+            <li><span class="ic">🔗</span> Enlace privado a tu correo</li>
           </ul>
-          <div class="pick">Seleccionar →</div>
+          <div class="pick">Elegir este →</div>
         </div>
       </div>
 
-      <div class="explica">
-        <div class="explica-t">✨ Así funciona</div>
-        <p class="def">Desde que nos envías tus apuntes hasta que estudias con tu guía:</p>
-        <div class="flujo">
-          <div class="fp"><span class="fn">1</span><span>Subes tus apuntes y eliges tu plan.</span></div>
-          <div class="fp"><span class="fn">2</span><span>Transformamos tus apuntes en tu guía de estudio.</span></div>
-          <div class="fp"><span class="fn">3</span><span>Te enviamos a tu correo un enlace privado: ábrelo y estudia cuando quieras, desde cualquier dispositivo.</span></div>
-          <div class="fp"><span class="fn">4</span><span>Tu guía estará disponible durante los días de tu plan; al terminar, el enlace se cierra y el documento se elimina por tu privacidad.</span></div>
+      <div class="incluye">
+        <div class="incluye-t">Todos los planes incluyen lo mismo</div>
+        <div class="incluye-sub">La calidad de tu guía es siempre la misma. Solo cambian el tamaño de archivos y los días de acceso.</div>
+        <div class="incluye-grid">
+          <div class="inc"><span class="ck">✓</span> Guía completamente personalizada</div>
+          <div class="inc"><span class="ck">✓</span> Explicaciones simplificadas</div>
+          <div class="inc"><span class="ck">✓</span> Ejemplos cuando se necesiten</div>
+          <div class="inc"><span class="ck">✓</span> Preguntas para practicar</div>
+          <div class="inc"><span class="ck">✓</span> Basada en ciencia del aprendizaje</div>
+          <div class="inc"><span class="ck">✓</span> Entrega en menos de 24 horas</div>
         </div>
+      </div>
+
+      <div class="despues">
+        <h2 class="despues-t">¿Qué pasará después de comprar?</h2>
+        <div class="pasos">
+          <div class="paso">
+            <div class="paso-n">1</div>
+            <div class="paso-c"><h3>Envía tus apuntes</h3><p>Desde tu celular o computador. Pueden ser fotos, PDF o cualquier formato legible.</p></div>
+          </div>
+          <div class="paso">
+            <div class="paso-n">2</div>
+            <div class="paso-c"><h3>Nosotros hacemos el trabajo</h3><p>Transformamos tus apuntes en una guía clara, personalizada y diseñada para ayudarte a comprender más rápido.</p></div>
+          </div>
+          <div class="paso">
+            <div class="paso-n">3</div>
+            <div class="paso-c"><h3>La recibes en menos de 24 horas</h3><p>Te enviaremos un enlace privado a tu correo para que estudies desde cualquier dispositivo.</p></div>
+          </div>
+          <div class="paso">
+            <div class="paso-n">4</div>
+            <div class="paso-c"><h3>Estudia cuando quieras</h3><p>Tu guía estará disponible durante el tiempo de tu plan. Después, el enlace se elimina automáticamente para proteger tu privacidad.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="trust">
+        <span>🔒 Enlace privado</span>
+        <span>📧 Entrega por correo</span>
+        <span>⚡ Menos de 24 horas</span>
+        <span>🧠 Ciencia del aprendizaje</span>
       </div>
     </div>
 
@@ -165,8 +217,13 @@
       <div class="modo-prueba">🧪 Modo de prueba · no se cobrará dinero real</div>
       <div class="resumen">
         <div class="lin"><span>Plan</span><span class="v" id="rPlan">—</span></div>
-        <div class="lin"><span>Alojamiento</span><span id="rDias">—</span></div>
+        <div class="lin"><span>Disponible</span><span id="rDias">—</span></div>
         <div class="lin"><span>Total</span><span class="v" id="rPrecio">—</span></div>
+      </div>
+      <div class="trust" style="margin-top:0;margin-bottom:18px;">
+        <span>🔒 Enlace privado</span>
+        <span>📧 Entrega por correo</span>
+        <span>⚡ Menos de 24 horas</span>
       </div>
       <button class="btn" id="pagar">Simular pago exitoso →</button>
       <div class="spinner" id="spin"></div>
@@ -235,7 +292,7 @@
         document.getElementById('rPlan').textContent = estado.plan;
         document.getElementById('rPrecio').textContent = estado.precio;
         document.getElementById('rDias').textContent = estado.dias + ' días';
-        document.getElementById('planInfo').textContent = 'Plan ' + estado.plan + ' · máximo ' + estado.limitMB + ' MB · visible ' + estado.dias + ' días';
+        document.getElementById('planInfo').textContent = estado.plan + ' · archivos hasta ' + estado.limitMB + ' MB';
         goto(2);
       });
     });
@@ -274,7 +331,7 @@
       if(seleccionados.length===0){ err.textContent='Adjunta al menos un archivo.'; err.style.display='block'; return; }
       var max = estado.limitMB*1048576;
       if(totalBytes() > max){
-        err.textContent='Tu archivo pesa '+fmt(totalBytes())+'. El plan '+estado.plan+' permite hasta '+estado.limitMB+' MB. Elige el plan Premium o reduce el tamaño.';
+        err.textContent='Tus archivos pesan '+fmt(totalBytes())+'. El plan "'+estado.plan+'" permite hasta '+estado.limitMB+' MB. Elige el plan de 30 días o reduce el tamaño.';
         err.style.display='block'; return;
       }
       err.style.display='none';
