@@ -19,7 +19,7 @@
   .brand{font-weight:800;letter-spacing:3px;text-transform:uppercase;font-size:14px;}
   .brand b{color:var(--azul-2);}
   .sandbox-badge{font-size:11px;letter-spacing:1px;text-transform:uppercase;font-weight:700;color:#ffd27a;background:rgba(255,180,60,.12);border:1px solid rgba(255,180,60,.4);border-radius:30px;padding:4px 12px;}
-  .wrap{max-width:760px;margin:0 auto;padding:10px 20px 70px;}
+  .wrap{max-width:760px;margin:0 auto;padding:10px 20px 96px;}
   .steps{display:flex;gap:8px;margin:8px 0 28px;}
   .steps .s{flex:1;height:5px;border-radius:4px;background:var(--panel2);}
   .steps .s.on{background:var(--azul-2);}
@@ -35,8 +35,11 @@
 
   /* PLANES (premium, sin sensacion de "tiers") */
   .planes{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
-  .plan{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px 24px;cursor:pointer;transition:transform .18s, border-color .18s, box-shadow .18s;display:flex;flex-direction:column;}
+  .plan{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px 24px;cursor:pointer;transition:transform .18s, border-color .18s, box-shadow .18s;display:flex;flex-direction:column;position:relative;}
   .plan:hover{border-color:var(--azul-2);transform:translateY(-4px);box-shadow:0 14px 34px rgba(47,84,201,.18);}
+  .plan.rec{border-color:rgba(47,84,201,.55);box-shadow:0 0 0 1px rgba(47,84,201,.22);}
+  .plan.rec:hover{border-color:var(--azul-2);}
+  .badge-rec{position:absolute;top:-11px;left:50%;transform:translateX(-50%);white-space:nowrap;background:linear-gradient(135deg,var(--azul-2),var(--azul));color:#fff;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;padding:5px 14px;border-radius:30px;box-shadow:0 4px 12px rgba(47,84,201,.45);}
   .plan .pn{font-size:16px;font-weight:800;color:var(--text);letter-spacing:.2px;}
   .plan .precio{font-size:34px;font-weight:900;margin:6px 0 0;}
   .plan .precio small{font-size:13px;color:var(--muted);font-weight:600;letter-spacing:.5px;}
@@ -48,7 +51,7 @@
   .plan .pick{margin-top:auto;padding-top:18px;font-size:14px;font-weight:800;color:var(--azul-2);}
 
   /* TODOS LOS PLANES INCLUYEN (bloque de confianza) */
-  .incluye{margin-top:30px;background:rgba(39,192,147,.05);border:1px solid rgba(39,192,147,.22);border-radius:16px;padding:22px 24px;}
+  .incluye{margin-top:40px;background:rgba(39,192,147,.05);border:1px solid rgba(39,192,147,.22);border-radius:16px;padding:22px 24px;}
   .incluye-t{font-size:16px;font-weight:800;color:var(--text);}
   .incluye-sub{font-size:13px;color:var(--dim);margin:4px 0 16px;}
   .incluye-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px 22px;}
@@ -56,7 +59,7 @@
   .inc .ck{flex:0 0 auto;width:20px;height:20px;border-radius:50%;background:rgba(39,192,147,.18);color:var(--ok);font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px;}
 
   /* QUE PASARA DESPUES DE COMPRAR */
-  .despues{margin-top:36px;}
+  .despues{margin-top:46px;}
   .despues-t{font-size:21px;font-weight:800;color:var(--text);margin-bottom:18px;}
   .pasos{display:grid;gap:14px;}
   .paso{display:flex;gap:15px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:17px 18px;}
@@ -65,7 +68,7 @@
   .paso-c p{font-size:13.5px;color:var(--dim);margin:0;}
 
   /* MICRO-CONFIANZA */
-  .trust{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:28px;}
+  .trust{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:38px;margin-bottom:10px;}
   .trust span{font-size:12.5px;color:var(--dim);background:var(--panel2);border:1px solid var(--line);border-radius:30px;padding:7px 14px;display:inline-flex;align-items:center;gap:6px;}
   .field{width:100%;background:var(--panel);border:1px solid var(--line);color:var(--text);font-size:15px;padding:14px 16px;border-radius:11px;margin-bottom:14px;}
   .field:focus{outline:none;border-color:var(--azul-2);}
@@ -133,7 +136,8 @@
           </ul>
           <div class="pick">Elegir este →</div>
         </div>
-        <div class="plan" data-plan="Acceso 30 días" data-precio="$5 USD" data-limit="45" data-dias="30">
+        <div class="plan rec" data-plan="Acceso 30 días" data-precio="$5 USD" data-limit="45" data-dias="30">
+          <span class="badge-rec">⭐ Recomendado</span>
           <div class="pn">Acceso 30 días</div>
           <div class="precio">$5<small> USD</small></div>
           <div class="plan-uso">Perfecto para materias completas o varios repasos.</div>
@@ -142,19 +146,6 @@
             <li><span class="ic">🔗</span> Enlace privado a tu correo</li>
           </ul>
           <div class="pick">Elegir este →</div>
-        </div>
-      </div>
-
-      <div class="incluye">
-        <div class="incluye-t">Todos los planes incluyen lo mismo</div>
-        <div class="incluye-sub">La calidad de tu guía es siempre la misma. Solo cambian el tamaño de archivos y los días de acceso.</div>
-        <div class="incluye-grid">
-          <div class="inc"><span class="ck">✓</span> Guía completamente personalizada</div>
-          <div class="inc"><span class="ck">✓</span> Explicaciones simplificadas</div>
-          <div class="inc"><span class="ck">✓</span> Ejemplos cuando se necesiten</div>
-          <div class="inc"><span class="ck">✓</span> Preguntas para practicar</div>
-          <div class="inc"><span class="ck">✓</span> Basada en ciencia del aprendizaje</div>
-          <div class="inc"><span class="ck">✓</span> Entrega en menos de 24 horas</div>
         </div>
       </div>
 
@@ -167,7 +158,7 @@
           </div>
           <div class="paso">
             <div class="paso-n">2</div>
-            <div class="paso-c"><h3>Nosotros hacemos el trabajo</h3><p>Transformamos tus apuntes en una guía clara, personalizada y diseñada para ayudarte a comprender más rápido.</p></div>
+            <div class="paso-c"><h3>Transformamos tus apuntes</h3><p>Convertimos tus apuntes en una guía clara, personalizada y diseñada para ayudarte a comprender más rápido, usando principios de la ciencia del aprendizaje.</p></div>
           </div>
           <div class="paso">
             <div class="paso-n">3</div>
@@ -175,8 +166,21 @@
           </div>
           <div class="paso">
             <div class="paso-n">4</div>
-            <div class="paso-c"><h3>Estudia cuando quieras</h3><p>Tu guía estará disponible durante el tiempo de tu plan. Después, el enlace se elimina automáticamente para proteger tu privacidad.</p></div>
+            <div class="paso-c"><h3>Empieza a estudiar</h3><p>Tu guía estará disponible durante el tiempo de tu plan. Después, el enlace se elimina automáticamente para proteger tu privacidad.</p></div>
           </div>
+        </div>
+      </div>
+
+      <div class="incluye">
+        <div class="incluye-t">Siempre recibirás esto</div>
+        <div class="incluye-sub">No importa cuál elijas: la calidad de tu guía es siempre la misma. Solo cambian el tamaño de archivos permitido y el tiempo de acceso.</div>
+        <div class="incluye-grid">
+          <div class="inc"><span class="ck">✓</span> Guía completamente personalizada</div>
+          <div class="inc"><span class="ck">✓</span> Explicaciones simplificadas</div>
+          <div class="inc"><span class="ck">✓</span> Ejemplos cuando se necesiten</div>
+          <div class="inc"><span class="ck">✓</span> Preguntas para practicar</div>
+          <div class="inc"><span class="ck">✓</span> Basada en ciencia del aprendizaje</div>
+          <div class="inc"><span class="ck">✓</span> Entrega en menos de 24 horas</div>
         </div>
       </div>
 
@@ -185,6 +189,7 @@
         <span>📧 Entrega por correo</span>
         <span>⚡ Menos de 24 horas</span>
         <span>🧠 Ciencia del aprendizaje</span>
+        <span>🛡️ Pago seguro</span>
       </div>
     </div>
 
@@ -224,6 +229,7 @@
         <span>🔒 Enlace privado</span>
         <span>📧 Entrega por correo</span>
         <span>⚡ Menos de 24 horas</span>
+        <span>🛡️ Pago seguro</span>
       </div>
       <button class="btn" id="pagar">Simular pago exitoso →</button>
       <div class="spinner" id="spin"></div>
