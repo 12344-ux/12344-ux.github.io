@@ -2,113 +2,113 @@
 inclusion: always
 ---
 
-# CHIP STRAMONT — Cómo construimos las guías (método permanente)
+# CHIP STRAMONT — VERSIÓN DEFINITIVA
 
-> Aplica a TODA guía, de cualquier materia o cliente. Reemplaza cualquier método anterior.
+> Cómo construimos TODAS las guías, de cualquier materia o cliente. Reemplaza cualquier versión anterior.
 
-## Reglas de oro
-1. Cada guía es un **archivo HTML autocontenido** con su propio `<style>` inline. **NUNCA** modifiques ni enlaces `estilos.css` (es el CSS global de la home y las páginas legales; tocarlo las rompe). Todo el diseño de la guía vive dentro de su `<style>`.
-2. **NUNCA** rompas `simulacion.html` (Supabase + FormSubmit + comprobante jsPDF) ni la home.
-3. **NUNCA** hagas push a `main`. Entrega en **rama nueva + Pull Request**; el dueño mergea.
-4. **Autonomía:** cuando llegue "nuevo cliente, revisa apuntes, desarrolla la guía y dame el link", ejecútalo sin pedir más instrucciones. Hay internet: investiga.
+## ⛔ Reglas de oro (léelas antes de tocar nada)
+1. Cada guía es un **HTML autocontenido** con su propio `<style>` inline. **NUNCA** modifiques ni enlaces `estilos.css` (es el CSS global de la home y las páginas legales; si lo tocas, las rompes).
+2. **NUNCA** rompas `simulacion.html` (Supabase + FormSubmit + comprobante) ni la home. Si tu cambio los toca, está mal.
+3. **NUNCA** hagas push a `main`. Entrega en **rama nueva + Pull Request**; el dueño hace merge.
+4. **Autonomía:** con este chip, ante "nuevo cliente, revisa apuntes y haz la guía", ejecutas sin pedir más instrucciones. Tienes internet: investiga tú.
 
 ## 1. Filosofía
 No hacemos resúmenes bonitos: hacemos que el estudiante **entienda de verdad y no lo olvide**.
-- Quitamos el esfuerzo **inútil** (organizar, resumir); exigimos el esfuerzo **útil** (recordar, explicar, conectar).
-- **Profundidad a elección del estudiante** según su tiempo. Nunca abrumar.
+- Le quitamos el esfuerzo **inútil** (organizar/resumir); le exigimos el esfuerzo **útil** (recordar, escribir, conectar). Montamos el gimnasio y lo obligamos a levantar la pesa.
+- **Profundidad a elección del estudiante** según su tiempo.
 - Toda guía debe **superar lo que daría un ChatGPT plano**. Si no lo supera, se rehace.
 
-## 2. Proceso por cada pedido
+## 2. Tu proceso por cada pedido
 1. Lee los apuntes/tema e identifica los **conceptos que sostienen el tema**.
-2. **Investiga en internet** cada concepto clave: su **porqué/para qué**, **origen etimológico** cuando ilumine, **ejemplos reales** (prioriza contexto colombiano: pesos, ciudades, marcas conocidas) y las **conexiones** entre conceptos.
-3. **Elige los bloques** (§7) y **estructura** con la anatomía (§6).
-4. **Construye** respetando voz (§4) y sistema visual (§5), todo dentro del `<style>` de la guía.
-5. **Pasa el checklist de auto-QA (§8).** Si falla algo, corrige antes de entregar.
-6. Entrega: **rama + PR** + el link de la guía (enlace privado vía sistema de entregas).
+2. **Investiga en internet** por concepto clave: porqué/para qué, etimología cuando ilumine, ejemplos reales (prioriza contexto colombiano), y las conexiones entre conceptos.
+3. **Busca LA joya del tema:** el insight que unifica varios conceptos en una sola idea (raíz compartida, patrón) y la etimología que explique el nombre mismo de la materia/tema. Es **obligatorio** hallarla y hacerla explícita.
+4. **Elige bloques (§7)** y **estructura (§6)**.
+5. **Construye** con la voz (§4) y el sistema visual (§5), todo dentro del `<style>` de la guía.
+6. **Pasa el checklist de auto-QA (§8).** Si falla una casilla, corrige antes de entregar.
+7. Entrega: **rama + PR + link**.
 
 ## 3. Lo que SIEMPRE se quita
-- Tags condescendientes ("lo entiende un niño").
-- Indicaciones de ritmo ("léela sin prisa") → las reemplaza el control Express/Dominar.
-- Color como adorno rotativo sin significado.
-- Fichas planas y uniformes (todas idénticas).
-- Exceso de emojis decorativos.
-- Sobrepromesas ("tan simple que no se te olvidará").
+✗ Tags condescendientes ("lo entiende un niño") · ✗ "léela sin prisa" (lo reemplaza Express/Dominar) · ✗ color decorativo sin significado · ✗ fichas planas idénticas · ✗ exceso de emojis · ✗ sobrepromesas ("tan simple que no se te olvidará") · ✗ guía 100% texto plano (debe usar bloques visuales, §7) · ✗ "Pruébate" pasivo de solo pensar→revelar (debe ser **flashcard de escritura**, §6-G).
 
 ## 4. Voz y estilo
-- Tratamiento **"tú"**, cercano, de socio que explica. Nunca corporativo ni infantil.
-- **Frases cortas**, una idea por frase, cero relleno.
-- **Analogías concretas** para lo abstracto, sin diminutivos condescendientes ("grupo", no "grupito").
-- Respeto al lector como alguien **capaz**: explicamos desde cero sin tratar a nadie como tonto.
-- Español neutro-colombiano.
+Tratamiento **"tú"**, de socio que explica; nunca corporativo ni infantil. Frases cortas, una idea por frase, cero relleno. Analogías concretas sin diminutivos condescendientes ("grupo", no "grupito"). Respeto al lector como alguien **capaz**. Español neutro-colombiano.
 
-## 5. Sistema visual (dentro del `<style>` de la guía)
-- **Tema oscuro premium.** Fondo azul-negro (`#0B1220`), texto blanco hueso (`#E9EDF5`), nunca blanco puro.
-- **El color SIGNIFICA el nivel de profundidad** (no es decoración):
-  - **Teal** (`#2DD4BF`) = Nivel 1 · "La idea" (esencial, siempre visible).
-  - **Índigo** (`#818CF8`) = Nivel 2 · "Conecta".
-  - **Bronce/ámbar** (`#D9A066`) = Nivel 3 · "A fondo".
-- **Tipografía:** sans moderna fuerte (Inter o similar). Títulos peso 700–800; cuerpo 400–500, line-height 1.6, base 17–18px, ancho de línea máx ~70 caracteres. Tags en mayúsculas, letter-spacing amplio, color muted.
-- **Tarjetas:** esquinas redondeadas (12–16px), fondo `#131C2E`, borde 1px que **toma el color de su nivel**. Máximo 1 ícono funcional por bloque.
+## 5. Sistema visual ("todos los píxeles") — dentro del `<style>` de la guía
+- **Tema oscuro premium.** Fondo `#0B1220`, texto blanco hueso `#E9EDF5` (nunca blanco puro).
+- **El color SIGNIFICA el nivel de profundidad:** Teal `#2DD4BF` = Nivel 1 (la idea) · Índigo `#818CF8` = Nivel 2 (conecta) · Bronce `#D9A066` = Nivel 3 (a fondo).
+- **Tipografía:** sans moderna fuerte (Inter o similar). Títulos 700–800; cuerpo 400–500, line-height 1.6, base 17–18px, ancho máx ~70 caracteres. Tags en mayúsculas con letter-spacing y color muted.
+- **Tarjetas:** esquinas 12–16px, fondo `#131C2E`, borde 1px con el color de su nivel. Máximo 1 ícono funcional por bloque.
 
-## 6. Estructura obligatoria de cada guía
+## 6. Estructura obligatoria
 
 **A) Encabezado**
-- `STRAMONT` (wordmark espaciado, muted).
-- Título del tema (grande, blanco hueso, peso 800; degradado sutil teal→índigo permitido).
-- `[Materia] · Clase/Tema.` (subtítulo).
-- Frase-gancho: *Del "creo que lo sé" al "lo entiendo de verdad."*
-- Metadata útil: badge `MÉTODO STRAMONT` + Materia (sin emojis random).
-- Control real **¿Cuánto tiempo tienes? [ Express ] [ Dominar ]** (default: Express).
-  - **Express** = solo Nivel 1 de cada concepto (Niveles 2 y 3 plegados).
-  - **Dominar** = despliega todo.
+```
+STRAMONT                                   (wordmark, letra espaciada, muted)
+[Título del tema]                          (grande, blanco hueso, peso 800)
+[Materia] · Clase/Tema
+[ GANCHO DE ILUSIÓN: 2–3 líneas ]          (OBLIGATORIO)
+[ badge: MÉTODO STRAMONT ]  [ Materia ]
+¿Cuánto tiempo tienes?  [ Express ]  [ Dominar ]
+```
+- **Gancho de ilusión (obligatorio):** presenta el tema → lanza una pregunta que el estudiante no podrá responder (el porqué/origen del concepto central) → remata: "no lo entendías tan bien como creías. Empecemos."
+- **Control Express/Dominar — DEBE SER FUNCIONAL, no decorativo:**
+  - **Express** (por defecto): muestra solo el Nivel 1; Niveles 2 y 3 ocultos.
+  - **Dominar:** revela Niveles 2 y 3 en todas las fichas.
+  - **Implementación:** envuelve cada Nivel 2 y 3 en contenedores `.nivel2`/`.nivel3`; alterna clase en `<body>` (`modo-express`/`modo-dominar`) con JS; CSS: `body.modo-express .nivel2, body.modo-express .nivel3{display:none}`. Arranca en `modo-express`. **Verifica que oculte/muestre de verdad** (pruébalo).
 
-**B) Gancho de ilusión** (bajo el encabezado): 2–3 líneas que pinchen el "creía que lo sabía" con **una** pregunta que no podrá responder (el porqué/origen del concepto central) y remate: "no lo entendías tan bien como creías. Empecemos."
+**B) Fichas de concepto (3 niveles)**
+```
+[nº] Concepto
+── Nivel 1 · La idea (teal, SIEMPRE visible) ──
+· Qué es (1–2 líneas) · El porqué/para qué · Origen etimológico (si ilumina) · Ancla visual
+· 🧠 FLASHCARD (ver G)
+── Nivel 2 · Conecta (índigo, oculto en Express) ──
+· Cómo se enlaza con otros conceptos.
+── Nivel 3 · A fondo (bronce, oculto en Express) ──
+· Matiz, caso borde o chispa crítica profunda.
+```
+No fuerces los 3 niveles en conceptos simples (buen criterio > relleno), pero el **Nivel 1 y su flashcard son obligatorios siempre**.
 
-**C) Fichas de concepto** (el corazón). Cada concepto con **3 niveles**:
-- **Nivel 1 · "La idea"** (teal, SIEMPRE visible): qué es (1–2 líneas) · el porqué/para qué (1 línea) · origen etimológico (solo si ilumina) · ancla visual (imagen mental) · **🧠 Pruébate** en 2 pasos ("escríbelo con tus palabras o dilo en voz alta antes de abrir" → revelar respuesta modelo).
-- **Nivel 2 · "Conecta"** (índigo, PLEGADO): cómo se enlaza con otros conceptos.
-- **Nivel 3 · "A fondo"** (bronce, PLEGADO): matiz, caso borde o chispa crítica profunda.
+**C) Definiciones inline:** todo término difícil = `span` con definición al hover/click (estilo Wikipedia), sin sacar del flujo.
 
-**D) Definiciones inline:** todo término difícil = span con definición al hover/click (estilo Wikipedia), sin sacar del flujo.
+**G) Flashcard de generación (el gimnasio, obligatorio en cada "Pruébate")**
+- Pregunta → **campo de texto** donde el estudiante ESCRIBE su respuesta → botón "Revelar y comparar" → muestra la respuesta modelo junto a lo que escribió.
+- **No ve la respuesta sin escribir antes.**
+- **Guarda lo escrito en `localStorage`** (clave única por pregunta) para que no se pierda al recargar.
 
-**E) Cierres obligatorios:**
-- Un **insight de conexión** al final de cada sección.
-- Un **mapa de conexiones** de todo el tema al final.
-- **Caso práctico integrador** paso a paso.
-- **Tabla resumen** + **ancla mnemónica** (busca el número o patrón que se repita).
-- **Plan de repaso espaciado** (Hoy / En 2 días / En 1 semana) + **Autoevaluación** de recuperación.
+**E) Cierres obligatorios:** insight de conexión por sección · **mapa de conexiones VISUAL** (nodos/flechas, no lista) · caso práctico integrador (como flujo de pasos) · tabla resumen + ancla mnemónica · plan de repaso espaciado (Hoy/2 días/1 semana) · autoevaluación de recuperación.
 
-## 7. Biblioteca de bloques (ensambla, no inventes formato)
-1. **Ficha de concepto** (3 niveles) → por defecto para todo concepto.
-2. **Tabla comparativa** → elementos paralelos.
-3. **Mapa de conexiones** → diagrama nodal de enlaces.
-4. **Flujo de pasos** → procesos y procedimientos.
-5. **Mini-widget numérico** → cifras y fórmulas.
-6. **Caja de chispa crítica** → insight profundo (va como Nivel 3).
-7. **Resumen + ancla mnemónica.**
-8. **Autoevaluación de recuperación.**
-9. **Diagrama etiquetado sobre imagen** → SOLO contenido espacial (anatomía, mapas, partes) y solo si hay imagen base (bloque más costoso).
+## 7. Biblioteca de bloques (obligatorio usar los que apliquen; nada de todo-texto)
+Elige el bloque que MEJOR represente cada contenido:
+1. **Ficha de concepto** (3 niveles) → por defecto.
+2. **Tabla comparativa** → elementos paralelos (varios tipos, opciones).
+3. **Cuadrícula/2×2** → marcos como FODA.
+4. **Mapa de conexiones visual** → relaciones entre conceptos (nodos y flechas).
+5. **Flujo de pasos** → procesos y casos prácticos.
+6. **Mini-widget numérico** → cifras/fórmulas (promedios, proyecciones, cálculos visibles).
+7. **Caja de chispa crítica** → insight profundo (va como Nivel 3).
+8. **Resumen + ancla mnemónica** y 9. **Autoevaluación**.
+9. **Diagrama etiquetado sobre imagen** → SOLO contenido espacial (anatomía, mapas) con imagen base (el más costoso: úsalo solo si el contenido es realmente espacial).
 
-**Selección:** conceptual → ficha · comparación → tabla · proceso → flujo · números → widget · relaciones → mapa · espacial → diagrama.
+**Regla de selección:** conceptual→ficha · comparación→tabla · marco→cuadrícula · relaciones→mapa visual · proceso→flujo · números→widget · espacial→diagrama.
 
 ## 8. Checklist de auto-QA (antes de entregar)
-- [ ] Encabezado con control Express/Dominar y **sin** los elementos eliminados (§3).
 - [ ] Gancho de ilusión al abrir.
-- [ ] Cada concepto con Nivel 1 (porqué + origen cuando ilumina).
-- [ ] Nivel 2 "Conecta" + insight de conexión por sección + mapa final.
-- [ ] Color = nivel (teal/índigo/bronce), no decoración.
+- [ ] Express oculta N2/N3 y Dominar los muestra. **PROBADO en el navegador.**
+- [ ] Cada concepto con Nivel 1 + su porqué (etimología cuando ilumine).
+- [ ] Hallé y expliqué **LA joya** que unifica el tema + la etimología del nombre de la materia.
+- [ ] Nivel 2 "Conecta" + insight de conexión por sección + **mapa de conexiones VISUAL** (no lista).
+- [ ] Usé los bloques que aplicaban (tabla/cuadrícula/flujo/widget), no todo texto.
+- [ ] Cada "Pruébate" es **flashcard con campo de escritura + localStorage. PROBADO.**
 - [ ] Términos difíciles con definición inline.
-- [ ] "Pruébate" pide generar antes de revelar.
-- [ ] Modo Express se lee completo y autónomo solo con Nivel 1.
-- [ ] Caso práctico + resumen + ancla mnemónica + repaso espaciado + autoevaluación.
-- [ ] Bloques bien elegidos según el tipo de contenido (§7).
-- [ ] Todo el CSS de la guía en su `<style>` inline; `estilos.css` intacto.
-- [ ] `simulacion.html` y la home intactos.
-- [ ] ¿Supera lo que daría un ChatGPT plano? Si no → se rehace.
+- [ ] Color = nivel (teal/índigo/bronce).
+- [ ] Caso práctico + resumen + ancla + repaso espaciado + autoevaluación.
+- [ ] **Rigor factual:** atribuciones discutidas con matiz ("se le suele atribuir a…"), no como certeza.
+- [ ] Todo el CSS en el `<style>` de la guía; `estilos.css` y `simulacion.html` intactos.
+- [ ] ¿Supera a un ChatGPT plano? Si no → se rehace.
 
 ## 9. Guardarraíles técnicos
-- Sitio **estático** (GitHub Pages).
-- **Aislamiento de estilos:** el CSS de cada guía va SIEMPRE en su `<style>` inline. Prohibido tocar o enlazar `estilos.css`. Las guías no dependen de `estilos.css`, así que **no requieren cache-bust** (`?v=N` solo aplica si algún día se edita el CSS global, que NO es parte del trabajo de guías).
+- Sitio **estático**. CSS de la guía siempre inline (prohibido tocar `estilos.css`, por eso las guías no necesitan cache-bust).
 - No romper `simulacion.html` ni la home.
-- Entrega: rama nueva + Pull Request (nunca push a `main`). Devuelve el link de la guía y el link del PR.
-- Cada guía se aloja como **enlace privado** listo para el cliente (sistema de entregas: bucket `guias` + visor `entrega.html` + Edge Function `entrega`).
+- Entrega en **rama + PR** (nunca push a `main`).
+- Cada guía entrega un **enlace privado** (sistema de entregas: bucket `guias` + visor `entrega.html` + Edge Function `entrega`).
