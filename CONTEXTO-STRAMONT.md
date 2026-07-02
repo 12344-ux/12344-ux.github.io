@@ -142,7 +142,8 @@ Emprendimiento del dueño (estudiante de **Dirección de Ventas**, SENA, Colombi
 ## 10. Cómo arrancar (próximo asistente)
 
 1. Lee este documento completo.
-2. Revisa PRs abiertos (`list_pull_requests` / `get_merged_pull_requests`) y el estado de `main`.
+2. **Para construir guías, sigue el método `CHIP STRAMONT` en `.kiro/steering/metodo-guias.md`** (filosofía, voz, sistema visual, estructura, bloques y checklist). Reemplaza cualquier método anterior de guías.
+3. Revisa PRs abiertos (`list_pull_requests` / `get_merged_pull_requests`) y el estado de `main`.
 3. **Lo más urgente:** cerrar el sistema de entregas (ver Pendiente #1) y luego Wompi (#4).
 4. Antes de tocar algo conectado (simulacion, Supabase, entregas), entiende las secciones 3 y 4.
 5. Rama nueva + PR siempre. Cache-bust si tocas CSS. PR completo de una (el dueño mergea rápido).

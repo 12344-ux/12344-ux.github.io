@@ -10,6 +10,9 @@ que vende guías de estudio hechas a partir de apuntes.
 ➡️ **ANTES DE HACER CUALQUIER CAMBIO, lee el archivo `CONTEXTO-STRAMONT.md` en la raíz del repo.**
 Contiene el modelo de negocio, integraciones conectadas, convenciones y pendientes.
 
+➡️ **PARA CONSTRUIR CUALQUIER GUÍA, sigue el método en `.kiro/steering/metodo-guias.md` (CHIP STRAMONT).**
+Define filosofía, voz, sistema visual, estructura obligatoria, biblioteca de bloques y checklist de auto-QA. Reemplaza cualquier método anterior.
+
 ## Reglas críticas (resumen)
 - NUNCA push directo a `main`. Siempre rama nueva → PR → el dueño hace merge.
 - Una rama ya mergeada NO se reutiliza; cambios nuevos = PR nuevo.
