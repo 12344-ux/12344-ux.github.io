@@ -9,12 +9,12 @@
     --bg:#0B1220; --surface:#121B2E; --surface2:#182338; --ink:#080D16;
     --text:#E9EDF5; --text-dim:#AEB9CC; --muted:#7C8AA3; --line:rgba(255,255,255,0.09);
     --n1:#2DD4BF; --n1-ink:#04211D; --n2:#818CF8; --n2-ink:#171233; --n3:#D9A066; --n3-ink:#2A1B06;
-    --ok:#2DD4BF;
+    --ok:#2DD4BF; --warn:#F87171;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   html{scroll-behavior:smooth;}
   body{background:var(--bg);color:var(--text);font-family:"DM Sans","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;line-height:1.65;}
-  .wrap{max-width:940px;margin:0 auto;padding:0 20px;}
+  .wrap{max-width:960px;margin:0 auto;padding:0 20px;}
   strong{color:var(--text);}
   p{margin-bottom:14px;color:var(--text-dim);}
   a{color:var(--n1);}
@@ -37,22 +37,25 @@
   /* ===== PORTADA + GANCHO ===== */
   .portada{background:radial-gradient(900px 380px at 50% -10%, rgba(129,140,248,.20), transparent 70%),linear-gradient(180deg,#0D1526 0%, #0B1220 100%);border-bottom:1px solid var(--line);padding:70px 20px 44px;text-align:center;}
   .marca{font-size:13px;letter-spacing:6px;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:18px;}
-  .portada h1{font-size:clamp(32px,7vw,56px);font-weight:800;letter-spacing:.3px;line-height:1.08;margin-bottom:14px;}
+  .portada h1{font-size:clamp(32px,7vw,56px);font-weight:800;letter-spacing:.3px;line-height:1.08;margin-bottom:10px;}
   .portada h1 .g{background:linear-gradient(90deg,var(--n1),var(--n2) 55%,var(--n3));-webkit-background-clip:text;background-clip:text;color:transparent;}
-  .gancho{font-size:18px;color:var(--text-dim);max-width:640px;margin:0 auto 22px;}
+  .materia-linea{font-size:13.5px;color:var(--muted);margin-bottom:18px;letter-spacing:.5px;}
+  .gancho{font-size:18px;color:var(--text-dim);max-width:640px;margin:0 auto 20px;}
   .gancho b{color:var(--text);}
+  .badges-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:22px;}
+  .badge-pill{background:var(--surface);border:1px solid var(--line);border-radius:30px;padding:6px 14px;font-size:12px;color:var(--text-dim);letter-spacing:.5px;}
+  .badge-pill.metodo{color:var(--n1);border-color:rgba(45,212,191,.4);}
 
-  /* Control Express / Dominar */
-  .control{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:30px;padding:4px;gap:2px;margin-bottom:8px;}
-  .control label{position:relative;}
-  .control input{position:absolute;opacity:0;width:1px;height:1px;}
-  .control span{display:block;padding:9px 20px;border-radius:26px;font-size:13px;font-weight:700;letter-spacing:.3px;color:var(--muted);cursor:pointer;transition:.15s;}
-  .control input:checked + span{background:var(--n1);color:var(--n1-ink);}
-  .control-ayuda{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:460px;margin-left:auto;margin-right:auto;}
+  /* Control Express / Dominar — FUNCIONAL vía JS + clase en <body> */
+  .control-label{font-size:13px;color:var(--muted);margin-bottom:10px;}
+  .control{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:30px;padding:4px;gap:2px;}
+  .control button{border:none;background:transparent;padding:9px 22px;border-radius:26px;font-size:13px;font-weight:700;letter-spacing:.3px;color:var(--muted);cursor:pointer;transition:.15s;font-family:inherit;}
+  .control button.activo{background:var(--n1);color:var(--n1-ink);}
+  .control-ayuda{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:480px;margin-left:auto;margin-right:auto;}
 
-  /* Por defecto (Express): ocultar Nivel 2 y 3. En modo Dominar, mostrarlos. */
-  .n2, .n3{display:none;}
-  body:has(#modo-dominar:checked) .n2, body:has(#modo-dominar:checked) .n3{display:block !important;}
+  /* Por defecto (Express): ocultar Nivel 2 y 3. JS alterna la clase del body. */
+  body.modo-express .nivel2, body.modo-express .nivel3{display:none;}
+  body.modo-dominar .nivel2, body.modo-dominar .nivel3{display:block;}
 
   section{padding:44px 0;border-bottom:1px solid var(--line);}
   .eyebrow{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--n2);font-weight:700;margin-bottom:10px;}
@@ -61,6 +64,12 @@
   .parte-num{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:var(--surface2);color:var(--n1);font-weight:800;font-size:14px;margin-right:10px;border:1px solid var(--line);}
   .narrativa{font-size:16.5px;}
   .def{background:rgba(129,140,248,.10);border-bottom:1px dashed var(--n2);color:var(--text);font-weight:600;padding:0 2px;cursor:help;}
+
+  /* Bloque LA JOYA */
+  .joya{background:linear-gradient(135deg,rgba(217,160,102,.14),rgba(45,212,191,.08));border:1px solid rgba(217,160,102,.4);border-radius:16px;padding:24px 26px;}
+  .joya .eyebrow{color:var(--n3);}
+  .joya p{color:var(--text);font-size:16.5px;}
+  .joya b{color:var(--n3);}
 
   .secuencia{margin-top:6px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--text-dim);}
   .dot{width:13px;height:13px;border-radius:50%;display:inline-block;vertical-align:middle;}
@@ -92,30 +101,74 @@
   .etim{margin-top:10px;font-size:13.5px;color:var(--text-dim);border-left:3px solid var(--n3);padding-left:12px;}
   .etim b{color:var(--n3);}
 
-  /* PRUÉBATE: pregunta visible, respuesta oculta */
-  details.pruebate{margin-top:14px;border:1px dashed rgba(45,212,191,.45);border-radius:10px;background:rgba(45,212,191,.06);overflow:hidden;}
-  details.pruebate summary{cursor:pointer;list-style:none;padding:13px 16px;font-weight:700;color:var(--ok);font-size:14.5px;line-height:1.4;}
-  details.pruebate summary::-webkit-details-marker{display:none;}
-  details.pruebate summary .hint{display:block;font-weight:400;color:var(--muted);font-size:12px;margin-top:3px;}
-  details.pruebate[open] summary .hint{color:var(--n1);}
-  details.pruebate .resp{padding:0 16px 14px;color:var(--text-dim);font-size:14.5px;border-top:1px solid var(--line);margin-top:2px;padding-top:12px;}
-
   .conexion{margin-top:14px;display:flex;gap:12px;background:var(--surface2);border-radius:10px;padding:12px 15px;border:1px solid var(--line);}
   .conexion .ico{font-size:20px;flex:0 0 auto;}
   .conexion p{margin:0;font-size:13.5px;color:var(--text-dim);}
   .conexion b{color:var(--n2);}
+
+  /* ===== FLASHCARD DE ESCRITURA (el gimnasio) ===== */
+  .flash{margin-top:14px;border:1px solid rgba(45,212,191,.35);border-radius:12px;background:rgba(45,212,191,.05);padding:16px;}
+  .flash .preg{font-weight:700;color:var(--ok);font-size:14.5px;margin-bottom:4px;}
+  .flash .instr{font-size:12px;color:var(--muted);margin-bottom:10px;}
+  .flash textarea{width:100%;background:var(--ink);border:1px solid var(--line);color:var(--text);font-family:inherit;font-size:14.5px;padding:10px 12px;border-radius:8px;resize:vertical;min-height:64px;}
+  .flash textarea:focus{outline:none;border-color:var(--n1);}
+  .flash-btn{margin-top:10px;background:var(--n1);color:var(--n1-ink);border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;}
+  .flash-btn:hover{opacity:.9;}
+  .flash-btn:disabled{opacity:.5;cursor:not-allowed;}
+  .flash .comparar{display:none;margin-top:14px;border-top:1px solid var(--line);padding-top:12px;}
+  .flash.revelado .comparar{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .flash .col h5{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:6px;}
+  .flash .col.tuya h5{color:var(--n2);}
+  .flash .col.modelo h5{color:var(--n1);}
+  .flash .col p{font-size:14px;color:var(--text);margin:0;white-space:pre-wrap;}
+  .flash .guardado{font-size:11px;color:var(--muted);margin-top:6px;font-style:italic;}
+  @media (max-width:560px){.flash.revelado .comparar{grid-template-columns:1fr;}}
+
+  /* ===== TABLA COMPARATIVA ===== */
+  table{width:100%;border-collapse:collapse;background:var(--surface);border-radius:12px;overflow:hidden;font-size:14.5px;margin-top:6px;}
+  th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line);}
+  th{background:var(--surface2);color:#fff;font-size:13px;}
+  td{color:var(--text-dim);}
+  td .star{color:var(--n3);font-weight:800;}
+  .tabla-wrap{overflow-x:auto;}
+
+  /* ===== CUADRÍCULA 2×2 (FODA) ===== */
+  .cuadricula2x2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .cuad-celda{border-radius:12px;padding:16px 18px;border:1px solid var(--line);}
+  .cuad-celda h4{font-size:14px;margin-bottom:6px;color:#fff;}
+  .cuad-celda p{margin:0;font-size:14px;color:var(--text-dim);}
+  .cuad-celda.f{background:rgba(45,212,191,.08);border-color:rgba(45,212,191,.3);} .cuad-celda.f h4{color:var(--n1);}
+  .cuad-celda.d{background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.3);} .cuad-celda.d h4{color:var(--warn);}
+  .cuad-celda.o{background:rgba(129,140,248,.08);border-color:rgba(129,140,248,.3);} .cuad-celda.o h4{color:var(--n2);}
+  .cuad-celda.a{background:rgba(217,160,102,.08);border-color:rgba(217,160,102,.3);} .cuad-celda.a h4{color:var(--n3);}
+  .cuad-caption{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:8px;letter-spacing:.5px;text-transform:uppercase;}
+  @media (max-width:560px){.cuadricula2x2{grid-template-columns:1fr;}}
+
+  /* ===== MINI-WIDGET NUMÉRICO ===== */
+  .widget{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-top:10px;}
+  .widget-titulo{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--n2);font-weight:700;margin-bottom:12px;}
+  .widget-datos{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+  .widget-dato{background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:14px;color:var(--text);font-weight:700;}
+  .widget-calc{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .widget-celda{background:var(--ink);border-radius:10px;padding:12px;text-align:center;}
+  .widget-celda .etq{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);}
+  .widget-celda .val{font-size:22px;font-weight:800;color:var(--n1);margin-top:4px;}
+  .widget-formula{margin-top:12px;font-size:13.5px;color:var(--text-dim);background:var(--ink);border-radius:8px;padding:10px 14px;font-family:"SF Mono",Consolas,monospace;}
+  @media (max-width:560px){.widget-calc{grid-template-columns:1fr;}}
+
+  /* ===== MAPA DE CONEXIONES VISUAL (nodos + flechas, SVG) ===== */
+  .mapa-visual{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px;overflow-x:auto;}
+  .mapa-visual svg{display:block;margin:0 auto;min-width:640px;}
+  .nodo-rect{rx:10;}
+  .nodo-texto{font-family:"DM Sans",sans-serif;font-size:13px;font-weight:700;fill:#fff;text-anchor:middle;}
+  .nodo-sub{font-family:"DM Sans",sans-serif;font-size:10px;fill:var(--muted);text-anchor:middle;}
+  .flecha-linea{stroke:var(--muted);stroke-width:1.6;fill:none;marker-end:url(#arrow);}
 
   .pasos{counter-reset:p;}
   .paso{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px 16px 56px;position:relative;margin-bottom:12px;}
   .paso::before{counter-increment:p;content:counter(p);position:absolute;left:16px;top:16px;width:28px;height:28px;border-radius:8px;background:var(--n2);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px;}
   .paso h4{margin:0 0 4px;font-size:16px;color:#fff;}
   .paso p{margin:0;font-size:15px;}
-
-  table{width:100%;border-collapse:collapse;background:var(--surface);border-radius:12px;overflow:hidden;font-size:14.5px;margin-top:6px;}
-  th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line);}
-  th{background:var(--surface2);color:#fff;font-size:13px;}
-  td{color:var(--text-dim);}
-  td .star{color:var(--n3);font-weight:800;}
 
   .estrella{background:linear-gradient(135deg,rgba(217,160,102,.14),rgba(45,212,191,.10));border:1px solid rgba(217,160,102,.35);border-radius:16px;padding:26px;text-align:center;}
   .estrella .big{font-size:64px;font-weight:900;line-height:1;color:var(--n3);}
@@ -130,11 +183,9 @@
   .rep label{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;font-size:13px;color:var(--muted);}
   .rep input{width:18px;height:18px;accent-color:var(--n1);}
 
-  .quiz details{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:10px;overflow:hidden;}
-  .quiz summary{cursor:pointer;list-style:none;padding:14px 18px;font-weight:700;color:#fff;font-size:15px;display:flex;gap:8px;align-items:flex-start;}
-  .quiz summary::-webkit-details-marker{display:none;}
-  .quiz summary::before{content:"?";flex:0 0 auto;width:24px;height:24px;border-radius:6px;background:var(--n2);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;}
-  .quiz .resp{padding:0 18px 16px 44px;color:var(--text-dim);font-size:14.5px;}
+  .quiz-item{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:10px;padding:16px 18px;}
+  .quiz-item .preg{font-weight:700;color:#fff;font-size:15px;display:flex;gap:8px;align-items:flex-start;margin-bottom:2px;}
+  .quiz-item .preg::before{content:"?";flex:0 0 auto;width:22px;height:22px;border-radius:6px;background:var(--n2);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;margin-top:1px;}
 
   .chispa{background:var(--surface);border-left:5px solid var(--n3);border-radius:0 12px 12px 0;padding:14px 18px;margin-bottom:12px;}
   .chispa b{color:var(--n3);}
@@ -145,17 +196,12 @@
   .indice-grid a:hover{border-color:var(--n2);color:#fff;}
   .mini{width:11px;height:11px;border-radius:50%;flex:0 0 auto;}
 
-  .mapa{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px;}
-  .mapa-fila{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:14.5px;color:var(--text-dim);flex-wrap:wrap;}
-  .mapa-fila b{color:var(--text);}
-  .flecha{color:var(--n2);font-weight:800;}
-
   footer{padding:30px 20px 50px;text-align:center;color:var(--muted);font-size:13px;}
 
   @media (max-width:680px){.repaso-grid{grid-template-columns:1fr;}.indice-grid{grid-template-columns:1fr;}}
 </style>
 </head>
-<body>
+<body class="modo-express">
 
 <!-- ===================== MURO DE ACCESO (NO TOCAR LÓGICA) ===================== -->
 <div id="muro">
@@ -192,17 +238,77 @@
 <header class="portada" id="inicio">
   <div class="marca">Stramont</div>
   <h1>Segmentación <span class="g">de Mercados</span></h1>
-  <p class="gancho">Seguro ya sabes decir "hay que segmentar el mercado". Pero, ¿sabes <b>quién inventó esa idea, en qué año y por qué</b> —de repente, en los años 50— dejó de tener sentido venderle lo mismo a todo el mundo? Si no lo tienes clarísimo, no lo entendías tan bien como creías. Empecemos.</p>
-  <label class="control"><input type="radio" name="modo" id="modo-express" checked><span>⚡ Express</span></label>
-  <label class="control" style="margin-left:-4px;"><input type="radio" name="modo" id="modo-dominar"><span>🎓 Dominar</span></label>
-  <p class="control-ayuda"><b>Express</b> = solo la idea (Nivel 1, teal). <b>Dominar</b> = suma las conexiones (índigo) y el detalle a fondo (bronce). Cambia cuando quieras, no hay apuro.</p>
+  <div class="materia-linea">Dirección de Ventas · Clase 1 de "Proyectar Mercados"</div>
+  <p class="gancho">Seguro ya sabes decir "hay que segmentar el mercado". Pero, ¿sabes <b>quién propuso esa idea, en qué año, y por qué</b> de repente, en los años 50, dejó de tener sentido venderle lo mismo a todo el mundo? Si no lo tienes clarísimo, no lo entendías tan bien como creías. Empecemos.</p>
+  <div class="badges-row">
+    <span class="badge-pill metodo">MÉTODO STRAMONT</span>
+    <span class="badge-pill">Dirección de Ventas</span>
+  </div>
+  <div class="control-label">¿Cuánto tiempo tienes?</div>
+  <div class="control" id="control-modo">
+    <button type="button" id="btn-express" class="activo" onclick="stramontSetModo('express')">⚡ Express</button>
+    <button type="button" id="btn-dominar" onclick="stramontSetModo('dominar')">🎓 Dominar</button>
+  </div>
+  <p class="control-ayuda"><b>Express</b> = solo la idea (Nivel 1, teal). <b>Dominar</b> = suma las conexiones (índigo) y el detalle a fondo (bronce). Cambia cuando quieras.</p>
 </header>
+
+<script>
+  function stramontSetModo(modo){
+    var b = document.body;
+    var bE = document.getElementById('btn-express');
+    var bD = document.getElementById('btn-dominar');
+    if (modo === 'dominar'){
+      b.classList.remove('modo-express'); b.classList.add('modo-dominar');
+      bD.classList.add('activo'); bE.classList.remove('activo');
+    } else {
+      b.classList.remove('modo-dominar'); b.classList.add('modo-express');
+      bE.classList.add('activo'); bD.classList.remove('activo');
+    }
+    try{ localStorage.setItem('stramont_modo_seg', modo); }catch(e){}
+  }
+  (function(){
+    try{
+      var saved = localStorage.getItem('stramont_modo_seg');
+      if (saved === 'dominar') stramontSetModo('dominar');
+    }catch(e){}
+  })();
+
+  /* ===== FLASHCARD DE ESCRITURA (el gimnasio) ===== */
+  function stramontGuardarFlash(id){
+    var el = document.getElementById('flash-'+id+'-input');
+    var btn = document.getElementById('flash-'+id+'-btn');
+    if (!el) return;
+    if (btn) btn.disabled = (el.value.trim().length === 0);
+    try{ localStorage.setItem('stramont_flash_seg_'+id, el.value); }catch(e){}
+  }
+  function stramontRevelarFlash(id){
+    var el = document.getElementById('flash-'+id+'-input');
+    var box = document.getElementById('flash-'+id);
+    var tuya = document.getElementById('flash-'+id+'-tuya');
+    if (!el || el.value.trim().length === 0) return; // no revela sin escribir
+    tuya.textContent = el.value.trim();
+    box.classList.add('revelado');
+    stramontGuardarFlash(id);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    var areas = document.querySelectorAll('.flash textarea');
+    for (var i=0; i<areas.length; i++){
+      var ta = areas[i];
+      var id = ta.id.replace('flash-','').replace('-input','');
+      try{
+        var saved = localStorage.getItem('stramont_flash_seg_'+id);
+        if (saved){ ta.value = saved; }
+      }catch(e){}
+      stramontGuardarFlash(id);
+    }
+  });
+</script>
 
 <div class="wrap">
 
   <section id="indice">
     <div class="nota">
-      🧠 <strong>Cómo aprovecharla:</strong> en cada ficha hay un <strong>"Pruébate"</strong>: intenta responder de memoria <em>antes</em> de abrir la respuesta. Al final, sigue el <strong>plan de repaso</strong>. Eso es lo que fija el conocimiento, no releer.
+      🧠 <strong>Cómo aprovecharla:</strong> cada "Pruébate" es una <strong>flashcard</strong>: escribe tu respuesta antes de revelarla. Eso es lo que fija el conocimiento, no releer. Al final, sigue el <strong>plan de repaso</strong>.
     </div>
     <div class="secuencia" style="margin-bottom:22px;">
       <strong style="color:#fff;">El color marca la profundidad:</strong>
@@ -215,20 +321,18 @@
     <h2 class="titulo">Índice</h2>
     <p class="lead">Toca cualquier tema para saltar a él.</p>
     <div class="indice-grid">
+      <a href="#joya"><span class="mini d3"></span>💎 La joya del tema</a>
       <a href="#f01"><span class="mini d1"></span><b>01</b> · Mercado</a>
       <a href="#f02"><span class="mini d1"></span><b>02</b> · Segmento</a>
       <a href="#f03"><span class="mini d1"></span><b>03</b> · Segmentar</a>
       <a href="#f04"><span class="mini d1"></span><b>04</b> · Por qué importa</a>
       <a href="#f05"><span class="mini d1"></span><b>05</b> · Criterios</a>
-      <a href="#f06"><span class="mini d1"></span><b>06</b> · Geográfica</a>
-      <a href="#f07"><span class="mini d1"></span><b>07</b> · Demográfica</a>
-      <a href="#f08"><span class="mini d1"></span><b>08</b> · Psicográfica</a>
-      <a href="#f09"><span class="mini d1"></span><b>09</b> · Conductual</a>
+      <a href="#tipos"><span class="mini d1"></span><b>06-09</b> · Los 4 tipos (tabla)</a>
       <a href="#f10"><span class="mini d1"></span><b>10</b> · Más allá de los 4</a>
       <a href="#f11"><span class="mini d1"></span><b>11</b> · Hipersegmentación</a>
       <a href="#f12"><span class="mini d1"></span><b>12</b> · MASA</a>
-      <a href="#f13"><span class="mini d1"></span><b>13</b> · FODA</a>
-      <a href="#f14"><span class="mini d1"></span><b>14</b> · Medidas de tendencia</a>
+      <a href="#f13"><span class="mini d1"></span><b>13</b> · FODA (2×2)</a>
+      <a href="#f14"><span class="mini d1"></span><b>14</b> · Media, mediana, moda</a>
       <a href="#f15"><span class="mini d1"></span><b>15</b> · Proyección de demanda</a>
       <a href="#f16"><span class="mini d1"></span><b>16</b> · Estrategias</a>
       <a href="#f17"><span class="mini d1"></span><b>17</b> · Innovación</a>
@@ -237,6 +341,15 @@
       <a href="#tabla"><span class="mini d1"></span>📊 Resumen</a>
       <a href="#repaso"><span class="mini d2"></span>🔁 Plan de repaso</a>
       <a href="#quiz"><span class="mini d3"></span>✅ Autoevaluación</a>
+    </div>
+  </section>
+
+  <!-- ===================== LA JOYA DEL TEMA ===================== -->
+  <section id="joya">
+    <div class="joya">
+      <div class="eyebrow">💎 La joya de esta clase</div>
+      <p><strong>Casi todos los nombres de esta clase son familia.</strong> "Geográfica", "demográfica" y "psicográfica" no comparten esa terminación por casualidad: las tres llevan el griego <b>graphein</b> ("describir, escribir"). Lo único que cambia es <b>qué</b> describes: el lugar (geo-), a la gente (demo-), o la mente (psico-). Es la misma acción repetida en tres direcciones.</p>
+      <p>Y el nombre de la materia entera —<strong>"Proyectar Mercados"</strong>— viene del latín <b>pro</b> ("hacia adelante") + <b>iacere</b> ("lanzar"): proyectar es literalmente <em>lanzar la mirada hacia adelante</em>. Todo lo que vas a aprender aquí es, en el fondo, una caja de herramientas para lanzar esa mirada con puntería: describir bien al mercado (las <em>-gráficas</em>) para poder lanzar la vista al futuro (proyectar) con algo más que intuición.</p>
     </div>
   </section>
 
@@ -254,16 +367,25 @@
           <p>El mercado son <strong>todas</strong> las personas (o empresas) que podrían querer y poder comprar algo. Es el frasco completo, con todos los caramelos mezclados.</p>
           <div class="ejemplo"><span class="tag">En la vida real</span><p>Toda la gente de tu ciudad que siente sed = "el mercado de las bebidas". Millones de personas, muy distintas entre sí.</p></div>
         </div>
-        <div class="nivel-bloque niv2 n2">
+        <div class="nivel-bloque niv2 nivel2">
           <div class="nivel-tag niv2"><span class="dot d2"></span>Nivel 2 · Conecta</div>
           <p>Aquí nace la tensión de toda la clase: un mercado es demasiado grande y diverso para atenderlo bien de una sola forma. Esa incomodidad es exactamente lo que resuelve la <a href="#f03">ficha 03 (Segmentar)</a>: cortar ese frasco en piezas manejables.</p>
         </div>
-        <div class="nivel-bloque niv3 n3">
+        <div class="nivel-bloque niv3 nivel3">
           <div class="nivel-tag niv3"><span class="dot d3"></span>Nivel 3 · A fondo</div>
           <div class="etim"><b>Origen:</b> "mercado" viene del latín <i>mercatus</i>, de <i>merx/mercis</i> ("mercancía"). Es la misma raíz de "comercio" y del dios romano Mercurio, patrono de los comerciantes: el mercado, desde su nombre, siempre fue "el lugar de la mercancía que se mueve".</div>
         </div>
         <div class="altavoz"><span class="ico">🌎</span><span class="txt"><strong>Imagen para recordar:</strong> un planeta lleno de gente distinta.</span></div>
-        <details class="pruebate"><summary>🧠 Pruébate: ¿qué es un mercado, en una frase?<span class="hint">▸ piensa tu respuesta y luego toca para comprobar</span></summary><div class="resp">Todas las personas que podrían comprar algo. (El frasco completo, sin dividir.)</div></details>
+        <div class="flash" id="flash-f01">
+          <div class="preg">🧠 Pruébate: ¿qué es un mercado, en una frase?</div>
+          <div class="instr">Escríbelo con tus palabras (o dilo en voz alta) antes de revelar.</div>
+          <textarea id="flash-f01-input" oninput="stramontGuardarFlash('f01')" placeholder="Escribe tu respuesta aquí..."></textarea>
+          <button class="flash-btn" id="flash-f01-btn" onclick="stramontRevelarFlash('f01')" disabled>Revelar y comparar</button>
+          <div class="comparar">
+            <div class="col tuya"><h5>Tu respuesta</h5><p id="flash-f01-tuya"></p></div>
+            <div class="col modelo"><h5>Respuesta modelo</h5><p>Todas las personas que podrían comprar algo. (El frasco completo, sin dividir.)</p></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -275,16 +397,25 @@
           <p>Un <span class="def" title="Grupo de personas con un gusto o necesidad parecida dentro de un mercado más grande.">segmento</span> es un grupo de personas parecidas dentro de ese mercado grande. Mismo gusto, misma necesidad. Es un solo sabor de caramelo.</p>
           <div class="ejemplo"><span class="tag">En la vida real</span><p>Dentro de "los que tienen sed", un segmento sería: "deportistas jóvenes que quieren una bebida con vitaminas para entrenar".</p></div>
         </div>
-        <div class="nivel-bloque niv2 n2">
+        <div class="nivel-bloque niv2 nivel2">
           <div class="nivel-tag niv2"><span class="dot d2"></span>Nivel 2 · Conecta</div>
           <p>Todavía no sabemos <em>con qué regla</em> se forma ese grupo. Esa regla tiene nombre propio: <a href="#f05">criterio</a> (ficha 05). Sin un criterio claro, "segmento" es solo una palabra bonita sin filo.</p>
         </div>
-        <div class="nivel-bloque niv3 n3">
+        <div class="nivel-bloque niv3 nivel3">
           <div class="nivel-tag niv3"><span class="dot d3"></span>Nivel 3 · A fondo</div>
-          <div class="etim"><b>Origen:</b> del latín <i>segmentum</i>, formado sobre el verbo <i>secare</i> ("cortar") + el sufijo <i>-mentum</i> (resultado de una acción). Literalmente: "lo que queda cortado". Misma familia que "sección" e "insecto" (lo dividido en anillos). El nombre ya lleva adentro la acción: cortar.</div>
+          <div class="etim"><b>Origen:</b> del latín <i>segmentum</i>, formado sobre el verbo <i>secare</i> ("cortar") + el sufijo <i>-mentum</i> (resultado de una acción). Literalmente: "lo que queda cortado". Misma familia que "sección" e "insecto" (lo dividido en anillos).</div>
         </div>
         <div class="altavoz"><span class="ico">🍊</span><span class="txt"><strong>Imagen para recordar:</strong> una naranja en gajos; cada gajo es un segmento del mismo fruto.</span></div>
-        <details class="pruebate"><summary>🧠 Pruébate: ¿en qué se diferencia un mercado de un segmento?<span class="hint">▸ piensa tu respuesta y luego toca para comprobar</span></summary><div class="resp">El mercado es TODOS; el segmento es un grupo parecido dentro de él.</div></details>
+        <div class="flash" id="flash-f02">
+          <div class="preg">🧠 Pruébate: ¿en qué se diferencia un mercado de un segmento?</div>
+          <div class="instr">Escríbelo con tus palabras (o dilo en voz alta) antes de revelar.</div>
+          <textarea id="flash-f02-input" oninput="stramontGuardarFlash('f02')" placeholder="Escribe tu respuesta aquí..."></textarea>
+          <button class="flash-btn" id="flash-f02-btn" onclick="stramontRevelarFlash('f02')" disabled>Revelar y comparar</button>
+          <div class="comparar">
+            <div class="col tuya"><h5>Tu respuesta</h5><p id="flash-f02-tuya"></p></div>
+            <div class="col modelo"><h5>Respuesta modelo</h5><p>El mercado es TODOS; el segmento es un grupo parecido dentro de él.</p></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -296,16 +427,25 @@
           <p><span class="def" title="Dividir el mercado grande en grupos parecidos para venderle mejor a cada uno.">Segmentar</span> es la acción de cortar el mercado grande en esos grupos parecidos, para venderle mejor a cada uno. Es separar los caramelos por sabor.</p>
           <div class="ejemplo"><span class="tag">En la vida real</span><p>En vez de un anuncio igual para todo el mundo, le hablas distinto al deportista, al niño y al adulto mayor. A cada uno en su idioma.</p></div>
         </div>
-        <div class="nivel-bloque niv2 n2">
+        <div class="nivel-bloque niv2 nivel2">
           <div class="nivel-tag niv2"><span class="dot d2"></span>Nivel 2 · Conecta</div>
           <p>Segmentar sin filtro es peligroso: puedes "cortar" mil grupos que no valen la pena. Por eso, más adelante, la ficha <a href="#f12">MASA (12)</a> te da la prueba para saber si un segmento sirve o es solo un capricho.</p>
         </div>
-        <div class="nivel-bloque niv3 n3">
+        <div class="nivel-bloque niv3 nivel3">
           <div class="nivel-tag niv3"><span class="dot d3"></span>Nivel 3 · A fondo</div>
-          <div class="etim"><b>Origen del concepto (no solo de la palabra):</b> como estrategia de marketing formal, "segmentación de mercados" lo acuñó <b>Wendell R. Smith en 1956</b>, en su artículo <i>"Product Differentiation and Market Segmentation as Alternative Marketing Strategies"</i> (Journal of Marketing). Su idea: en vez de forzar a todo el mercado a aceptar un solo producto (diferenciación), conviene ver ese mercado heterogéneo como <b>varios mercados pequeños y homogéneos</b>. Antes de 1956 casi nadie lo pensaba así de forma explícita.</div>
+          <div class="etim"><b>Origen del concepto (no solo de la palabra):</b> como estrategia de marketing formal, a la "segmentación de mercados" <b>se le suele atribuir a Wendell R. Smith</b>, en un artículo de 1956 en el Journal of Marketing. Su propuesta: en vez de forzar a todo el mercado a aceptar un solo producto, conviene verlo como <b>varios mercados pequeños y homogéneos</b>.</div>
         </div>
         <div class="altavoz"><span class="ico">🍕</span><span class="txt"><strong>Imagen para recordar:</strong> una pizza cortada en porciones: una sola masa, varias rebanadas.</span></div>
-        <details class="pruebate"><summary>🧠 Pruébate: define "segmentar" en una frase.<span class="hint">▸ piensa tu respuesta y luego toca para comprobar</span></summary><div class="resp">Dividir el mercado en grupos parecidos para venderle mejor a cada grupo. (Idea formalizada por Wendell Smith en 1956.)</div></details>
+        <div class="flash" id="flash-f03">
+          <div class="preg">🧠 Pruébate: define "segmentar" en una frase.</div>
+          <div class="instr">Escríbelo con tus palabras (o dilo en voz alta) antes de revelar.</div>
+          <textarea id="flash-f03-input" oninput="stramontGuardarFlash('f03')" placeholder="Escribe tu respuesta aquí..."></textarea>
+          <button class="flash-btn" id="flash-f03-btn" onclick="stramontRevelarFlash('f03')" disabled>Revelar y comparar</button>
+          <div class="comparar">
+            <div class="col tuya"><h5>Tu respuesta</h5><p id="flash-f03-tuya"></p></div>
+            <div class="col modelo"><h5>Respuesta modelo</h5><p>Dividir el mercado en grupos parecidos para venderle mejor a cada grupo.</p></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -326,113 +466,86 @@
           <p>Si le hablas a todos igual, nadie se siente especial y gastas mucho dinero disparando al aire. Si divides, le das a cada grupo justo lo que quiere: <strong>vendes más, gastas menos</strong> y consigues clientes más fieles.</p>
           <div class="ejemplo"><span class="tag">En la vida real</span><p>Una tienda de "ropa para todos" se pierde entre miles. Una que se especializa en "ropa deportiva para mujeres" se vuelve LA referencia para ese grupo… y vende más.</p></div>
         </div>
-        <div class="nivel-bloque niv2 n2">
+        <div class="nivel-bloque niv2 nivel2">
           <div class="nivel-tag niv2"><span class="dot d2"></span>Nivel 2 · Conecta</div>
           <p>Este es el puente hacia la ficha <a href="#f16">Estrategias (16)</a>: una vez decides que SÍ vale la pena dividir, el siguiente paso es decidir CUÁNTOS segmentos vas a atender y con qué intensidad.</p>
         </div>
-        <div class="nivel-bloque niv3 n3">
-          <div class="nivel-tag niv3"><span class="dot d3"></span>Nivel 3 · A fondo</div>
-          <p>Según Kotler, un segmento bien elegido no solo ahorra presupuesto: permite ajustar las <b>4P</b> (producto, precio, plaza, promoción) a la medida de ese grupo, algo imposible cuando el mensaje es "para todos".</p>
-        </div>
         <div class="altavoz"><span class="ico">🎯</span><span class="txt"><strong>Imagen para recordar:</strong> una flecha justo en el centro de la diana. Puntería, no suerte.</span></div>
-        <details class="pruebate"><summary>🧠 Pruébate: ¿por qué segmentar es importante?<span class="hint">▸ piensa tu respuesta y luego toca para comprobar</span></summary><div class="resp">Porque hablarle a un grupo específico vende más y cuesta menos que hablarle a todos.</div></details>
+        <div class="flash" id="flash-f04">
+          <div class="preg">🧠 Pruébate: ¿por qué segmentar es importante?</div>
+          <div class="instr">Escríbelo con tus palabras (o dilo en voz alta) antes de revelar.</div>
+          <textarea id="flash-f04-input" oninput="stramontGuardarFlash('f04')" placeholder="Escribe tu respuesta aquí..."></textarea>
+          <button class="flash-btn" id="flash-f04-btn" onclick="stramontRevelarFlash('f04')" disabled>Revelar y comparar</button>
+          <div class="comparar">
+            <div class="col tuya"><h5>Tu respuesta</h5><p id="flash-f04-tuya"></p></div>
+            <div class="col modelo"><h5>Respuesta modelo</h5><p>Porque hablarle a un grupo específico vende más y cuesta menos que hablarle a todos.</p></div>
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="chispa"><b>Chispa crítica:</b> si tu cliente es <i>todo el mundo</i>, en realidad no tienes cliente. Elegir a quién SÍ le hablas también es elegir a quién NO. Da miedo, pero es justo lo que hace fuerte a una marca.</div>
   </section>
 
-  <!-- ===================== PARTE 3 ===================== -->
+  <!-- ===================== PARTE 3: CRITERIOS + TABLA DE LOS 4 TIPOS ===================== -->
   <section id="parte3">
     <div class="eyebrow"><span class="parte-num">3</span> Cómo se divide</div>
     <h2 class="titulo">Los criterios y los 4 tipos principales</h2>
-    <p class="narrativa">Para cortar el mercado necesitas "reglas para cortar". Esas reglas se llaman <strong>criterios</strong>, y se agrupan en <strong>4 grandes familias</strong>. Son el corazón de la clase: vamos uno por uno.</p>
+    <p class="narrativa">Para cortar el mercado necesitas "reglas para cortar". Esas reglas se llaman <strong>criterios</strong>, y se agrupan en <strong>4 grandes familias</strong>. Son el corazón de la clase.</p>
 
     <div class="ficha" id="f05">
       <div class="ficha-head"><div class="num">05</div><div><div class="et">Las reglas para dividir</div><div class="nombre">Criterios</div></div></div>
       <div class="ficha-body">
         <div class="nivel-bloque niv1">
           <div class="nivel-tag niv1"><span class="dot d1"></span>Nivel 1 · La idea</div>
-          <p>Los <span class="def" title="Preguntas o reglas que usas para dividir un mercado en segmentos.">criterios</span> son las preguntas que usas para separar a la gente: ¿dónde viven? ¿quiénes son? ¿cómo piensan? ¿cómo compran? Cada pregunta es un criterio. Los 4 tipos que siguen son las 4 familias de preguntas.</p>
+          <p>Los <span class="def" title="Preguntas o reglas que usas para dividir un mercado en segmentos.">criterios</span> son las preguntas que usas para separar a la gente: ¿dónde viven? ¿quiénes son? ¿cómo piensan? ¿cómo compran? Cada pregunta es un criterio.</p>
         </div>
-        <div class="nivel-bloque niv3 n3">
+        <div class="nivel-bloque niv3 nivel3">
           <div class="nivel-tag niv3"><span class="dot d3"></span>Nivel 3 · A fondo</div>
           <div class="etim"><b>Origen:</b> "criterio" viene del griego <i>kriterion</i> ("medio para juzgar"), de <i>krinein</i> ("juzgar", "separar"). Es literalmente eso: la vara con la que juzgas y separas al mercado en piezas.</div>
         </div>
         <div class="altavoz"><span class="ico">🔍</span><span class="txt"><strong>Imagen para recordar:</strong> una lupa con una lista de preguntas que vas marcando.</span></div>
-        <details class="pruebate"><summary>🧠 Pruébate: ¿qué es un criterio de segmentación?<span class="hint">▸ piensa tu respuesta y luego toca para comprobar</span></summary><div class="resp">Una pregunta/regla para separar al mercado (dónde, quién, cómo piensa, cómo compra).</div></details>
+        <div class="flash" id="flash-f05">
+          <div class="preg">🧠 Pruébate: ¿qué es un criterio de segmentación?</div>
+          <div class="instr">Escríbelo con tus palabras (o dilo en voz alta) antes de revelar.</div>
+          <textarea id="flash-f05-input" oninput="stramontGuardarFlash('f05')" placeholder="Escribe tu respuesta aquí..."></textarea>
+          <button class="flash-btn" id="flash-f05-btn" onclick="stramontRevelarFlash('f05')" disabled>Revelar y comparar</button>
+          <div class="comparar">
+            <div class="col tuya"><h5>Tu respuesta</h5><p id="flash-f05-tuya"></p></div>
+            <div class="col modelo"><h5>Respuesta modelo</h5><p>Una pregunta/regla para separar al mercado (dónde, quién, cómo piensa, cómo compra).</p></div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="ficha" id="f06">
-      <div class="ficha-head"><div class="num">06</div><div><div class="et">Tipo 1 de 4 · ¿DÓNDE?</div><div class="nombre">Geográfica</div></div></div>
-      <div class="ficha-body">
-        <div class="nivel-bloque niv1">
-          <div class="nivel-tag niv1"><span class="dot d1"></span>Nivel 1 · La idea</div>
-          <p>Divides según el <strong>lugar</strong>: país, ciudad, clima, campo o ciudad, barrio. La pregunta es: ¿dónde está la gente?</p>
-          <div class="ejemplo"><span class="tag">En la vida real</span><p>En Bogotá (frío) vendes chaquetas; en Barranquilla (calor) vendes ropa ligera y bebidas frías. Mismo país, segmentos distintos por el lugar.</p></div>
-        </div>
-        <div class="nivel-bloque niv2 n2">
-          <div class="nivel-tag niv2"><span class="dot d2"></span>Nivel 2 · Conecta</div>
-          <p>Es el criterio más antiguo y el más fácil de combinar con los otros 3: casi toda campaña real mezcla "dónde" con "quién" (demográfica).</p>
-        </div>
-        <div class="altavoz"><span class="ico">🗺️</span><span class="txt"><strong>Imagen para recordar:</strong> un mapa con un pin clavado.</span></div>
-        <details class="pruebate"><summary>🧠 Pruébate: ¿por qué divide la segmentación geográfica?<span class="hint">▸ piensa tu respuesta y luego toca para comprobar</span></summary><div class="resp">Por el LUGAR (país, ciudad, clima).</div></details>
-      </div>
+    <div class="nivel-bloque niv3 nivel3" style="margin-top:6px;">
+      <div class="nivel-tag niv3"><span class="dot d3"></span>Nivel 3 · A fondo (aplica a los 4 tipos)</div>
+      <div class="etim"><b>La raíz compartida:</b> "Geográfica", "demográfica" y "psicográfica" comparten el griego <i>graphein</i> ("describir"). <i>Geo-</i> = tierra/lugar, <i>demo-</i> = pueblo, <i>psico-</i> = mente. Las tres describen; solo cambia QUÉ describen. La cuarta, "conductual", viene del latín <i>conducere</i> (<i>con-</i> "junto" + <i>ducere</i> "guiar/llevar"): no describe un rasgo fijo, describe una <b>acción</b> que la persona lleva a cabo al comprar.</div>
     </div>
 
-    <div class="ficha" id="f07">
-      <div class="ficha-head"><div class="num">07</div><div><div class="et">Tipo 2 de 4 · ¿QUIÉN?</div><div class="nombre">Demográfica</div></div></div>
-      <div class="ficha-body">
-        <div class="nivel-bloque niv1">
-          <div class="nivel-tag niv1"><span class="dot d1"></span>Nivel 1 · La idea</div>
-          <p>Divides según los <strong>datos</strong> de la persona: edad, sexo, ingresos, estudios, tamaño de la familia. Es la <strong>más fácil de medir</strong> porque son números.</p>
-          <div class="ejemplo"><span class="tag">En la vida real</span><p>Pañales → padres jóvenes con bebés. Cremas antiarrugas → adultos mayores. Te divides por la "ficha de datos" de cada quien.</p></div>
-        </div>
-        <div class="nivel-bloque niv3 n3">
-          <div class="nivel-tag niv3"><span class="dot d3"></span>Nivel 3 · A fondo</div>
-          <div class="etim"><b>Origen:</b> "demografía" viene del griego <i>demos</i> ("pueblo") + <i>graphein</i> ("escribir/describir"): literalmente "describir al pueblo". Por eso es la familia más fácil de convertir en números y tablas: nació justo para eso.</div>
-        </div>
-        <div class="altavoz"><span class="ico">🪪</span><span class="txt"><strong>Imagen para recordar:</strong> una cédula/credencial: los datos de identidad.</span></div>
-        <details class="pruebate"><summary>🧠 Pruébate: ¿por qué divide la demográfica y por qué es la más fácil?<span class="hint">▸ piensa tu respuesta y luego toca para comprobar</span></summary><div class="resp">Por DATOS (edad, sexo, ingresos, estudios). Es la más fácil porque son números medibles.</div></details>
+    <div id="tipos" class="tabla-wrap" style="margin-top:18px;">
+      <table>
+        <thead><tr><th>Tipo</th><th>Pregunta</th><th>Qué mide</th><th>Ejemplo</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Geográfica</strong></td><td>¿Dónde?</td><td>Lugar: país, ciudad, clima</td><td>Chaquetas en Bogotá, ropa ligera en Barranquilla</td></tr>
+          <tr><td><strong>Demográfica</strong></td><td>¿Quién?</td><td>Datos: edad, sexo, ingresos</td><td>Pañales → padres jóvenes con bebés</td></tr>
+          <tr><td><strong>Psicográfica</strong></td><td>¿Cómo piensa?</td><td>Personalidad, valores, estilo de vida</td><td>Fanático del fitness vs. gamer de sofá (mismos datos, distinto segmento)</td></tr>
+          <tr><td><strong>Conductual</strong></td><td>¿Cómo compra?</td><td>Frecuencia, lealtad, ocasión</td><td>Compra café diario vs. solo en diciembre</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="nota" style="margin-top:14px;">🧭 <strong>Truco para no confundirte:</strong> las 3 primeras <em>describen</em> (por eso comparten "-gráfica"); la conductual <em>observa acciones</em>.</div>
+
+    <div class="flash" id="flash-tipos" style="margin-top:18px;">
+      <div class="preg">🧠 Pruébate: nombra los 4 tipos y su pregunta clave.</div>
+      <div class="instr">Escríbelo con tus palabras (o dilo en voz alta) antes de revelar.</div>
+      <textarea id="flash-tipos-input" oninput="stramontGuardarFlash('tipos')" placeholder="Escribe tu respuesta aquí..."></textarea>
+      <button class="flash-btn" id="flash-tipos-btn" onclick="stramontRevelarFlash('tipos')" disabled>Revelar y comparar</button>
+      <div class="comparar">
+        <div class="col tuya"><h5>Tu respuesta</h5><p id="flash-tipos-tuya"></p></div>
+        <div class="col modelo"><h5>Respuesta modelo</h5><p>Geográfica (¿dónde?), Demográfica (¿quién?), Psicográfica (¿cómo piensa?), Conductual (¿cómo compra?).</p></div>
       </div>
     </div>
-
-    <div class="ficha" id="f08">
-      <div class="ficha-head"><div class="num">08</div><div><div class="et">Tipo 3 de 4 · ¿CÓMO PIENSA?</div><div class="nombre">Psicográfica</div></div></div>
-      <div class="ficha-body">
-        <div class="nivel-bloque niv1">
-          <div class="nivel-tag niv1"><span class="dot d1"></span>Nivel 1 · La idea</div>
-          <p>Divides según cómo es la persona <strong>por dentro</strong>: personalidad, valores, gustos, estilo de vida. Es muy poderosa porque dos personas con los mismos datos pueden ser opuestas.</p>
-          <div class="ejemplo"><span class="tag">En la vida real</span><p>Dos hombres de 30 años, mismo sueldo: uno es fanático del fitness; el otro es gamer de sofá. ¡Mismos datos, segmentos totalmente distintos!</p></div>
-        </div>
-        <div class="nivel-bloque niv3 n3">
-          <div class="nivel-tag niv3"><span class="dot d3"></span>Nivel 3 · A fondo</div>
-          <div class="etim"><b>Origen:</b> "psicográfica" combina el griego <i>psyché</i> ("alma/mente") + <i>graphein</i> ("describir"). Es la contraparte exacta de la demográfica: si esa describe el "afuera" medible, esta describe el "adentro" de la persona.</div>
-        </div>
-        <div class="altavoz"><span class="ico">🧠</span><span class="txt"><strong>Imagen para recordar:</strong> una cabeza con un globo de pensamiento: lo invisible de la persona.</span></div>
-        <details class="pruebate"><summary>🧠 Pruébate: ¿por qué divide la psicográfica?<span class="hint">▸ piensa tu respuesta y luego toca para comprobar</span></summary><div class="resp">Por lo de adentro: personalidad, valores y estilo de vida.</div></details>
-      </div>
-    </div>
-
-    <div class="ficha" id="f09">
-      <div class="ficha-head"><div class="num">09</div><div><div class="et">Tipo 4 de 4 · ¿CÓMO COMPRA?</div><div class="nombre">Conductual</div></div></div>
-      <div class="ficha-body">
-        <div class="nivel-bloque niv1">
-          <div class="nivel-tag niv1"><span class="dot d1"></span>Nivel 1 · La idea</div>
-          <p>Divides según lo que la persona <strong>hace</strong> al comprar: ¿cada cuánto compra? ¿es fiel a una marca? ¿busca precio o calidad? ¿en qué ocasión usa el producto?</p>
-          <div class="ejemplo"><span class="tag">En la vida real</span><p>Quien compra café todos los días vs. quien solo compra regalos en diciembre. O quien busca lo más barato vs. quien paga más por calidad.</p></div>
-        </div>
-        <div class="nivel-bloque niv2 n2">
-          <div class="nivel-tag niv2"><span class="dot d2"></span>Nivel 2 · Conecta</div>
-          <p>De los 4 tipos, este es el que más se usa junto con la ficha <a href="#f15">Proyección de demanda (15)</a>, porque el comportamiento pasado es la mejor pista de cuánto va a comprar alguien en el futuro.</p>
-        </div>
-        <div class="altavoz"><span class="ico">🛒</span><span class="txt"><strong>Imagen para recordar:</strong> un carrito de compras siguiendo huellas: rastreo lo que hace.</span></div>
-        <details class="pruebate"><summary>🧠 Pruébate: ¿por qué divide la conductual?<span class="hint">▸ piensa tu respuesta y luego toca para comprobar</span></summary><div class="resp">Por el COMPORTAMIENTO de compra: frecuencia, lealtad, ocasión, precio vs. calidad.</div></details>
-      </div>
-    </div>
-
-    <div class="nota">🧭 <strong>Truco para no confundirte:</strong> los 4 tipos son 4 preguntas: <strong>¿Dónde?</strong> (geográfica) · <strong>¿Quién?</strong> (demográfica) · <strong>¿Cómo piensa?</strong> (psicográfica) · <strong>¿Cómo compra?</strong> (conductual).</div>
 
     <div class="conexion"><span class="ico">🔗</span><p>Estos 4 tipos son la caja de herramientas básica. La siguiente ficha te muestra que la caja tiene más compartimentos, y uno de ellos lleva la lógica al extremo: la hipersegmentación.</p></div>
   </section>
@@ -441,7 +554,7 @@
   <section id="parte4">
     <div class="eyebrow"><span class="parte-num">4</span> Ampliar el mapa</div>
     <h2 class="titulo">Más allá de los 4 (y la hipersegmentación)</h2>
-    <p class="narrativa">Los 4 tipos son la base, pero podemos ir más lejos. Aquí está cómo expandir sin perderte.</p>
+    <p class="narrativa">Los 4 tipos son la base, pero podemos ir más lejos.</p>
 
     <div class="ficha" id="f10">
       <div class="ficha-head"><div class="num">10</div><div><div class="et">Expandir</div><div class="nombre">Más allá de los 4</div></div></div>
@@ -451,7 +564,16 @@
           <p>Puedes dividir también por el <strong>beneficio</strong> que busca el cliente (salud, ahorro, estatus), la <strong>ocasión</strong> (Navidad, cumpleaños), y, para venderle a empresas, la <strong>firmográfica</strong> (tamaño y sector de la empresa). Casi siempre se combinan varios criterios a la vez.</p>
         </div>
         <div class="altavoz"><span class="ico">🧰</span><span class="txt"><strong>Imagen para recordar:</strong> una caja de herramientas: los 4 tipos son la base, pero puedes sumar más.</span></div>
-        <details class="pruebate"><summary>🧠 Pruébate: nombra 3 formas de segmentar más allá de los 4.<span class="hint">▸ piensa tu respuesta y luego toca para comprobar</span></summary><div class="resp">Por beneficio, por ocasión y firmográfica (para empresas). Y se pueden combinar.</div></details>
+        <div class="flash" id="flash-f10">
+          <div class="preg">🧠 Pruébate: nombra 3 formas de segmentar más allá de los 4.</div>
+          <div class="instr">Escríbelo con tus palabras (o dilo en voz alta) antes de revelar.</div>
+          <textarea id="flash-f10-input" oninput="stramontGuardarFlash('f10')" placeholder="Escribe tu respuesta aquí..."></textarea>
+          <button class="flash-btn" id="flash-f10-btn" onclick="stramontRevelarFlash('f10')" disabled>Revelar y comparar</button>
+          <div class="comparar">
+            <div class="col tuya"><h5>Tu respuesta</h5><p id="flash-f10-tuya"></p></div>
+            <div class="col modelo"><h5>Respuesta modelo</h5><p>Por beneficio, por ocasión y firmográfica (para empresas). Y se pueden combinar.</p></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -463,19 +585,30 @@
           <p>Es segmentar <strong>muchísimo</strong>, usando tecnología y datos, hasta llegar casi a <strong>una sola persona</strong>. Es el segmento más pequeño posible: tú.</p>
           <div class="ejemplo"><span class="tag">En la vida real</span><p>Cuando Netflix, Spotify o YouTube te recomiendan algo "justo para ti", están hipersegmentando con tus datos.</p></div>
         </div>
-        <div class="nivel-bloque niv2 n2">
+        <div class="nivel-bloque niv2 nivel2">
           <div class="nivel-tag niv2"><span class="dot d2"></span>Nivel 2 · Conecta</div>
           <p>La hipersegmentación es el punto máximo de la <a href="#f16">estrategia de Micromarketing (16)</a>: llevar la lógica de "un segmento a la medida" hasta casi el límite de una sola persona.</p>
         </div>
         <div class="altavoz"><span class="ico">🎯</span><span class="txt"><strong>Imagen para recordar:</strong> una diana cuyo centro es una sola persona.</span></div>
-        <details class="pruebate"><summary>🧠 Pruébate: ¿qué es la hipersegmentación?<span class="hint">▸ piensa tu respuesta y luego toca para comprobar</span></summary><div class="resp">Segmentar con tecnología y datos hasta llegar casi a una sola persona (ej.: recomendaciones de Netflix).</div></details>
+        <div class="flash" id="flash-f11">
+          <div class="preg">🧠 Pruébate: ¿qué es la hipersegmentación?</div>
+          <div class="instr">Escríbelo con tus palabras (o dilo en voz alta) antes de revelar.</div>
+          <textarea id="flash-f11-input" oninput="stramontGuardarFlash('f11')" placeholder="Escribe tu respuesta aquí..."></textarea>
+          <button class="flash-btn" id="flash-f11-btn" onclick="stramontRevelarFlash('f11')" disabled>Revelar y comparar</button>
+          <div class="comparar">
+            <div class="col tuya"><h5>Tu respuesta</h5><p id="flash-f11-tuya"></p></div>
+            <div class="col modelo"><h5>Respuesta modelo</h5><p>Segmentar con tecnología y datos hasta llegar casi a una sola persona (ej.: recomendaciones de Netflix).</p></div>
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="chispa"><b>Chispa crítica:</b> la hipersegmentación tiene un lado oscuro: para conocerte tanto, las apps recogen muchísimos datos tuyos. Más puntería = menos privacidad. ¿Hasta dónde es justo?</div>
+
+    <div class="conexion"><span class="ico">🔗</span><p>Puedes inventar segmentos casi infinitos (más allá de los 4, hasta la hipersegmentación). Pero inventar no es lo mismo que <em>servir</em>. Necesitas un filtro para saber si un segmento vale la pena: eso es MASA.</p></div>
   </section>
 
-  <!-- ===================== PARTE 5 ===================== -->
+  <!-- ===================== PARTE 5: MASA ===================== -->
   <section id="parte5">
     <div class="eyebrow"><span class="parte-num">5</span> El filtro de calidad</div>
     <h2 class="titulo">¿Mi segmento sí sirve? La regla MASA</h2>
@@ -492,53 +625,104 @@
           <strong>A</strong>ccionable → puedo hacer algo concreto por ellos.</p>
           <p>Si falla una sola letra, el segmento <strong>no sirve</strong>.</p>
         </div>
-        <div class="nivel-bloque niv3 n3">
+        <div class="nivel-bloque niv3 nivel3">
           <div class="nivel-tag niv3"><span class="dot d3"></span>Nivel 3 · A fondo</div>
-          <p>La idea viene de los criterios clásicos de Philip Kotler para segmentos efectivos (medibles, sustanciales, accesibles, diferenciables y accionables). MASA es una versión simplificada de 4 letras, pensada para memorizarse rápido en clase.</p>
+          <p>La idea recuerda a los criterios clásicos de Philip Kotler para segmentos efectivos (medibles, sustanciales, accesibles, diferenciables y accionables). MASA es una versión simplificada de 4 letras, pensada para memorizarse rápido.</p>
         </div>
         <div class="altavoz"><span class="ico">🍞</span><span class="txt"><strong>Imagen para recordar:</strong> una masa de pan que crece: solo sirve con sus 4 ingredientes (M-A-S-A).</span></div>
-        <details class="pruebate"><summary>🧠 Pruébate: ¿qué significan las 4 letras de MASA?<span class="hint">▸ piensa tu respuesta y luego toca para comprobar</span></summary><div class="resp">Medible, Accesible, Sustancial, Accionable. Si falla una, el segmento no sirve.</div></details>
+        <div class="flash" id="flash-f12">
+          <div class="preg">🧠 Pruébate: ¿qué significan las 4 letras de MASA?</div>
+          <div class="instr">Escríbelo con tus palabras (o dilo en voz alta) antes de revelar.</div>
+          <textarea id="flash-f12-input" oninput="stramontGuardarFlash('f12')" placeholder="Escribe tu respuesta aquí..."></textarea>
+          <button class="flash-btn" id="flash-f12-btn" onclick="stramontRevelarFlash('f12')" disabled>Revelar y comparar</button>
+          <div class="comparar">
+            <div class="col tuya"><h5>Tu respuesta</h5><p id="flash-f12-tuya"></p></div>
+            <div class="col modelo"><h5>Respuesta modelo</h5><p>Medible, Accesible, Sustancial, Accionable. Si falla una, el segmento no sirve.</p></div>
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="chispa"><b>Chispa crítica:</b> un segmento puede ser real pero NO rentable. Ejemplo: "personas zurdas de ojos verdes amantes del ajedrez" existe… pero quizá falla la <b>S</b> de Sustancial (son muy pocos). MASA te salva de perseguir clientes imposibles.</div>
+
+    <div class="conexion"><span class="ico">🔗</span><p>Un segmento que pasa el filtro MASA ya sirve para vender. Pero antes de lanzarte, conviene <em>analizarlo</em> a fondo (FODA), <em>describirlo</em> con números (media/mediana/moda) y <em>proyectar</em> cuánto puede valer. Eso viene ahora.</p></div>
   </section>
 
-  <!-- ===================== PARTE 6 ===================== -->
+  <!-- ===================== PARTE 6: FODA + NÚMEROS + PROYECCIÓN ===================== -->
   <section id="parte6">
     <div class="eyebrow"><span class="parte-num">6</span> Las herramientas</div>
     <h2 class="titulo">Analizar, medir y predecir</h2>
-    <p class="narrativa">Ya sabes dividir. Ahora, 3 herramientas para <strong>analizar</strong> los segmentos y <strong>proyectar</strong> (mirar al futuro), que es el nombre mismo de la materia.</p>
+    <p class="narrativa">Ya sabes dividir y filtrar. Ahora, 3 herramientas para <strong>analizar</strong> el segmento y <strong>proyectar</strong> (mirar al futuro), que es el nombre mismo de la materia.</p>
 
     <div class="ficha" id="f13">
       <div class="ficha-head"><div class="num">13</div><div><div class="et">Para analizar</div><div class="nombre">FODA</div></div></div>
       <div class="ficha-body">
         <div class="nivel-bloque niv1">
           <div class="nivel-tag niv1"><span class="dot d1"></span>Nivel 1 · La idea</div>
-          <p>Una tabla de 4 casillas para mirar un segmento (o tu negocio): <strong>F</strong>ortalezas y <strong>D</strong>ebilidades (lo de adentro, lo tuyo) + <strong>O</strong>portunidades y <strong>A</strong>menazas (lo de afuera, el entorno).</p>
-          <div class="ejemplo"><span class="tag">En la vida real</span><p>Gimnasio nuevo → Fortaleza: equipos modernos. Debilidad: marca desconocida. Oportunidad: la gente quiere ponerse en forma. Amenaza: hay 3 gimnasios cerca.</p></div>
+          <p>Una cuadrícula de 4 casillas para mirar un segmento (o tu negocio): lo de <strong>adentro</strong> (Fortalezas y Debilidades, lo tuyo) y lo de <strong>afuera</strong> (Oportunidades y Amenazas, el entorno).</p>
         </div>
-        <div class="nivel-bloque niv3 n3">
+        <div class="nivel-bloque niv3 nivel3">
           <div class="nivel-tag niv3"><span class="dot d3"></span>Nivel 3 · A fondo</div>
-          <p>El FODA (SWOT en inglés) se atribuye a Albert Humphrey, en el Stanford Research Institute durante los años 60. Su nombre original era "SOFT" antes de reordenarse a la sigla que usamos hoy.</p>
+          <div class="etim">El FODA (SWOT en inglés) <b>se le suele atribuir a Albert Humphrey</b>, en el Stanford Research Institute durante los años 60 —aunque, como con muchas herramientas de gestión, su autoría exacta se sigue discutiendo. Su nombre original habría sido "SOFT" antes de reordenarse a la sigla que usamos hoy.</div>
         </div>
-        <div class="altavoz"><span class="ico">🪟</span><span class="txt"><strong>Imagen para recordar:</strong> un espejo (adentro: F y D) y una ventana (afuera: O y A).</span></div>
-        <details class="pruebate"><summary>🧠 Pruébate: ¿qué mide cada parte del FODA?<span class="hint">▸ piensa tu respuesta y luego toca para comprobar</span></summary><div class="resp">Fortalezas y Debilidades = internas (tuyas). Oportunidades y Amenazas = externas (el entorno).</div></details>
+
+        <div class="cuadricula2x2" style="margin-top:14px;">
+          <div class="cuad-celda f"><h4>💪 Fortalezas</h4><p>Clases grupales divertidas, instructores certificados.</p></div>
+          <div class="cuad-celda o"><h4>🌱 Oportunidades</h4><p>Tendencia creciente de vida sana en el barrio.</p></div>
+          <div class="cuad-celda d"><h4>⚠️ Debilidades</h4><p>Marca nueva, todavía desconocida.</p></div>
+          <div class="cuad-celda a"><h4>🚧 Amenazas</h4><p>Ya hay 3 gimnasios establecidos cerca.</p></div>
+        </div>
+        <div class="cuad-caption"><span>◀ Interno (tuyo)</span><span>Externo (entorno) ▶</span></div>
+
+        <div class="altavoz" style="margin-top:14px;"><span class="ico">🪟</span><span class="txt"><strong>Imagen para recordar:</strong> un espejo (adentro: F y D) y una ventana (afuera: O y A).</span></div>
+        <div class="flash" id="flash-f13">
+          <div class="preg">🧠 Pruébate: ¿qué mide cada parte del FODA?</div>
+          <div class="instr">Escríbelo con tus palabras (o dilo en voz alta) antes de revelar.</div>
+          <textarea id="flash-f13-input" oninput="stramontGuardarFlash('f13')" placeholder="Escribe tu respuesta aquí..."></textarea>
+          <button class="flash-btn" id="flash-f13-btn" onclick="stramontRevelarFlash('f13')" disabled>Revelar y comparar</button>
+          <div class="comparar">
+            <div class="col tuya"><h5>Tu respuesta</h5><p id="flash-f13-tuya"></p></div>
+            <div class="col modelo"><h5>Respuesta modelo</h5><p>Fortalezas y Debilidades = internas (tuyas). Oportunidades y Amenazas = externas (el entorno).</p></div>
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="ficha" id="f14">
-      <div class="ficha-head"><div class="num">14</div><div><div class="et">Para medir/describir</div><div class="nombre">Medidas de tendencia</div></div></div>
+      <div class="ficha-head"><div class="num">14</div><div><div class="et">Para medir/describir</div><div class="nombre">Media, mediana y moda</div></div></div>
       <div class="ficha-body">
         <div class="nivel-bloque niv1">
           <div class="nivel-tag niv1"><span class="dot d1"></span>Nivel 1 · La idea</div>
-          <p><strong>Media</strong> = el promedio (sumas todo y divides).<br>
-          <strong>Mediana</strong> = el del medio cuando los ordenas.<br>
-          <strong>Moda</strong> = el que más se repite.</p>
-          <div class="ejemplo"><span class="tag">En la vida real</span><p>Clientes de 20, 22, 25, 25 y 60 años: media = 30.4, mediana = 25, moda = 25. Aquí la mediana/moda describen mejor al cliente típico que el promedio (que sube por el de 60).</p></div>
+          <p><strong>Media</strong> = el promedio (sumas todo y divides). <strong>Mediana</strong> = el del medio cuando los ordenas. <strong>Moda</strong> = el que más se repite.</p>
         </div>
-        <div class="altavoz"><span class="ico">📊</span><span class="txt"><strong>Imagen para recordar:</strong> una regla midiendo barras: 3 números que dibujan al cliente típico.</span></div>
-        <details class="pruebate"><summary>🧠 Pruébate: ¿qué son media, mediana y moda?<span class="hint">▸ piensa tu respuesta y luego toca para comprobar</span></summary><div class="resp">Media = promedio. Mediana = el del medio. Moda = el que más se repite.</div></details>
+        <div class="nivel-bloque niv3 nivel3">
+          <div class="nivel-tag niv3"><span class="dot d3"></span>Nivel 3 · A fondo</div>
+          <div class="etim"><b>Origen de "moda":</b> del latín <i>modus</i> ("medida", "manera"). Lo que "está de moda" es, literalmente, la manera más frecuente de hacer algo; por eso en estadística "moda" es el valor que más se repite: el molde que más gente sigue.</div>
+        </div>
+
+        <div class="widget">
+          <div class="widget-titulo">Widget · edades de 5 clientes</div>
+          <div class="widget-datos">
+            <span class="widget-dato">20</span><span class="widget-dato">22</span><span class="widget-dato">25</span><span class="widget-dato">25</span><span class="widget-dato">60</span>
+          </div>
+          <div class="widget-calc">
+            <div class="widget-celda"><div class="etq">Media</div><div class="val">30.4</div></div>
+            <div class="widget-celda"><div class="etq">Mediana</div><div class="val">25</div></div>
+            <div class="widget-celda"><div class="etq">Moda</div><div class="val">25</div></div>
+          </div>
+          <div class="widget-formula">Media = (20+22+25+25+60) / 5 = 30.4 → el de 60 años "jala" el promedio. Mediana y moda (25) describen mejor al cliente típico.</div>
+        </div>
+
+        <div class="flash" id="flash-f14">
+          <div class="preg">🧠 Pruébate: ¿qué son media, mediana y moda?</div>
+          <div class="instr">Escríbelo con tus palabras (o dilo en voz alta) antes de revelar.</div>
+          <textarea id="flash-f14-input" oninput="stramontGuardarFlash('f14')" placeholder="Escribe tu respuesta aquí..."></textarea>
+          <button class="flash-btn" id="flash-f14-btn" onclick="stramontRevelarFlash('f14')" disabled>Revelar y comparar</button>
+          <div class="comparar">
+            <div class="col tuya"><h5>Tu respuesta</h5><p id="flash-f14-tuya"></p></div>
+            <div class="col modelo"><h5>Respuesta modelo</h5><p>Media = promedio. Mediana = el del medio. Moda = el que más se repite.</p></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -547,19 +731,38 @@
       <div class="ficha-body">
         <div class="nivel-bloque niv1">
           <div class="nivel-tag niv1"><span class="dot d1"></span>Nivel 1 · La idea</div>
-          <p>Es <strong>calcular cuánto va a comprar</strong> un segmento en el futuro. Si sabes cuántas personas son y cuánto compra cada una, estimas cuánto puedes vender. Por eso la materia se llama "Proyectar Mercados": mirar adelante con números, no adivinando.</p>
-          <div class="ejemplo"><span class="tag">En la vida real</span><p>200 clientes posibles × $50.000 que gasta cada uno al mes = $10.000.000 de demanda mensual estimada.</p></div>
+          <p>Es <strong>calcular cuánto va a comprar</strong> un segmento en el futuro. Si sabes cuántas personas son y cuánto compra cada una, estimas cuánto puedes vender.</p>
         </div>
-        <div class="nivel-bloque niv2 n2">
-          <div class="nivel-tag niv2"><span class="dot d2"></span>Nivel 2 · Conecta</div>
-          <p>Esta ficha cierra el círculo con la <a href="#f07">demográfica (07)</a> y la <a href="#f09">conductual (09)</a>: son justo esos datos (cuántos son, cuánto y cada cuánto compran) los que alimentan la proyección.</p>
+        <div class="nivel-bloque niv3 nivel3">
+          <div class="nivel-tag niv3"><span class="dot d3"></span>Nivel 3 · A fondo</div>
+          <div class="etim"><b>Origen:</b> "proyectar" viene del latín <i>proiectare</i>, de <i>pro-</i> ("hacia adelante") + <i>iacere</i> ("lanzar"). Literalmente: "lanzar hacia adelante". Es justo el nombre de la materia: <b>Proyectar Mercados</b> es lanzar la mirada hacia el futuro con números, no adivinando.</div>
         </div>
-        <div class="altavoz"><span class="ico">📈</span><span class="txt"><strong>Imagen para recordar:</strong> una flecha que sube en una gráfica: el futuro, pero con matemáticas.</span></div>
-        <details class="pruebate"><summary>🧠 Pruébate: ¿cómo se proyecta la demanda, en simple?<span class="hint">▸ piensa tu respuesta y luego toca para comprobar</span></summary><div class="resp">Estimar con números cuánto comprará un segmento (nº de personas × lo que gasta cada una).</div></details>
+
+        <div class="widget">
+          <div class="widget-titulo">Widget · proyección de demanda</div>
+          <div class="widget-datos">
+            <span class="widget-dato">200 clientes posibles</span><span class="widget-dato">× $50.000/mes</span>
+          </div>
+          <div class="widget-calc" style="grid-template-columns:1fr;">
+            <div class="widget-celda"><div class="etq">Demanda mensual estimada</div><div class="val">$10.000.000</div></div>
+          </div>
+          <div class="widget-formula">Demanda = nº de personas del segmento × gasto promedio de cada una.</div>
+        </div>
+
+        <div class="flash" id="flash-f15">
+          <div class="preg">🧠 Pruébate: ¿cómo se proyecta la demanda, en simple?</div>
+          <div class="instr">Escríbelo con tus palabras (o dilo en voz alta) antes de revelar.</div>
+          <textarea id="flash-f15-input" oninput="stramontGuardarFlash('f15')" placeholder="Escribe tu respuesta aquí..."></textarea>
+          <button class="flash-btn" id="flash-f15-btn" onclick="stramontRevelarFlash('f15')" disabled>Revelar y comparar</button>
+          <div class="comparar">
+            <div class="col tuya"><h5>Tu respuesta</h5><p id="flash-f15-tuya"></p></div>
+            <div class="col modelo"><h5>Respuesta modelo</h5><p>Estimar con números cuánto comprará un segmento (nº de personas × lo que gasta cada una).</p></div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="conexion"><span class="ico">🔗</span><p>Con FODA analizas el segmento, con las medidas de tendencia lo describes, y con la proyección estimas su valor en dinero. Con esas 3 herramientas ya puedes decidir <b>cómo atacarlo</b>: eso es lo que viene.</p></div>
+    <div class="conexion"><span class="ico">🔗</span><p>Con FODA analizas el segmento, con media/mediana/moda lo describes, y con la proyección estimas su valor en dinero. Con esas 3 herramientas ya puedes decidir <b>cómo atacarlo</b>: eso es lo que viene.</p></div>
   </section>
 
   <!-- ===================== PARTE 7 ===================== -->
@@ -572,14 +775,24 @@
       <div class="ficha-body">
         <div class="nivel-bloque niv1">
           <div class="nivel-tag niv1"><span class="dot d1"></span>Nivel 1 · La idea</div>
-          <p><strong>Indiferenciada</strong> → a todos igual (un solo mensaje).<br>
-          <strong>Diferenciada</strong> → a varios grupos, con una oferta distinta para cada uno.<br>
-          <strong>Concentrada</strong> → a un solo grupo, a fondo.<br>
-          <strong>Micromarketing</strong> → casi a cada persona (lo más fino).</p>
-          <div class="ejemplo"><span class="tag">En la vida real</span><p>Una marca de gaseosa grande usa diferenciada (normal, Zero, Light). Un negocio pequeño suele empezar concentrado en un solo segmento.</p></div>
+          <p><strong>Indiferenciada</strong> → a todos igual. <strong>Diferenciada</strong> → varios grupos, oferta distinta para cada uno. <strong>Concentrada</strong> → un solo grupo, a fondo. <strong>Micromarketing</strong> → casi a cada persona.</p>
+          <div class="ejemplo"><span class="tag">En la vida real</span><p>Una marca de gaseosa grande usa diferenciada (normal, Zero, Light). Un negocio pequeño suele empezar concentrado.</p></div>
+        </div>
+        <div class="nivel-bloque niv3 nivel3">
+          <div class="nivel-tag niv3"><span class="dot d3"></span>Nivel 3 · A fondo</div>
+          <div class="etim"><b>Origen:</b> "estrategia" viene del griego <i>stratēgós</i> ("general"), de <i>stratos</i> ("ejército") + <i>agein</i> ("conducir/guiar"). Elegir una estrategia de segmentación es, literalmente, decidir cómo va a "conducir sus tropas" tu marca: ¿ataca a todos, a varios frentes, o concentra fuerzas en uno solo?</div>
         </div>
         <div class="altavoz"><span class="ico">♟️</span><span class="txt"><strong>Imagen para recordar:</strong> piezas de ajedrez: cada jugada según el rival.</span></div>
-        <details class="pruebate"><summary>🧠 Pruébate: nombra las 4 estrategias de segmentación.<span class="hint">▸ piensa tu respuesta y luego toca para comprobar</span></summary><div class="resp">Indiferenciada, Diferenciada, Concentrada y Micromarketing.</div></details>
+        <div class="flash" id="flash-f16">
+          <div class="preg">🧠 Pruébate: nombra las 4 estrategias de segmentación.</div>
+          <div class="instr">Escríbelo con tus palabras (o dilo en voz alta) antes de revelar.</div>
+          <textarea id="flash-f16-input" oninput="stramontGuardarFlash('f16')" placeholder="Escribe tu respuesta aquí..."></textarea>
+          <button class="flash-btn" id="flash-f16-btn" onclick="stramontRevelarFlash('f16')" disabled>Revelar y comparar</button>
+          <div class="comparar">
+            <div class="col tuya"><h5>Tu respuesta</h5><p id="flash-f16-tuya"></p></div>
+            <div class="col modelo"><h5>Respuesta modelo</h5><p>Indiferenciada, Diferenciada, Concentrada y Micromarketing.</p></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -589,64 +802,111 @@
         <div class="nivel-bloque niv1">
           <div class="nivel-tag niv1"><span class="dot d1"></span>Nivel 1 · La idea</div>
           <p>Buscar segmentos que <strong>nadie ha visto</strong> o nuevas formas de dividir. La creatividad encuentra "huecos" en el mercado donde no hay competencia.</p>
-          <div class="ejemplo"><span class="tag">En la vida real</span><p>Cuando una marca sacó ropa deportiva para tallas grandes, descubrió un segmento ignorado por todos. Innovar fue mirar a quien nadie miraba.</p></div>
+          <div class="ejemplo"><span class="tag">En la vida real</span><p>Cuando una marca sacó ropa deportiva para tallas grandes, descubrió un segmento ignorado por todos.</p></div>
         </div>
         <div class="altavoz"><span class="ico">💡</span><span class="txt"><strong>Imagen para recordar:</strong> una bombilla encendida: la idea que abre un mercado nuevo.</span></div>
-        <details class="pruebate"><summary>🧠 Pruébate: ¿qué es innovar en segmentación?<span class="hint">▸ piensa tu respuesta y luego toca para comprobar</span></summary><div class="resp">Encontrar grupos o formas de dividir que nadie más ha visto (huecos sin competencia).</div></details>
+        <div class="flash" id="flash-f17">
+          <div class="preg">🧠 Pruébate: ¿qué es innovar en segmentación?</div>
+          <div class="instr">Escríbelo con tus palabras (o dilo en voz alta) antes de revelar.</div>
+          <textarea id="flash-f17-input" oninput="stramontGuardarFlash('f17')" placeholder="Escribe tu respuesta aquí..."></textarea>
+          <button class="flash-btn" id="flash-f17-btn" onclick="stramontRevelarFlash('f17')" disabled>Revelar y comparar</button>
+          <div class="comparar">
+            <div class="col tuya"><h5>Tu respuesta</h5><p id="flash-f17-tuya"></p></div>
+            <div class="col modelo"><h5>Respuesta modelo</h5><p>Encontrar grupos o formas de dividir que nadie más ha visto (huecos sin competencia).</p></div>
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="chispa"><b>Chispa crítica:</b> los segmentos no siempre están "ahí afuera" esperando; en parte la empresa los <i>crea</i> al decidir dónde trazar la línea. Por eso la creatividad es estratégica: quien define un segmento nuevo, juega solo.</div>
   </section>
 
-  <!-- ===================== MAPA DE CONEXIONES ===================== -->
+  <!-- ===================== MAPA DE CONEXIONES VISUAL (SVG) ===================== -->
   <section id="mapa">
     <div class="eyebrow">🗺️ Todo conectado</div>
     <h2 class="titulo">Mapa de conexiones</h2>
-    <p class="lead">Así se enlaza todo lo que acabas de ver, en una sola cadena lógica:</p>
-    <div class="mapa">
-      <div class="mapa-fila"><b>Mercado</b> <span class="flecha">→ se corta con →</span> <b>Criterios</b> <span class="flecha">→ dan →</span> <b>Segmentos</b></div>
-      <div class="mapa-fila"><b>Criterios</b> <span class="flecha">se agrupan en 4:</span> Geográfica · Demográfica · Psicográfica · Conductual</div>
-      <div class="mapa-fila">Todo segmento <span class="flecha">se filtra con</span> <b>MASA</b> <span class="flecha">antes de</span> <b>FODA</b> (analizarlo)</div>
-      <div class="mapa-fila">Con datos de <b>Demográfica</b> + <b>Conductual</b> <span class="flecha">se hace la</span> <b>Proyección de demanda</b></div>
-      <div class="mapa-fila">Con el segmento ya validado, eliges una <b>Estrategia</b> (de indiferenciada a micromarketing → hipersegmentación)</div>
+    <p class="lead">Así se enlaza todo lo que acabas de ver, en una sola cadena:</p>
+    <div class="mapa-visual">
+      <svg viewBox="0 0 900 340" width="100%" height="340">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"></path>
+          </marker>
+        </defs>
+        <!-- flechas -->
+        <path class="flecha-linea" d="M140,50 L140,110"></path>
+        <path class="flecha-linea" d="M140,150 L140,205"></path>
+        <path class="flecha-linea" d="M230,235 L340,235"></path>
+        <path class="flecha-linea" d="M430,235 L540,235"></path>
+        <path class="flecha-linea" d="M630,235 L630,150"></path>
+        <path class="flecha-linea" d="M630,110 Q630,40 480,40"></path>
+        <path class="flecha-linea" d="M400,40 Q250,40 200,90"></path>
+        <path class="flecha-linea" d="M60,235 Q0,150 60,60"></path>
+
+        <!-- nodos -->
+        <rect x="60" y="10" width="160" height="42" rx="10" fill="var(--n1)"></rect>
+        <text x="140" y="36" class="nodo-texto" style="fill:#04211D;">MERCADO</text>
+
+        <rect x="60" y="112" width="160" height="42" rx="10" fill="var(--n2)"></rect>
+        <text x="140" y="138" class="nodo-texto">CRITERIOS</text>
+
+        <rect x="60" y="210" width="160" height="50" rx="10" fill="var(--n1)"></rect>
+        <text x="140" y="232" class="nodo-texto" style="fill:#04211D;">SEGMENTO</text>
+        <text x="140" y="248" class="nodo-sub" style="fill:#04211D;opacity:.7;">(4 tipos)</text>
+
+        <rect x="345" y="210" width="90" height="50" rx="10" fill="var(--n3)"></rect>
+        <text x="390" y="232" class="nodo-texto" style="fill:#2A1B06;">MASA</text>
+        <text x="390" y="248" class="nodo-sub" style="fill:#2A1B06;opacity:.7;">¿sirve?</text>
+
+        <rect x="545" y="210" width="90" height="50" rx="10" fill="var(--n2)"></rect>
+        <text x="590" y="232" class="nodo-texto">FODA</text>
+        <text x="590" y="248" class="nodo-sub">analiza</text>
+
+        <rect x="550" y="110" width="160" height="42" rx="10" fill="var(--n2)"></rect>
+        <text x="630" y="136" class="nodo-texto">PROYECCIÓN</text>
+
+        <rect x="400" y="16" width="160" height="42" rx="10" fill="var(--n3)"></rect>
+        <text x="480" y="42" class="nodo-texto" style="fill:#2A1B06;">ESTRATEGIA</text>
+      </svg>
     </div>
     <div class="conexion"><span class="ico">🔗</span><p>Si te aprendes esta cadena, no necesitas memorizar 17 fichas sueltas: se derivan unas de otras.</p></div>
   </section>
 
-  <!-- ===================== CASO PRÁCTICO ===================== -->
+  <!-- ===================== CASO PRÁCTICO (FLUJO) ===================== -->
   <section id="caso">
     <div class="eyebrow">🧪 Todo junto</div>
     <h2 class="titulo">Caso práctico: un gimnasio nuevo de barrio</h2>
-    <p class="lead">Vamos a usar TODO lo aprendido, paso a paso, en un ejemplo real. Así ves cómo se conecta.</p>
+    <p class="lead">Vamos a usar TODO lo aprendido, paso a paso.</p>
     <div class="pasos">
-      <div class="paso"><h4>Miramos el mercado</h4><p>Mercado = toda la gente del barrio que podría hacer ejercicio. Son muchos y muy distintos.</p></div>
+      <div class="paso"><h4>Miramos el mercado</h4><p>Mercado = toda la gente del barrio que podría hacer ejercicio.</p></div>
       <div class="paso"><h4>Aplicamos los 4 criterios</h4><p><strong>Geográfica:</strong> gente a menos de 15 min. <strong>Demográfica:</strong> 25–40 años, ingresos medios. <strong>Psicográfica:</strong> les importa verse y sentirse bien. <strong>Conductual:</strong> quieren constancia pero les falta motivación.</p></div>
       <div class="paso"><h4>Elegimos un segmento</h4><p>"Adultos jóvenes del barrio (25–40) que quieren ponerse en forma pero se aburren entrenando solos."</p></div>
-      <div class="paso"><h4>Lo pasamos por MASA</h4><p><strong>M</strong>edible ✅ · <strong>A</strong>ccesible (redes locales) ✅ · <strong>S</strong>ustancial (hay suficientes) ✅ · <strong>A</strong>ccionable (clases grupales) ✅. ¡Sirve!</p></div>
-      <div class="paso"><h4>Hacemos un FODA rápido</h4><p>F: clases grupales divertidas. D: marca nueva. O: tendencia de vida sana. A: gimnasios vecinos.</p></div>
-      <div class="paso"><h4>Proyectamos la demanda</h4><p>300 personas del segmento, captamos el 10% = 30 clientes × $80.000/mes = $2.400.000 mensuales estimados.</p></div>
-      <div class="paso"><h4>Elegimos estrategia</h4><p>Concentrada: nos enfocamos a fondo en ese único segmento con clases grupales motivadoras. Después podremos crecer.</p></div>
+      <div class="paso"><h4>Lo pasamos por MASA</h4><p><strong>M</strong>edible ✅ · <strong>A</strong>ccesible ✅ · <strong>S</strong>ustancial ✅ · <strong>A</strong>ccionable ✅. ¡Sirve!</p></div>
+      <div class="paso"><h4>Hacemos un FODA rápido</h4><p>F: clases grupales. D: marca nueva. O: tendencia de vida sana. A: gimnasios vecinos.</p></div>
+      <div class="paso"><h4>Proyectamos la demanda</h4><p>300 personas del segmento, captamos el 10% = 30 clientes × $80.000/mes = $2.400.000 mensuales.</p></div>
+      <div class="paso"><h4>Elegimos estrategia</h4><p>Concentrada: nos enfocamos a fondo en ese único segmento con clases grupales motivadoras.</p></div>
     </div>
-    <div class="nota">✅ Eso es exactamente lo que pide la clase: <strong>definir, segmentar, filtrar, analizar, proyectar y decidir</strong>. Si entiendes este caso, entiendes la clase entera.</div>
+    <div class="nota">✅ Eso es exactamente lo que pide la clase: <strong>definir, segmentar, filtrar, analizar, proyectar y decidir</strong>.</div>
   </section>
 
   <!-- ===================== TABLA RESUMEN ===================== -->
   <section id="tabla">
     <div class="eyebrow">📊 Para memorizar</div>
     <h2 class="titulo">Resumen de datos clave</h2>
-    <table>
-      <thead><tr><th>Dato</th><th>Cuánto</th><th>Qué es</th></tr></thead>
-      <tbody>
-        <tr><td>Tipos principales</td><td><span class="star">4</span></td><td>Geográfica · Demográfica · Psicográfica · Conductual</td></tr>
-        <tr><td>Letras de MASA</td><td><span class="star">4</span></td><td>Medible · Accesible · Sustancial · Accionable</td></tr>
-        <tr><td>Cuadrantes del FODA</td><td><span class="star">4</span></td><td>Fortalezas · Oportunidades · Debilidades · Amenazas</td></tr>
-        <tr><td>Estrategias</td><td><span class="star">4</span></td><td>Indiferenciada · Diferenciada · Concentrada · Micromarketing</td></tr>
-        <tr><td>Medidas de tendencia</td><td>3</td><td>Media · Mediana · Moda</td></tr>
-        <tr><td>Niveles de profundidad</td><td>3</td><td>Teal (idea) · Índigo (conecta) · Bronce (a fondo)</td></tr>
-        <tr><td>Segmento más pequeño</td><td>1</td><td>Hipersegmentación (una persona)</td></tr>
-      </tbody>
-    </table>
+    <div class="tabla-wrap">
+      <table>
+        <thead><tr><th>Dato</th><th>Cuánto</th><th>Qué es</th></tr></thead>
+        <tbody>
+          <tr><td>Tipos principales</td><td><span class="star">4</span></td><td>Geográfica · Demográfica · Psicográfica · Conductual</td></tr>
+          <tr><td>Letras de MASA</td><td><span class="star">4</span></td><td>Medible · Accesible · Sustancial · Accionable</td></tr>
+          <tr><td>Cuadrantes del FODA</td><td><span class="star">4</span></td><td>Fortalezas · Oportunidades · Debilidades · Amenazas</td></tr>
+          <tr><td>Estrategias</td><td><span class="star">4</span></td><td>Indiferenciada · Diferenciada · Concentrada · Micromarketing</td></tr>
+          <tr><td>Medidas de tendencia</td><td>3</td><td>Media · Mediana · Moda</td></tr>
+          <tr><td>Niveles de profundidad</td><td>3</td><td>Teal (idea) · Índigo (conecta) · Bronce (a fondo)</td></tr>
+          <tr><td>Segmento más pequeño</td><td>1</td><td>Hipersegmentación (una persona)</td></tr>
+        </tbody>
+      </table>
+    </div>
 
     <div class="estrella" style="margin-top:24px;">
       <div class="big">4</div>
@@ -665,30 +925,30 @@
   <section id="repaso">
     <div class="eyebrow">🔁 La técnica más poderosa</div>
     <h2 class="titulo">Tu plan de repaso (espaciado)</h2>
-    <p class="lead">Repasar repartido en varios días fija el conocimiento mucho más que estudiar todo de una sola vez. No leas esto una sola vez; vuelve en estos momentos:</p>
+    <p class="lead">Repasar repartido en varios días fija el conocimiento mucho más que estudiar todo de una sola vez.</p>
     <div class="repaso-grid">
-      <div class="rep"><div class="cuando">Hoy</div><div class="que">Lee la guía completa y responde cada "Pruébate".</div><label><input type="checkbox"> Hecho</label></div>
+      <div class="rep"><div class="cuando">Hoy</div><div class="que">Lee la guía completa y escribe cada "Pruébate".</div><label><input type="checkbox"> Hecho</label></div>
       <div class="rep"><div class="cuando">En 2 días</div><div class="que">Solo la autoevaluación. Responde de memoria antes de mirar.</div><label><input type="checkbox"> Hecho</label></div>
       <div class="rep"><div class="cuando">En 1 semana</div><div class="que">Tabla resumen + el caso práctico. Cuéntalo en voz alta.</div><label><input type="checkbox"> Hecho</label></div>
     </div>
   </section>
 
   <!-- ===================== AUTOEVALUACIÓN ===================== -->
-  <section id="quiz" class="quiz">
+  <section id="quiz">
     <div class="eyebrow">✅ Ponte a prueba (recuperación)</div>
     <h2 class="titulo">Autoevaluación</h2>
-    <p class="lead">Intenta responder de memoria y luego abre la respuesta. Esto es lo que de verdad fija el aprendizaje.</p>
+    <p class="lead">Responde de memoria y luego compara. Esto es lo que de verdad fija el aprendizaje.</p>
 
-    <details><summary>¿Qué es segmentar, en una frase?</summary><div class="resp">Dividir el mercado grande en grupos parecidos para venderle mejor a cada uno.</div></details>
-    <details><summary>Nombra los 4 tipos principales y su pregunta.</summary><div class="resp">Geográfica (¿dónde?), Demográfica (¿quién?), Psicográfica (¿cómo piensa?), Conductual (¿cómo compra?).</div></details>
-    <details><summary>¿Qué significa MASA y para qué sirve?</summary><div class="resp">Medible, Accesible, Sustancial, Accionable. Es el filtro para saber si un segmento sirve. Si falla una letra, no sirve.</div></details>
-    <details><summary>¿Diferencia entre demográfica y psicográfica?</summary><div class="resp">Demográfica = datos por fuera (edad, sexo, ingresos). Psicográfica = lo de adentro (personalidad, valores, estilo de vida).</div></details>
-    <details><summary>¿Qué es la hipersegmentación?</summary><div class="resp">Segmentar con tecnología y datos hasta llegar casi a una sola persona (ej.: recomendaciones de Netflix o Spotify).</div></details>
-    <details><summary>¿Para qué sirve el FODA?</summary><div class="resp">Para analizar Fortalezas/Debilidades (internas) y Oportunidades/Amenazas (externas) antes de decidir a qué segmento entrarle.</div></details>
-    <details><summary>¿Qué son media, mediana y moda?</summary><div class="resp">Media = promedio. Mediana = el valor del medio. Moda = el que más se repite. Describen al segmento con números.</div></details>
-    <details><summary>¿Cuáles son las 4 estrategias de segmentación?</summary><div class="resp">Indiferenciada, Diferenciada, Concentrada y Micromarketing.</div></details>
-    <details><summary>¿Por qué segmentar es importante (en una frase)?</summary><div class="resp">Porque hablarle a un grupo específico vende más y cuesta menos que hablarle a todos a la vez.</div></details>
-    <details><summary>¿Quién formalizó el concepto de segmentación de mercados y cuándo?</summary><div class="resp">Wendell R. Smith, en 1956, en su artículo sobre diferenciación de producto vs. segmentación de mercados.</div></details>
+    <div class="quiz-item"><div class="preg">¿Qué es segmentar, en una frase?</div><p style="margin-top:8px;">Dividir el mercado grande en grupos parecidos para venderle mejor a cada uno.</p></div>
+    <div class="quiz-item"><div class="preg">Nombra los 4 tipos principales y su pregunta.</div><p style="margin-top:8px;">Geográfica (¿dónde?), Demográfica (¿quién?), Psicográfica (¿cómo piensa?), Conductual (¿cómo compra?).</p></div>
+    <div class="quiz-item"><div class="preg">¿Qué significa MASA y para qué sirve?</div><p style="margin-top:8px;">Medible, Accesible, Sustancial, Accionable. Es el filtro para saber si un segmento sirve.</p></div>
+    <div class="quiz-item"><div class="preg">¿Qué raíz comparten geográfica, demográfica y psicográfica?</div><p style="margin-top:8px;">El griego <i>graphein</i> ("describir"). Solo cambia qué describen: lugar, gente o mente.</p></div>
+    <div class="quiz-item"><div class="preg">¿Qué es la hipersegmentación?</div><p style="margin-top:8px;">Segmentar con tecnología y datos hasta llegar casi a una sola persona.</p></div>
+    <div class="quiz-item"><div class="preg">¿A quién se le suele atribuir el FODA?</div><p style="margin-top:8px;">A Albert Humphrey, en el Stanford Research Institute (años 60), aunque la autoría exacta se discute.</p></div>
+    <div class="quiz-item"><div class="preg">¿Qué son media, mediana y moda?</div><p style="margin-top:8px;">Media = promedio. Mediana = el valor del medio. Moda = el que más se repite.</p></div>
+    <div class="quiz-item"><div class="preg">¿Cuáles son las 4 estrategias de segmentación?</div><p style="margin-top:8px;">Indiferenciada, Diferenciada, Concentrada y Micromarketing.</p></div>
+    <div class="quiz-item"><div class="preg">¿Qué significa "proyectar" y por qué le da nombre a la materia?</div><p style="margin-top:8px;">Del latín "lanzar hacia adelante". Proyectar mercados es lanzar la mirada al futuro con números.</p></div>
+    <div class="quiz-item"><div class="preg">¿A quién se le suele atribuir el concepto de segmentación de mercados y de qué año es?</div><p style="margin-top:8px;">A Wendell R. Smith, en un artículo de 1956.</p></div>
   </section>
 
 </div>
