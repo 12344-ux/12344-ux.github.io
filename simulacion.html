@@ -336,12 +336,24 @@
 
     // NUEVO: id único por pedido. Evita que dos compras del mismo cliente
     // caigan en la misma carpeta de Storage (bug de colisión ya confirmado).
-    function generarPedidoId(email){
+    //
+    // Formato: {PLAN}-{fecha corta}-{azar}  ej: P10-260703-a1b2
+    // Por qué este orden y no fecha+correo+azar (versión anterior):
+    // el explorador de archivos de Supabase trunca nombres largos con "...".
+    // La versión anterior repetía el correo (ya visible en la carpeta padre)
+    // y dejaba la parte que SÍ distingue un pedido de otro (el azar) al
+    // final, justo donde el dashboard corta el texto. Resultado real:
+    // dos pedidos del mismo cliente se veían idénticos a simple vista en
+    // el dashboard, aunque por dentro fueran distintos. Ahora lo que más
+    // le importa al dueño (el plan: económico vs. premium) va primero,
+    // visible siempre, sin necesidad de expandir ni hacer scroll.
+    function generarPedidoId(email, dias){
       var now = new Date();
-      var fecha = now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
-      var usuario = limpiar((email.split('@')[0]||'cliente').toLowerCase()).slice(0,20);
-      var azar = Math.random().toString(36).slice(2,7);
-      return fecha + '-' + usuario + '-' + azar;
+      var yy = String(now.getFullYear()).slice(2);
+      var fecha = yy + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
+      var planCode = 'P' + (dias || 0);
+      var azar = Math.random().toString(36).slice(2,6);
+      return planCode + '-' + fecha + '-' + azar;
     }
 
     // Paso 1
@@ -517,7 +529,7 @@
       try{
         estado.email = document.getElementById('email').value.trim();
         estado.nombre = (document.getElementById('nombre').value.trim() || 'Cliente');
-        var pedidoId = generarPedidoId(estado.email);
+        var pedidoId = generarPedidoId(estado.email, estado.dias);
         estado.pedidoId = pedidoId;
         var r = await procesar(estado.email, pedidoId);
         await notificar(estado.email, r, pedidoId);
