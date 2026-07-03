@@ -127,6 +127,7 @@
     <!-- Resumen de ventas -->
     <div class="card">
       <h2>💰 Resumen de ventas</h2>
+      <div class="hint" id="ventasNota" style="margin-top:-6px;margin-bottom:14px;">Solo ventas reales.</div>
       <div class="grid2">
         <div class="mini">
           <div style="font-size:12px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Últimos 15 días</div>
@@ -200,7 +201,11 @@
     barra.className = 'barra' + (pct>=90?' bad':pct>=70?' warn':'');
   }
 
-  function pintarVentas(ventas){
+  function pintarVentas(ventas, pedidosPrueba){
+    var nota = document.getElementById('ventasNota');
+    if(nota){
+      nota.textContent = 'Solo ventas reales' + (pedidosPrueba ? ' · ' + pedidosPrueba + ' pedido' + (pedidosPrueba===1?'':'s') + ' de prueba 🧪 (no contados)' : ' · sin pedidos de prueba');
+    }
     function pintar(prefijo, r){
       document.getElementById(prefijo+'total').textContent = r.total;
       document.getElementById(prefijo+'ingreso').textContent = '$' + r.ingresoEstimadoUSD + ' USD';
@@ -324,7 +329,7 @@
 
   function pintarTodo(data){
     pintarStorage(data.storage);
-    pintarVentas(data.ventas);
+    pintarVentas(data.ventas, data.pedidosPrueba);
     pintarPedidos(data.pedidos);
     document.getElementById('refresco').textContent = 'Actualizado: ' + new Date(data.generadoEn).toLocaleString('es-CO');
   }

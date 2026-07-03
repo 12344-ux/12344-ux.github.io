@@ -61,12 +61,16 @@ function sb() {
   );
 }
 
-// CANDADO DE SEGURIDAD: qué se considera un pedido "de prueba" (borrable).
-// Regla clara y documentada para el dueño: el correo debe empezar por
-// "prueba" (ej. prueba@montaguth.institute), o ser de example.com / .test.
-// Un pedido real NUNCA cumple esto, así que el borrado no lo puede tocar.
+// Correos de PRUEBA. Un pedido de prueba: (a) NO cuenta como venta en el
+// resumen del tablero, (b) se marca con es_prueba (badge 🧪), (c) es
+// borrable desde el tablero. Debe coincidir con la misma regla en
+// simulacion.html. Correo dedicado + heurística.
+// CANDADO DE SEGURIDAD: un pedido real NUNCA cumple esto, así que el
+// borrado no lo puede tocar aunque se tenga el secreto.
+const CORREOS_PRUEBA = ["pruebasmontaguth@gmail.com"];
 function esCorreoPrueba(correo: string): boolean {
   const c = (correo || "").toLowerCase().trim();
+  if (CORREOS_PRUEBA.includes(c)) return true;
   return c.startsWith("prueba") || c.endsWith("@example.com") || c.endsWith(".test");
 }
 
@@ -198,10 +202,15 @@ Deno.serve(async (req) => {
     };
   });
 
-  // Resumen de ventas (15 y 30 días)
+  // Resumen de ventas (15 y 30 días). EXCLUYE los pedidos de prueba:
+  // el tablero debe reflejar ventas REALES, no ruido de pruebas.
   function resumen(dias: number) {
     const desde = ahora - dias * 86_400_000;
-    const enRango = (pedidosRaw || []).filter((p: any) => p.fecha_compra && new Date(p.fecha_compra).getTime() >= desde);
+    const enRango = (pedidosRaw || []).filter((p: any) =>
+      p.fecha_compra &&
+      new Date(p.fecha_compra).getTime() >= desde &&
+      !esCorreoPrueba(p.correo)
+    );
     const porPlan: Record<string, number> = {};
     let ingreso = 0;
     for (const p of enRango) {
@@ -213,6 +222,7 @@ Deno.serve(async (req) => {
   }
 
   const ventas = { ultimos15: resumen(15), ultimos30: resumen(30) };
+  const pedidosPrueba = (pedidosRaw || []).filter((p: any) => esCorreoPrueba(p.correo)).length;
 
-  return json({ storage, pedidos, ventas, generadoEn: new Date().toISOString() });
+  return json({ storage, pedidos, ventas, pedidosPrueba, generadoEn: new Date().toISOString() });
 });
