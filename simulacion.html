@@ -138,12 +138,12 @@
       <p class="benefit">En menos de 24 horas recibirás una <strong>guía personalizada</strong>, lista para estudiar y basada en la <strong>ciencia del aprendizaje</strong>.</p>
 
       <div class="planes">
-        <div class="plan" data-plan="Acceso 10 días" data-precio="$3 USD" data-limit="15" data-dias="10">
+        <div class="plan" data-plan="Acceso 10 días" data-precio="$3 USD" data-limit="45" data-dias="10">
           <div class="pn">Acceso 10 días</div>
           <div class="precio">$3<small> USD</small></div>
-          <div class="plan-uso">Ideal para preparar un examen próximo.</div>
+          <div class="plan-uso">Para un tema y tu examen próximo. Acceso el tiempo justo para un ciclo de repaso: hoy, en 2 días y en 1 semana.</div>
           <ul>
-            <li><span class="ic">📎</span> Archivos hasta <b>15 MB</b></li>
+            <li><span class="ic">🧠</span> Diseñada con repaso espaciado</li>
             <li><span class="ic">🔗</span> Enlace privado a tu correo</li>
           </ul>
           <div class="pick">Elegir este →</div>
@@ -152,14 +152,15 @@
           <span class="badge-rec">⭐ Recomendado</span>
           <div class="pn">Acceso 30 días</div>
           <div class="precio">$5<small> USD</small></div>
-          <div class="plan-uso">Perfecto para materias completas o varios repasos.</div>
+          <div class="plan-uso">Para que no se te olvide después del examen. Acceso extendido para repasar varias veces en el mes y fijar la materia a largo plazo.</div>
           <ul>
-            <li><span class="ic">📎</span> Archivos hasta <b>45 MB</b></li>
+            <li><span class="ic">🧠</span> Pensada para retención a largo plazo</li>
             <li><span class="ic">🔗</span> Enlace privado a tu correo</li>
           </ul>
           <div class="pick">Elegir este →</div>
         </div>
       </div>
+      <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:14px;">📎 Puedes subir archivos hasta 45 MB por envío (igual en ambos planes).</p>
 
       <div class="despues">
         <h2 class="despues-t">¿Qué pasará después de comprar?</h2>
@@ -178,14 +179,14 @@
           </div>
           <div class="paso">
             <div class="paso-n">4</div>
-            <div class="paso-c"><h3>Empieza a estudiar</h3><p>Tu guía estará disponible durante el tiempo de tu plan. Después, el enlace se elimina automáticamente para proteger tu privacidad.</p></div>
+            <div class="paso-c"><h3>Empieza a estudiar</h3><p>Tu guía estará disponible durante el tiempo de tu plan, pensado para que puedas repasar varias veces (repasar espaciado es lo que de verdad fija el conocimiento). Después, el enlace se elimina automáticamente para proteger tu privacidad.</p></div>
           </div>
         </div>
       </div>
 
       <div class="incluye">
         <div class="incluye-t">Siempre recibirás esto</div>
-        <div class="incluye-sub">No importa cuál elijas: la calidad de tu guía es siempre la misma. Solo cambian el tamaño de archivos permitido y el tiempo de acceso.</div>
+        <div class="incluye-sub">No importa cuál elijas: la calidad de tu guía es siempre la misma. Lo único que cambia es cuánto tiempo la tienes disponible para repasar y fijar lo aprendido.</div>
         <div class="incluye-grid">
           <div class="inc"><span class="ck">✓</span> Guía completamente personalizada</div>
           <div class="inc"><span class="ck">✓</span> Explicaciones simplificadas</div>
@@ -377,7 +378,7 @@
         document.getElementById('rPlan').textContent = estado.plan;
         document.getElementById('rPrecio').textContent = estado.precio;
         document.getElementById('rDias').textContent = estado.dias + ' días';
-        document.getElementById('planInfo').textContent = estado.plan + ' · archivos hasta ' + estado.limitMB + ' MB';
+        document.getElementById('planInfo').textContent = estado.plan + ' · máx ' + estado.limitMB + ' MB por envío';
         goto(2);
       });
     });
@@ -416,7 +417,7 @@
       if(seleccionados.length===0){ err.textContent='Adjunta al menos un archivo.'; err.style.display='block'; return; }
       var max = estado.limitMB*1048576;
       if(totalBytes() > max){
-        err.textContent='Tus archivos pesan '+fmt(totalBytes())+'. El plan "'+estado.plan+'" permite hasta '+estado.limitMB+' MB. Elige el plan de 30 días o reduce el tamaño.';
+        err.textContent='Tus archivos pesan '+fmt(totalBytes())+'. El máximo por envío es '+estado.limitMB+' MB. Comprime o reduce el tamaño e intenta de nuevo.';
         err.style.display='block'; return;
       }
       err.style.display='none';
