@@ -277,6 +277,21 @@
       : '<button class="btn btn-ok" id="btnEntregada">✓ Marcar guía como entregada</button>';
     var acciones = btnEntregada + '<div class="err" id="entErr"></div>';
 
+    // Bloque "liberar apuntes" (borra solo los archivos de Storage de ESTE
+    // pedido; conserva el registro). Disponible solo si la guía ya se entregó.
+    acciones += '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line);">';
+    if(p.apuntes_borrados){
+      acciones += '<div class="nota-seg"><b>🧹 Apuntes liberados</b> el ' + fechaLoc(p.apuntes_borrados) + '. El registro del pedido se conserva.</div>';
+    } else if(!p.guia_entregada){
+      acciones += '<button class="btn btn-ghost" id="btnLiberar" disabled>🧹 Liberar apuntes de Storage</button>' +
+        '<div class="hint">Se habilita cuando marques la guía como entregada (así no borras apuntes sin procesar).</div>';
+    } else {
+      acciones += '<button class="btn btn-bad" id="btnLiberar">🧹 Liberar apuntes de Storage</button>' +
+        '<div class="hint">Borra solo los archivos originales de ESTE pedido (no toca otros pedidos del mismo cliente). El registro se conserva.</div>' +
+        '<div class="err" id="libErr"></div>';
+    }
+    acciones += '</div>';
+
     if(p.es_prueba){
       acciones += '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line);">' +
         '<button class="btn btn-bad" id="btnEliminar">🗑 Eliminar este pedido de prueba</button>' +
@@ -297,7 +312,9 @@
         fila('Plan', esc(p.plan || '—')) +
         fila('Acceso', (p.dias_acceso ? p.dias_acceso + ' días' : '—')) +
         fila('Fecha de compra', fechaLoc(p.fecha_compra)) +
-        fila('Tamaño apuntes', (p.tamano_apuntes_mb != null ? p.tamano_apuntes_mb + ' MB' : '—')) +
+        fila('Apuntes', p.apuntes_borrados
+          ? '🧹 Liberados el ' + fechaLoc(p.apuntes_borrados)
+          : (p.tamano_apuntes_mb != null ? p.tamano_apuntes_mb + ' MB (en Storage)' : '—')) +
         fila('Carpeta Storage', esc(p.carpeta_storage || '—')) +
         fila('Guía entregada', (p.guia_entregada ? 'Sí · ' + fechaLoc(p.fecha_entrega) : 'No')) +
       '</div>' +
@@ -311,6 +328,11 @@
     document.getElementById('btnEntregada').addEventListener('click', function(){
       marcarEntregada(p, !p.guia_entregada, this);
     });
+
+    var btnLib = document.getElementById('btnLiberar');
+    if(btnLib && !btnLib.disabled){
+      btnLib.addEventListener('click', function(){ liberarApuntes(p, this); });
+    }
 
     if(p.es_prueba){
       document.getElementById('btnEliminar').addEventListener('click', function(){
@@ -333,6 +355,24 @@
       btn.disabled = false;
       btn.textContent = marcar ? '✓ Marcar guía como entregada' : '↩ Marcar como pendiente';
       entErr.textContent = e.message; entErr.style.display = 'block';
+    }
+  }
+
+  async function liberarApuntes(p, btn){
+    var libErr = document.getElementById('libErr');
+    if(libErr) libErr.style.display = 'none';
+    if(!confirm('¿Liberar (borrar de Storage) los apuntes del pedido "' + p.pedido_id + '" de ' + (p.nombre || 'este cliente') + '?\n\nSe borran SOLO los archivos originales de ESTE pedido. El registro se conserva. Úsalo cuando ya hiciste y entregaste la guía. Esto no se puede deshacer.')) return;
+    btn.disabled = true; btn.textContent = 'Liberando…';
+    try{
+      var r = await fetch(FN_URL + '?liberar=1&pedido_id=' + encodeURIComponent(p.pedido_id) + '&key=' + encodeURIComponent(secretoActual), { method:'POST' });
+      var data = await r.json().catch(function(){ return {}; });
+      if(!r.ok || !data.ok){ throw new Error(data.error || ('Error ' + r.status)); }
+      cerrarDetalle();
+      await refrescar();
+    }catch(e){
+      btn.disabled = false; btn.textContent = '🧹 Liberar apuntes de Storage';
+      if(libErr){ libErr.textContent = e.message; libErr.style.display = 'block'; }
+      else { alert(e.message); }
     }
   }
 
