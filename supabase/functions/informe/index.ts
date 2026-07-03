@@ -148,6 +148,44 @@ Deno.serve(async (req) => {
     return json({ ok: true, pedido_id: pedidoId, guia_entregada: marcar });
   }
 
+  // ---------- MODO LIBERAR APUNTES (borra SOLO archivos de Storage) ----------
+  // Borra los apuntes crudos de ESTE pedido (su subcarpeta correo/pedidoId),
+  // conservando el registro, su cuestionario y las ventas. Sirve para
+  // cualquier pedido (real o prueba): liberar espacio desde el tablero sin
+  // ir a Supabase. Candados de seguridad:
+  //   1) Solo si la guía ya está marcada como ENTREGADA (así nunca se borran
+  //      apuntes que no se han procesado todavía).
+  //   2) Solo la subcarpeta del pedido: carpeta_storage debe incluir "/"
+  //      (correo/pedidoId), nunca la carpeta completa de una persona.
+  //   POST ?liberar=1&pedido_id=XXX&key=...
+  if (url.searchParams.get("liberar") === "1") {
+    if (req.method !== "POST") return json({ error: "Requiere POST." }, 405);
+    const pedidoId = url.searchParams.get("pedido_id") || "";
+    if (!pedidoId) return json({ error: "Falta pedido_id." }, 400);
+
+    const { data: row, error: errRow } = await client
+      .from("pedidos").select("*").eq("pedido_id", pedidoId).maybeSingle();
+    if (errRow) return json({ error: "Error buscando el pedido: " + errRow.message }, 500);
+    if (!row) return json({ error: "Pedido no encontrado." }, 404);
+
+    // Candado 1: no liberar apuntes de un pedido sin entregar.
+    if (!row.guia_entregada) {
+      return json({ error: "Marca la guía como entregada antes de liberar los apuntes (así no borras algo sin procesar)." }, 409);
+    }
+    // Candado 2: nunca una carpeta de persona completa; debe ser correo/pedidoId.
+    const carpeta = row.carpeta_storage || "";
+    if (!carpeta.includes("/")) {
+      return json({ error: "Ruta de carpeta inválida; se cancela por seguridad." }, 400);
+    }
+
+    let archivosBorrados = 0;
+    try { archivosBorrados = await borrarCarpeta(client, BUCKET_APUNTES, carpeta); }
+    catch (e) { return json({ error: "Error borrando archivos: " + (e as Error).message }, 500); }
+
+    await client.from("pedidos").update({ apuntes_borrados: new Date().toISOString() }).eq("pedido_id", pedidoId);
+    return json({ ok: true, pedido_id: pedidoId, archivos_borrados: archivosBorrados });
+  }
+
   // ---------- MODO BORRADO (solo pedidos de prueba) ----------
   if (url.searchParams.get("delete") === "1") {
     if (req.method !== "POST") return json({ error: "El borrado requiere POST." }, 405);
