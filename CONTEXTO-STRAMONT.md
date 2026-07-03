@@ -2,7 +2,7 @@
 
 > **Para el próximo Kiro:** esto te lo escribo yo mismo, la sesión anterior, para que arranques sin perder el hilo. Está escrito como si te lo estuviera contando de viva voz. Léelo completo antes de tocar nada.
 > **Para el dueño (usuario):** en el chat nuevo, dile "Lee CONTEXTO-STRAMONT.md antes de empezar" y con eso el próximo Kiro queda al día.
-> **Última actualización:** 3 de julio de 2026 (sesión de reconstrucción de guías con CHIP STRAMONT + entrega real a cliente + bloque de instrucciones + fix de deploy).
+> **Última actualización:** 3 de julio de 2026 (segunda tanda del mismo día: se construyó y puso en producción el **tablero interno de gestión** `informe.html` + tabla `pedidos` + tabla `pedido_intake` + Edge Function `informe`; reenfoque de planes a "aprendizaje, no almacenamiento"; limpieza de correos; correo dedicado de pruebas; botones de marcar entregada / liberar apuntes / borrar pruebas. Todo probado con Playwright y desplegado. Ver sección **2B**).
 
 ---
 
@@ -13,7 +13,7 @@ El dueño es estudiante de **Dirección de Ventas** (SENA, Colombia). Stramont c
 - **Dominio:** `montaguth.institute` (GitHub Pages, sitio 100% estático).
 - **Repo:** `12344-ux/12344-ux.github.io`, rama `main` = lo publicado. **Repo público.**
 - **Estilo de trato que quiere:** socio honesto y directo, no adulador. Explica el porqué con "chispas críticas". Cero humo, entrega cosas tangibles y funcionando. Ya se acordó con él NO vender datos ni buscar vacíos legales — línea ética firme.
-- **Modelo de negocio:** cobra por el **alojamiento** del documento (no por créditos/SaaS). Planes actuales: Acceso 10 días ($3 USD, hasta 15 MB) / Acceso 30 días ($5 USD, hasta 45 MB). El Kit de plantillas es un regalo opcional post-compra. El documento que se genera es un "Comprobante de pago", **no** una factura DIAN.
+- **Modelo de negocio:** cobra por el **alojamiento/acceso** al documento (no por créditos/SaaS). Planes: **Acceso 10 días ($3 USD)** y **Acceso 30 días ($5 USD, recomendado)**. **Importante (reenfoque de hoy):** los planes YA NO se diferencian por tamaño de archivo. El tope es **45 MB por envío, igual en ambos** (tope técnico discreto, margen bajo el límite duro de 50 MB de Supabase). La diferencia de venta es la **utilidad de aprendizaje** atada al repaso espaciado: 10 días = un ciclo de repaso antes de un examen (hoy / 2 días / 1 semana); 30 días = repasar varias veces en el mes y fijar a largo plazo. El Kit de plantillas es un regalo opcional post-compra. El documento que se genera es un "Comprobante de pago", **no** una factura DIAN.
 
 ---
 
@@ -37,6 +37,56 @@ Arranqué retomando un hilo que venía de antes: ya existía el método **CHIP S
 
 ---
 
+## 2B. Sesión del tablero interno (3 de julio, más tarde) — TODO ESTO YA ESTÁ EN PRODUCCIÓN
+
+El dueño reportó que `informe.html` daba **404** al meter la key. Eso destapó que el tablero interno existía como HTML pero **la Edge Function que lo alimenta nunca se había desplegado**. A partir de ahí construimos el sistema de gestión completo. Todo está mergeado, desplegado y probado con Playwright. En orden:
+
+### Qué se construyó (PRs #58 a #66)
+
+1. **Tabla `pedidos`** (Supabase, SQL versionado en `supabase/migrations/`). Registra cada compra: `pedido_id` (único), correo, nombre, tema, plan, dias_acceso, `carpeta_storage`, fecha_compra, `guia_entregada`, `fecha_entrega`, `tamano_apuntes_mb`, `apuntes_borrados`. **RLS: solo INSERT con la llave pública (anon), sin lectura pública** (contiene correos de clientes).
+
+2. **Fix de colisión de carpetas (crítico).** Antes, la carpeta de subida en `simulacion.html` era solo el correo → dos compras del mismo cliente se mezclaban. Ahora cada pedido genera un `pedido_id` con formato **`P{dias}-{yymmdd}-{azar}`** (ej. `P30-260703-6iu8`; el plan va primero para que sea legible aunque el dashboard de Supabase trunque el nombre) y la carpeta es **`correo/pedidoId`**. Este aislamiento por pedido es la base de seguridad del borrado (ver abajo). El `pedido_id` viaja en el correo de aviso.
+
+3. **Tabla `pedido_intake`** (RLS insert-only igual que pedidos). Guarda las respuestas del cuestionario opcional del Paso 4 (para qué la usa / qué le cuesta / algo puntual). Antes solo iban por correo; ahora se ven ordenadas en el detalle del pedido en el tablero.
+
+4. **Edge Function `informe`** (`supabase/functions/informe/index.ts`). **Es el cerebro del tablero.** Usa `SUPABASE_SERVICE_ROLE_KEY` solo del lado del servidor (nunca en el navegador) y se protege con el **mismo `LINK_SECRET`** que la función `entrega`. Decisión de diseño clave: NO se da lectura pública a `pedidos` ni `list()` del bucket a la llave pública (esa llave es pública → cualquiera podría enumerar correos de clientes). Modos (todos con `?key=LINK_SECRET`):
+   - `GET ?key=` → informe completo: uso del bucket `apuntes` vs 1 GB, lista de pedidos (con intake unido y flag `es_prueba`), alertas de +48h sin entregar, y ventas 15/30 días.
+   - `POST ?entregada=1/0&pedido_id=` → marca/desmarca la guía como entregada.
+   - `POST ?liberar=1&pedido_id=` → borra **solo los archivos de Storage** de ese pedido (conserva el registro). Candados: solo si `guia_entregada=true`, y la carpeta debe ser `correo/pedidoId` (nunca la carpeta completa de una persona).
+   - `POST ?delete=1&pedido_id=` → borra el pedido completo (registro + intake + archivos) **solo si es de prueba**.
+
+5. **`informe.html` — el tablero interno.** Uso interno, no enlazado en la navegación, `noindex`. Pide el `LINK_SECRET` en pantalla (no se guarda). Muestra: barra de capacidad del bucket, resumen de ventas (excluye pruebas), y lista de pedidos (más nuevo primero). **Cada fila es clickeable** → panel de detalle con todos los datos + el cuestionario + botones: "✓ Marcar guía como entregada" (verde, reversible), "🧹 Liberar apuntes de Storage" (habilitado solo si ya está entregada; muestra "Liberados el [fecha]"), y "🗑 Eliminar pedido de prueba" (solo en pruebas).
+
+6. **Reenfoque de planes** (`simulacion.html`): el tamaño dejó de ser diferenciador; ambos planes 45 MB. Los textos venden repaso espaciado / retención. `data-limit` del plan de 10 días pasó de 15 a 45. `privacidad.html` alineó "Estándar/Premium" → "Acceso 10/30 días".
+
+7. **Correos al mínimo (buzón limpio).** El dueño gestiona desde el tablero, así que ahora solo llegan **2 correos**: (a) aviso de compra simplificado ("nueva compra, pedido X, revisa el tablero" — sin volcado de datos) y (b) el de captación de la guía demo. Se **eliminó** el correo del cuestionario (ahora vive en el tablero). El Kit sigue yendo al **comprador** (no al buzón del dueño).
+
+8. **Correo dedicado de pruebas: `pruebasmontaguth@gmail.com`.** La función `esCorreoPrueba()` (misma regla en `simulacion.html` y en la Edge Function) reconoce: ese correo, cualquiera que empiece por `prueba`, o dominios `example.com` / `.test`. Un pedido de prueba: (a) **no cuenta como venta** en el tablero, (b) se marca con 🧪, (c) **no genera ningún correo** al comprar, (d) es borrable con el botón de eliminar. Un pedido **real nunca cumple esto**, así que el borrado no lo puede tocar (candado de seguridad, no solo convención).
+
+### La regla de seguridad permanente que dio el dueño
+
+**"NUNCA comprometer la seguridad con llaves/claves/secretos; si el camino directo expone algo sensible, buscar SIEMPRE otra vía; explicar el porqué; jamás implementar el atajo inseguro en silencio."** Ya está guardada como learning global. Se aplicó de hecho: por eso el tablero lee vía Edge Function con service_role del lado del servidor (nunca dando lectura pública a la llave anon), y por eso NO se hizo el repo privado (ver abajo).
+
+### Decisión sobre repo privado (NO hacerlo)
+
+El dueño preguntó si volver el repo privado permitiría un botón de borrado "más fácil". Se investigó y se descartó con datos: en el plan gratuito, poner el repo privado **despublica el sitio** (Pages en repos privados requiere Pro); y aun pagando, el sitio de Pages sigue siendo **público** salvo Enterprise Cloud. Además, esconder el código no es seguridad real (el JS se sirve al navegador igual). La conclusión: el borrado seguro se logra server-side + `LINK_SECRET`, sin gastar ni exponer nada.
+
+### Cómo se opera el tablero (para el dueño y el próximo Kiro)
+
+- Se entra a `montaguth.institute/informe.html` con el `LINK_SECRET`.
+- Flujo real de un pedido: llega compra → aparece "Pendiente" (amarillo) → a las 48h sin entregar se pone rojo "sin procesar" → el dueño hace la guía, la entrega, y marca "✓ entregada" (pasa a verde) → cuando ya no necesita los apuntes crudos, "🧹 liberar apuntes" (libera el 1 GB, conserva el registro).
+- **Convención de pruebas:** para probar sin ensuciar datos ni buzón, usar siempre `pruebasmontaguth@gmail.com`.
+
+### Los sustos de deploy (recurrente)
+
+Volvió a pasar varias veces que un merge dejaba el deploy de GitHub Pages fallando o cancelado (degradación transitoria de GitHub, no nuestro código). **Aprendizaje reforzado:** mergear **de a un PR** (esperar verde antes del siguiente — mergear dos seguidos cancela el primero y roza el fallo); si el sitio no refleja el cambio, revisar Actions y disparar un **commit trivial** de deploy limpio (no "Re-run"). PRs de deploy limpio usados hoy: #56, #60, #63, #66.
+
+### Pasos manuales de Supabase (NO se automatizan solos con el merge)
+
+Cuando un PR toca la tabla o la función `informe`, tras mergear hay que, en el dashboard de Supabase: (1) correr el SQL nuevo en **SQL Editor**, y (2) **redeploy** de la Edge Function `informe` (Edge Functions → informe → Code → pegar el código → Deploy). El deploy de GitHub Pages solo publica el HTML; Supabase es aparte. La función `informe` requiere que "Verify JWT" esté **apagado** (usa `LINK_SECRET` propio).
+
+---
+
 ## 3. Estado actual del sitio (archivos)
 
 | Archivo | Qué es |
@@ -45,10 +95,14 @@ Arranqué retomando un hilo que venía de antes: ya existía el método **CHIP S
 | `segmentacion-de-mercados.html` | **Guía-demo pública de referencia**, la que se abre desde "Ver en qué los convertimos" en la home. Reconstruida hoy con el CHIP STRAMONT definitivo: flashcards de escritura, Express/Dominar funcional, tabla/FODA-cuadrícula/mapa-SVG, LA JOYA del tema (graphein compartido + proyectar=pro+iacere). **Tiene muro de correos** (FormSubmit + `localStorage`), porque es la muestra pública para captar leads. |
 | `guia-segmentacion.jpeg` | Captura real de la guía anterior, mostrando tabla+FODA+mapa (se usa en la home). |
 | `entrega.html` | Visor público e inofensivo del sistema de entregas privadas: lee `?f&exp&sig`, llama a la Edge Function, renderiza la guía real en un `<iframe srcdoc>`. |
-| `simulacion.html` | El wizard de compra (4 pasos: plan → carga → pago simulado → éxito). **Hoy le agregamos el bloque de instrucciones adicionales opcional en el Paso 4** (`#intakeBox`). Sigue diciendo "simulación" porque Wompi (pago real) sigue pendiente. |
-| `privacidad.html`, `gracias.html`, `pago.html` | Sin cambios en esta sesión. |
+| `simulacion.html` | El wizard de compra (4 pasos: plan → carga → pago simulado → éxito). Tiene: bloque de instrucciones opcional en Paso 4 (`#intakeBox`, ahora guarda en `pedido_intake`), generación de `pedido_id`, registro en la tabla `pedidos`, correo de aviso simplificado, y el reenfoque de planes (45 MB ambos). Sigue diciendo "simulación" porque Wompi (pago real) sigue pendiente. |
+| `informe.html` | **NUEVO — el tablero interno de gestión.** Uso interno, `noindex`, no enlazado. Pide el `LINK_SECRET` y consume la Edge Function `informe`. Capacidad + ventas + lista de pedidos con detalle/cuestionario y botones (entregada / liberar apuntes / borrar prueba). Ver sección 2B. |
+| `privacidad.html` | Terminología de planes alineada a "Acceso 10/30 días". |
+| `gracias.html`, `pago.html` | Sin cambios recientes. |
 | `estilos.css` | CSS global de la home/páginas legales. **Las guías NUNCA lo tocan** (van con `<style>` inline autocontenido). |
-| `supabase/functions/entrega/index.ts` | Edge Function del sistema de entregas (subir/mint/listar/borrar/servir). Sin cambios hoy. |
+| `supabase/functions/entrega/index.ts` | Edge Function del sistema de **entregas** (subir/mint/listar/borrar/servir guías). |
+| `supabase/functions/informe/index.ts` | **NUEVO — Edge Function del tablero.** Lee pedidos/storage y ejecuta entregada/liberar/borrar. service_role server-side + `LINK_SECRET`. Ver sección 2B. |
+| `supabase/migrations/*.sql` | **NUEVO — SQL versionado** de las tablas `pedidos` y `pedido_intake` y la columna `apuntes_borrados`. Hay que correrlo a mano en el SQL Editor de Supabase (no se aplica solo con el merge). |
 | `.kiro/steering/metodo-guias.md` | **El método CHIP STRAMONT, versión definitiva.** Ábrelo y aplícalo tal cual para cualquier guía nueva. |
 
 ---
@@ -123,9 +177,10 @@ Súbelo, luego mint, luego **verifica de verdad** haciendo el fetch que haría e
 ## 8. Pendientes / roadmap real
 
 1. **Wompi (pago real):** integrar el Payment Link, redirección de éxito, y **quitar todo lo que diga "simulación"** del sitio (badge, textos). Es lo más importante pendiente.
-2. **Borrado automático de guías vencidas** en el bucket `guias` (hoy es manual con el modo `delete` de la función).
-3. **Asegurar el bucket `apuntes`:** limitar tamaño/MIME de subida anónima antes de un lanzamiento con más volumen.
-4. Seguir usando el sistema de entregas para clientes reales según vayan llegando (el flujo completo: ubicar en Supabase → leer apuntes → construir guía con CHIP STRAMONT → subir a `guias` → mint → entregar link — ya está probado y funciona).
+2. **Borrado automático de guías vencidas** en el bucket `guias` (hoy es manual con el modo `delete` de la función `entrega`).
+3. **Asegurar el bucket `apuntes`:** limitar tamaño/MIME de subida anónima antes de un lanzamiento con más volumen (el tope de 45 MB hoy es solo del lado del cliente en `simulacion.html`).
+4. Seguir usando el sistema de entregas para clientes reales (flujo en sección 5) y el **tablero `informe.html`** para gestionarlos (sección 2B).
+5. **Mejoras posibles del tablero (opcionales, no urgentes):** automatizar el "marcar entregada" enlazándolo con la función `entrega` (hoy es manual, y funciona bien así); paginación si algún día se superan ~2000 pedidos (la lista tiene ese tope de vista; la BD aguanta millones). El egress (10 GB/mes) NO es consultable por API con la llave pública → revisarlo a mano en Supabase → Reports cada 15 días (ya hay una nota fija en el tablero).
 
 ---
 
@@ -135,7 +190,9 @@ Súbelo, luego mint, luego **verifica de verdad** haciendo el fetch que haría e
 2. Activa/lee `.kiro/steering/metodo-guias.md` — es la fuente de verdad para construir cualquier guía nueva.
 3. Revisa `list_pull_requests` y el estado real de `main` antes de asumir nada (usa `github_pull_repository` para sincronizar tu copia local).
 4. Si el dueño te dice "nuevo cliente, revisa Supabase y hazle la guía": ya sabes el flujo completo (sección 5). Tienes autonomía para ejecutarlo sin pedir más instrucciones, salvo que necesites el `LINK_SECRET` (pídeselo al dueño, él lo tiene).
-5. Si el dueño reporta que un cambio no se ve en el sitio después de mergear, no asumas caché de una: revisa Actions primero (sección 2.6 y sección 6.7).
-6. Sé su socio honesto: chispa crítica cuando algo no es lo ideal, pero siempre entregando algo tangible y funcionando, probado de verdad antes de decir que está listo.
+5. **Si tocas la tabla `pedidos`/`pedido_intake` o la función `informe`** (sección 2B): recuerda que tras mergear, el dueño debe correr el SQL en Supabase y redesplegar la función a mano. Guíalo paso a paso, no asumas que se aplicó solo.
+6. Si el dueño reporta que un cambio no se ve en el sitio después de mergear, no asumas caché de una: revisa Actions primero (sección 2.6 y sección 6.7). Mergear **de a un PR**.
+7. **Regla de seguridad permanente (innegociable):** nunca comprometer llaves/secretos; si el camino directo expone algo sensible, busca otra vía y explícalo — nunca el atajo inseguro en silencio (sección 2B).
+8. Sé su socio honesto: chispa crítica cuando algo no es lo ideal, pero siempre entregando algo tangible y funcionando, probado de verdad antes de decir que está listo. Al dueño le gusta explícitamente que tomes criterio propio (p. ej., hoy corregí una redundancia en un texto sin que me lo pidiera, y lo valoró).
 
 ¡A seguir construyendo Stramont! 🚀
