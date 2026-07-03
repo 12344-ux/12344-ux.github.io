@@ -487,6 +487,7 @@
 
     // Bloque opcional del Paso 4: instrucciones adicionales del cliente (mismo patrón que notificar(), envío separado)
     async function notificarInstrucciones(uso, cuesta, extra){
+      // 1) Correo a contacto@ (comportamiento existente, no se toca)
       try{
         await fetch('https://formsubmit.co/ajax/contacto@montaguth.institute', {
           method:'POST',
@@ -501,6 +502,22 @@
           })
         });
       }catch(e){ /* no bloqueante: si falla, no afecta el flujo del comprador */ }
+
+      // 2) NUEVO: guardar también en la tabla "pedido_intake" para que el
+      //    cuestionario aparezca ORDENADO en informe.html (y el correo deje
+      //    de ser la única fuente). Solo INSERT con llave pública (RLS).
+      //    No bloqueante y enlazado al pedido por estado.pedidoId.
+      if(SUPA_READY && estado.pedidoId){
+        try{
+          var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          await sb.from('pedido_intake').insert({
+            pedido_id: estado.pedidoId,
+            uso: uso || null,
+            cuesta: cuesta || null,
+            extra: extra || null
+          });
+        }catch(e){ /* si falla el registro, no afecta el flujo del comprador */ }
+      }
     }
     (function(){
       var intakeBox = document.getElementById('intakeBox');
