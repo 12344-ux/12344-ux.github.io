@@ -356,6 +356,17 @@
       return planCode + '-' + fecha + '-' + azar;
     }
 
+    // Reconoce correos de PRUEBA. Debe coincidir con la MISMA regla de la
+    // Edge Function "informe". Un pedido de prueba: (a) no cuenta como venta
+    // en el tablero, (b) se marca con 🧪, (c) no genera correo, (d) es
+    // borrable desde el tablero. Regla: el correo dedicado de pruebas, o
+    // cualquiera que empiece por "prueba", o dominio example.com / .test.
+    function esCorreoPrueba(correo){
+      var c = (correo || '').toLowerCase().trim();
+      if(c === 'pruebasmontaguth@gmail.com') return true;
+      return c.indexOf('prueba') === 0 || /@example\.com$/.test(c) || /\.test$/.test(c);
+    }
+
     // Paso 1
     document.querySelectorAll('.plan').forEach(function(card){
       card.addEventListener('click', function(){
@@ -435,8 +446,15 @@
       return info;
     }
 
-    // Aviso de compra a contacto@ + correo de agradecimiento con el Kit (regalo) al comprador
+    // Aviso LIMPIO de compra a contacto@ ("hay una compra, revisa el tablero")
+    // + correo de agradecimiento con el Kit (regalo) al comprador.
+    // El detalle completo (cliente, apuntes, cuestionario) ya vive en el
+    // tablero (informe.html), así que el correo dejó de ser un volcado de datos.
     async function notificar(email, info, pedidoId){
+      // Las compras de PRUEBA no generan NINGÚN correo (ni aviso al dueño ni
+      // Kit): así el buzón se mantiene limpio mientras se prueba. El pedido
+      // igual queda registrado y visible en el tablero, marcado como prueba.
+      if(esCorreoPrueba(email)) return;
       try{
         var regalo =
           "Hola " + (estado.nombre || "") + ",\n\n" +
@@ -451,16 +469,11 @@
           method:'POST',
           headers:{ 'Content-Type':'application/json' },
           body: JSON.stringify({
-            _subject: '💸 NUEVA COMPRA · Stramont (' + estado.plan + ') · Pedido ' + pedidoId,
-            _autoresponse: regalo,
-            pedido_id: pedidoId,
-            comprador_nombre: estado.nombre || '(sin nombre)',
-            email: email,
-            plan: estado.plan + ' · ' + estado.precio,
-            alojamiento: estado.dias + ' días',
-            archivos: info.names.join(', ') || '(sin nombre)',
-            ruta_supabase: info.paths.join(' | '),
-            enlace_para_reenviar: info.links.length ? info.links.join('   ') : '(genera el enlace desde Supabase Storage → falta policy SELECT)'
+            // Asunto que dice todo de un vistazo; el detalle está en el tablero.
+            _subject: '🛒 Nueva compra · Pedido ' + pedidoId + ' · revisa el tablero',
+            _autoresponse: regalo, // el Kit sigue yendo al COMPRADOR (no a tu buzón)
+            email: email,          // necesario para que el Kit llegue al comprador
+            aviso: 'Hay una nueva compra (' + estado.plan + '). Entra al tablero para ver el detalle completo (cliente, apuntes y cuestionario) y gestionar el pedido: https://montaguth.institute/informe.html'
           })
         });
       }catch(e){ /* si el correo falla, no bloqueamos el flujo del comprador */ }
@@ -485,22 +498,24 @@
       }catch(e){ /* si falla el registro, no bloqueamos el flujo del comprador */ }
     }
 
-    // Bloque opcional del Paso 4: instrucciones adicionales del cliente (mismo patrón que notificar(), envío separado)
+    // Bloque opcional del Paso 4: instrucciones adicionales del cliente.
+    // YA NO se manda por correo (antes generaba un correo extra que ensuciaba
+    // el buzón). Ahora se guarda SOLO en la tabla "pedido_intake" y se ve
+    // ORDENADO en el tablero (informe.html), dentro del detalle del pedido.
     async function notificarInstrucciones(uso, cuesta, extra){
-      try{
-        await fetch('https://formsubmit.co/ajax/contacto@montaguth.institute', {
-          method:'POST',
-          headers:{ 'Content-Type':'application/json' },
-          body: JSON.stringify({
-            _subject: '📝 Instrucciones de guía · Stramont (' + (estado.nombre || '') + ')',
-            cliente: estado.nombre || '(sin nombre)',
-            correo: estado.email || '(sin correo)',
-            para_que_la_usa: uso || '(no indicó)',
-            le_cuesta: cuesta || '(no indicó)',
-            instrucciones_adicionales: extra || '(no indicó)'
-          })
-        });
-      }catch(e){ /* no bloqueante: si falla, no afecta el flujo del comprador */ }
+      // Guardar en "pedido_intake" (solo INSERT con llave pública, RLS).
+      // No bloqueante y enlazado al pedido por estado.pedidoId.
+      if(SUPA_READY && estado.pedidoId){
+        try{
+          var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          await sb.from('pedido_intake').insert({
+            pedido_id: estado.pedidoId,
+            uso: uso || null,
+            cuesta: cuesta || null,
+            extra: extra || null
+          });
+        }catch(e){ /* si falla el registro, no afecta el flujo del comprador */ }
+      }
     }
     (function(){
       var intakeBox = document.getElementById('intakeBox');

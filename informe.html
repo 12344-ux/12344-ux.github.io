@@ -24,9 +24,13 @@
   .gate p{color:var(--dim);font-size:13.5px;margin-bottom:16px;}
   .field{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);font-size:15px;padding:12px 14px;border-radius:10px;margin-bottom:12px;}
   .field:focus{outline:none;border-color:var(--azul-2);}
-  .btn{display:inline-block;width:100%;text-align:center;background:var(--azul-2);color:#fff;border:none;border-radius:10px;padding:13px;font-size:14.5px;font-weight:700;cursor:pointer;}
+  .btn{display:inline-block;width:100%;text-align:center;background:var(--azul-2);color:#fff;border:none;border-radius:10px;padding:13px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit;}
   .btn:hover{opacity:.92;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
   .btn-sm{width:auto;padding:9px 16px;font-size:13px;}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--text);}
+  .btn-bad{background:rgba(255,107,107,.14);border:1px solid rgba(255,107,107,.5);color:#ff9a9a;}
+  .btn-bad:hover{background:rgba(255,107,107,.24);}
   .err{color:var(--bad);font-size:13px;margin-top:8px;display:none;}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;margin-bottom:20px;}
   .card h2{font-size:15px;font-weight:800;margin-bottom:14px;letter-spacing:.3px;}
@@ -40,13 +44,18 @@
   table{width:100%;border-collapse:collapse;font-size:13px;}
   th{text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.5px;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;}
   td{padding:9px 10px;border-bottom:1px solid var(--line);color:var(--dim);white-space:nowrap;}
+  tbody tr{cursor:pointer;transition:background .12s;}
+  tbody tr:hover td{background:rgba(47,84,201,.09);}
   tr.alerta td{background:rgba(255,107,107,.08);}
+  tr.alerta:hover td{background:rgba(255,107,107,.15);}
   .pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;border-radius:30px;padding:3px 10px;}
   .pill.ok{background:rgba(39,192,147,.14);color:var(--ok);}
   .pill.pend{background:rgba(255,184,77,.14);color:var(--warn);}
   .pill.alerta{background:rgba(255,107,107,.16);color:var(--bad);}
+  .tag-prueba{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#ffd27a;background:rgba(255,180,60,.14);border:1px solid rgba(255,180,60,.4);border-radius:5px;padding:1px 6px;margin-left:6px;vertical-align:middle;}
   .nota-fija{background:rgba(255,180,60,.08);border:1px solid rgba(255,180,60,.3);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--dim);margin-top:6px;}
   .nota-fija b{color:#ffd27a;}
+  .hint{color:var(--muted);font-size:12px;margin-top:10px;}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   .mini{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:16px;}
   .mini .num{font-size:26px;font-weight:900;color:var(--azul-2);}
@@ -55,6 +64,29 @@
   .top-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:8px;}
   .refresco{color:var(--muted);font-size:12px;}
   @media (max-width:640px){ .grid2{grid-template-columns:1fr;} }
+
+  /* --- Panel de detalle (modal) --- */
+  .overlay{position:fixed;inset:0;background:rgba(4,7,12,.72);backdrop-filter:blur(3px);display:none;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:50;overflow-y:auto;}
+  .overlay.on{display:flex;}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px;max-width:560px;width:100%;animation:pop .2s ease;}
+  @keyframes pop{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+  .modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px;}
+  .modal-head h3{font-size:18px;font-weight:800;word-break:break-all;}
+  .modal-close{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:9px;width:34px;height:34px;font-size:16px;cursor:pointer;flex:0 0 auto;}
+  .modal-close:hover{color:var(--text);}
+  .dl{margin:16px 0 0;}
+  .dl .fila{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .dl .k{flex:0 0 132px;color:var(--muted);font-weight:600;}
+  .dl .v{color:var(--text);word-break:break-word;flex:1;}
+  .seccion-t{font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--azul-2);margin:22px 0 4px;}
+  .intake-box{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:8px;}
+  .intake-box .q{font-size:12px;color:var(--muted);margin-top:10px;}
+  .intake-box .q:first-child{margin-top:0;}
+  .intake-box .a{font-size:14px;color:var(--text);}
+  .intake-vacio{color:var(--muted);font-size:13px;font-style:italic;}
+  .modal-acciones{margin-top:22px;padding-top:18px;border-top:1px solid var(--line);}
+  .nota-seg{font-size:12.5px;color:var(--muted);background:rgba(39,192,147,.06);border:1px solid rgba(39,192,147,.2);border-radius:10px;padding:11px 14px;}
+  .nota-seg b{color:var(--ok);}
 </style>
 </head>
 <body>
@@ -95,6 +127,7 @@
     <!-- Resumen de ventas -->
     <div class="card">
       <h2>💰 Resumen de ventas</h2>
+      <div class="hint" id="ventasNota" style="margin-top:-6px;margin-bottom:14px;">Solo ventas reales.</div>
       <div class="grid2">
         <div class="mini">
           <div style="font-size:12px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Últimos 15 días</div>
@@ -121,14 +154,20 @@
           <thead>
             <tr>
               <th>Pedido</th><th>Cliente</th><th>Correo</th><th>Plan</th>
-              <th>Fecha compra</th><th>Estado</th><th>Carpeta</th>
+              <th>Fecha compra</th><th>Estado</th>
             </tr>
           </thead>
-          <tbody id="tbodyPedidos"><tr><td colspan="7">Cargando…</td></tr></tbody>
+          <tbody id="tbodyPedidos"><tr><td colspan="6">Cargando…</td></tr></tbody>
         </table>
       </div>
+      <div class="hint">💡 Toca cualquier pedido para ver su detalle completo (cliente, cuestionario, carpeta, etc.).</div>
     </div>
   </div>
+</div>
+
+<!-- Panel de detalle -->
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal"><!-- se llena por JS --></div>
 </div>
 
 <script>
@@ -137,11 +176,14 @@
   var gate = document.getElementById('gate');
   var informe = document.getElementById('informe');
   var gateErr = document.getElementById('gateErr');
+  var overlay = document.getElementById('overlay');
+  var modal = document.getElementById('modal');
   var secretoActual = '';
+  var pedidosActuales = [];
 
-  function fmtMB(bytes){ return (bytes/1048576).toFixed(1)+' MB'; }
   function fmtGB(bytes){ return (bytes/1073741824).toFixed(2)+' GB'; }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function fechaLoc(iso){ return iso ? new Date(iso).toLocaleString('es-CO') : '—'; }
 
   async function cargar(secreto){
     var r = await fetch(FN_URL + '?key=' + encodeURIComponent(secreto));
@@ -159,7 +201,11 @@
     barra.className = 'barra' + (pct>=90?' bad':pct>=70?' warn':'');
   }
 
-  function pintarVentas(ventas){
+  function pintarVentas(ventas, pedidosPrueba){
+    var nota = document.getElementById('ventasNota');
+    if(nota){
+      nota.textContent = 'Solo ventas reales' + (pedidosPrueba ? ' · ' + pedidosPrueba + ' pedido' + (pedidosPrueba===1?'':'s') + ' de prueba 🧪 (no contados)' : ' · sin pedidos de prueba');
+    }
     function pintar(prefijo, r){
       document.getElementById(prefijo+'total').textContent = r.total;
       document.getElementById(prefijo+'ingreso').textContent = '$' + r.ingresoEstimadoUSD + ' USD';
@@ -175,39 +221,122 @@
     pintar('v30', ventas.ultimos30);
   }
 
+  function estadoPill(p){
+    if(p.guia_entregada) return '<span class="pill ok">✓ Entregada</span>';
+    if(p.alerta_pendiente) return '<span class="pill alerta">⚠ Sin procesar (' + p.horas_desde_compra + 'h)</span>';
+    return '<span class="pill pend">Pendiente</span>';
+  }
+
   function pintarPedidos(pedidos){
+    pedidosActuales = pedidos || [];
     var tbody = document.getElementById('tbodyPedidos');
-    if(!pedidos.length){ tbody.innerHTML = '<tr><td colspan="7">Todavía no hay pedidos registrados.</td></tr>'; return; }
+    if(!pedidosActuales.length){ tbody.innerHTML = '<tr><td colspan="6">Todavía no hay pedidos registrados.</td></tr>'; document.getElementById('alertaCount').textContent=''; return; }
     var alertas = 0;
-    tbody.innerHTML = pedidos.map(function(p){
+    tbody.innerHTML = pedidosActuales.map(function(p, idx){
       if(p.alerta_pendiente) alertas++;
-      var estado = p.guia_entregada
-        ? '<span class="pill ok">✓ Entregada</span>'
-        : (p.alerta_pendiente ? '<span class="pill alerta">⚠ Sin procesar (' + p.horas_desde_compra + 'h)</span>' : '<span class="pill pend">Pendiente</span>');
-      var fecha = p.fecha_compra ? new Date(p.fecha_compra).toLocaleString('es-CO') : '—';
-      return '<tr class="'+(p.alerta_pendiente?'alerta':'')+'">' +
-        '<td>'+esc(p.pedido_id)+'</td>' +
+      var tagPrueba = p.es_prueba ? '<span class="tag-prueba">🧪 prueba</span>' : '';
+      return '<tr class="'+(p.alerta_pendiente?'alerta':'')+'" data-idx="'+idx+'">' +
+        '<td>'+esc(p.pedido_id)+tagPrueba+'</td>' +
         '<td>'+esc(p.nombre)+'</td>' +
         '<td>'+esc(p.correo)+'</td>' +
         '<td>'+esc(p.plan)+'</td>' +
-        '<td>'+fecha+'</td>' +
-        '<td>'+estado+'</td>' +
-        '<td>'+esc(p.carpeta_storage)+'</td>' +
+        '<td>'+fechaLoc(p.fecha_compra)+'</td>' +
+        '<td>'+estadoPill(p)+'</td>' +
         '</tr>';
     }).join('');
     document.getElementById('alertaCount').textContent = alertas ? ('· ' + alertas + ' con más de 48h sin procesar') : '';
+    tbody.querySelectorAll('tr[data-idx]').forEach(function(tr){
+      tr.addEventListener('click', function(){ abrirDetalle(parseInt(tr.dataset.idx)); });
+    });
+  }
+
+  function fila(k, v){
+    return '<div class="fila"><div class="k">'+esc(k)+'</div><div class="v">'+v+'</div></div>';
+  }
+
+  function abrirDetalle(idx){
+    var p = pedidosActuales[idx];
+    if(!p) return;
+
+    var intakeHtml;
+    if(p.intake && (p.intake.uso || p.intake.cuesta || p.intake.extra)){
+      intakeHtml = '<div class="intake-box">' +
+        '<div class="q">¿Para qué la va a usar?</div><div class="a">'+esc(p.intake.uso || '—')+'</div>' +
+        '<div class="q">¿Qué es lo que más le cuesta?</div><div class="a">'+esc(p.intake.cuesta || '—')+'</div>' +
+        '<div class="q">Algo puntual que no dejar fuera</div><div class="a">'+esc(p.intake.extra || '—')+'</div>' +
+        '</div>';
+    } else {
+      intakeHtml = '<div class="intake-box"><span class="intake-vacio">El cliente no respondió el cuestionario opcional.</span></div>';
+    }
+
+    var acciones;
+    if(p.es_prueba){
+      acciones = '<button class="btn btn-bad" id="btnEliminar">🗑 Eliminar este pedido de prueba</button>' +
+        '<div class="hint">Borra el registro, su cuestionario y sus archivos en Storage. Solo funciona en pedidos de prueba.</div>' +
+        '<div class="err" id="delErr"></div>';
+    } else {
+      acciones = '<div class="nota-seg"><b>Pedido real:</b> por seguridad no se puede borrar desde aquí. Los borrados de datos reales se hacen solo desde el panel de Supabase.</div>';
+    }
+
+    modal.innerHTML =
+      '<div class="modal-head"><h3>'+esc(p.pedido_id)+(p.es_prueba?'<span class="tag-prueba">🧪 prueba</span>':'')+'</h3>' +
+      '<button class="modal-close" id="modalClose" title="Cerrar">✕</button></div>' +
+      '<div>'+estadoPill(p)+'</div>' +
+      '<div class="seccion-t">Datos del pedido</div>' +
+      '<div class="dl">' +
+        fila('Cliente', esc(p.nombre || '—')) +
+        fila('Correo', esc(p.correo || '—')) +
+        fila('Plan', esc(p.plan || '—')) +
+        fila('Acceso', (p.dias_acceso ? p.dias_acceso + ' días' : '—')) +
+        fila('Fecha de compra', fechaLoc(p.fecha_compra)) +
+        fila('Tamaño apuntes', (p.tamano_apuntes_mb != null ? p.tamano_apuntes_mb + ' MB' : '—')) +
+        fila('Carpeta Storage', esc(p.carpeta_storage || '—')) +
+        fila('Guía entregada', (p.guia_entregada ? 'Sí · ' + fechaLoc(p.fecha_entrega) : 'No')) +
+      '</div>' +
+      '<div class="seccion-t">Cuestionario del cliente</div>' +
+      intakeHtml +
+      '<div class="modal-acciones">'+acciones+'</div>';
+
+    overlay.classList.add('on');
+    document.getElementById('modalClose').addEventListener('click', cerrarDetalle);
+
+    if(p.es_prueba){
+      document.getElementById('btnEliminar').addEventListener('click', function(){
+        eliminar(p, this);
+      });
+    }
+  }
+
+  function cerrarDetalle(){ overlay.classList.remove('on'); modal.innerHTML=''; }
+  overlay.addEventListener('click', function(e){ if(e.target === overlay) cerrarDetalle(); });
+
+  async function eliminar(p, btn){
+    var delErr = document.getElementById('delErr');
+    delErr.style.display = 'none';
+    if(!confirm('¿Eliminar el pedido de prueba "' + p.pedido_id + '"?\n\nSe borrará el registro, su cuestionario y sus archivos en Storage. Esto no se puede deshacer.')) return;
+    btn.disabled = true; btn.textContent = 'Eliminando…';
+    try{
+      var r = await fetch(FN_URL + '?delete=1&pedido_id=' + encodeURIComponent(p.pedido_id) + '&key=' + encodeURIComponent(secretoActual), { method:'POST' });
+      var data = await r.json().catch(function(){ return {}; });
+      if(!r.ok || !data.ok){ throw new Error(data.error || ('Error ' + r.status)); }
+      cerrarDetalle();
+      await refrescar();
+    }catch(e){
+      btn.disabled = false; btn.textContent = '🗑 Eliminar este pedido de prueba';
+      delErr.textContent = e.message; delErr.style.display = 'block';
+    }
+  }
+
+  function pintarTodo(data){
+    pintarStorage(data.storage);
+    pintarVentas(data.ventas, data.pedidosPrueba);
+    pintarPedidos(data.pedidos);
+    document.getElementById('refresco').textContent = 'Actualizado: ' + new Date(data.generadoEn).toLocaleString('es-CO');
   }
 
   async function refrescar(){
-    try{
-      var data = await cargar(secretoActual);
-      pintarStorage(data.storage);
-      pintarVentas(data.ventas);
-      pintarPedidos(data.pedidos);
-      document.getElementById('refresco').textContent = 'Actualizado: ' + new Date(data.generadoEn).toLocaleString('es-CO');
-    }catch(e){
-      alert('No se pudo actualizar: ' + e.message);
-    }
+    try{ pintarTodo(await cargar(secretoActual)); }
+    catch(e){ alert('No se pudo actualizar: ' + e.message); }
   }
 
   document.getElementById('btnEntrar').addEventListener('click', async function(){
@@ -219,17 +348,15 @@
       secretoActual = secreto;
       gate.style.display = 'none';
       informe.style.display = 'block';
-      pintarStorage(data.storage);
-      pintarVentas(data.ventas);
-      pintarPedidos(data.pedidos);
-      document.getElementById('refresco').textContent = 'Actualizado: ' + new Date(data.generadoEn).toLocaleString('es-CO');
+      pintarTodo(data);
     }catch(e){
       gateErr.textContent = e.message;
       gateErr.style.display = 'block';
     }
   });
-
+  document.getElementById('secreto').addEventListener('keydown', function(e){ if(e.key==='Enter') document.getElementById('btnEntrar').click(); });
   document.getElementById('btnRefrescar').addEventListener('click', refrescar);
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') cerrarDetalle(); });
 })();
 </script>
 
