@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Informe interno · Stramont</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="favicon.png">
+<style>
+  /* HTML autocontenido, NUNCA enlaza estilos.css global (misma regla que las guías). */
+  :root{
+    --bg:#0a0e16; --panel:#121826; --panel2:#19202f; --line:rgba(255,255,255,.09);
+    --text:#eef2f8; --dim:#aeb9cc; --muted:#7e8aa0;
+    --azul:#1a3a8f; --azul-2:#2f54c9; --ok:#27c093; --warn:#ffb84d; --bad:#ff6b6b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:"DM Sans","Segoe UI",system-ui,Arial,sans-serif;line-height:1.6;min-height:100vh;}
+  .wrap{max-width:960px;margin:0 auto;padding:32px 20px 80px;}
+  h1{font-size:24px;font-weight:800;margin-bottom:6px;}
+  .lead{color:var(--dim);margin-bottom:24px;font-size:14px;}
+  .badge-interno{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#ffd27a;background:rgba(255,180,60,.1);border:1px solid rgba(255,180,60,.35);border-radius:30px;padding:6px 14px;margin-bottom:18px;}
+  .gate{max-width:420px;margin:80px auto;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px;}
+  .gate h2{font-size:17px;margin-bottom:10px;}
+  .gate p{color:var(--dim);font-size:13.5px;margin-bottom:16px;}
+  .field{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);font-size:15px;padding:12px 14px;border-radius:10px;margin-bottom:12px;}
+  .field:focus{outline:none;border-color:var(--azul-2);}
+  .btn{display:inline-block;width:100%;text-align:center;background:var(--azul-2);color:#fff;border:none;border-radius:10px;padding:13px;font-size:14.5px;font-weight:700;cursor:pointer;}
+  .btn:hover{opacity:.92;}
+  .btn-sm{width:auto;padding:9px 16px;font-size:13px;}
+  .err{color:var(--bad);font-size:13px;margin-top:8px;display:none;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;margin-bottom:20px;}
+  .card h2{font-size:15px;font-weight:800;margin-bottom:14px;letter-spacing:.3px;}
+  .barra-wrap{background:var(--panel2);border-radius:10px;height:16px;overflow:hidden;margin:10px 0 8px;}
+  .barra{height:100%;background:linear-gradient(90deg,var(--azul-2),var(--ok));transition:width .3s;}
+  .barra.warn{background:linear-gradient(90deg,var(--warn),#ff9a4d);}
+  .barra.bad{background:linear-gradient(90deg,var(--bad),#c93a3a);}
+  .stat-row{display:flex;justify-content:space-between;font-size:13.5px;color:var(--dim);}
+  .stat-row b{color:var(--text);}
+  .tabla-wrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.5px;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  td{padding:9px 10px;border-bottom:1px solid var(--line);color:var(--dim);white-space:nowrap;}
+  tr.alerta td{background:rgba(255,107,107,.08);}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;border-radius:30px;padding:3px 10px;}
+  .pill.ok{background:rgba(39,192,147,.14);color:var(--ok);}
+  .pill.pend{background:rgba(255,184,77,.14);color:var(--warn);}
+  .pill.alerta{background:rgba(255,107,107,.16);color:var(--bad);}
+  .nota-fija{background:rgba(255,180,60,.08);border:1px solid rgba(255,180,60,.3);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--dim);margin-top:6px;}
+  .nota-fija b{color:#ffd27a;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .mini{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:16px;}
+  .mini .num{font-size:26px;font-weight:900;color:var(--azul-2);}
+  .mini .lbl{font-size:12px;color:var(--muted);margin-top:2px;}
+  .plan-line{display:flex;justify-content:space-between;font-size:13px;color:var(--dim);padding:3px 0;}
+  .top-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:8px;}
+  .refresco{color:var(--muted);font-size:12px;}
+  @media (max-width:640px){ .grid2{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="badge-interno">🔒 Uso interno · no distribuir este enlace</div>
+  <h1>Informe Stramont</h1>
+  <p class="lead">Capacidad de almacenamiento, trazabilidad de pedidos y ventas. Esta página no está enlazada desde la navegación pública.</p>
+
+  <div id="gate" class="gate">
+    <h2>Ingresa el LINK_SECRET</h2>
+    <p>El mismo secreto que usas para subir/entregar guías (Supabase → Edge Functions → Secrets). No se guarda en ningún archivo del sitio.</p>
+    <input class="field" type="password" id="secreto" placeholder="LINK_SECRET" autocomplete="off">
+    <button class="btn" id="btnEntrar">Ver informe →</button>
+    <div class="err" id="gateErr"></div>
+  </div>
+
+  <div id="informe" style="display:none;">
+    <div class="top-row">
+      <span class="refresco" id="refresco">—</span>
+      <button class="btn btn-sm" id="btnRefrescar">↻ Actualizar</button>
+    </div>
+
+    <!-- Capacidad de Storage -->
+    <div class="card">
+      <h2>📦 Espacio usado · bucket "apuntes"</h2>
+      <div class="barra-wrap"><div class="barra" id="barraStorage" style="width:0%"></div></div>
+      <div class="stat-row">
+        <span id="storageTexto">—</span>
+        <span id="storagePct">—</span>
+      </div>
+      <div class="nota-fija">
+        <b>Nota:</b> el <b>egress</b> (ancho de banda, límite 10 GB/mes) NO es consultable con la llave pública.
+        Revísalo manualmente en el Dashboard de Supabase → Reports → Storage cada 15 días.
+      </div>
+    </div>
+
+    <!-- Resumen de ventas -->
+    <div class="card">
+      <h2>💰 Resumen de ventas</h2>
+      <div class="grid2">
+        <div class="mini">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Últimos 15 días</div>
+          <div class="num" id="v15total">—</div>
+          <div class="lbl">pedidos</div>
+          <div id="v15planes" style="margin-top:10px;"></div>
+          <div class="plan-line" style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px;"><span>Ingreso estimado</span><b id="v15ingreso" style="color:var(--ok);">—</b></div>
+        </div>
+        <div class="mini">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Últimos 30 días</div>
+          <div class="num" id="v30total">—</div>
+          <div class="lbl">pedidos</div>
+          <div id="v30planes" style="margin-top:10px;"></div>
+          <div class="plan-line" style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px;"><span>Ingreso estimado</span><b id="v30ingreso" style="color:var(--ok);">—</b></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Listado de pedidos -->
+    <div class="card">
+      <h2>🧾 Pedidos <span id="alertaCount" style="color:var(--bad);font-weight:700;"></span></h2>
+      <div class="tabla-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Pedido</th><th>Cliente</th><th>Correo</th><th>Plan</th>
+              <th>Fecha compra</th><th>Estado</th><th>Carpeta</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyPedidos"><tr><td colspan="7">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var FN_URL = "https://ifvnuvjvlzpdaimelmbm.supabase.co/functions/v1/informe";
+  var gate = document.getElementById('gate');
+  var informe = document.getElementById('informe');
+  var gateErr = document.getElementById('gateErr');
+  var secretoActual = '';
+
+  function fmtMB(bytes){ return (bytes/1048576).toFixed(1)+' MB'; }
+  function fmtGB(bytes){ return (bytes/1073741824).toFixed(2)+' GB'; }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  async function cargar(secreto){
+    var r = await fetch(FN_URL + '?key=' + encodeURIComponent(secreto));
+    if(r.status === 403){ throw new Error('Secreto incorrecto.'); }
+    if(!r.ok){ throw new Error('Error del servidor (' + r.status + ').'); }
+    return await r.json();
+  }
+
+  function pintarStorage(storage){
+    var pct = storage.porcentaje;
+    document.getElementById('storagePct').textContent = pct + '%';
+    document.getElementById('storageTexto').innerHTML = fmtGB(storage.bytesUsados) + ' usados de 1 GB · <b>' + storage.archivos + '</b> archivos';
+    var barra = document.getElementById('barraStorage');
+    barra.style.width = Math.min(pct,100) + '%';
+    barra.className = 'barra' + (pct>=90?' bad':pct>=70?' warn':'');
+  }
+
+  function pintarVentas(ventas){
+    function pintar(prefijo, r){
+      document.getElementById(prefijo+'total').textContent = r.total;
+      document.getElementById(prefijo+'ingreso').textContent = '$' + r.ingresoEstimadoUSD + ' USD';
+      var cont = document.getElementById(prefijo+'planes');
+      cont.innerHTML = '';
+      var planes = Object.keys(r.porPlan);
+      if(planes.length===0){ cont.innerHTML = '<div class="plan-line"><span>Sin pedidos</span></div>'; return; }
+      planes.forEach(function(p){
+        cont.innerHTML += '<div class="plan-line"><span>'+esc(p)+'</span><b>'+r.porPlan[p]+'</b></div>';
+      });
+    }
+    pintar('v15', ventas.ultimos15);
+    pintar('v30', ventas.ultimos30);
+  }
+
+  function pintarPedidos(pedidos){
+    var tbody = document.getElementById('tbodyPedidos');
+    if(!pedidos.length){ tbody.innerHTML = '<tr><td colspan="7">Todavía no hay pedidos registrados.</td></tr>'; return; }
+    var alertas = 0;
+    tbody.innerHTML = pedidos.map(function(p){
+      if(p.alerta_pendiente) alertas++;
+      var estado = p.guia_entregada
+        ? '<span class="pill ok">✓ Entregada</span>'
+        : (p.alerta_pendiente ? '<span class="pill alerta">⚠ Sin procesar (' + p.horas_desde_compra + 'h)</span>' : '<span class="pill pend">Pendiente</span>');
+      var fecha = p.fecha_compra ? new Date(p.fecha_compra).toLocaleString('es-CO') : '—';
+      return '<tr class="'+(p.alerta_pendiente?'alerta':'')+'">' +
+        '<td>'+esc(p.pedido_id)+'</td>' +
+        '<td>'+esc(p.nombre)+'</td>' +
+        '<td>'+esc(p.correo)+'</td>' +
+        '<td>'+esc(p.plan)+'</td>' +
+        '<td>'+fecha+'</td>' +
+        '<td>'+estado+'</td>' +
+        '<td>'+esc(p.carpeta_storage)+'</td>' +
+        '</tr>';
+    }).join('');
+    document.getElementById('alertaCount').textContent = alertas ? ('· ' + alertas + ' con más de 48h sin procesar') : '';
+  }
+
+  async function refrescar(){
+    try{
+      var data = await cargar(secretoActual);
+      pintarStorage(data.storage);
+      pintarVentas(data.ventas);
+      pintarPedidos(data.pedidos);
+      document.getElementById('refresco').textContent = 'Actualizado: ' + new Date(data.generadoEn).toLocaleString('es-CO');
+    }catch(e){
+      alert('No se pudo actualizar: ' + e.message);
+    }
+  }
+
+  document.getElementById('btnEntrar').addEventListener('click', async function(){
+    var secreto = document.getElementById('secreto').value.trim();
+    gateErr.style.display = 'none';
+    if(!secreto){ gateErr.textContent = 'Ingresa el secreto.'; gateErr.style.display = 'block'; return; }
+    try{
+      var data = await cargar(secreto);
+      secretoActual = secreto;
+      gate.style.display = 'none';
+      informe.style.display = 'block';
+      pintarStorage(data.storage);
+      pintarVentas(data.ventas);
+      pintarPedidos(data.pedidos);
+      document.getElementById('refresco').textContent = 'Actualizado: ' + new Date(data.generadoEn).toLocaleString('es-CO');
+    }catch(e){
+      gateErr.textContent = e.message;
+      gateErr.style.display = 'block';
+    }
+  });
+
+  document.getElementById('btnRefrescar').addEventListener('click', refrescar);
+})();
+</script>
+
+</body>
+</html>

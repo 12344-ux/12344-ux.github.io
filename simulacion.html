@@ -334,6 +334,16 @@
     function totalBytes(){ var t=0; seleccionados.forEach(function(f){ t+=f.size; }); return t; }
     function limpiar(s){ return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]/g,'_').replace(/_{2,}/g,'_'); }
 
+    // NUEVO: id único por pedido. Evita que dos compras del mismo cliente
+    // caigan en la misma carpeta de Storage (bug de colisión ya confirmado).
+    function generarPedidoId(email){
+      var now = new Date();
+      var fecha = now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
+      var usuario = limpiar((email.split('@')[0]||'cliente').toLowerCase()).slice(0,20);
+      var azar = Math.random().toString(36).slice(2,7);
+      return fecha + '-' + usuario + '-' + azar;
+    }
+
     // Paso 1
     document.querySelectorAll('.plan').forEach(function(card){
       card.addEventListener('click', function(){
@@ -391,12 +401,14 @@
     });
 
     // Paso 3: subir, firmar enlace y avisarte a TI por correo
-    async function procesar(email){
+    async function procesar(email, pedidoId){
       var info = { demo:true, links:[], paths:[], names:[] };
       if(!SUPA_READY) return info;
       info.demo = false;
       var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      var carpeta = limpiar(email.toLowerCase());
+      // Carpeta única por pedido (correo + pedidoId), no solo por correo.
+      // Así dos compras del mismo cliente nunca se mezclan en la misma carpeta.
+      var carpeta = limpiar(email.toLowerCase()) + '/' + pedidoId;
       for (var i=0;i<seleccionados.length;i++){
         var f = seleccionados[i];
         var path = carpeta + '/' + Date.now() + '_' + i + '_' + limpiar(f.name);
@@ -412,7 +424,7 @@
     }
 
     // Aviso de compra a contacto@ + correo de agradecimiento con el Kit (regalo) al comprador
-    async function notificar(email, info){
+    async function notificar(email, info, pedidoId){
       try{
         var regalo =
           "Hola " + (estado.nombre || "") + ",\n\n" +
@@ -427,8 +439,9 @@
           method:'POST',
           headers:{ 'Content-Type':'application/json' },
           body: JSON.stringify({
-            _subject: '💸 NUEVA COMPRA · Stramont (' + estado.plan + ')',
+            _subject: '💸 NUEVA COMPRA · Stramont (' + estado.plan + ') · Pedido ' + pedidoId,
             _autoresponse: regalo,
+            pedido_id: pedidoId,
             comprador_nombre: estado.nombre || '(sin nombre)',
             email: email,
             plan: estado.plan + ' · ' + estado.precio,
@@ -439,6 +452,25 @@
           })
         });
       }catch(e){ /* si el correo falla, no bloqueamos el flujo del comprador */ }
+    }
+
+    // Registra el pedido en la tabla "pedidos" (Supabase). Solo INSERT con
+    // llave pública (RLS lo restringe así). No bloquea el flujo si falla.
+    async function registrarPedido(pedidoId, email, info){
+      if(!SUPA_READY) return;
+      try{
+        var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        await sb.from('pedidos').insert({
+          pedido_id: pedidoId,
+          correo: email,
+          nombre: estado.nombre || null,
+          tema: null,
+          plan: estado.plan || null,
+          dias_acceso: estado.dias || null,
+          carpeta_storage: limpiar(email.toLowerCase()) + '/' + pedidoId,
+          tamano_apuntes_mb: +(totalBytes()/1048576).toFixed(2)
+        });
+      }catch(e){ /* si falla el registro, no bloqueamos el flujo del comprador */ }
     }
 
     // Bloque opcional del Paso 4: instrucciones adicionales del cliente (mismo patrón que notificar(), envío separado)
@@ -485,8 +517,11 @@
       try{
         estado.email = document.getElementById('email').value.trim();
         estado.nombre = (document.getElementById('nombre').value.trim() || 'Cliente');
-        var r = await procesar(estado.email);
-        await notificar(estado.email, r);
+        var pedidoId = generarPedidoId(estado.email);
+        estado.pedidoId = pedidoId;
+        var r = await procesar(estado.email, pedidoId);
+        await notificar(estado.email, r, pedidoId);
+        await registrarPedido(pedidoId, estado.email, r);
         var now = new Date();
         estado.recibo = 'STR-' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '-' + String(now.getTime()).slice(-4);
         estado.fecha = now.toLocaleString('es-CO');
