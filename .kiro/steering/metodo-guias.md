@@ -27,6 +27,18 @@ No hacemos resúmenes bonitos: hacemos que el estudiante **entienda de verdad y 
 6. **Pasa el checklist de auto-QA (§8).** Si falla una casilla, corrige antes de entregar.
 7. Entrega: **rama + PR + link**.
 
+## 2.5 · Instrucciones adicionales del cliente (opcional)
+Algunos clientes, al comprar, dejan instrucciones adicionales además de sus apuntes (para qué usan la guía, qué les cuesta, algo puntual a no dejar fuera). Esto no siempre estará presente — la mayoría de pedidos serán solo "nuevo cliente, revisa Supabase y haz la guía", sin más contexto, y así deben funcionar perfectamente igual.
+
+Cuando el pedido venga acompañado de un mensaje tipo "esto dijo adicionalmente el cliente: [...]", trátalo como una **capa de prioridad sobre el método, no como un reemplazo**:
+
+- Si dice **"tengo examen pronto"** → la guía arranca en **modo Express** por defecto (en vez de Express genérico, ajusta el énfasis hacia lo esencial y el caso práctico; no recortes contenido, solo el punto de partida).
+- Si dice **"quiero entender a fondo"** → arranca en **modo Dominar** por defecto.
+- Si menciona **qué le cuesta** → dedica un poco más de profundidad (Nivel 2/3, ejemplos extra) a esos conceptos puntuales, sin desequilibrar el resto de la guía.
+- Si da una **instrucción puntual** (ej. "mi profesor insiste en el caso práctico") → asegúrate de que esa parte de la guía quede reforzada o más desarrollada.
+
+**Nunca ignores el método base por seguir una instrucción del cliente** (sigue aplicando gancho, niveles, flashcards, bloques, etc.). Las instrucciones adicionales afinan la guía, no la sustituyen.
+
 ## 3. Lo que SIEMPRE se quita
 ✗ Tags condescendientes ("lo entiende un niño") · ✗ "léela sin prisa" (lo reemplaza Express/Dominar) · ✗ color decorativo sin significado · ✗ fichas planas idénticas · ✗ exceso de emojis · ✗ sobrepromesas ("tan simple que no se te olvidará") · ✗ guía 100% texto plano (debe usar bloques visuales, §7) · ✗ "Pruébate" pasivo de solo pensar→revelar (debe ser **flashcard de escritura**, §6-G).
 
@@ -105,6 +117,7 @@ Elige el bloque que MEJOR represente cada contenido:
 - [ ] Caso práctico + resumen + ancla + repaso espaciado + autoevaluación.
 - [ ] **Rigor factual:** atribuciones discutidas con matiz ("se le suele atribuir a…"), no como certeza.
 - [ ] Todo el CSS en el `<style>` de la guía; `estilos.css` y `simulacion.html` intactos.
+- [ ] ¿Si hubo instrucciones adicionales del cliente, quedaron reflejadas en el modo por defecto y/o el énfasis de la guía?
 - [ ] ¿Supera a un ChatGPT plano? Si no → se rehace.
 
 ## 9. Guardarraíles técnicos

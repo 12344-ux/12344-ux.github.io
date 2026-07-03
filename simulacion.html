@@ -103,6 +103,17 @@
   .linkbox .lk{font-size:12px;color:var(--azul-2);word-break:break-all;display:block;margin-top:6px;}
   .nota{font-size:13px;color:var(--muted);margin-top:18px;}
   .err{color:#ff9a9a;font-size:13px;margin-top:10px;display:none;}
+
+  /* Bloque opcional: instrucciones adicionales del cliente (Paso 4) */
+  .intake-q{margin:16px 0;text-align:left;}
+  .intake-label{font-size:13.5px;font-weight:700;color:var(--text);margin-bottom:8px;}
+  .intake-opcional{font-weight:400;color:var(--muted);}
+  .intake-opts{display:flex;flex-direction:column;gap:8px;}
+  .intake-opt{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--dim);cursor:pointer;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;transition:.15s;}
+  .intake-opt:hover{border-color:var(--azul-2);}
+  .intake-opt input{accent-color:var(--azul-2);width:16px;height:16px;flex:0 0 auto;}
+  .intake-ta{min-height:64px;resize:vertical;font-family:inherit;}
+
   footer{max-width:760px;margin:0 auto;padding:20px;text-align:center;color:var(--muted);font-size:12px;}
 </style>
 </head>
@@ -252,6 +263,40 @@
         </div>
 
         <button id="btnRecibo" class="btn" style="display:inline-block;width:auto;padding:13px 28px;margin-top:4px;">📄 Descargar mi comprobante (PDF)</button>
+
+        <div class="linkbox" id="intakeBox" style="margin-top:30px;text-align:left;">
+          <strong>📝 ¿Quieres contarnos algo para personalizar tu guía?</strong><br>
+          <span style="color:var(--dim);font-size:14px;">Opcional, 30 segundos. Nos ayuda a enfocar mejor tu guía.</span>
+
+          <div class="intake-q">
+            <div class="intake-label">1. ¿Para qué la vas a usar?</div>
+            <div class="intake-opts">
+              <label class="intake-opt"><input type="radio" name="intakeUso" value="Tengo examen pronto"> Tengo examen pronto</label>
+              <label class="intake-opt"><input type="radio" name="intakeUso" value="Quiero entender la materia a fondo"> Quiero entender la materia a fondo</label>
+              <label class="intake-opt"><input type="radio" name="intakeUso" value="Repaso general"> Repaso general</label>
+            </div>
+          </div>
+
+          <div class="intake-q">
+            <div class="intake-label">2. ¿Qué es lo que más te cuesta de este tema? <span class="intake-opcional">(opcional)</span></div>
+            <textarea class="field intake-ta" id="intakeCuesta" placeholder="Ej: se me confunden los tipos de segmentación"></textarea>
+          </div>
+
+          <div class="intake-q">
+            <div class="intake-label">3. ¿Algo puntual que no debamos dejar fuera? <span class="intake-opcional">(opcional)</span></div>
+            <textarea class="field intake-ta" id="intakeExtra" placeholder="Ej: mi profesor le da mucho peso al caso práctico"></textarea>
+          </div>
+
+          <div class="row">
+            <button class="btn" id="intakeEnviar" style="flex:1;">Enviar y ayudar a personalizar mi guía →</button>
+            <button class="btn btn-ghost" id="intakeOmitir" style="flex:0 0 110px;">Omitir</button>
+          </div>
+          <div class="err" id="intakeErr"></div>
+        </div>
+        <div class="linkbox" id="intakeGracias" style="display:none;text-align:center;">
+          <strong>✓ ¡Gracias! Lo tendremos en cuenta.</strong>
+        </div>
+
         <p class="nota">¿Dudas o soporte durante esta prueba? Escríbenos a <a href="mailto:contacto@montaguth.institute">contacto@montaguth.institute</a></p>
         <p style="margin-top:24px;"><a href="index.html" class="btn btn-ghost" style="display:inline-block;width:auto;padding:12px 26px;">Volver al inicio</a></p>
       </div>
@@ -394,6 +439,44 @@
         });
       }catch(e){ /* si el correo falla, no bloqueamos el flujo del comprador */ }
     }
+
+    // Bloque opcional del Paso 4: instrucciones adicionales del cliente (mismo patrón que notificar(), envío separado)
+    async function notificarInstrucciones(uso, cuesta, extra){
+      try{
+        await fetch('https://formsubmit.co/ajax/contacto@montaguth.institute', {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({
+            _subject: '📝 Instrucciones de guía · Stramont (' + (estado.nombre || '') + ')',
+            cliente: estado.nombre || '(sin nombre)',
+            correo: estado.email || '(sin correo)',
+            para_que_la_usa: uso || '(no indicó)',
+            le_cuesta: cuesta || '(no indicó)',
+            instrucciones_adicionales: extra || '(no indicó)'
+          })
+        });
+      }catch(e){ /* no bloqueante: si falla, no afecta el flujo del comprador */ }
+    }
+    (function(){
+      var intakeBox = document.getElementById('intakeBox');
+      var intakeGracias = document.getElementById('intakeGracias');
+      var intakeErr = document.getElementById('intakeErr');
+      document.getElementById('intakeOmitir').addEventListener('click', function(){
+        intakeBox.style.display = 'none';
+      });
+      document.getElementById('intakeEnviar').addEventListener('click', async function(){
+        var btn = this;
+        var uso = document.querySelector('input[name="intakeUso"]:checked');
+        var cuesta = document.getElementById('intakeCuesta').value.trim();
+        var extra = document.getElementById('intakeExtra').value.trim();
+        intakeErr.style.display = 'none';
+        btn.disabled = true;
+        await notificarInstrucciones(uso ? uso.value : '', cuesta, extra);
+        btn.disabled = false;
+        intakeBox.style.display = 'none';
+        intakeGracias.style.display = 'block';
+      });
+    })();
 
     document.getElementById('pagar').addEventListener('click', async function(){
       var btn=this, spin=document.getElementById('spin'), err=document.getElementById('err3');
