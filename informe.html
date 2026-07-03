@@ -31,6 +31,8 @@
   .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--text);}
   .btn-bad{background:rgba(255,107,107,.14);border:1px solid rgba(255,107,107,.5);color:#ff9a9a;}
   .btn-bad:hover{background:rgba(255,107,107,.24);}
+  .btn-ok{background:rgba(39,192,147,.16);border:1px solid rgba(39,192,147,.5);color:#7fe8c4;}
+  .btn-ok:hover{background:rgba(39,192,147,.26);}
   .err{color:var(--bad);font-size:13px;margin-top:8px;display:none;}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;margin-bottom:20px;}
   .card h2{font-size:15px;font-weight:800;margin-bottom:14px;letter-spacing:.3px;}
@@ -269,13 +271,19 @@
       intakeHtml = '<div class="intake-box"><span class="intake-vacio">El cliente no respondió el cuestionario opcional.</span></div>';
     }
 
-    var acciones;
+    // Botón para marcar/desmarcar la entrega (todos los pedidos).
+    var btnEntregada = p.guia_entregada
+      ? '<button class="btn btn-ghost" id="btnEntregada">↩ Marcar como pendiente</button>'
+      : '<button class="btn btn-ok" id="btnEntregada">✓ Marcar guía como entregada</button>';
+    var acciones = btnEntregada + '<div class="err" id="entErr"></div>';
+
     if(p.es_prueba){
-      acciones = '<button class="btn btn-bad" id="btnEliminar">🗑 Eliminar este pedido de prueba</button>' +
+      acciones += '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line);">' +
+        '<button class="btn btn-bad" id="btnEliminar">🗑 Eliminar este pedido de prueba</button>' +
         '<div class="hint">Borra el registro, su cuestionario y sus archivos en Storage. Solo funciona en pedidos de prueba.</div>' +
-        '<div class="err" id="delErr"></div>';
+        '<div class="err" id="delErr"></div></div>';
     } else {
-      acciones = '<div class="nota-seg"><b>Pedido real:</b> por seguridad no se puede borrar desde aquí. Los borrados de datos reales se hacen solo desde el panel de Supabase.</div>';
+      acciones += '<div class="nota-seg" style="margin-top:16px;"><b>Pedido real:</b> por seguridad no se puede borrar desde aquí. Los borrados de datos reales se hacen solo desde el panel de Supabase.</div>';
     }
 
     modal.innerHTML =
@@ -300,10 +308,31 @@
     overlay.classList.add('on');
     document.getElementById('modalClose').addEventListener('click', cerrarDetalle);
 
+    document.getElementById('btnEntregada').addEventListener('click', function(){
+      marcarEntregada(p, !p.guia_entregada, this);
+    });
+
     if(p.es_prueba){
       document.getElementById('btnEliminar').addEventListener('click', function(){
         eliminar(p, this);
       });
+    }
+  }
+
+  async function marcarEntregada(p, marcar, btn){
+    var entErr = document.getElementById('entErr');
+    entErr.style.display = 'none';
+    btn.disabled = true; btn.textContent = 'Guardando…';
+    try{
+      var r = await fetch(FN_URL + '?entregada=' + (marcar?'1':'0') + '&pedido_id=' + encodeURIComponent(p.pedido_id) + '&key=' + encodeURIComponent(secretoActual), { method:'POST' });
+      var data = await r.json().catch(function(){ return {}; });
+      if(!r.ok || !data.ok){ throw new Error(data.error || ('Error ' + r.status)); }
+      cerrarDetalle();
+      await refrescar();
+    }catch(e){
+      btn.disabled = false;
+      btn.textContent = marcar ? '✓ Marcar guía como entregada' : '↩ Marcar como pendiente';
+      entErr.textContent = e.message; entErr.style.display = 'block';
     }
   }
 

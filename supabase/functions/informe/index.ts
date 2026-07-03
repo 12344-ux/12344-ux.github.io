@@ -131,6 +131,23 @@ Deno.serve(async (req) => {
 
   const client = sb();
 
+  // ---------- MODO MARCAR ENTREGADA / PENDIENTE ----------
+  // Así el dueño le dice al tablero que ya entregó la guía (o deshace el
+  // cambio). Funciona en cualquier pedido (real o prueba); no es destructivo.
+  //   POST ?entregada=1&pedido_id=XXX  -> marca entregada (pone fecha_entrega)
+  //   POST ?entregada=0&pedido_id=XXX  -> vuelve a pendiente (borra fecha_entrega)
+  if (url.searchParams.get("entregada") !== null) {
+    if (req.method !== "POST") return json({ error: "Requiere POST." }, 405);
+    const pedidoId = url.searchParams.get("pedido_id") || "";
+    if (!pedidoId) return json({ error: "Falta pedido_id." }, 400);
+    const marcar = url.searchParams.get("entregada") === "1";
+    const { error: errUpd } = await client.from("pedidos")
+      .update({ guia_entregada: marcar, fecha_entrega: marcar ? new Date().toISOString() : null })
+      .eq("pedido_id", pedidoId);
+    if (errUpd) return json({ error: "Error actualizando: " + errUpd.message }, 500);
+    return json({ ok: true, pedido_id: pedidoId, guia_entregada: marcar });
+  }
+
   // ---------- MODO BORRADO (solo pedidos de prueba) ----------
   if (url.searchParams.get("delete") === "1") {
     if (req.method !== "POST") return json({ error: "El borrado requiere POST." }, 405);
