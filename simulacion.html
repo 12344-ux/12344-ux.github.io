@@ -221,6 +221,10 @@
       </div>
       <input type="file" id="file" accept="image/*,application/pdf" multiple hidden>
       <ul class="flist" id="flist"></ul>
+      <label style="display:flex;align-items:flex-start;gap:9px;font-size:13px;color:var(--dim);margin:14px 0 4px;cursor:pointer;line-height:1.5;">
+        <input type="checkbox" id="aceptaCond" style="accent-color:var(--azul-2);width:16px;height:16px;flex:0 0 auto;margin-top:2px;">
+        <span>He leído y acepto las <a href="condiciones.html" target="_blank" rel="noopener">Condiciones</a> y la <a href="privacidad.html" target="_blank" rel="noopener">Política de Tratamiento de Datos</a>.</span>
+      </label>
       <div class="err" id="err2"></div>
       <div class="row">
         <button class="btn btn-ghost" data-go="1" style="flex:0 0 120px;">← Atrás</button>
@@ -415,6 +419,7 @@
       if(nombre.length<2){ err.textContent='Ingresa tu nombre completo.'; err.style.display='block'; return; }
       if(!/^[^@]+@[^@]+\.[^@]+$/.test(email)){ err.textContent='Ingresa un correo válido.'; err.style.display='block'; return; }
       if(seleccionados.length===0){ err.textContent='Adjunta al menos un archivo.'; err.style.display='block'; return; }
+      if(!document.getElementById('aceptaCond').checked){ err.textContent='Debes aceptar las Condiciones y la Política de Tratamiento de Datos para continuar.'; err.style.display='block'; return; }
       var max = estado.limitMB*1048576;
       if(totalBytes() > max){
         err.textContent='Tus archivos pesan '+fmt(totalBytes())+'. El máximo por envío es '+estado.limitMB+' MB. Comprime o reduce el tamaño e intenta de nuevo.';
