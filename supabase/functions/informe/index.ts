@@ -307,6 +307,17 @@ Deno.serve(async (req) => {
     if (!intakePorPedido[it.pedido_id]) intakePorPedido[it.pedido_id] = it;
   }
 
+  // Opiniones (Correo 3): índice por pedido_id para adjuntarlas a cada pedido
+  // y para el "banco de opiniones" del tablero.
+  const { data: feedbackRaw } = await client
+    .from("pedido_feedback").select("*")
+    .order("feedback_recibido_at", { ascending: false })
+    .limit(LIMITE_PEDIDOS);
+  const feedbackPorPedido: Record<string, any> = {};
+  for (const fb of (feedbackRaw || [])) {
+    if (!feedbackPorPedido[fb.pedido_id]) feedbackPorPedido[fb.pedido_id] = fb;
+  }
+
   const ahora = Date.now();
   const pedidos = (pedidosRaw || []).map((p: any) => {
     const horasDesdeCompra = p.fecha_compra ? (ahora - new Date(p.fecha_compra).getTime()) / 3_600_000 : 0;
@@ -317,6 +328,38 @@ Deno.serve(async (req) => {
       alerta_pendiente: !p.guia_entregada && horasDesdeCompra >= HORAS_ALERTA,
       horas_desde_compra: Math.round(horasDesdeCompra),
       intake: it ? { uso: it.uso, cuesta: it.cuesta, extra: it.extra } : null,
+      feedback: feedbackPorPedido[p.pedido_id]
+        ? {
+            rating: feedbackPorPedido[p.pedido_id].rating,
+            comentario: feedbackPorPedido[p.pedido_id].comentario,
+            permiso_publicar: feedbackPorPedido[p.pedido_id].permiso_publicar,
+            nombre_mostrar: feedbackPorPedido[p.pedido_id].nombre_mostrar,
+            feedback_recibido_at: feedbackPorPedido[p.pedido_id].feedback_recibido_at,
+            comentario_recibido_at: feedbackPorPedido[p.pedido_id].comentario_recibido_at,
+          }
+        : null,
+    };
+  });
+
+  // Banco de opiniones: lista de opiniones enriquecidas con datos del pedido
+  // (nombre/plan/fecha) para pintarlas en el tablero. es_prueba viaja para
+  // que el frontend excluya las de prueba del promedio y del banco real.
+  const pedidoPorId: Record<string, any> = {};
+  for (const p of (pedidosRaw || [])) pedidoPorId[p.pedido_id] = p;
+  const opiniones = (feedbackRaw || []).map((fb: any) => {
+    const p = pedidoPorId[fb.pedido_id] || {};
+    return {
+      pedido_id: fb.pedido_id,
+      rating: fb.rating,
+      comentario: fb.comentario,
+      permiso_publicar: fb.permiso_publicar,
+      nombre_mostrar: fb.nombre_mostrar,
+      feedback_recibido_at: fb.feedback_recibido_at,
+      comentario_recibido_at: fb.comentario_recibido_at,
+      es_prueba: fb.es_prueba === true || esCorreoPrueba(p.correo || ""),
+      nombre: p.nombre || null,
+      plan: p.plan || null,
+      fecha_compra: p.fecha_compra || null,
     };
   });
 
@@ -342,5 +385,5 @@ Deno.serve(async (req) => {
   const ventas = { ultimos15: resumen(15), ultimos30: resumen(30) };
   const pedidosPrueba = (pedidosRaw || []).filter((p: any) => esCorreoPrueba(p.correo)).length;
 
-  return json({ storage, pedidos, ventas, pedidosPrueba, generadoEn: new Date().toISOString() });
+  return json({ storage, pedidos, ventas, pedidosPrueba, opiniones, generadoEn: new Date().toISOString() });
 });
