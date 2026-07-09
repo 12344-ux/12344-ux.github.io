@@ -142,7 +142,7 @@ Lo envía el dueño desde el tablero (como el Correo 2). El aviso "listo para pe
 
 ### CHECKLIST DE DEPLOY MANUAL EN SUPABASE (obligatorio, el merge NO lo hace)
 1. **SQL Editor** → correr las 2 migraciones nuevas (en orden): `20260709160000_crear_tabla_pedido_feedback.sql` y `20260709160100_pedidos_feedback_columnas.sql`.
-2. **Edge Functions** → crear/deploy `correo-feedback` (pegar el código; **Verify JWT ON** está bien, exige `LINK_SECRET`).
+2. **Edge Functions** → crear/deploy `correo-feedback` (**Verify JWT OFF**, igual que `correo-entrega`). La seguridad la da el `LINK_SECRET` que se valida DENTRO del código; el tablero la llama con `?key=` y SIN cabecera de autorización, así que con JWT ON daría 401. (Corrección: una versión anterior de este doc y del PR #82 decían "JWT ON" por error.)
 3. **Edge Functions** → crear/deploy `feedback` (**Verify JWT OFF** — la autoriza el token del pedido, igual que `correo-confirmacion`).
 4. **Edge Functions** → **redeploy de `informe`** (se le añadió el bloque de opiniones).
 5. Secretos: no hay nuevos. Reutiliza `LINK_SECRET`, `RESEND_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
