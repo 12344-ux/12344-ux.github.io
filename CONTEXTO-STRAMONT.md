@@ -2,7 +2,7 @@
 
 > **Para el próximo Kiro:** esto te lo escribo yo mismo, la sesión anterior, para que arranques sin perder el hilo. Está escrito como si te lo estuviera contando de viva voz. Léelo completo antes de tocar nada.
 > **Para el dueño (usuario):** en el chat nuevo, dile "Lee CONTEXTO-STRAMONT.md antes de empezar" y con eso el próximo Kiro queda al día.
-> **Última actualización:** 9 de julio de 2026 (auditada línea por línea contra el código real de `main` en esta revisión — todo lo que describe abajo coincide con lo que hay en el repo hoy). Además del tablero (sección 2B), ya están en producción: **Correo 1** (confirmación de compra, `correo-confirmacion`) y **Correo 2** (entrega de la guía, `correo-entrega`), ambos vía **Resend**; y el **flujo de baja fricción para desarrollar guías** (comando `DESARROLLA <pedido_id>` + modo `material` + nota interna por pedido). Ver secciones **2B**, **2C** y **10**. Pendiente inmediato: **Correo 3** (calificación/feedback).
+> **Última actualización:** 9 de julio de 2026. Además del tablero (sección 2B), ya están en producción: **Correo 1** (confirmación de compra, `correo-confirmacion`) y **Correo 2** (entrega de la guía, `correo-entrega`), ambos vía **Resend**; y el **flujo de baja fricción para desarrollar guías** (comando `DESARROLLA <pedido_id>` + modo `material` + nota interna por pedido). Ver secciones **2B**, **2C** y **10**. **NUEVO — el Correo 3 (opiniones/feedback) ya está CONSTRUIDO en el repo** (PR de esta sesión) pero **PENDIENTE DE DEPLOY MANUAL en Supabase** (2 migraciones SQL + 2 funciones nuevas `correo-feedback` y `feedback` + redeploy de `informe`). Ver sección **2D** con el detalle y el checklist de deploy.
 >
 > **TL;DR (60 segundos) si tienes prisa:** Stramont convierte apuntes en guías interactivas (método CHIP STRAMONT, sección 4). Hay un tablero interno en `informe.html` (sección 2B) donde el dueño gestiona pedidos, y un comando `DESARROLLA <pedido_id>` (sección 10) para que tú armes la guía de un pedido con autonomía. Todo pago sigue en modo simulación (Wompi real es el pendiente #1, sección 8). Regla de oro: nunca push a `main`, siempre rama+PR (sección 6). Si un merge no se refleja en el sitio tras varios minutos, no es caché — revisa GitHub Actions (sección 6.7).
 >
@@ -118,7 +118,35 @@ Cuando un PR toca la tabla o la función `informe`, tras mergear hay que, en el 
 - Lo dispara el DUEÑO desde el tablero → **exige `LINK_SECRET`** (`?key=`). Body `{pedido_id, archivo, tema?}`. Valida que la guía exista en el bucket `guias`, genera el enlace firmado **reusando la MISMA firma HMAC que la función `entrega`** (no se reinventó; probado que coinciden), envía el correo con el enlace privado, y marca el pedido: `guia_entregada`, `fecha_entrega`, `guia_archivo`, `correo_entrega_enviado`. Idempotente. Verify JWT **off**.
 - En el tablero, en el detalle del pedido: sección **"Entrega de la guía"** con campo del nombre del archivo + **Vista previa** (reusa el modo `mint` de `entrega`, enlace de 1 día) + **Entregar**. El viejo "marcar entregada" quedó como override manual (sin enviar correo).
 
-### Correo 3 — Calificación/feedback: **PENDIENTE** (lo siguiente a construir).
+### Correo 3 — Opinión/calificación (`correo-feedback` + `feedback`): **CONSTRUIDO, pendiente de deploy manual.** Ver sección **2D**.
+
+---
+
+## 2D. Correo 3 — Opiniones / feedback (CONSTRUIDO en el repo, PENDIENTE DE DEPLOY)
+
+El brief lo diseñó el "Kiro de ideas"; se ejecutó con una corrección de seguridad importante (ver abajo). Es un sistema de 3 piezas: **correo con estrellas → página de opinión → banco de opiniones en el tablero.**
+
+### Qué se construyó (todo en el repo, nada desplegado aún)
+1. **Migración `pedido_feedback`** (`20260709160000_...`): una fila por pedido (rating 1-5, comentario, permiso_publicar, nombre_mostrar, es_prueba, fechas). **RLS activado SIN ninguna policy pública** (ni lectura ni insert).
+2. **Migración columnas en `pedidos`** (`20260709160100_...`): `feedback_token` (único, se genera al enviar el Correo 3), `correo_feedback_enviado` (idempotencia), `recordatorio_enviado` (reservado fase 2, sin usar).
+3. **Edge Function `correo-feedback`** (admin, EXIGE `LINK_SECRET`): la dispara el dueño desde el tablero. Genera el `feedback_token` si falta, arma 5 enlaces de estrella (`feedback.html?pid&t&r=1..5`), envía por Resend, marca idempotencia. Nombre de pila = primera palabra de `nombre`, con fallback "Hola,". Pruebas 🧪 se pueden enviar (asunto `[TEST]`).
+4. **Edge Function `feedback`** (PÚBLICA, Verify JWT **off**): la llama `feedback.html`. Valida `pid`+`token` contra `pedidos.feedback_token` y escribe con service_role (upsert por pedido_id). `action:"rate"` (rating 1-5) y `action:"comment"` (comentario + permiso/nombre solo si rating≥4).
+5. **`feedback.html`** (pública, `noindex`, premium oscuro, neutro en género): registra la estrella al llegar, textarea de comentario, permiso de testimonio solo en notas 4-5, mensaje distinto en 1-3, estados de éxito/enlace-inválido.
+6. **Tablero `informe.html`**: nueva sección **"Banco de opiniones"** (separada de la lista de pedidos) con pulso (promedio + total, solo reales), filtros 4-5 / 1-3, y tarjetas con badge "✓ dio permiso". Marcador ★ en los pedidos con opinión, aviso "listo para pedir opinión" y, en el detalle, la sección de envío del Correo 3 con umbral por plan y override de emergencia.
+
+### La corrección de seguridad al brief (chispa crítica)
+El brief pedía que `pedido_feedback` tuviera RLS "igual que `pedido_intake`" (insert abierto a la llave pública). **Eso abriría un hueco:** una policy de insert público NO valida el token, así que cualquiera podría inyectar opiniones falsas para pedidos ajenos. Se hizo bien: la tabla NO tiene policies públicas y **toda** opinión entra por la Edge Function `feedback`, que valida el token server-side. Queda más cerrado que `intake`.
+
+### El disparador: "manual asistido" (v1)
+Lo envía el dueño desde el tablero (como el Correo 2). El aviso "listo para pedir opinión" se enciende cuando: guía entregada + pasó el umbral de días según plan (**10 días → 3 días; 30 días → ~10 días**, parametrizable en `informe.html` sin redeploy) + no es prueba + no se envió antes + aún no hay opinión. Se puede enviar antes del umbral (confirmación de override). Las funciones están hechas para que un **cron** las llame en el futuro (fase 2) sin rehacer nada; el cron NO se construyó.
+
+### CHECKLIST DE DEPLOY MANUAL EN SUPABASE (obligatorio, el merge NO lo hace)
+1. **SQL Editor** → correr las 2 migraciones nuevas (en orden): `20260709160000_crear_tabla_pedido_feedback.sql` y `20260709160100_pedidos_feedback_columnas.sql`.
+2. **Edge Functions** → crear/deploy `correo-feedback` (pegar el código; **Verify JWT ON** está bien, exige `LINK_SECRET`).
+3. **Edge Functions** → crear/deploy `feedback` (**Verify JWT OFF** — la autoriza el token del pedido, igual que `correo-confirmacion`).
+4. **Edge Functions** → **redeploy de `informe`** (se le añadió el bloque de opiniones).
+5. Secretos: no hay nuevos. Reutiliza `LINK_SECRET`, `RESEND_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+6. Prueba con `pruebasmontaguth@gmail.com`: entrega una guía de prueba → en el detalle usa "Pedir opinión" → abre el correo, califica → verifica que aparece en el Banco de opiniones marcada 🧪 (no cuenta en el promedio).
 
 ---
 
@@ -143,13 +171,16 @@ Para no repetir contexto por chat con muchos pedidos, se montó esto:
 | `guia-segmentacion.jpeg` | Captura real de la guía anterior, mostrando tabla+FODA+mapa (se usa en la home). |
 | `entrega.html` | Visor público e inofensivo del sistema de entregas privadas: lee `?f&exp&sig`, llama a la Edge Function, renderiza la guía real en un `<iframe srcdoc>`. |
 | `simulacion.html` | El wizard de compra (4 pasos: plan → carga → pago simulado → éxito). Tiene: bloque de instrucciones opcional en Paso 4 (`#intakeBox`, ahora guarda en `pedido_intake`), generación de `pedido_id`, registro en la tabla `pedidos`, correo de aviso simplificado, y el reenfoque de planes (45 MB ambos). Sigue diciendo "simulación" porque Wompi (pago real) sigue pendiente. |
-| `informe.html` | **NUEVO — el tablero interno de gestión.** Uso interno, `noindex`, no enlazado. Pide el `LINK_SECRET` y consume la Edge Function `informe`. Capacidad + ventas + lista de pedidos con detalle/cuestionario y botones (entregada / liberar apuntes / borrar prueba). Ver sección 2B. |
+| `informe.html` | **El tablero interno de gestión.** Uso interno, `noindex`, no enlazado. Pide el `LINK_SECRET` y consume la Edge Function `informe`. Capacidad + ventas + lista de pedidos con detalle/cuestionario y botones (entregada / liberar apuntes / borrar prueba). **NUEVO (Correo 3):** sección "Banco de opiniones", marcador ★, aviso "listo para pedir opinión" y botón de envío en el detalle. Ver secciones 2B y 2D. |
+| `feedback.html` | **NUEVO (Correo 3) — página pública de opinión.** `noindex`. Lee `?pid&t&r`, registra la calificación al llegar, pide comentario y (en notas 4-5) permiso de testimonio. Escribe vía Edge Function `feedback` (token por pedido). Ver sección 2D. |
 | `privacidad.html` | Actualizada a fondo (PR #68): responsable Montaguth Institute, sin lenguaje de "cuentas", transferencia internacional de datos, conservación concreta (10/30 días + registro de pedidos), datos del cuestionario, encargados nombrados, plazos PQRS. Terminología de planes alineada a "Acceso 10/30 días". |
 | `condiciones.html` | **NUEVA (PR #68).** Contratación/pago en USD, plazo de entrega 24h, reembolsos (solo por incumplimiento imputable a Stramont), uso permitido/contenido prohibido (con cláusula de reporte a autoridades por CSAM), propiedad intelectual, ley aplicable Colombia. Enlazada en el footer de `index.html` y aceptada vía checkbox (clickwrap) en el Paso 2 de `simulacion.html`. **Pendiente:** el dueño validarla con un abogado colombiano (registro RNBD ante la SIC, transferencia internacional). |
 | `gracias.html`, `pago.html` | Sin cambios recientes. |
 | `estilos.css` | CSS global de la home/páginas legales. **Las guías NUNCA lo tocan** (van con `<style>` inline autocontenido). |
 | `supabase/functions/entrega/index.ts` | Edge Function del sistema de **entregas** (subir/mint/listar/borrar/servir guías). |
-| `supabase/functions/informe/index.ts` | **NUEVO — Edge Function del tablero.** Lee pedidos/storage y ejecuta entregada/liberar/borrar. service_role server-side + `LINK_SECRET`. Ver sección 2B. |
+| `supabase/functions/informe/index.ts` | **Edge Function del tablero.** Lee pedidos/storage y ejecuta entregada/liberar/borrar. service_role server-side + `LINK_SECRET`. **NUEVO:** también devuelve las opiniones (banco) y adjunta el feedback a cada pedido. Ver secciones 2B y 2D. |
+| `supabase/functions/correo-feedback/index.ts` | **NUEVO (Correo 3) — envío de la solicitud de opinión.** Admin, exige `LINK_SECRET`. Genera el `feedback_token`, arma los enlaces de estrella y envía por Resend. Ver sección 2D. |
+| `supabase/functions/feedback/index.ts` | **NUEVO (Correo 3) — registro público de opiniones.** Verify JWT off; valida el token por pedido y escribe con service_role. Ver sección 2D. |
 | `supabase/migrations/*.sql` | **NUEVO — SQL versionado** de las tablas `pedidos` y `pedido_intake` y la columna `apuntes_borrados`. Hay que correrlo a mano en el SQL Editor de Supabase (no se aplica solo con el merge). |
 | `.kiro/steering/metodo-guias.md` | **El método CHIP STRAMONT, versión definitiva.** Ábrelo y aplícalo tal cual para cualquier guía nueva. |
 
@@ -231,7 +262,7 @@ Súbelo, luego mint, luego **verifica de verdad** haciendo el fetch que haría e
 ## 8. Pendientes / roadmap real
 
 1. **Wompi (pago real):** integrar el Payment Link, redirección de éxito, y **quitar todo lo que diga "simulación"** del sitio (badge, textos). Es lo más importante pendiente.
-2. **Correo 3 (calificación/feedback):** el siguiente de los 3 correos automáticos por construir (confirmación y entrega ya están en producción, sección 2C).
+2. **Correo 3 (opiniones/feedback):** ✅ CONSTRUIDO en el repo (sección 2D). **PENDIENTE: el deploy manual en Supabase** (2 migraciones + funciones `correo-feedback` y `feedback` + redeploy de `informe`). Sigue el checklist de la sección 2D. Fase 2 futura (no urgente): un cron que dispare el Correo 3 solo, sin depender de que el dueño lo mande a mano.
 3. **Validación legal de `condiciones.html`/`privacidad.html` (PR #68) con un abogado colombiano:** registro de base de datos ante la SIC (RNBD), transferencia internacional, formalización del responsable cuando haya recursos. El contenido ya refleja fielmente cómo funciona el sistema, pero no es asesoría legal certificada.
 4. **Borrado automático de guías vencidas** en el bucket `guias` (hoy es manual con el modo `delete` de la función `entrega`).
 5. **Asegurar el bucket `apuntes`:** limitar tamaño/MIME de subida anónima antes de un lanzamiento con más volumen (el tope de 45 MB hoy es solo del lado del cliente en `simulacion.html`).

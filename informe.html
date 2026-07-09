@@ -99,6 +99,25 @@
   .mcard .intake-box{background:var(--panel);}
   .mcard .dl .fila:last-child{border-bottom:none;padding-bottom:0;}
   .modal-head h3{font-size:19px;}
+
+  /* --- Banco de opiniones (Correo 3) --- */
+  .op-pulso{display:flex;gap:16px;align-items:stretch;margin-bottom:16px;flex-wrap:wrap;}
+  .op-pulso .mini{flex:1;min-width:150px;}
+  .stars{color:#33405a;letter-spacing:2px;font-size:16px;white-space:nowrap;}
+  .stars .on{color:#ffc857;}
+  .op-num-stars{font-size:22px;letter-spacing:3px;}
+  .op-filtros{display:flex;gap:8px;margin:4px 0 14px;flex-wrap:wrap;}
+  .chip{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:30px;padding:6px 14px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .chip.on{background:rgba(47,84,201,.18);border-color:var(--azul-2);color:var(--text);}
+  .op-card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;}
+  .op-card .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;}
+  .op-card .coment{font-size:14px;color:var(--text);margin:6px 0;white-space:pre-wrap;word-break:break-word;}
+  .op-card .meta{font-size:11.5px;color:var(--muted);}
+  .op-card .pub{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#7fe8c4;background:rgba(39,192,147,.14);border:1px solid rgba(39,192,147,.4);border-radius:5px;padding:1px 7px;margin-left:6px;}
+  .op-vacio{color:var(--muted);font-size:13px;font-style:italic;}
+  .op-marca{color:#ffc857;font-size:12px;margin-left:5px;}
+  .pill.opinion{background:rgba(129,140,248,.16);color:#a9b2f8;}
+  .fb-detalle .grande{font-size:26px;letter-spacing:4px;}
 </style>
 </head>
 <body>
@@ -172,7 +191,31 @@
           <tbody id="tbodyPedidos"><tr><td colspan="6">Cargando…</td></tr></tbody>
         </table>
       </div>
-      <div class="hint">💡 Toca cualquier pedido para ver su detalle completo (cliente, cuestionario, carpeta, etc.).</div>
+      <div class="hint">💡 Toca cualquier pedido para ver su detalle completo (cliente, cuestionario, carpeta, etc.). Un <span class="op-marca">★</span> junto al pedido indica que ya dejó su opinión.</div>
+    </div>
+
+    <!-- Banco de opiniones (Correo 3) -->
+    <div class="card">
+      <h2>⭐ Banco de opiniones</h2>
+      <div class="hint" style="margin-top:-6px;margin-bottom:14px;">Solo opiniones reales (excluye pruebas 🧪). Las marcadas “✓ dio permiso” son candidatas a testimonio del sitio.</div>
+      <div class="op-pulso">
+        <div class="mini">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Promedio</div>
+          <div class="num" id="opPromedio">—</div>
+          <div class="stars op-num-stars" id="opPromedioStars"></div>
+        </div>
+        <div class="mini">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Opiniones</div>
+          <div class="num" id="opTotal">—</div>
+          <div class="lbl">recibidas</div>
+        </div>
+      </div>
+      <div class="op-filtros">
+        <button class="chip on" data-filtro="todas">Todas</button>
+        <button class="chip" data-filtro="altas">4–5 ⭐ (testimonios)</button>
+        <button class="chip" data-filtro="bajas">1–3 ⭐ (a mejorar)</button>
+      </div>
+      <div id="opLista"><div class="op-vacio">Cargando…</div></div>
     </div>
   </div>
 </div>
@@ -187,6 +230,13 @@
   var FN_URL = "https://ifvnuvjvlzpdaimelmbm.supabase.co/functions/v1/informe";
   var ENTREGA_URL = "https://ifvnuvjvlzpdaimelmbm.supabase.co/functions/v1/entrega";
   var CORREO_ENTREGA_URL = "https://ifvnuvjvlzpdaimelmbm.supabase.co/functions/v1/correo-entrega";
+  var CORREO_FEEDBACK_URL = "https://ifvnuvjvlzpdaimelmbm.supabase.co/functions/v1/correo-feedback";
+  // Umbral de días tras la ENTREGA para sugerir pedir la opinión, por plan.
+  // Parametrizable aquí sin redeploy de funciones (esto es solo la vista).
+  var UMBRAL_FEEDBACK_DIAS = { 10: 3, 30: 10 };
+  function umbralDias(diasAcceso){ return UMBRAL_FEEDBACK_DIAS[diasAcceso] || (Number(diasAcceso) >= 30 ? 10 : 3); }
+  var opinionesActuales = [];
+  var filtroOpinion = 'todas';
   var gate = document.getElementById('gate');
   var informe = document.getElementById('informe');
   var gateErr = document.getElementById('gateErr');
@@ -241,27 +291,90 @@
     return '<span class="pill pend">Pendiente</span>';
   }
 
+  // Estrellas estáticas (rating de 1-5). off = grises, on = doradas.
+  function starsHtml(rating){
+    var r = Math.max(0, Math.min(5, Math.round(Number(rating) || 0)));
+    var s = '';
+    for(var i=1;i<=5;i++){ s += '<span class="' + (i<=r?'on':'') + '">\u2605</span>'; }
+    return '<span class="stars">' + s + '</span>';
+  }
+
+  function diasDesdeEntrega(p){
+    if(!p.fecha_entrega) return null;
+    return (Date.now() - new Date(p.fecha_entrega).getTime()) / 86400000;
+  }
+
+  // "Listo para pedir opinión": guía entregada + pasó el umbral por plan +
+  // no es prueba + no se envió antes + aún no hay opinión.
+  function listoParaFeedback(p){
+    if(p.es_prueba) return false;
+    if(!p.guia_entregada || !p.fecha_entrega) return false;
+    if(p.correo_feedback_enviado || p.feedback) return false;
+    var d = diasDesdeEntrega(p);
+    return d != null && d >= umbralDias(p.dias_acceso);
+  }
+
   function pintarPedidos(pedidos){
     pedidosActuales = pedidos || [];
     var tbody = document.getElementById('tbodyPedidos');
     if(!pedidosActuales.length){ tbody.innerHTML = '<tr><td colspan="6">Todavía no hay pedidos registrados.</td></tr>'; document.getElementById('alertaCount').textContent=''; return; }
-    var alertas = 0;
+    var alertas = 0, listosOpinion = 0;
     tbody.innerHTML = pedidosActuales.map(function(p, idx){
       if(p.alerta_pendiente) alertas++;
+      var listo = listoParaFeedback(p);
+      if(listo) listosOpinion++;
       var tagPrueba = p.es_prueba ? '<span class="tag-prueba">🧪 prueba</span>' : '';
+      var marca = p.feedback ? '<span class="op-marca" title="Ya dejó su opinión">★</span>' : '';
+      var pillOpinion = listo ? ' <span class="pill opinion">📊 pedir opinión</span>' : '';
       return '<tr class="'+(p.alerta_pendiente?'alerta':'')+'" data-idx="'+idx+'">' +
-        '<td>'+esc(p.pedido_id)+tagPrueba+'</td>' +
+        '<td>'+esc(p.pedido_id)+tagPrueba+marca+'</td>' +
         '<td>'+esc(p.nombre)+'</td>' +
         '<td>'+esc(p.correo)+'</td>' +
         '<td>'+esc(p.plan)+'</td>' +
         '<td>'+fechaLoc(p.fecha_compra)+'</td>' +
-        '<td>'+estadoPill(p)+'</td>' +
+        '<td>'+estadoPill(p)+pillOpinion+'</td>' +
         '</tr>';
     }).join('');
-    document.getElementById('alertaCount').textContent = alertas ? ('· ' + alertas + ' con más de 48h sin procesar') : '';
+    var avisos = [];
+    if(alertas) avisos.push(alertas + ' con más de 48h sin procesar');
+    if(listosOpinion) avisos.push(listosOpinion + ' listo' + (listosOpinion===1?'':'s') + ' para pedir opinión');
+    document.getElementById('alertaCount').textContent = avisos.length ? ('· ' + avisos.join(' · ')) : '';
     tbody.querySelectorAll('tr[data-idx]').forEach(function(tr){
       tr.addEventListener('click', function(){ abrirDetalle(parseInt(tr.dataset.idx)); });
     });
+  }
+
+  // Banco de opiniones: pulso (promedio + total, solo reales) + tarjetas
+  // filtrables. Las de prueba no cuentan ni se muestran en el banco.
+  function pintarOpiniones(opiniones){
+    opinionesActuales = (opiniones || []).filter(function(o){ return !o.es_prueba && o.rating; });
+    var total = opinionesActuales.length;
+    var suma = opinionesActuales.reduce(function(a,o){ return a + Number(o.rating||0); }, 0);
+    var prom = total ? (suma/total) : 0;
+    document.getElementById('opTotal').textContent = total;
+    document.getElementById('opPromedio').textContent = total ? prom.toFixed(1) : '—';
+    document.getElementById('opPromedioStars').innerHTML = total ? starsHtml(prom) : '';
+
+    var lista = document.getElementById('opLista');
+    var filtradas = opinionesActuales.filter(function(o){
+      if(filtroOpinion === 'altas') return o.rating >= 4;
+      if(filtroOpinion === 'bajas') return o.rating <= 3;
+      return true;
+    });
+    if(!filtradas.length){
+      lista.innerHTML = '<div class="op-vacio">' + (total ? 'No hay opiniones en este filtro.' : 'Todavía no hay opiniones. Pídelas desde el detalle de un pedido entregado.') + '</div>';
+      return;
+    }
+    lista.innerHTML = filtradas.map(function(o){
+      var pub = o.permiso_publicar ? '<span class="pub">✓ dio permiso'+(o.nombre_mostrar?': '+esc(o.nombre_mostrar):'')+'</span>' : '';
+      var coment = o.comentario ? '<div class="coment">'+esc(o.comentario)+'</div>' : '<div class="coment" style="color:var(--muted);font-style:italic;">(Sin comentario, solo calificación.)</div>';
+      var fecha = o.comentario_recibido_at || o.feedback_recibido_at;
+      return '<div class="op-card">' +
+        '<div class="top">'+starsHtml(o.rating)+pub+'</div>' +
+        coment +
+        '<div class="meta">'+esc(o.nombre||'—')+' · '+esc(o.plan||'—')+' · '+esc(o.pedido_id)+' · '+fechaLoc(fecha)+'</div>' +
+        '</div>';
+    }).join('');
   }
 
   function fila(k, v){
@@ -341,6 +454,41 @@
       '<span id="notaOk" style="display:none;color:var(--ok);font-size:12.5px;margin-left:10px;">✓ Guardada</span>' +
       '<div class="err" id="notaErr"></div>';
 
+    // Sección "Opinión del cliente" (Correo 3): muestra la opinión recibida,
+    // o el botón para pedirla (con aviso de umbral y override de emergencia).
+    var opinionSec = '<div class="seccion-t">Opinión del cliente (Correo 3)</div>';
+    if(p.feedback){
+      var fb = p.feedback;
+      opinionSec += '<div style="margin-bottom:8px;" class="fb-detalle">' + starsHtml(fb.rating) +
+        ' <b style="color:var(--text);margin-left:6px;">' + fb.rating + '/5</b></div>' +
+        (fb.comentario
+          ? '<div class="op-card" style="margin:0;"><div class="coment">' + esc(fb.comentario) + '</div></div>'
+          : '<div class="hint">Sin comentario, solo calificación.</div>') +
+        (fb.permiso_publicar
+          ? '<div class="nota-seg" style="margin-top:10px;"><b>✓ Autorizó publicar</b>' + (fb.nombre_mostrar ? ' como “' + esc(fb.nombre_mostrar) + '”' : '') + ' — candidata a testimonio del sitio.</div>'
+          : '') +
+        '<div class="hint" style="margin-top:8px;">Recibida el ' + fechaLoc(fb.comentario_recibido_at || fb.feedback_recibido_at) + '.</div>';
+    } else if(p.correo_feedback_enviado){
+      opinionSec += '<div class="nota-seg"><b>📩 Opinión solicitada</b> el ' + fechaLoc(p.correo_feedback_enviado) + '. Esperando que responda.</div>';
+    } else if(!p.guia_entregada){
+      opinionSec += '<button class="btn btn-ghost" id="btnOpinion" disabled>📊 Pedir opinión</button>' +
+        '<div class="hint">Entrega la guía antes de pedir la opinión (el reloj arranca en la entrega).</div>';
+    } else {
+      var diasEnt = diasDesdeEntrega(p);
+      var umbral = umbralDias(p.dias_acceso);
+      var estadoTxt;
+      if(p.es_prueba){
+        estadoTxt = 'Pedido de prueba 🧪: puedes enviarlo para probar el flujo (su opinión no cuenta en el banco).';
+      } else if(listoParaFeedback(p)){
+        estadoTxt = '✓ Buen momento: entregada hace ' + Math.floor(diasEnt) + ' días.';
+      } else {
+        estadoTxt = 'Aún no pasan los ~' + umbral + ' días recomendados desde la entrega' + (diasEnt != null ? ' (van ' + Math.floor(diasEnt) + ')' : '') + '. Puedes enviar igual.';
+      }
+      opinionSec += '<button class="btn btn-ok" id="btnOpinion">📊 Pedir opinión (enviar Correo 3)</button>' +
+        '<div class="hint">' + estadoTxt + '</div>' +
+        '<div class="err" id="opinionErr"></div>';
+    }
+
     // Datos del pedido (columna izquierda).
     var datosHtml =
       '<div class="seccion-t">Datos del pedido</div>' +
@@ -374,6 +522,7 @@
         '</div>' +
         '<div class="modal-col">' +
           '<div class="mcard">'+entregaBloque+'</div>' +
+          '<div class="mcard">'+opinionSec+'</div>' +
           '<div class="mcard">'+otrasBloque+'</div>' +
         '</div>' +
       '</div>';
@@ -388,6 +537,9 @@
     if(btnVP) btnVP.addEventListener('click', function(){ vistaPrevia(p); });
     var btnEnt = document.getElementById('btnEntregar');
     if(btnEnt) btnEnt.addEventListener('click', function(){ entregarGuia(p, this); });
+
+    var btnOp = document.getElementById('btnOpinion');
+    if(btnOp && !btnOp.disabled) btnOp.addEventListener('click', function(){ pedirOpinion(p, this); });
 
     document.getElementById('btnEntregada').addEventListener('click', function(){
       marcarEntregada(p, !p.guia_entregada, this);
@@ -473,6 +625,33 @@
     }
   }
 
+  // Pedir opinión: dispara correo-feedback (Correo 3) al cliente. Si aún no
+  // pasó el umbral de días, confirma con advertencia (override de emergencia).
+  async function pedirOpinion(p, btn){
+    var errEl = document.getElementById('opinionErr');
+    if(errEl) errEl.style.display = 'none';
+    var msg = '¿Enviar el correo de opinión a ' + (p.nombre || 'este cliente') + ' (' + p.correo + ')?';
+    if(!p.es_prueba && !listoParaFeedback(p)){
+      msg = 'Aún no pasan los días recomendados desde la entrega.\n\n¿Enviar de todas formas la solicitud de opinión a ' + (p.nombre || 'este cliente') + ' (' + p.correo + ')?';
+    }
+    if(!confirm(msg)) return;
+    btn.disabled = true; btn.textContent = 'Enviando…';
+    try{
+      var r = await fetch(CORREO_FEEDBACK_URL + '?key=' + encodeURIComponent(secretoActual), {
+        method:'POST', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ pedido_id: p.pedido_id })
+      });
+      var data = await r.json().catch(function(){ return {}; });
+      if(!r.ok || !data.ok){ throw new Error(data.error || ('Error ' + r.status)); }
+      cerrarDetalle();
+      await refrescar();
+    }catch(e){
+      btn.disabled = false; btn.textContent = '📊 Pedir opinión (enviar Correo 3)';
+      if(errEl){ errEl.textContent = 'No se pudo enviar: ' + e.message; errEl.style.display='block'; }
+      else { alert(e.message); }
+    }
+  }
+
   async function marcarEntregada(p, marcar, btn){
     var entErr = document.getElementById('entErr');
     entErr.style.display = 'none';
@@ -532,8 +711,19 @@
     pintarStorage(data.storage);
     pintarVentas(data.ventas, data.pedidosPrueba);
     pintarPedidos(data.pedidos);
+    pintarOpiniones(data.opiniones);
     document.getElementById('refresco').textContent = 'Actualizado: ' + new Date(data.generadoEn).toLocaleString('es-CO');
   }
+
+  // Filtros del banco de opiniones (una sola vez).
+  document.querySelectorAll('.op-filtros .chip').forEach(function(ch){
+    ch.addEventListener('click', function(){
+      document.querySelectorAll('.op-filtros .chip').forEach(function(c){ c.classList.remove('on'); });
+      ch.classList.add('on');
+      filtroOpinion = ch.dataset.filtro;
+      pintarOpiniones(opinionesActuales);
+    });
+  });
 
   async function refrescar(){
     try{ pintarTodo(await cargar(secretoActual)); }
