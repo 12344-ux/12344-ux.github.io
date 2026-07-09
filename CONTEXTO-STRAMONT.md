@@ -2,7 +2,9 @@
 
 > **Para el próximo Kiro:** esto te lo escribo yo mismo, la sesión anterior, para que arranques sin perder el hilo. Está escrito como si te lo estuviera contando de viva voz. Léelo completo antes de tocar nada.
 > **Para el dueño (usuario):** en el chat nuevo, dile "Lee CONTEXTO-STRAMONT.md antes de empezar" y con eso el próximo Kiro queda al día.
-> **Última actualización:** 9 de julio de 2026. Además del tablero (sección 2B), ya están en producción: **Correo 1** (confirmación de compra, `correo-confirmacion`) y **Correo 2** (entrega de la guía, `correo-entrega`), ambos vía **Resend**; y el **flujo de baja fricción para desarrollar guías** (comando `DESARROLLA <pedido_id>` + modo `material` + nota interna por pedido). Ver secciones **2B**, **2C** y **10**. Pendiente inmediato: **Correo 3** (calificación/feedback).
+> **Última actualización:** 9 de julio de 2026 (auditada línea por línea contra el código real de `main` en esta revisión — todo lo que describe abajo coincide con lo que hay en el repo hoy). Además del tablero (sección 2B), ya están en producción: **Correo 1** (confirmación de compra, `correo-confirmacion`) y **Correo 2** (entrega de la guía, `correo-entrega`), ambos vía **Resend**; y el **flujo de baja fricción para desarrollar guías** (comando `DESARROLLA <pedido_id>` + modo `material` + nota interna por pedido). Ver secciones **2B**, **2C** y **10**. Pendiente inmediato: **Correo 3** (calificación/feedback).
+>
+> **TL;DR (60 segundos) si tienes prisa:** Stramont convierte apuntes en guías interactivas (método CHIP STRAMONT, sección 4). Hay un tablero interno en `informe.html` (sección 2B) donde el dueño gestiona pedidos, y un comando `DESARROLLA <pedido_id>` (sección 10) para que tú armes la guía de un pedido con autonomía. Todo pago sigue en modo simulación (Wompi real es el pendiente #1, sección 8). Regla de oro: nunca push a `main`, siempre rama+PR (sección 6). Si un merge no se refleja en el sitio tras varios minutos, no es caché — revisa GitHub Actions (sección 6.7).
 
 ---
 
@@ -126,7 +128,8 @@ Para no repetir contexto por chat con muchos pedidos, se montó esto:
 | `entrega.html` | Visor público e inofensivo del sistema de entregas privadas: lee `?f&exp&sig`, llama a la Edge Function, renderiza la guía real en un `<iframe srcdoc>`. |
 | `simulacion.html` | El wizard de compra (4 pasos: plan → carga → pago simulado → éxito). Tiene: bloque de instrucciones opcional en Paso 4 (`#intakeBox`, ahora guarda en `pedido_intake`), generación de `pedido_id`, registro en la tabla `pedidos`, correo de aviso simplificado, y el reenfoque de planes (45 MB ambos). Sigue diciendo "simulación" porque Wompi (pago real) sigue pendiente. |
 | `informe.html` | **NUEVO — el tablero interno de gestión.** Uso interno, `noindex`, no enlazado. Pide el `LINK_SECRET` y consume la Edge Function `informe`. Capacidad + ventas + lista de pedidos con detalle/cuestionario y botones (entregada / liberar apuntes / borrar prueba). Ver sección 2B. |
-| `privacidad.html` | Terminología de planes alineada a "Acceso 10/30 días". |
+| `privacidad.html` | Actualizada a fondo (PR #68): responsable Montaguth Institute, sin lenguaje de "cuentas", transferencia internacional de datos, conservación concreta (10/30 días + registro de pedidos), datos del cuestionario, encargados nombrados, plazos PQRS. Terminología de planes alineada a "Acceso 10/30 días". |
+| `condiciones.html` | **NUEVA (PR #68).** Contratación/pago en USD, plazo de entrega 24h, reembolsos (solo por incumplimiento imputable a Stramont), uso permitido/contenido prohibido (con cláusula de reporte a autoridades por CSAM), propiedad intelectual, ley aplicable Colombia. Enlazada en el footer de `index.html` y aceptada vía checkbox (clickwrap) en el Paso 2 de `simulacion.html`. **Pendiente:** el dueño validarla con un abogado colombiano (registro RNBD ante la SIC, transferencia internacional). |
 | `gracias.html`, `pago.html` | Sin cambios recientes. |
 | `estilos.css` | CSS global de la home/páginas legales. **Las guías NUNCA lo tocan** (van con `<style>` inline autocontenido). |
 | `supabase/functions/entrega/index.ts` | Edge Function del sistema de **entregas** (subir/mint/listar/borrar/servir guías). |
@@ -206,10 +209,12 @@ Súbelo, luego mint, luego **verifica de verdad** haciendo el fetch que haría e
 ## 8. Pendientes / roadmap real
 
 1. **Wompi (pago real):** integrar el Payment Link, redirección de éxito, y **quitar todo lo que diga "simulación"** del sitio (badge, textos). Es lo más importante pendiente.
-2. **Borrado automático de guías vencidas** en el bucket `guias` (hoy es manual con el modo `delete` de la función `entrega`).
-3. **Asegurar el bucket `apuntes`:** limitar tamaño/MIME de subida anónima antes de un lanzamiento con más volumen (el tope de 45 MB hoy es solo del lado del cliente en `simulacion.html`).
-4. Seguir usando el sistema de entregas para clientes reales (flujo en sección 5) y el **tablero `informe.html`** para gestionarlos (sección 2B).
-5. **Mejoras posibles del tablero (opcionales, no urgentes):** automatizar el "marcar entregada" enlazándolo con la función `entrega` (hoy es manual, y funciona bien así); paginación si algún día se superan ~2000 pedidos (la lista tiene ese tope de vista; la BD aguanta millones). El egress (10 GB/mes) NO es consultable por API con la llave pública → revisarlo a mano en Supabase → Reports cada 15 días (ya hay una nota fija en el tablero).
+2. **Correo 3 (calificación/feedback):** el siguiente de los 3 correos automáticos por construir (confirmación y entrega ya están en producción, sección 2C).
+3. **Validación legal de `condiciones.html`/`privacidad.html` (PR #68) con un abogado colombiano:** registro de base de datos ante la SIC (RNBD), transferencia internacional, formalización del responsable cuando haya recursos. El contenido ya refleja fielmente cómo funciona el sistema, pero no es asesoría legal certificada.
+4. **Borrado automático de guías vencidas** en el bucket `guias` (hoy es manual con el modo `delete` de la función `entrega`).
+5. **Asegurar el bucket `apuntes`:** limitar tamaño/MIME de subida anónima antes de un lanzamiento con más volumen (el tope de 45 MB hoy es solo del lado del cliente en `simulacion.html`).
+6. Seguir usando el sistema de entregas para clientes reales (flujo en sección 5) y el **tablero `informe.html`** para gestionarlos (sección 2B), aprovechando el comando `DESARROLLA` (sección 10) para bajar la fricción.
+7. **Mejoras posibles del tablero (opcionales, no urgentes):** paginación si algún día se superan ~2000 pedidos (la lista tiene ese tope de vista; la BD aguanta millones). El egress (10 GB/mes) NO es consultable por API con la llave pública → revisarlo a mano en Supabase → Reports cada 15 días (ya hay una nota fija en el tablero).
 
 ---
 
