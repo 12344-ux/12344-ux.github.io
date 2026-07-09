@@ -68,9 +68,9 @@
   @media (max-width:640px){ .grid2{grid-template-columns:1fr;} }
 
   /* --- Panel de detalle (modal) --- */
-  .overlay{position:fixed;inset:0;background:rgba(4,7,12,.72);backdrop-filter:blur(3px);display:none;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:50;overflow-y:auto;}
+  .overlay{position:fixed;inset:0;background:rgba(4,7,12,.66);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:50;overflow-y:auto;}
   .overlay.on{display:flex;}
-  .modal{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px;max-width:560px;width:100%;animation:pop .2s ease;}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:26px 30px 30px;max-width:900px;width:100%;animation:pop .2s ease;box-shadow:0 24px 70px rgba(0,0,0,.5);}
   @keyframes pop{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
   .modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px;}
   .modal-head h3{font-size:18px;font-weight:800;word-break:break-all;}
@@ -89,6 +89,16 @@
   .modal-acciones{margin-top:22px;padding-top:18px;border-top:1px solid var(--line);}
   .nota-seg{font-size:12.5px;color:var(--muted);background:rgba(39,192,147,.06);border:1px solid rgba(39,192,147,.2);border-radius:10px;padding:11px 14px;}
   .nota-seg b{color:var(--ok);}
+  /* Detalle a dos columnas (más horizontal, menos scroll, más suave) */
+  .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;}
+  @media (max-width:800px){ .modal-grid{grid-template-columns:1fr;gap:14px;} }
+  .modal-col{display:flex;flex-direction:column;gap:16px;min-width:0;}
+  .mcard{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:16px 18px;}
+  .mcard .seccion-t{margin-top:0;margin-bottom:12px;}
+  .mcard .field{background:var(--panel);}
+  .mcard .intake-box{background:var(--panel);}
+  .mcard .dl .fila:last-child{border-bottom:none;padding-bottom:0;}
+  .modal-head h3{font-size:19px;}
 </style>
 </head>
 <body>
@@ -295,47 +305,44 @@
     var btnEntregada = p.guia_entregada
       ? '<button class="btn btn-ghost" id="btnEntregada">↩ Marcar como pendiente</button>'
       : '<button class="btn btn-ghost" id="btnEntregada">Marcar entregada (sin enviar correo)</button>';
-    var acciones = entregaSec +
+
+    // Tarjeta ENTREGA (Correo 2) + override manual.
+    var entregaBloque = entregaSec +
       '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line);">' +
         btnEntregada + '<div class="err" id="entErr"></div>' +
         '<div class="hint">Override manual, por si entregaste la guía por fuera del sistema (no envía correo).</div>' +
       '</div>';
 
-    // Bloque "liberar apuntes" (borra solo los archivos de Storage de ESTE
-    // pedido; conserva el registro). Disponible solo si la guía ya se entregó.
-    acciones += '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line);">';
+    // Tarjeta APUNTES Y LIMPIEZA: liberar apuntes + (eliminar prueba / nota real).
+    var otrasBloque = '<div class="seccion-t">Apuntes y limpieza</div>';
     if(p.apuntes_borrados){
-      acciones += '<div class="nota-seg"><b>🧹 Apuntes liberados</b> el ' + fechaLoc(p.apuntes_borrados) + '. El registro del pedido se conserva.</div>';
+      otrasBloque += '<div class="nota-seg"><b>🧹 Apuntes liberados</b> el ' + fechaLoc(p.apuntes_borrados) + '. El registro del pedido se conserva.</div>';
     } else if(!p.guia_entregada){
-      acciones += '<button class="btn btn-ghost" id="btnLiberar" disabled>🧹 Liberar apuntes de Storage</button>' +
+      otrasBloque += '<button class="btn btn-ghost" id="btnLiberar" disabled>🧹 Liberar apuntes de Storage</button>' +
         '<div class="hint">Se habilita cuando marques la guía como entregada (así no borras apuntes sin procesar).</div>';
     } else {
-      acciones += '<button class="btn btn-bad" id="btnLiberar">🧹 Liberar apuntes de Storage</button>' +
+      otrasBloque += '<button class="btn btn-bad" id="btnLiberar">🧹 Liberar apuntes de Storage</button>' +
         '<div class="hint">Borra solo los archivos originales de ESTE pedido (no toca otros pedidos del mismo cliente). El registro se conserva.</div>' +
         '<div class="err" id="libErr"></div>';
     }
-    acciones += '</div>';
-
     if(p.es_prueba){
-      acciones += '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line);">' +
+      otrasBloque += '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line);">' +
         '<button class="btn btn-bad" id="btnEliminar">🗑 Eliminar este pedido de prueba</button>' +
         '<div class="hint">Borra el registro, su cuestionario y sus archivos en Storage. Solo funciona en pedidos de prueba.</div>' +
         '<div class="err" id="delErr"></div></div>';
     } else {
-      acciones += '<div class="nota-seg" style="margin-top:16px;"><b>Pedido real:</b> por seguridad no se puede borrar desde aquí. Los borrados de datos reales se hacen solo desde el panel de Supabase.</div>';
+      otrasBloque += '<div class="nota-seg" style="margin-top:16px;"><b>Pedido real:</b> por seguridad no se puede borrar desde aquí. Los borrados de datos reales se hacen solo desde el panel de Supabase.</div>';
     }
 
     // Sección "Nota para la guía" (interna, del dueño para la IA).
     var notaSec = '<div class="seccion-t">📝 Nota para la guía (interna)</div>' +
-      '<textarea id="notaInterna" class="field" style="min-height:64px;resize:vertical;margin-bottom:8px;" placeholder="Instrucciones para quien arma la guía (ej: enfócale PESTEL, tiene examen el viernes). El cliente NUNCA la ve.">' + esc(p.nota_interna || '') + '</textarea>' +
+      '<textarea id="notaInterna" class="field" style="min-height:72px;resize:vertical;margin-bottom:8px;" placeholder="Instrucciones para quien arma la guía (ej: enfócale PESTEL, tiene examen el viernes). El cliente NUNCA la ve.">' + esc(p.nota_interna || '') + '</textarea>' +
       '<button class="btn btn-ghost btn-sm" id="btnGuardarNota">Guardar nota</button>' +
       '<span id="notaOk" style="display:none;color:var(--ok);font-size:12.5px;margin-left:10px;">✓ Guardada</span>' +
       '<div class="err" id="notaErr"></div>';
 
-    modal.innerHTML =
-      '<div class="modal-head"><h3>'+esc(p.pedido_id)+(p.es_prueba?'<span class="tag-prueba">🧪 prueba</span>':'')+'</h3>' +
-      '<button class="modal-close" id="modalClose" title="Cerrar">✕</button></div>' +
-      '<div>'+estadoPill(p)+'</div>' +
+    // Datos del pedido (columna izquierda).
+    var datosHtml =
       '<div class="seccion-t">Datos del pedido</div>' +
       '<div class="dl">' +
         fila('Cliente', esc(p.nombre || '—')) +
@@ -346,13 +353,30 @@
         fila('Apuntes', p.apuntes_borrados
           ? '🧹 Liberados el ' + fechaLoc(p.apuntes_borrados)
           : (p.tamano_apuntes_mb != null ? p.tamano_apuntes_mb + ' MB (en Storage)' : '—')) +
-        fila('Carpeta Storage', esc(p.carpeta_storage || '—')) +
+        fila('Carpeta', esc(p.carpeta_storage || '—')) +
         fila('Guía entregada', (p.guia_entregada ? 'Sí · ' + fechaLoc(p.fecha_entrega) : 'No')) +
+      '</div>';
+
+    // Ensamblado en DOS COLUMNAS: izquierda = información del pedido;
+    // derecha = gestión (entrega + limpieza). Menos scroll, más suave.
+    modal.innerHTML =
+      '<div class="modal-head">' +
+        '<div><h3>'+esc(p.pedido_id)+(p.es_prueba?'<span class="tag-prueba">🧪 prueba</span>':'')+'</h3>' +
+          '<div style="margin-top:8px;">'+estadoPill(p)+'</div>' +
+        '</div>' +
+        '<button class="modal-close" id="modalClose" title="Cerrar">✕</button>' +
       '</div>' +
-      '<div class="seccion-t">Cuestionario del cliente</div>' +
-      intakeHtml +
-      notaSec +
-      '<div class="modal-acciones">'+acciones+'</div>';
+      '<div class="modal-grid">' +
+        '<div class="modal-col">' +
+          '<div class="mcard">'+datosHtml+'</div>' +
+          '<div class="mcard"><div class="seccion-t">Cuestionario del cliente</div>'+intakeHtml+'</div>' +
+          '<div class="mcard">'+notaSec+'</div>' +
+        '</div>' +
+        '<div class="modal-col">' +
+          '<div class="mcard">'+entregaBloque+'</div>' +
+          '<div class="mcard">'+otrasBloque+'</div>' +
+        '</div>' +
+      '</div>';
 
     overlay.classList.add('on');
     document.getElementById('modalClose').addEventListener('click', cerrarDetalle);
