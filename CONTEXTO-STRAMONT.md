@@ -20,6 +20,7 @@ El dueño pidió explícitamente (9 jul 2026) que esta sección exista, porque p
 - **Trabajas en equipo con OTRA IA — el "Kiro de ideas".** El dueño tiene dos asistentes en paralelo: tú (el programador, el que lee/escribe código, hace PRs, opera Supabase) y otro Kiro que piensa estrategia, precios, textos de marketing y redacta los *briefs* de features (ej.: los tres correos automáticos vinieron así). El dueño actúa de puente: le lleva al otro Kiro lo que tú resolviste, y te trae a ti los briefs que el otro diseñó. **Tu trabajo es ejecutarlos con criterio técnico y de seguridad — no aceptarlos literal si algo está mal planteado.** Ya pasó: el brief del Correo 1 pedía poner el `LINK_SECRET` en el frontend público; se corrigió a un patrón seguro (el navegador manda solo el `pedido_id`) y se le explicó el porqué al dueño para que se lo transmitiera al otro Kiro.
 - **El dueño no programa ni tiene acceso a archivos.** Todo lo revisa y aprueba a través de GitHub (PRs) y del propio tablero. Explícale en español sencillo, sin asumir que sabe qué es un merge conflict o un Edge Function — pero sin condescendencia.
 - **Ritmo de trabajo real de esta colaboración:** sesiones largas, iterativas, con pruebas reales antes de decir "listo", y con el dueño mergeando rápido cada PR completo. Cuando algo se ve raro tras un merge (el sitio no cambia, un botón no aparece), la respuesta profesional es investigar con evidencia (Actions, `raw.githubusercontent.com`, `deno check`) antes de especular — nunca decir "prueba a refrescar" sin haber mirado primero.
+- **Verifica SIEMPRE, por tu cuenta, que un merge se publicó de verdad** (no esperes a que el dueño te avise que algo se ve raro). Después de cada merge: revisa Actions/la API de runs, y si el deploy quedó atascado (`queued` mucho rato) o falló (`failure`/`cancelled` — ha pasado bastante, es degradación transitoria de GitHub, no nuestro código), la reacción automática es crear **una rama nueva** con un commit trivial que dispare un run limpio, nunca reutilizar una rama ya mergeada. El detalle completo está en la sección 6, regla 7.
 
 ---
 
@@ -207,7 +208,12 @@ Súbelo, luego mint, luego **verifica de verdad** haciendo el fetch que haría e
 4. Antes de crear una rama nueva, revisa `list_pull_requests` para no chocar con trabajo de la sesión.
 5. Si tocas `estilos.css` alguna vez (raro — las guías nunca lo hacen), sube el cache-bust `?v=N` en todos los HTML que lo referencian.
 6. El dueño no tiene acceso al sistema de archivos: todo cambio se revisa vía PR en GitHub. Recuérdale la recarga forzada (Ctrl/Cmd+Shift+R) tras un merge.
-7. **Si algo no se refleja tras un merge y ya pasaron varios minutos:** no asumas que es solo caché. Revisa `https://github.com/12344-ux/12344-ux.github.io/actions` — puede ser un fallo real de deploy (ver sección 2, punto 6).
+7. **Rutina fija tras CUALQUIER merge (no esperes a que el dueño reporte algo raro — verifícalo tú de una vez):**
+   1. Confirma que el PR de verdad quedó `merged` (no solo `closed`): `list_pull_requests`.
+   2. Mira los últimos runs de `https://github.com/12344-ux/12344-ux.github.io/actions` (o vía API: `curl -s "https://api.github.com/repos/12344-ux/12344-ux.github.io/actions/runs?per_page=4"`). Busca el run de ese merge.
+   3. Si está `queued` mucho rato, o `failure`, o `cancelled` (puede pasar si se mergean dos PRs casi juntos): **no asumas caché del navegador, es un fallo/atasco real de deploy** (degradación transitoria de GitHub, no nuestro código — ya ha pasado varias veces, ver sección 2 punto 6).
+   4. El arreglo: sincroniza `main` (`pull_repository`), **crea una rama nueva** (nunca reutilices una ya mergeada — ver regla 2 de esta lista) con un commit trivial (ej. cambiar el comentario `rebuild-trigger` al inicio de `simulacion.html`) para forzar un run limpio, y ábrelo en un PR nuevo. NO uses "Re-run", se puede quedar atascado igual.
+   5. Solo después de confirmar el run en verde, dile al dueño que ya puede hacer la recarga forzada (Ctrl/Cmd+Shift+R).
 8. Para cualquier prueba real de interactividad (JS, formularios, flashcards), usa Playwright con Chromium headless en vez de solo leer el código. Si las librerías del sistema faltan, se resuelven con `dnf install` + para `nss` específicamente con `rpm2archive` + `tar` (el paquete normal de `dnf` para `nss` falla al desempaquetar en este sandbox).
 
 ---
