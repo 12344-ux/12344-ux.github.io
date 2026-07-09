@@ -53,9 +53,17 @@ function esCorreoPrueba(correo: string): boolean {
   return c.startsWith("prueba") || c.endsWith("@example.com") || c.endsWith(".test");
 }
 
+// Escapa caracteres peligrosos en el HTML del correo. Construimos el "&"
+// aparte (String.fromCharCode(38)) para que este código sea 100% seguro al
+// copiar/pegar: no hay entidades HTML literales (&amp; &quot; ...) que un
+// editor o render pueda "decodificar" y romper la sintaxis al pegarlo.
 function esc(s: unknown): string {
-  return String(s == null ? "" : s).replace(/[&<>"]/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
+  const A = String.fromCharCode(38);
+  return String(s == null ? "" : s)
+    .replace(/&/g, A + "amp;")
+    .replace(/</g, A + "lt;")
+    .replace(/>/g, A + "gt;")
+    .replace(/"/g, A + "quot;");
 }
 
 // Versión de texto plano (multipart mejora la entregabilidad / anti-spam).
