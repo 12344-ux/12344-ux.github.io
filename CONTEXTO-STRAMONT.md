@@ -2,7 +2,30 @@
 
 > **Para el próximo Kiro:** esto te lo escribo yo mismo, la sesión anterior, para que arranques sin perder el hilo. Está escrito como si te lo estuviera contando de viva voz. Léelo completo antes de tocar nada.
 > **Para el dueño (usuario):** en el chat nuevo, dile "Lee CONTEXTO-STRAMONT.md antes de empezar" y con eso el próximo Kiro queda al día.
-> **Última actualización:** 9 de julio de 2026. Además del tablero (sección 2B), ya están en producción: **Correo 1** (confirmación de compra, `correo-confirmacion`) y **Correo 2** (entrega de la guía, `correo-entrega`), ambos vía **Resend**; y el **flujo de baja fricción para desarrollar guías** (comando `DESARROLLA <pedido_id>` + modo `material` + nota interna por pedido). Ver secciones **2B**, **2C** y **10**. Pendiente inmediato: **Correo 3** (calificación/feedback).
+> **Última actualización:** 9 de julio de 2026 (cierre de sesión larga). **Lee la sección 0 primero.**
+
+---
+
+## 0. ESTADO AL CIERRE (9 jul 2026) — LÉEME ANTES QUE NADA
+
+Sesión larguísima y muy productiva. Resumen de dónde quedamos:
+
+### YA EN PRODUCCIÓN (mergeado + desplegado + probado)
+- **Tablero interno** `informe.html` + tablas `pedidos` y `pedido_intake` + Edge Function `informe` (sección 2B).
+- **Correo 1 — Confirmación de compra** (`correo-confirmacion`, vía Resend). Se dispara solo al comprar. (Sección 2C.)
+- **Correo 2 — Entrega de la guía** (`correo-entrega`, vía Resend). Lo dispara el dueño desde el tablero con **Vista previa + Entregar**. (Sección 2C.) Probado punta a punta con `pruebasmontaguth@gmail.com`: llega branded, enlace privado funciona, respuestas caen en Zoho.
+- **Flujo de baja fricción `DESARROLLA <pedido_id>`** + modo `material` de `informe` + campo **"Nota para la guía (interna)"** en el tablero (sección 10). Su SQL (`nota_interna`) y el redeploy de `informe` **ya los hizo el dueño** (el campo de nota ya funciona en vivo).
+
+### PENDIENTE DE MERGE (yo lo dejé en PR; el dueño mergea)
+- **PR #74 — Tablero: detalle del pedido a DOS COLUMNAS** (más horizontal, suave, menos scroll; conserva desenfoque + clic-afuera). **Solo toca `informe.html`** → al mergear se publica por GitHub Pages, **NO requiere pasos en Supabase**. Si al cierre no está mergeado, el dueño solo tiene que mergearlo (y si el deploy de Pages se congela, disparar commit-trigger, ver 6.7).
+
+### LA TAREA SIGUIENTE (lo que estábamos por hacer)
+- **Correo 3 — Calificación / feedback** (3 de 3, misma infra Resend). FALTA que el "Kiro de ideas" pase el brief; lo CLAVE a definir con él: **cuándo y desde dónde se dispara** (¿unos días después de la entrega? ¿un botón en el tablero? ¿un cron?). Se monta con el MISMO patrón seguro de los otros correos.
+
+### DATOS OPERATIVOS IMPORTANTES
+- **`LINK_SECRET`** (el que abre el tablero y protege `entrega`/`informe`/`correo-entrega`): el dueño lo tiene y me lo compartió en esta sesión para subir una guía de prueba. (NO lo escribas nunca en el repo; si quieres, el dueño puede rotarlo.)
+- **Artefacto de prueba:** subí `guia-prueba.html` al bucket privado `guias` (para probar el Correo 2). Es basura de prueba — se puede borrar con `entrega ?delete=1&f=guia-prueba.html&key=...` cuando quieras.
+- **Método de trabajo probado esta sesión:** los correos son Edge Functions que se despliegan a mano en Supabase; el código se copia **desde GitHub en crudo** (`raw.githubusercontent.com/.../main/...`), NUNCA del chat (el chat corrompe símbolos HTML). Verifica el archivo con `deno check` antes de mandarlo. Las funciones que usan `LINK_SECRET` van con **Verify JWT apagado**.
 
 ---
 
@@ -100,7 +123,7 @@ Cuando un PR toca la tabla o la función `informe`, tras mergear hay que, en el 
 - Lo dispara el DUEÑO desde el tablero → **exige `LINK_SECRET`** (`?key=`). Body `{pedido_id, archivo, tema?}`. Valida que la guía exista en el bucket `guias`, genera el enlace firmado **reusando la MISMA firma HMAC que la función `entrega`** (no se reinventó; probado que coinciden), envía el correo con el enlace privado, y marca el pedido: `guia_entregada`, `fecha_entrega`, `guia_archivo`, `correo_entrega_enviado`. Idempotente. Verify JWT **off**.
 - En el tablero, en el detalle del pedido: sección **"Entrega de la guía"** con campo del nombre del archivo + **Vista previa** (reusa el modo `mint` de `entrega`, enlace de 1 día) + **Entregar**. El viejo "marcar entregada" quedó como override manual (sin enviar correo).
 
-### Correo 3 — Calificación/feedback: **PENDIENTE** (lo siguiente a construir).
+### Correo 3 — Calificación/feedback: **PENDIENTE — es la tarea siguiente** (ver sección 0). Misma infra Resend, mismo patrón seguro. Falta definir con el "Kiro de ideas" el disparador (cuándo/desde dónde se envía).
 
 ---
 
@@ -129,9 +152,11 @@ Para no repetir contexto por chat con muchos pedidos, se montó esto:
 | `privacidad.html` | Terminología de planes alineada a "Acceso 10/30 días". |
 | `gracias.html`, `pago.html` | Sin cambios recientes. |
 | `estilos.css` | CSS global de la home/páginas legales. **Las guías NUNCA lo tocan** (van con `<style>` inline autocontenido). |
-| `supabase/functions/entrega/index.ts` | Edge Function del sistema de **entregas** (subir/mint/listar/borrar/servir guías). |
-| `supabase/functions/informe/index.ts` | **NUEVO — Edge Function del tablero.** Lee pedidos/storage y ejecuta entregada/liberar/borrar. service_role server-side + `LINK_SECRET`. Ver sección 2B. |
-| `supabase/migrations/*.sql` | **NUEVO — SQL versionado** de las tablas `pedidos` y `pedido_intake` y la columna `apuntes_borrados`. Hay que correrlo a mano en el SQL Editor de Supabase (no se aplica solo con el merge). |
+| `supabase/functions/entrega/index.ts` | Edge Function del sistema de **entregas** (subir/mint/listar/borrar/servir guías). Su firma HMAC la reusa `correo-entrega`. |
+| `supabase/functions/informe/index.ts` | **Edge Function del tablero.** Lee pedidos/storage y ejecuta entregada/liberar/borrar + modos `material` (todo lo del pedido para armar la guía) y `guardar_nota`. service_role server-side + `LINK_SECRET`. Ver 2B y 10. |
+| `supabase/functions/correo-confirmacion/index.ts` | **Correo 1** (confirmación de compra, Resend). Recibe solo `{pedido_id}`. Verify JWT off. |
+| `supabase/functions/correo-entrega/index.ts` | **Correo 2** (entrega de la guía, Resend). Exige `LINK_SECRET`; body `{pedido_id, archivo, tema?}`. Verify JWT off. |
+| `supabase/migrations/*.sql` | **SQL versionado** de `pedidos`, `pedido_intake` y columnas añadidas (`apuntes_borrados`, `correo_confirmacion_enviado`, `correo_entrega_enviado`, `guia_archivo`, `nota_interna`). Se corre a mano en el SQL Editor (no se aplica solo con el merge). |
 | `.kiro/steering/metodo-guias.md` | **El método CHIP STRAMONT, versión definitiva.** Ábrelo y aplícalo tal cual para cualquier guía nueva. |
 
 ---
@@ -222,6 +247,7 @@ Súbelo, luego mint, luego **verifica de verdad** haciendo el fetch que haría e
 5. **Si tocas la tabla `pedidos`/`pedido_intake` o la función `informe`** (sección 2B): recuerda que tras mergear, el dueño debe correr el SQL en Supabase y redesplegar la función a mano. Guíalo paso a paso, no asumas que se aplicó solo.
 6. Si el dueño reporta que un cambio no se ve en el sitio después de mergear, no asumas caché de una: revisa Actions primero (sección 2.6 y sección 6.7). Mergear **de a un PR**.
 7. **Regla de seguridad permanente (innegociable):** nunca comprometer llaves/secretos; si el camino directo expone algo sensible, busca otra vía y explícalo — nunca el atajo inseguro en silencio (sección 2B).
-8. Sé su socio honesto: chispa crítica cuando algo no es lo ideal, pero siempre entregando algo tangible y funcionando, probado de verdad antes de decir que está listo. Al dueño le gusta explícitamente que tomes criterio propio (p. ej., hoy corregí una redundancia en un texto sin que me lo pidiera, y lo valoró).
+8. Sé su socio honesto: chispa crítica cuando algo no es lo ideal, pero siempre entregando algo tangible y funcionando, probado de verdad antes de decir que está listo. Al dueño le gusta explícitamente que tomes criterio propio (p. ej., corregí una redundancia en un texto sin que me lo pidiera, y lo valoró).
+9. **Tu tarea inmediata al arrancar** (salvo que el dueño diga otra cosa): el **Correo 3 (calificación/feedback)** — ver sección 0. Pídele al dueño el brief del "Kiro de ideas", sobre todo el disparador (cuándo/desde dónde). Y recuerda: hay trabajos que colabora con OTRO Kiro (el de ideas/estrategia); ese te manda briefs que tú, como programador, implementas — ajustando lo que sea inseguro (como ya pasó: el brief del Correo 1 pedía poner el LINK_SECRET en el frontend público y lo corregí).
 
 ¡A seguir construyendo Stramont! 🚀
