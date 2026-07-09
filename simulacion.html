@@ -485,6 +485,23 @@
       }catch(e){ /* si el correo falla, no bloqueamos el flujo del comprador */ }
     }
 
+    // Correo 1 de 3: confirmación automática de compra al CLIENTE (vía Resend,
+    // en la Edge Function "correo-confirmacion"). NO bloqueante y SIN secretos:
+    // solo mandamos el pedido_id; la función toma el correo/nombre/días del
+    // pedido ya registrado y envía a esa dirección, una sola vez (idempotente).
+    // Así el navegador (público) nunca lleva el LINK_SECRET ni puede mandar
+    // correos a direcciones ajenas.
+    function enviarConfirmacion(pedidoId){
+      if(!SUPA_READY || !pedidoId) return;
+      try{
+        fetch('https://ifvnuvjvlzpdaimelmbm.supabase.co/functions/v1/correo-confirmacion', {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ pedido_id: pedidoId })
+        }).catch(function(){ /* silencioso: no afecta el flujo del comprador */ });
+      }catch(e){ /* no bloqueante */ }
+    }
+
     // Registra el pedido en la tabla "pedidos" (Supabase). Solo INSERT con
     // llave pública (RLS lo restringe así). No bloquea el flujo si falla.
     async function registrarPedido(pedidoId, email, info){
@@ -555,6 +572,7 @@
         var r = await procesar(estado.email, pedidoId);
         await notificar(estado.email, r, pedidoId);
         await registrarPedido(pedidoId, estado.email, r);
+        enviarConfirmacion(pedidoId); // correo al cliente (fire-and-forget, tras registrar el pedido)
         var now = new Date();
         estado.recibo = 'STR-' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '-' + String(now.getTime()).slice(-4);
         estado.fecha = now.toLocaleString('es-CO');
