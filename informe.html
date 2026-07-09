@@ -175,6 +175,8 @@
 <script>
 (function(){
   var FN_URL = "https://ifvnuvjvlzpdaimelmbm.supabase.co/functions/v1/informe";
+  var ENTREGA_URL = "https://ifvnuvjvlzpdaimelmbm.supabase.co/functions/v1/entrega";
+  var CORREO_ENTREGA_URL = "https://ifvnuvjvlzpdaimelmbm.supabase.co/functions/v1/correo-entrega";
   var gate = document.getElementById('gate');
   var informe = document.getElementById('informe');
   var gateErr = document.getElementById('gateErr');
@@ -271,11 +273,33 @@
       intakeHtml = '<div class="intake-box"><span class="intake-vacio">El cliente no respondió el cuestionario opcional.</span></div>';
     }
 
-    // Botón para marcar/desmarcar la entrega (todos los pedidos).
+    // === Sección "Entrega de la guía" (Correo 2) ===
+    var entregaSec = '<div class="seccion-t">Entrega de la guía</div>';
+    if(p.correo_entrega_enviado){
+      entregaSec += '<div class="nota-seg"><b>✅ Guía entregada por correo</b> el ' + fechaLoc(p.correo_entrega_enviado) +
+        (p.guia_archivo ? '<br><span style="color:var(--dim);">Archivo: ' + esc(p.guia_archivo) + '</span>' : '') + '</div>' +
+        '<button class="btn btn-ghost" id="btnVistaPrevia" style="margin-top:10px;">👁️ Ver la guía (vista previa)</button>' +
+        '<div class="err" id="entregaErr"></div>';
+    } else {
+      entregaSec += '<input class="field" id="guiaArchivo" placeholder="nombre-del-archivo.html" value="' + esc(p.guia_archivo||'') + '" autocomplete="off" style="margin-bottom:8px;">' +
+        '<input class="field" id="guiaTema" placeholder="Tema de la guía (opcional, ej: La Empresa)" value="' + esc(p.tema||'') + '" autocomplete="off" style="margin-bottom:8px;">' +
+        '<div style="display:flex;gap:10px;">' +
+          '<button class="btn btn-ghost" id="btnVistaPrevia" style="flex:1;">👁️ Vista previa</button>' +
+          '<button class="btn btn-ok" id="btnEntregar" style="flex:1;">✓ Entregar y enviar correo</button>' +
+        '</div>' +
+        '<div class="hint">Pega el nombre del archivo de la guía (el que dio quien la creó). "Vista previa" la abre para que la revises; "Entregar" le manda el correo al cliente con su enlace privado.</div>' +
+        '<div class="err" id="entregaErr"></div>';
+    }
+
+    // Override manual: marcar/desmarcar entregada SIN enviar correo.
     var btnEntregada = p.guia_entregada
       ? '<button class="btn btn-ghost" id="btnEntregada">↩ Marcar como pendiente</button>'
-      : '<button class="btn btn-ok" id="btnEntregada">✓ Marcar guía como entregada</button>';
-    var acciones = btnEntregada + '<div class="err" id="entErr"></div>';
+      : '<button class="btn btn-ghost" id="btnEntregada">Marcar entregada (sin enviar correo)</button>';
+    var acciones = entregaSec +
+      '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line);">' +
+        btnEntregada + '<div class="err" id="entErr"></div>' +
+        '<div class="hint">Override manual, por si entregaste la guía por fuera del sistema (no envía correo).</div>' +
+      '</div>';
 
     // Bloque "liberar apuntes" (borra solo los archivos de Storage de ESTE
     // pedido; conserva el registro). Disponible solo si la guía ya se entregó.
@@ -325,6 +349,11 @@
     overlay.classList.add('on');
     document.getElementById('modalClose').addEventListener('click', cerrarDetalle);
 
+    var btnVP = document.getElementById('btnVistaPrevia');
+    if(btnVP) btnVP.addEventListener('click', function(){ vistaPrevia(p); });
+    var btnEnt = document.getElementById('btnEntregar');
+    if(btnEnt) btnEnt.addEventListener('click', function(){ entregarGuia(p, this); });
+
     document.getElementById('btnEntregada').addEventListener('click', function(){
       marcarEntregada(p, !p.guia_entregada, this);
     });
@@ -341,6 +370,50 @@
     }
   }
 
+  // Vista previa: reusa el modo "mint" de la función entrega para abrir la
+  // guía con un enlace corto (1 día) solo para revisión del dueño. Nada se envía.
+  async function vistaPrevia(p){
+    var errEl = document.getElementById('entregaErr');
+    if(errEl) errEl.style.display = 'none';
+    var inp = document.getElementById('guiaArchivo');
+    var archivo = inp ? inp.value.trim() : (p.guia_archivo || '');
+    if(!archivo){ if(errEl){ errEl.textContent='Escribe el nombre del archivo de la guía.'; errEl.style.display='block'; } return; }
+    try{
+      var r = await fetch(ENTREGA_URL + '?mint=1&f=' + encodeURIComponent(archivo) + '&days=1&key=' + encodeURIComponent(secretoActual));
+      var link = (await r.text()).trim();
+      if(!r.ok || link.indexOf('http') !== 0){ throw new Error(link || ('Error ' + r.status)); }
+      window.open(link, '_blank');
+    }catch(e){
+      if(errEl){ errEl.textContent = 'No se pudo abrir la vista previa: ' + e.message; errEl.style.display='block'; }
+      else { alert(e.message); }
+    }
+  }
+
+  // Entregar: dispara correo-entrega (envía el Correo 2 al cliente y marca el
+  // pedido como entregado). El correo va a la dirección guardada del pedido.
+  async function entregarGuia(p, btn){
+    var errEl = document.getElementById('entregaErr');
+    if(errEl) errEl.style.display = 'none';
+    var archivo = document.getElementById('guiaArchivo').value.trim();
+    var tema = document.getElementById('guiaTema').value.trim();
+    if(!archivo){ errEl.textContent='Escribe el nombre del archivo de la guía.'; errEl.style.display='block'; return; }
+    if(!confirm('¿Entregar la guía "' + archivo + '" a ' + (p.nombre || 'este cliente') + ' (' + p.correo + ')?\n\nSe le enviará el correo con su enlace privado y el pedido quedará marcado como entregado.')) return;
+    btn.disabled = true; btn.textContent = 'Enviando…';
+    try{
+      var r = await fetch(CORREO_ENTREGA_URL + '?key=' + encodeURIComponent(secretoActual), {
+        method:'POST', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ pedido_id: p.pedido_id, archivo: archivo, tema: tema })
+      });
+      var data = await r.json().catch(function(){ return {}; });
+      if(!r.ok || !data.ok){ throw new Error(data.error || ('Error ' + r.status)); }
+      cerrarDetalle();
+      await refrescar();
+    }catch(e){
+      btn.disabled = false; btn.textContent = '✓ Entregar y enviar correo';
+      errEl.textContent = 'No se pudo entregar: ' + e.message; errEl.style.display='block';
+    }
+  }
+
   async function marcarEntregada(p, marcar, btn){
     var entErr = document.getElementById('entErr');
     entErr.style.display = 'none';
@@ -353,7 +426,7 @@
       await refrescar();
     }catch(e){
       btn.disabled = false;
-      btn.textContent = marcar ? '✓ Marcar guía como entregada' : '↩ Marcar como pendiente';
+      btn.textContent = marcar ? 'Marcar entregada (sin enviar correo)' : '↩ Marcar como pendiente';
       entErr.textContent = e.message; entErr.style.display = 'block';
     }
   }
