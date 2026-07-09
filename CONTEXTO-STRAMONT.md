@@ -2,7 +2,7 @@
 
 > **Para el próximo Kiro:** esto te lo escribo yo mismo, la sesión anterior, para que arranques sin perder el hilo. Está escrito como si te lo estuviera contando de viva voz. Léelo completo antes de tocar nada.
 > **Para el dueño (usuario):** en el chat nuevo, dile "Lee CONTEXTO-STRAMONT.md antes de empezar" y con eso el próximo Kiro queda al día.
-> **Última actualización:** 3 de julio de 2026 (segunda tanda del mismo día: se construyó y puso en producción el **tablero interno de gestión** `informe.html` + tabla `pedidos` + tabla `pedido_intake` + Edge Function `informe`; reenfoque de planes a "aprendizaje, no almacenamiento"; limpieza de correos; correo dedicado de pruebas; botones de marcar entregada / liberar apuntes / borrar pruebas. Todo probado con Playwright y desplegado. Ver sección **2B**).
+> **Última actualización:** 9 de julio de 2026. Además del tablero (sección 2B), ya están en producción: **Correo 1** (confirmación de compra, `correo-confirmacion`) y **Correo 2** (entrega de la guía, `correo-entrega`), ambos vía **Resend**; y el **flujo de baja fricción para desarrollar guías** (comando `DESARROLLA <pedido_id>` + modo `material` + nota interna por pedido). Ver secciones **2B**, **2C** y **10**. Pendiente inmediato: **Correo 3** (calificación/feedback).
 
 ---
 
@@ -84,6 +84,35 @@ Volvió a pasar varias veces que un merge dejaba el deploy de GitHub Pages falla
 ### Pasos manuales de Supabase (NO se automatizan solos con el merge)
 
 Cuando un PR toca la tabla o la función `informe`, tras mergear hay que, en el dashboard de Supabase: (1) correr el SQL nuevo en **SQL Editor**, y (2) **redeploy** de la Edge Function `informe` (Edge Functions → informe → Code → pegar el código → Deploy). El deploy de GitHub Pages solo publica el HTML; Supabase es aparte. La función `informe` requiere que "Verify JWT" esté **apagado** (usa `LINK_SECRET` propio).
+
+---
+
+## 2C. Correos automáticos (Resend) y flujo de baja fricción — EN PRODUCCIÓN
+
+### Infraestructura de correo
+- Se usa **Resend** (dominio verificado `send.montaguth.institute`). La `RESEND_API_KEY` vive SOLO en Supabase Secrets; ninguna función la expone. Remitente: `Montaguth Institute <notificaciones@send.montaguth.institute>`. **Reply-To:** `contacto@montaguth.institute` (las respuestas caen en el Zoho del dueño; probado).
+- Patrón de seguridad (aprendido en el Correo 1): **NUNCA** poner el `LINK_SECRET` en `simulacion.html` (es público → se filtraría). Regla general: si un correo lo dispara el **cliente anónimo** (página pública), la función recibe SOLO el `pedido_id` y saca el correo/datos de la BD server-side (no del navegador) → nada de relay de spam abierto. Si lo dispara el **dueño desde el tablero** (autenticado), la función SÍ exige `LINK_SECRET`.
+
+### Correo 1 — Confirmación de compra (`correo-confirmacion`)
+- Se dispara solo desde `simulacion.html` (Paso 4) tras registrar el pedido. Envía SOLO `{pedido_id}`; la función envía al correo guardado del pedido, **una sola vez** (columna `correo_confirmacion_enviado`). Verify JWT **off**.
+
+### Correo 2 — Entrega de la guía (`correo-entrega`)
+- Lo dispara el DUEÑO desde el tablero → **exige `LINK_SECRET`** (`?key=`). Body `{pedido_id, archivo, tema?}`. Valida que la guía exista en el bucket `guias`, genera el enlace firmado **reusando la MISMA firma HMAC que la función `entrega`** (no se reinventó; probado que coinciden), envía el correo con el enlace privado, y marca el pedido: `guia_entregada`, `fecha_entrega`, `guia_archivo`, `correo_entrega_enviado`. Idempotente. Verify JWT **off**.
+- En el tablero, en el detalle del pedido: sección **"Entrega de la guía"** con campo del nombre del archivo + **Vista previa** (reusa el modo `mint` de `entrega`, enlace de 1 día) + **Entregar**. El viejo "marcar entregada" quedó como override manual (sin enviar correo).
+
+### Correo 3 — Calificación/feedback: **PENDIENTE** (lo siguiente a construir).
+
+---
+
+## 10. Flujo de BAJA FRICCIÓN para desarrollar guías (comando `DESARROLLA`)
+
+Para no repetir contexto por chat con muchos pedidos, se montó esto:
+
+- **Palabra clave (candado de seguridad del dueño):** el dueño escribe **`DESARROLLA <pedido_id>`** (o *elabora/trabaja/haz*) para ordenarme construir esa guía. **Un `pedido_id` suelto SIN palabra clave = NO tocar nada** (solo mirar/preguntar). Esto evita que trabaje sobre lo que no debe.
+- **Nota interna por pedido:** en el tablero, el detalle tiene un campo **"Nota para la guía (interna)"** (columna `nota_interna`, nunca se muestra al cliente). El dueño escribe ahí sus instrucciones ("enfócale PESTEL", etc.) y viajan pegadas al pedido, no por chat.
+- **Modo `material` (el que me quita la fricción):** `GET ?material=1&pedido_id=XXX&key=LINK_SECRET` en la función `informe` devuelve en UNA llamada: datos del cliente + cuestionario (intake) + `nota_interna` + **enlaces de descarga FIRMADOS (1h) de cada apunte** del bucket `apuntes`. Protegido por `LINK_SECRET`.
+
+**Cómo lo ejecuto yo (próximo Kiro), ante "DESARROLLA <pedido_id>":** pido el `LINK_SECRET` (una vez por sesión) → llamo `informe ?material=1&pedido_id=...` → descargo y leo los apuntes → construyo la guía con el método CHIP STRAMONT (teniendo en cuenta el cuestionario y la `nota_interna`) → la subo al bucket `guias` con `entrega ?upload=1&f=<nombre>.html&key=...` → le digo al dueño el nombre del archivo para que en el tablero le dé **Vista previa** y **Entregar**. (La entrega/decisión final siempre la hace el dueño, es el control de calidad.)
 
 ---
 

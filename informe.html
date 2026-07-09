@@ -325,6 +325,13 @@
       acciones += '<div class="nota-seg" style="margin-top:16px;"><b>Pedido real:</b> por seguridad no se puede borrar desde aquí. Los borrados de datos reales se hacen solo desde el panel de Supabase.</div>';
     }
 
+    // Sección "Nota para la guía" (interna, del dueño para la IA).
+    var notaSec = '<div class="seccion-t">📝 Nota para la guía (interna)</div>' +
+      '<textarea id="notaInterna" class="field" style="min-height:64px;resize:vertical;margin-bottom:8px;" placeholder="Instrucciones para quien arma la guía (ej: enfócale PESTEL, tiene examen el viernes). El cliente NUNCA la ve.">' + esc(p.nota_interna || '') + '</textarea>' +
+      '<button class="btn btn-ghost btn-sm" id="btnGuardarNota">Guardar nota</button>' +
+      '<span id="notaOk" style="display:none;color:var(--ok);font-size:12.5px;margin-left:10px;">✓ Guardada</span>' +
+      '<div class="err" id="notaErr"></div>';
+
     modal.innerHTML =
       '<div class="modal-head"><h3>'+esc(p.pedido_id)+(p.es_prueba?'<span class="tag-prueba">🧪 prueba</span>':'')+'</h3>' +
       '<button class="modal-close" id="modalClose" title="Cerrar">✕</button></div>' +
@@ -344,10 +351,14 @@
       '</div>' +
       '<div class="seccion-t">Cuestionario del cliente</div>' +
       intakeHtml +
+      notaSec +
       '<div class="modal-acciones">'+acciones+'</div>';
 
     overlay.classList.add('on');
     document.getElementById('modalClose').addEventListener('click', cerrarDetalle);
+
+    var btnNota = document.getElementById('btnGuardarNota');
+    if(btnNota) btnNota.addEventListener('click', function(){ guardarNota(p, this); });
 
     var btnVP = document.getElementById('btnVistaPrevia');
     if(btnVP) btnVP.addEventListener('click', function(){ vistaPrevia(p); });
@@ -367,6 +378,30 @@
       document.getElementById('btnEliminar').addEventListener('click', function(){
         eliminar(p, this);
       });
+    }
+  }
+
+  // Guarda la nota interna del dueño (para la IA que arma la guía).
+  async function guardarNota(p, btn){
+    var errEl = document.getElementById('notaErr');
+    var okEl = document.getElementById('notaOk');
+    if(errEl) errEl.style.display = 'none';
+    if(okEl) okEl.style.display = 'none';
+    var nota = document.getElementById('notaInterna').value;
+    btn.disabled = true; var txt = btn.textContent; btn.textContent = 'Guardando…';
+    try{
+      var r = await fetch(FN_URL + '?guardar_nota=1&pedido_id=' + encodeURIComponent(p.pedido_id) + '&key=' + encodeURIComponent(secretoActual), {
+        method:'POST', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ nota: nota })
+      });
+      var data = await r.json().catch(function(){ return {}; });
+      if(!r.ok || !data.ok){ throw new Error(data.error || ('Error ' + r.status)); }
+      p.nota_interna = nota; // refleja en memoria sin recargar todo
+      btn.disabled = false; btn.textContent = txt;
+      if(okEl) okEl.style.display = 'inline';
+    }catch(e){
+      btn.disabled = false; btn.textContent = txt;
+      if(errEl){ errEl.textContent = 'No se pudo guardar: ' + e.message; errEl.style.display='block'; }
     }
   }
 

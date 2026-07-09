@@ -131,6 +131,69 @@ Deno.serve(async (req) => {
 
   const client = sb();
 
+  // ---------- MODO MATERIAL (todo lo necesario para construir la guía) ----------
+  // Con solo el pedido_id, devuelve en UNA llamada: datos del cliente, su
+  // cuestionario, la nota interna del dueño, y enlaces de descarga FIRMADOS
+  // (cortos, 1h) de cada apunte. Así la IA que arma la guía baja y lee los
+  // apuntes sola, sin fricción. Protegido por LINK_SECRET (datos sensibles).
+  //   GET ?material=1&pedido_id=XXX&key=...
+  if (url.searchParams.get("material") === "1") {
+    const pedidoId = url.searchParams.get("pedido_id") || "";
+    if (!pedidoId) return json({ error: "Falta pedido_id." }, 400);
+
+    const { data: row, error: errRow } = await client
+      .from("pedidos").select("*").eq("pedido_id", pedidoId).maybeSingle();
+    if (errRow) return json({ error: "Error buscando el pedido: " + errRow.message }, 500);
+    if (!row) return json({ error: "Pedido no encontrado." }, 404);
+
+    const { data: intakeRows } = await client
+      .from("pedido_intake").select("*").eq("pedido_id", pedidoId)
+      .order("creado", { ascending: false }).limit(1);
+    const it = intakeRows && intakeRows[0] ? intakeRows[0] : null;
+
+    // Apuntes: listar la carpeta del pedido y firmar cada archivo (1h).
+    const carpeta = row.carpeta_storage || "";
+    const apuntes: Array<{ nombre: string; bytes: number | null; url: string | null }> = [];
+    if (carpeta) {
+      const { data: files } = await client.storage.from(BUCKET_APUNTES).list(carpeta, { limit: 1000 });
+      for (const fobj of (files || [])) {
+        if (fobj.id !== null && fobj.metadata) {
+          const path = `${carpeta}/${fobj.name}`;
+          const { data: signed } = await client.storage.from(BUCKET_APUNTES).createSignedUrl(path, 3600);
+          apuntes.push({ nombre: fobj.name, bytes: fobj.metadata?.size ?? null, url: signed?.signedUrl || null });
+        }
+      }
+    }
+
+    return json({
+      pedido: {
+        pedido_id: row.pedido_id, correo: row.correo, nombre: row.nombre,
+        plan: row.plan, dias_acceso: row.dias_acceso, tema: row.tema,
+        fecha_compra: row.fecha_compra, guia_entregada: row.guia_entregada,
+        guia_archivo: row.guia_archivo, carpeta_storage: carpeta,
+        es_prueba: esCorreoPrueba(row.correo), apuntes_borrados: row.apuntes_borrados,
+      },
+      cuestionario: it ? { uso: it.uso, cuesta: it.cuesta, extra: it.extra } : null,
+      nota_interna: row.nota_interna || null,
+      apuntes,
+    });
+  }
+
+  // ---------- MODO GUARDAR NOTA INTERNA (del dueño, para la IA) ----------
+  //   POST ?guardar_nota=1&pedido_id=XXX&key=...   body: { nota }
+  if (url.searchParams.get("guardar_nota") === "1") {
+    if (req.method !== "POST") return json({ error: "Requiere POST." }, 405);
+    const pedidoId = url.searchParams.get("pedido_id") || "";
+    if (!pedidoId) return json({ error: "Falta pedido_id." }, 400);
+    let body: any = {};
+    try { body = await req.json(); } catch { /* nota vacía permitida (para borrarla) */ }
+    const nota = (body && typeof body.nota === "string") ? body.nota : "";
+    const { error: errUpd } = await client.from("pedidos")
+      .update({ nota_interna: nota || null }).eq("pedido_id", pedidoId);
+    if (errUpd) return json({ error: "Error guardando la nota: " + errUpd.message }, 500);
+    return json({ ok: true, pedido_id: pedidoId });
+  }
+
   // ---------- MODO MARCAR ENTREGADA / PENDIENTE ----------
   // Así el dueño le dice al tablero que ya entregó la guía (o deshace el
   // cambio). Funciona en cualquier pedido (real o prueba); no es destructivo.
