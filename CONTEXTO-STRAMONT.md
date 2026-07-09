@@ -5,6 +5,8 @@
 > **Última actualización:** 9 de julio de 2026 (auditada línea por línea contra el código real de `main` en esta revisión — todo lo que describe abajo coincide con lo que hay en el repo hoy). Además del tablero (sección 2B), ya están en producción: **Correo 1** (confirmación de compra, `correo-confirmacion`) y **Correo 2** (entrega de la guía, `correo-entrega`), ambos vía **Resend**; y el **flujo de baja fricción para desarrollar guías** (comando `DESARROLLA <pedido_id>` + modo `material` + nota interna por pedido). Ver secciones **2B**, **2C** y **10**. Pendiente inmediato: **Correo 3** (calificación/feedback).
 >
 > **TL;DR (60 segundos) si tienes prisa:** Stramont convierte apuntes en guías interactivas (método CHIP STRAMONT, sección 4). Hay un tablero interno en `informe.html` (sección 2B) donde el dueño gestiona pedidos, y un comando `DESARROLLA <pedido_id>` (sección 10) para que tú armes la guía de un pedido con autonomía. Todo pago sigue en modo simulación (Wompi real es el pendiente #1, sección 8). Regla de oro: nunca push a `main`, siempre rama+PR (sección 6). Si un merge no se refleja en el sitio tras varios minutos, no es caché — revisa GitHub Actions (sección 6.7).
+>
+> **Regla permanente (pedida explícitamente por el dueño, sección 6.0): este documento se actualiza al final de CADA acción/PR relevante, no solo al cerrar sesión.** Corrige lo que haya que corregir en el momento (fechas, números de PR, qué está en producción vs. pendiente) para que nunca quede desfasado.
 
 ---
 
@@ -185,6 +187,7 @@ Súbelo, luego mint, luego **verifica de verdad** haciendo el fetch que haría e
 
 ## 6. Convenciones de trabajo — no te las salgas
 
+0. **Mantener este CONTEXTO al día en cada acción, no solo al cerrar sesión (regla pedida explícitamente por el dueño, 9 jul 2026).** Tras cualquier cambio relevante (un PR, un feature, un fix, una decisión con el dueño), actualiza este archivo en el mismo PR o en uno aparte inmediato — no lo dejes acumulado para "el camión de mudanzas" del final. Concretamente: **corrige lo que ya no sea cierto** (no solo agregues) — números de PR ya mergeados, qué está en producción vs. pendiente, fechas, y cualquier dato que otro Kiro (o el dueño) ya haya corregido en paralelo. Antes de escribir, relee la sección 0/TL;DR y confirma con `list_pull_requests` + `pull_repository` que trabajas sobre el `main` real (puede haber avanzado por otra sesión en paralelo — ya pasó, ver el PR #76 "Camión de mudanzas v4").
 1. **Nunca push directo a `main`.** Siempre rama nueva → PR → el dueño mergea (él mergea rápido, así que entrega cada PR completo de una vez).
 2. **Una rama ya mergeada no se reutiliza.** Si necesitas seguir trabajando sobre algo que ya se mergeó, crea una rama nueva desde el `main` actualizado (usa `github_pull_repository` para sincronizar primero).
 3. Usa las herramientas del power de GitHub (`push_to_remote`, `create_pull_request`, `pull_repository`) — nunca `git push`/`git pull` crudos vía bash (el fetch directo con git falla por auth en este sandbox).
