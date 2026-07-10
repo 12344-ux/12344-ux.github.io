@@ -469,7 +469,10 @@
           : '') +
         '<div class="hint" style="margin-top:8px;">Recibida el ' + fechaLoc(fb.comentario_recibido_at || fb.feedback_recibido_at) + '.</div>';
     } else if(p.correo_feedback_enviado){
-      opinionSec += '<div class="nota-seg"><b>📩 Opinión solicitada</b> el ' + fechaLoc(p.correo_feedback_enviado) + '. Esperando que responda.</div>';
+      opinionSec += '<div class="nota-seg"><b>📩 Opinión solicitada</b> el ' + fechaLoc(p.correo_feedback_enviado) + '. Esperando que responda.</div>' +
+        '<button class="btn btn-ghost" id="btnReenviarOpinion" style="margin-top:10px;">📩 Reenviar solicitud de opinión</button>' +
+        '<div class="hint">Úsalo si el cliente dice que no le llegó (pídele que revise también spam y la pestaña Promociones).</div>' +
+        '<div class="err" id="opinionErr"></div>';
     } else if(!p.guia_entregada){
       opinionSec += '<button class="btn btn-ghost" id="btnOpinion" disabled>📊 Pedir opinión</button>' +
         '<div class="hint">Entrega la guía antes de pedir la opinión (el reloj arranca en la entrega).</div>';
@@ -539,7 +542,9 @@
     if(btnEnt) btnEnt.addEventListener('click', function(){ entregarGuia(p, this); });
 
     var btnOp = document.getElementById('btnOpinion');
-    if(btnOp && !btnOp.disabled) btnOp.addEventListener('click', function(){ pedirOpinion(p, this); });
+    if(btnOp && !btnOp.disabled) btnOp.addEventListener('click', function(){ pedirOpinion(p, this, false); });
+    var btnReOp = document.getElementById('btnReenviarOpinion');
+    if(btnReOp) btnReOp.addEventListener('click', function(){ pedirOpinion(p, this, true); });
 
     document.getElementById('btnEntregada').addEventListener('click', function(){
       marcarEntregada(p, !p.guia_entregada, this);
@@ -627,26 +632,31 @@
 
   // Pedir opinión: dispara correo-feedback (Correo 3) al cliente. Si aún no
   // pasó el umbral de días, confirma con advertencia (override de emergencia).
-  async function pedirOpinion(p, btn){
+  async function pedirOpinion(p, btn, reenviar){
     var errEl = document.getElementById('opinionErr');
     if(errEl) errEl.style.display = 'none';
-    var msg = '¿Enviar el correo de opinión a ' + (p.nombre || 'este cliente') + ' (' + p.correo + ')?';
-    if(!p.es_prueba && !listoParaFeedback(p)){
+    var txtOrig = btn.textContent;
+    var msg = reenviar
+      ? '¿Reenviar la solicitud de opinión a ' + (p.nombre || 'este cliente') + ' (' + p.correo + ')?'
+      : '¿Enviar el correo de opinión a ' + (p.nombre || 'este cliente') + ' (' + p.correo + ')?';
+    if(!reenviar && !p.es_prueba && !listoParaFeedback(p)){
       msg = 'Aún no pasan los días recomendados desde la entrega.\n\n¿Enviar de todas formas la solicitud de opinión a ' + (p.nombre || 'este cliente') + ' (' + p.correo + ')?';
     }
     if(!confirm(msg)) return;
     btn.disabled = true; btn.textContent = 'Enviando…';
     try{
+      var payload = { pedido_id: p.pedido_id };
+      if(reenviar) payload.reenviar = true;
       var r = await fetch(CORREO_FEEDBACK_URL + '?key=' + encodeURIComponent(secretoActual), {
         method:'POST', headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({ pedido_id: p.pedido_id })
+        body: JSON.stringify(payload)
       });
       var data = await r.json().catch(function(){ return {}; });
       if(!r.ok || !data.ok){ throw new Error(data.error || ('Error ' + r.status)); }
       cerrarDetalle();
       await refrescar();
     }catch(e){
-      btn.disabled = false; btn.textContent = '📊 Pedir opinión (enviar Correo 3)';
+      btn.disabled = false; btn.textContent = txtOrig;
       if(errEl){ errEl.textContent = 'No se pudo enviar: ' + e.message; errEl.style.display='block'; }
       else { alert(e.message); }
     }

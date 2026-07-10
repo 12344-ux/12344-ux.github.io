@@ -74,24 +74,26 @@ function primerNombre(nombre: unknown): string {
   return primera;
 }
 
-// Enlace de una estrella (r = 1..5) para el pedido.
-function enlaceEstrella(pedidoId: string, token: string, r: number): string {
-  return `${FEEDBACK_URL}?pid=${encodeURIComponent(pedidoId)}&t=${encodeURIComponent(token)}&r=${r}`;
+// Enlace ÚNICO a la página de opinión. La calificación se elige allí (la
+// página feedback.html funciona sin ?r). Un solo enlace mantiene el correo
+// "transaccional" y evita que Gmail lo mande a Promociones (que fue lo que
+// pasó con la primera versión de 5 enlaces de estrella).
+function enlaceOpinion(pedidoId: string, token: string): string {
+  return `${FEEDBACK_URL}?pid=${encodeURIComponent(pedidoId)}&t=${encodeURIComponent(token)}`;
 }
 
 function construirTexto(saludo: string, pedidoId: string, token: string): string {
-  const filas = [1, 2, 3, 4, 5].map((r) =>
-    `${r} ${r === 1 ? "estrella" : "estrellas"}: ${enlaceEstrella(pedidoId, token, r)}`
-  );
   return [
     saludo,
     ``,
     `Preparamos tu guía con cuidado y queremos saber si estuvo a la altura.`,
     ``,
-    `¿Qué te pareció? Con un solo clic nos cuentas (1 = baja, 5 = excelente):`,
-    ...filas,
+    `¿Nos dejas tu opinión? Toma unos segundos y nos ayuda a mejorar las guías que vienen:`,
+    enlaceOpinion(pedidoId, token),
     ``,
-    `Tu opinión nos ayuda a mejorar las guías que vienen. Gracias por tomarte unos segundos.`,
+    `Al abrir el enlace eliges tu calificación (de 1 a 5) y, si quieres, dejas un comentario.`,
+    ``,
+    `Gracias por tomarte el momento. Si prefieres, también puedes responder directamente a este correo.`,
     ``,
     `Equipo Montaguth Institute · montaguth.institute`,
   ].join("\n");
@@ -100,18 +102,12 @@ function construirTexto(saludo: string, pedidoId: string, token: string): string
 
 function construirHtml(saludo: string, pedidoId: string, token: string): string {
   const s = esc(saludo);
-  const preheader = "Un clic nos basta para conocer tu opini\u00f3n.";
-  const estrella = "\u2605"; // ★
-  // Fila de 5 estrellas: cada una es un enlace con r=1..5.
-  const celdas = [1, 2, 3, 4, 5].map((r) => {
-    const u = esc(enlaceEstrella(pedidoId, token, r));
-    return `<td align="center" style="padding:0 6px;">
-      <a href="${u}" style="text-decoration:none;display:inline-block;">
-        <div style="font-size:38px;line-height:1;color:#2DD4BF;">${estrella}</div>
-        <div style="font-size:12px;color:#8b97ab;margin-top:6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">${r}</div>
-      </a>
-    </td>`;
-  }).join("");
+  const preheader = "Cu\u00e9ntanos qu\u00e9 te pareci\u00f3 tu gu\u00eda en unos segundos.";
+  const url = esc(enlaceOpinion(pedidoId, token));
+  // Estrellas SOLO decorativas (NO son enlaces). Un correo con 5 enlaces casi
+  // idénticos disparaba el filtro de "Promociones" de Gmail; un único botón lo
+  // mantiene transaccional, como los Correos 1 y 2 (que sí llegan a la bandeja).
+  const estrellasDeco = "\u2605\u2605\u2605\u2605\u2605";
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -138,17 +134,24 @@ function construirHtml(saludo: string, pedidoId: string, token: string): string 
             <td style="padding:10px 36px 0 36px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#E9EDF5;">
               <h1 style="margin:0 0 14px 0;font-size:23px;line-height:1.3;color:#E9EDF5;font-weight:800;">${s}</h1>
               <p style="margin:0 0 10px 0;font-size:15.5px;line-height:1.65;color:#c3ccdb;">Preparamos tu guía con cuidado y queremos saber si estuvo a la altura.</p>
-              <p style="margin:0 0 8px 0;font-size:15.5px;line-height:1.65;color:#E9EDF5;font-weight:700;">¿Qué te pareció? Con un solo clic nos cuentas.</p>
+              <p style="margin:0 0 8px 0;font-size:15.5px;line-height:1.65;color:#E9EDF5;font-weight:700;">¿Qué te pareció? Cuéntanos, toma unos segundos.</p>
             </td>
           </tr>
           <tr>
-            <td align="center" style="padding:18px 24px 8px 24px;">
-              <table role="presentation" cellpadding="0" cellspacing="0"><tr>${celdas}</tr></table>
+            <td align="center" style="padding:14px 24px 2px 24px;">
+              <div style="font-size:30px;line-height:1;color:#2DD4BF;letter-spacing:6px;">${estrellasDeco}</div>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:10px 36px 6px 36px;">
+              <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="border-radius:12px;background-color:#2DD4BF;">
+                <a href="${url}" style="display:inline-block;padding:15px 40px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;font-weight:800;color:#0B1220;text-decoration:none;border-radius:12px;">Dejar mi opinión</a>
+              </td></tr></table>
             </td>
           </tr>
           <tr>
             <td style="padding:16px 36px 4px 36px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-              <p style="margin:0;font-size:14px;line-height:1.6;color:#96a1b5;">Tu opinión nos ayuda a mejorar las guías que vienen. Gracias por tomarte unos segundos.</p>
+              <p style="margin:0;font-size:14px;line-height:1.6;color:#96a1b5;">Al abrir el enlace eliges tu calificación y, si quieres, dejas un comentario. Nos ayuda a mejorar las guías que vienen.</p>
             </td>
           </tr>
           <tr>
@@ -190,8 +193,11 @@ Deno.serve(async (req) => {
   if (!row) return json({ error: "Pedido no encontrado." }, 404);
   if (!row.correo) return json({ error: "El pedido no tiene correo." }, 422);
 
-  // Idempotencia: si ya se pidió la opinión, no reenviar.
-  if (row.correo_feedback_enviado) {
+  // Idempotencia: si ya se pidió la opinión, no reenviar... SALVO que se pida
+  // explícitamente (reenviar:true), útil para re-probar o cuando el cliente
+  // dice que no le llegó. La opinión no se toca; solo se reenvía el correo.
+  const reenviar = body?.reenviar === true;
+  if (row.correo_feedback_enviado && !reenviar) {
     return json({ ok: true, yaEnviado: true, pedido_id: pedidoId });
   }
 

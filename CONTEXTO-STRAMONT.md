@@ -122,14 +122,14 @@ Cuando un PR toca la tabla o la función `informe`, tras mergear hay que, en el 
 
 ---
 
-## 2D. Correo 3 — Opiniones / feedback (CONSTRUIDO en el repo, PENDIENTE DE DEPLOY)
+## 2D. Correo 3 — Opiniones / feedback (EN PRODUCCIÓN)
 
-El brief lo diseñó el "Kiro de ideas"; se ejecutó con una corrección de seguridad importante (ver abajo). Es un sistema de 3 piezas: **correo con estrellas → página de opinión → banco de opiniones en el tablero.**
+El brief lo diseñó el "Kiro de ideas"; se ejecutó con una corrección de seguridad importante (ver abajo). Es un sistema de 3 piezas: **correo con un botón → página de opinión → banco de opiniones en el tablero.** Ya está desplegado y probado punta a punta. **Lee la nota de entregabilidad más abajo** (por qué el correo pasó de 5 estrellas-enlace a un solo botón).
 
-### Qué se construyó (todo en el repo, nada desplegado aún)
+### Qué se construyó
 1. **Migración `pedido_feedback`** (`20260709160000_...`): una fila por pedido (rating 1-5, comentario, permiso_publicar, nombre_mostrar, es_prueba, fechas). **RLS activado SIN ninguna policy pública** (ni lectura ni insert).
 2. **Migración columnas en `pedidos`** (`20260709160100_...`): `feedback_token` (único, se genera al enviar el Correo 3), `correo_feedback_enviado` (idempotencia), `recordatorio_enviado` (reservado fase 2, sin usar).
-3. **Edge Function `correo-feedback`** (admin, EXIGE `LINK_SECRET`): la dispara el dueño desde el tablero. Genera el `feedback_token` si falta, arma 5 enlaces de estrella (`feedback.html?pid&t&r=1..5`), envía por Resend, marca idempotencia. Nombre de pila = primera palabra de `nombre`, con fallback "Hola,". Pruebas 🧪 se pueden enviar (asunto `[TEST]`).
+3. **Edge Function `correo-feedback`** (admin, EXIGE `LINK_SECRET`): la dispara el dueño desde el tablero. Genera el `feedback_token` si falta, arma el correo con **un solo botón "Dejar mi opinión"** (enlace `feedback.html?pid&t`, sin `r`), lo envía por Resend y marca idempotencia. Nombre de pila = primera palabra de `nombre`, con fallback "Hola,". Pruebas 🧪 se pueden enviar (asunto `[TEST]`). Acepta `{reenviar:true}` para **reenviar** aunque ya se haya enviado (para re-probar o cuando al cliente no le llegó).
 4. **Edge Function `feedback`** (PÚBLICA, Verify JWT **off**): la llama `feedback.html`. Valida `pid`+`token` contra `pedidos.feedback_token` y escribe con service_role (upsert por pedido_id). `action:"rate"` (rating 1-5) y `action:"comment"` (comentario + permiso/nombre solo si rating≥4).
 5. **`feedback.html`** (pública, `noindex`, premium oscuro, neutro en género): registra la estrella al llegar, textarea de comentario, permiso de testimonio solo en notas 4-5, mensaje distinto en 1-3, estados de éxito/enlace-inválido.
 6. **Tablero `informe.html`**: nueva sección **"Banco de opiniones"** (separada de la lista de pedidos) con pulso (promedio + total, solo reales), filtros 4-5 / 1-3, y tarjetas con badge "✓ dio permiso". Marcador ★ en los pedidos con opinión, aviso "listo para pedir opinión" y, en el detalle, la sección de envío del Correo 3 con umbral por plan y override de emergencia.
@@ -137,10 +137,14 @@ El brief lo diseñó el "Kiro de ideas"; se ejecutó con una corrección de segu
 ### La corrección de seguridad al brief (chispa crítica)
 El brief pedía que `pedido_feedback` tuviera RLS "igual que `pedido_intake`" (insert abierto a la llave pública). **Eso abriría un hueco:** una policy de insert público NO valida el token, así que cualquiera podría inyectar opiniones falsas para pedidos ajenos. Se hizo bien: la tabla NO tiene policies públicas y **toda** opinión entra por la Edge Function `feedback`, que valida el token server-side. Queda más cerrado que `intake`.
 
+### Entregabilidad: por qué el correo es de UN solo botón (chispa crítica)
+La v1 del brief ponía **5 enlaces de estrella** en el correo (uno por nota, para calificar "de un clic"). Al probarlo, el Correo 3 **llegó pero cayó en "Promociones" de Gmail** (no en la bandeja principal, sin notificación), mientras que los Correos 1 y 2 (transaccionales, un solo botón) sí entran a la bandeja. Causa: 5 enlaces casi idénticos + asunto de "¿qué te pareció?" = patrón promocional para Gmail. **Fix:** el correo pasó a **un único botón "Dejar mi opinión"** (transaccional, como el 1 y 2); las estrellas del correo quedaron solo decorativas (no enlaces) y la calificación se elige en `feedback.html` al abrir. Se pierde el "un clic" literal (ahora es abrir → tocar estrella), pero se gana llegar a la bandeja. Además se añadió el botón **"Reenviar solicitud de opinión"** en el tablero (usa `reenviar:true`). Esto obliga a **redeploy de `correo-feedback`** y merge de `informe.html`.
+
 ### El disparador: "manual asistido" (v1)
 Lo envía el dueño desde el tablero (como el Correo 2). El aviso "listo para pedir opinión" se enciende cuando: guía entregada + pasó el umbral de días según plan (**10 días → 3 días; 30 días → ~10 días**, parametrizable en `informe.html` sin redeploy) + no es prueba + no se envió antes + aún no hay opinión. Se puede enviar antes del umbral (confirmación de override). Las funciones están hechas para que un **cron** las llame en el futuro (fase 2) sin rehacer nada; el cron NO se construyó.
 
 ### CHECKLIST DE DEPLOY MANUAL EN SUPABASE (obligatorio, el merge NO lo hace)
+> **Para la actualización de entregabilidad (un botón + reenviar):** basta con **redeploy de `correo-feedback`** (paso 2) tras mergear; el resto ya está desplegado. Merge del repo = actualiza `informe.html` (botón Reenviar). Lo de abajo es el checklist completo (útil para un deploy desde cero).
 1. **SQL Editor** → correr las 2 migraciones nuevas (en orden): `20260709160000_crear_tabla_pedido_feedback.sql` y `20260709160100_pedidos_feedback_columnas.sql`.
 2. **Edge Functions** → crear/deploy `correo-feedback` (**Verify JWT OFF**, igual que `correo-entrega`). La seguridad la da el `LINK_SECRET` que se valida DENTRO del código; el tablero la llama con `?key=` y SIN cabecera de autorización, así que con JWT ON daría 401. (Corrección: una versión anterior de este doc y del PR #82 decían "JWT ON" por error.)
 3. **Edge Functions** → crear/deploy `feedback` (**Verify JWT OFF** — la autoriza el token del pedido, igual que `correo-confirmacion`).
