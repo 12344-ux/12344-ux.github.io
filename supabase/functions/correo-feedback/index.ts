@@ -193,11 +193,11 @@ Deno.serve(async (req) => {
   if (!row) return json({ error: "Pedido no encontrado." }, 404);
   if (!row.correo) return json({ error: "El pedido no tiene correo." }, 422);
 
-  // Idempotencia: si ya se pidió la opinión, no reenviar... SALVO que se pida
-  // explícitamente (reenviar:true), útil para re-probar o cuando el cliente
-  // dice que no le llegó. La opinión no se toca; solo se reenvía el correo.
-  const reenviar = body?.reenviar === true;
-  if (row.correo_feedback_enviado && !reenviar) {
+  // Idempotencia estricta: la opinión se pide UNA sola vez por pedido. No se
+  // reenvía nunca. Pedir opinión es opcional; insistir con reenvíos se sentiría
+  // como presión/acoso y va contra la voz de marca de Stramont (quitar
+  // fricción, no imponerla). Si el cliente quiere opinar, tiene su enlace.
+  if (row.correo_feedback_enviado) {
     return json({ ok: true, yaEnviado: true, pedido_id: pedidoId });
   }
 
