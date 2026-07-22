@@ -21,6 +21,19 @@
   <link rel="stylesheet" href="estilos.css?v=16">
   <style>
     /* ===== "El Cambio" · showcase del producto (autocontenido; no toca estilos.css) ===== */
+    /* Fondo trabajado, full-bleed y sutil, solo detrás de #cambio (se funde con la banda por la máscara). */
+    .band-light{overflow-x:clip;}
+    #cambio::before{
+      content:"";position:absolute;z-index:0;top:0;bottom:0;left:50%;width:100vw;transform:translateX(-50%);pointer-events:none;
+      background:
+        radial-gradient(rgba(11,18,32,.045) 1px, transparent 1.4px) 0 0/26px 26px,
+        radial-gradient(38% 46% at 12% 16%, rgba(45,212,191,.13), transparent 70%),
+        radial-gradient(40% 48% at 88% 86%, rgba(129,140,248,.13), transparent 70%),
+        linear-gradient(180deg,#ffffff 0%, #f5f8fc 50%, #eef3fb 100%);
+      -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+              mask-image:linear-gradient(180deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+    }
+    #cambio > *{position:relative;z-index:1;}
     .cambio-wrap{max-width:980px;margin:34px auto 0;}
     .cx-stage{text-align:center;}
 
@@ -33,19 +46,17 @@
     .cx-dot.good{background:#2DD4BF;color:#04211D;}
     .cx-sub{color:#6b7688;font-size:15px;margin:14px 0 24px;}
 
-    /* --- SIN STRAMONT: apuntes reales, centrados y grandes --- */
-    .cx-notas{display:flex;justify-content:center;align-items:flex-start;margin:0 auto;}
-    .cx-notas img{width:250px;max-width:31vw;border-radius:12px;box-shadow:0 18px 44px rgba(11,18,32,.24);border:6px solid #fff;background:#fff;}
-    .cx-notas img:nth-child(1){transform:rotate(-7deg);z-index:1;}
-    .cx-notas img:nth-child(2){transform:translateY(-16px);z-index:3;margin:0 -30px;}
-    .cx-notas img:nth-child(3){transform:rotate(7deg);z-index:2;}
+    /* --- SIN STRAMONT: foto única de apuntes reales (enmarcada) --- */
+    .cx-foto{display:flex;justify-content:center;margin:2px auto 0;}
+    .cx-foto img{width:min(470px,80vw);height:auto;border-radius:12px;border:9px solid #fff;box-shadow:0 24px 56px rgba(11,18,32,.26);transform:rotate(-1.6deg);}
 
-    /* listas de puntos (2 columnas centradas) */
-    .cx-points{list-style:none;padding:0;margin:30px auto 0;max-width:740px;display:grid;grid-template-columns:1fr 1fr;gap:14px 30px;text-align:left;}
-    .cx-points li{display:flex;gap:11px;align-items:flex-start;font-size:15.5px;line-height:1.45;}
-    .cx-points .ic{flex:0 0 auto;margin-top:2px;display:inline-flex;}
-    .cx-points-bad li{color:#5a6472;} .cx-points-bad .ic{color:#E24C4C;}
-    .cx-points-good li{color:#26303f;font-weight:500;} .cx-points-good .ic{color:#0f9e8b;}
+    /* listas de puntos (una sola columna centrada, filas con hairline) */
+    .cx-points{list-style:none;padding:0;margin:28px auto 0;max-width:520px;display:flex;flex-direction:column;text-align:left;}
+    .cx-points li{display:flex;gap:13px;align-items:center;font-size:15.5px;line-height:1.4;padding:12px 6px;border-bottom:1px solid rgba(11,18,32,.08);}
+    .cx-points li:last-child{border-bottom:none;}
+    .cx-points .ic{flex:0 0 auto;width:27px;height:27px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;}
+    .cx-points-bad li{color:#57616f;} .cx-points-bad .ic{background:rgba(226,76,76,.12);color:#E24C4C;}
+    .cx-points-good li{color:#232d3b;font-weight:500;} .cx-points-good .ic{background:rgba(45,212,191,.16);color:#0f9e8b;}
 
     /* Flecha de transición entre etapas */
     .cx-arrow{text-align:center;margin:46px 0 4px;}
@@ -81,9 +92,8 @@
 
     @media (max-width:760px){
       .cambio-wrap{margin-top:26px;}
-      .cx-points{grid-template-columns:1fr;gap:13px;max-width:440px;}
-      .cx-notas img{width:34vw;border-width:4px;box-shadow:0 12px 30px rgba(11,18,32,.22);}
-      .cx-notas img:nth-child(2){margin:0 -18px;}
+      .cx-points{max-width:100%;}
+      .cx-foto img{width:78vw;border-width:6px;box-shadow:0 16px 38px rgba(11,18,32,.22);}
       .cx-stats{grid-template-columns:repeat(2,1fr);}
       .cx-btn{font-size:15px;padding:16px 22px;width:100%;box-sizing:border-box;justify-content:center;}
       .cx-open{display:none;}
@@ -143,10 +153,8 @@
           </span>
           <p class="cx-sub">Así llegan los apuntes de un estudiante: dispersos, sin estructura y difíciles de estudiar.</p>
 
-          <div class="cx-notas">
-            <img src="apunte-seg-1.jpg" alt="Apuntes reales de segmentación de mercados" loading="lazy">
-            <img src="apunte-seg-2.jpg" alt="Apuntes reales de segmentación de mercados" loading="lazy">
-            <img src="apunte-seg-3.jpg" alt="Apuntes reales de segmentación de mercados" loading="lazy">
+          <div class="cx-foto">
+            <img src="apuntes-reales.jpeg" alt="Apuntes reales de un estudiante: hojas sueltas, sin estructura y difíciles de estudiar" loading="lazy">
           </div>
 
           <ul class="cx-points cx-points-bad">
