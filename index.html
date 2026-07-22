@@ -39,10 +39,10 @@
 
     /* Etiqueta de etapa (chip) */
     .cx-label{display:inline-flex;align-items:center;gap:11px;font-size:14px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;padding:7px 18px 7px 7px;border-radius:40px;}
-    .cx-label-bad{background:rgba(217,160,102,.16);color:#9a6a18;}
+    .cx-label-bad{background:rgba(196,142,58,.17);color:#7f560f;}
     .cx-label-good{background:rgba(45,212,191,.16);color:#0c7d6e;}
     .cx-dot{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;}
-    .cx-dot.bad{background:#D9A066;color:#3a2708;}
+    .cx-dot.bad{background:#C48E3A;color:#2c1e06;}
     .cx-dot.good{background:#2DD4BF;color:#04211D;}
     .cx-sub{color:#6b7688;font-size:15px;margin:14px 0 24px;}
 
@@ -65,8 +65,8 @@
     .cx-points li{display:flex;gap:13px;align-items:center;font-size:15px;line-height:1.36;padding:15px 17px;border-radius:14px;background:#fff;box-shadow:0 6px 18px rgba(11,18,32,.07);}
     .cx-points li:last-child{grid-column:1 / -1;}      /* la 5ª ocupa el ancho completo: resuelve la paridad impar */
     .cx-points .ic{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;}
-    .cx-points-bad li{border-left:4px solid #D9A066;background:linear-gradient(100deg, rgba(217,160,102,.13), #fff 58%);color:#524835;}
-    .cx-points-bad .ic{background:rgba(217,160,102,.20);color:#9a6a18;}
+    .cx-points-bad li{border-left:4px solid #C48E3A;background:linear-gradient(100deg, rgba(196,142,58,.14), #fff 58%);color:#4f4632;}
+    .cx-points-bad .ic{background:rgba(196,142,58,.20);color:#7f560f;}
     .cx-points-good li{border-left:4px solid #2DD4BF;background:linear-gradient(100deg, rgba(45,212,191,.12), #fff 58%);color:#1e2937;font-weight:500;}
     .cx-points-good .ic{background:rgba(45,212,191,.2);color:#0f9e8b;}
 
@@ -110,6 +110,21 @@
       .cx-stats{grid-template-columns:repeat(2,1fr);}
       .cx-btn{font-size:15px;padding:16px 22px;width:100%;box-sizing:border-box;justify-content:center;}
       .cx-open{display:none;}
+    }
+
+    /* ===== Cierre / CTA final · oscuro premium (autocontenido; no toca estilos.css) ===== */
+    .cc-band{position:relative;}
+    .cc-band::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;z-index:5;background:linear-gradient(90deg, transparent, rgba(255,255,255,.92) 50%, transparent);}
+    .cc-card{position:relative;max-width:900px;margin:0 auto;background:linear-gradient(165deg, rgba(45,212,191,.07), rgba(255,255,255,.02));border:1px solid rgba(45,212,191,.28);border-radius:26px;padding:58px 40px;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.4), inset 0 0 90px rgba(45,212,191,.05);overflow:hidden;}
+    .cc-glow{position:absolute;left:50%;top:62%;width:70%;height:60%;transform:translate(-50%,-50%);background:radial-gradient(ellipse at center, rgba(45,212,191,.16), transparent 70%);filter:blur(30px);pointer-events:none;}
+    .cc-title{position:relative;font-size:clamp(28px,4.2vw,44px);font-weight:800;color:#fff;line-height:1.12;margin:0 auto 20px;max-width:620px;}
+    .cc-sub{position:relative;font-size:16.5px;line-height:1.65;color:#aeb9cc;margin:0 auto 34px;max-width:520px;}
+    .cc-sub strong{color:#fff;font-weight:700;}
+    .cc-btn{position:relative;display:inline-flex;align-items:center;gap:12px;background:#2DD4BF;color:#04231e;font-weight:800;font-size:16.5px;letter-spacing:.4px;text-transform:uppercase;padding:20px 42px;border-radius:44px;text-decoration:none;box-shadow:0 0 0 1px rgba(45,212,191,.5), 0 0 44px rgba(45,212,191,.42), 0 16px 40px rgba(0,0,0,.4);transition:transform .2s ease, box-shadow .2s ease;}
+    .cc-btn:hover{transform:translateY(-2px);box-shadow:0 0 0 1px rgba(45,212,191,.75), 0 0 66px rgba(45,212,191,.6), 0 22px 52px rgba(0,0,0,.5);}
+    @media (max-width:600px){
+      .cc-card{padding:44px 22px;border-radius:20px;}
+      .cc-btn{width:100%;justify-content:center;box-sizing:border-box;font-size:15px;padding:18px 18px;}
     }
 
     /* ===== HERO C2 · dos columnas antes→después (autocontenido; no toca estilos.css) ===== */
@@ -568,20 +583,18 @@
     </section>
   </div>
 
-  <!-- ════════ BANDA 4 · CLARO (cierre / decisión final) ════════ -->
-  <div class="band band-light">
+  <!-- ════════ BANDA 4 · OSCURO (cierre / decisión final) ════════ -->
+  <div class="band band-science cc-band">
 
     <section class="section cierre" id="empezar">
-      <div class="cierre-inner">
-        <h2 class="cierre-title">Imagina abrir tu guía y saber exactamente qué estudiar.</h2>
-        <p class="cierre-sub">Sin horas organizando apuntes. Sin empezar desde cero. Sin releer páginas que no entiendes.<br>Solo abrir tu guía y comenzar.</p>
-        <ul class="cierre-benes">
-          <li><span class="cb-ck">✓</span> Lista para estudiar</li>
-          <li><span class="cb-ck">✓</span> Basada en ciencia del aprendizaje</li>
-          <li><span class="cb-ck">✓</span> Entrega en menos de 24 horas</li>
-        </ul>
-        <a href="simulacion.html" class="btn btn-primary btn-cierre">🚀 Quiero mi guía en 24 horas</a>
-        <p class="cierre-micro">⚡ Empieza hoy. Recíbela mañana.</p>
+      <div class="cc-card">
+        <span class="cc-glow"></span>
+        <h2 class="cc-title">Imagina abrir tu guía y saber exactamente qué estudiar.</h2>
+        <p class="cc-sub">Sin horas organizando apuntes. Sin empezar desde cero. Sin releer páginas que no entiendes.<br><strong>Solo abrir tu guía y comenzar.</strong></p>
+        <a href="simulacion.html" class="cc-btn">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+          Quiero mi guía en 24 horas
+        </a>
       </div>
     </section>
 
@@ -591,8 +604,6 @@
   <footer>
     <span>Stramont</span>
     <span>
-      <a href="https://instagram.com/montaguth.institute" target="_blank" style="color:var(--c1);text-decoration:none;">@montaguth.institute</a>
-      &nbsp;·&nbsp;
       <a href="mailto:contacto@montaguth.institute" style="color:var(--muted);text-decoration:none;">contacto@montaguth.institute</a>
       &nbsp;·&nbsp;
       <a href="privacidad.html" style="color:var(--muted);text-decoration:none;">Privacidad</a>
