@@ -183,9 +183,9 @@ La captura NO es inserción pública directa (evita inundación de correos falso
 
 ---
 
-## 2F. Frente B — Rediseño de guías "tablero de estudio" (EN REVISIÓN, chip pendiente)
+## 2F. Frente B — Rediseño de guías "tablero de estudio" (APROBADO · ES EL ESTÁNDAR)
 
-Brief grande de 3 frentes (A base de correos ✅, B guías, C landing). Este es el **Frente B, PR 1**: rehacer la **guía demo** (`segmentacion-de-mercados.html`) con el nuevo look tipo tablero. **NO se tocó el chip todavía** — decisión del dueño: primero revisa la demo en móvil y PC; si aprueba, en un PR 2 se actualiza `.kiro/steering/metodo-guias.md` para que todas las guías futuras nazcan así.
+Brief grande de 3 frentes (A base de correos ✅, B guías ✅, C landing pendiente). El dueño **aprobó** el rediseño (lo revisó en móvil y PC). Ahora es el **estándar**: `segmentacion-de-mercados.html` es el **esqueleto de referencia** y el chip `.kiro/steering/metodo-guias.md` ya está actualizado (§5.5 layout tablero + rail inteligente + flashcards sin localStorage + tablas responsivas + glosario). Ante "hazle la guía a tal cliente", se construye con este layout automáticamente.
 
 ### Qué se hizo (solo la demo, es rediseño visual, NO motor nuevo)
 - **Layout de 3 columnas:** barra superior (logo, título, tiempo estimado, **progreso honesto de scroll** — sin estado guardado), **nav lateral** por secciones (Introducción · Conceptos clave · Ejemplos reales · Preguntas de práctica · Plan de repaso · Glosario; hamburguesa + drawer en móvil), y **rail derecho "Activa tu aprendizaje"** que en móvil se vuelve **barra inferior plegable**.
@@ -196,9 +196,10 @@ Brief grande de 3 frentes (A base de correos ✅, B guías, C landing). Este es 
 - **Quitado:** progreso guardado tipo "68% completado", botones descargar/compartir. Muro con **microlínea corta** (incorpora el intent del PR #87, que se puede cerrar).
 - **Probado:** `node --check` + jsdom (rail cambia de pregunta por sección, flashcard exige escribir antes de revelar, Express/Dominar, 2 tablas responsivas, sin `localStorage`).
 
-### Pendiente
-- Que el dueño revise la demo (móvil + PC). Si aprueba → **PR 2: actualizar el chip** `metodo-guias.md` (layout tablero + rail inteligente + "sin memoria" en flashcards + tablas responsivas + glosario + tiempo estimado), para que las guías futuras nazcan así.
-- **Frente C** (landing "El Cambio" + hero) sigue después, bloqueado hasta tener B aprobado + materiales del dueño.
+### Estado
+- ✅ Demo rehecha (PR #88, mergeado) y **aprobada**.
+- ✅ Chip actualizado (PR 2): §5.5 "Layout tablero de estudio" + rail inteligente + flashcards sin localStorage + tablas responsivas + glosario + "sin progreso guardado / sin descargar-compartir". Toda guía nueva se hace así, copiando `segmentacion-de-mercados.html` como esqueleto.
+- **Frente C** (landing "El Cambio" + hero) es lo que sigue. "El Cambio": comparación Sin/Con Stramont con **números reales** de la guía + captura real de la guía nueva. Hero HTML/CSS real. **Bloqueado el hero hasta que el dueño entregue materiales** (captura vertical alta de la guía nueva + foto de apuntes reales). Alternancia intencional claro/oscuro.
 
 ---
 
