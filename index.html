@@ -48,8 +48,17 @@
 
     /* --- SIN STRAMONT: foto única de apuntes reales (enmarcada) --- */
     .cx-foto{display:flex;justify-content:center;margin:2px auto 0;}
-    .cx-foto img{width:min(700px,90vw);height:auto;border-radius:14px;border:9px solid #0B1220;box-shadow:0 24px 56px rgba(11,18,32,.28);transform:rotate(-1.2deg);transition:transform .3s ease, box-shadow .3s ease;}
-    @media (hover:hover){ .cx-foto img:hover{transform:rotate(0deg) translateY(-8px);box-shadow:0 42px 88px rgba(11,18,32,.42);} }
+    .cx-foto img{width:min(700px,90vw);height:auto;border-radius:14px;border:9px solid #0B1220;box-shadow:0 24px 56px rgba(11,18,32,.28);transform:rotate(-1.2deg);cursor:zoom-in;}
+
+    /* Lightbox / vista previa ampliada de la foto de apuntes */
+    .cx-lightbox{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(6,10,18,.88);backdrop-filter:blur(5px);cursor:zoom-out;}
+    .cx-lightbox.on{display:flex;animation:cxfade .22s ease;}
+    .cx-lightbox img{max-width:94vw;max-height:90vh;width:auto;height:auto;border-radius:12px;border:6px solid #0B1220;box-shadow:0 34px 90px rgba(0,0,0,.6);cursor:default;animation:cxzoom .22s ease;}
+    .cx-lightbox .cx-close{position:absolute;top:16px;right:18px;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.32);color:#fff;font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+    .cx-lightbox .cx-close:hover{background:rgba(255,255,255,.22);}
+    .cx-lightbox .cx-hint{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.75);font-size:13px;letter-spacing:.3px;}
+    @keyframes cxfade{from{opacity:0}to{opacity:1}}
+    @keyframes cxzoom{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
 
     /* listas de puntos como TARJETAS con color (no lista de texto plana) */
     .cx-points{list-style:none;padding:0;margin:26px auto 0;max-width:760px;display:grid;grid-template-columns:1fr 1fr;gap:13px;text-align:left;}
@@ -335,6 +344,37 @@
       <a href="condiciones.html" style="color:var(--muted);text-decoration:none;">Condiciones</a>
     </span>
   </footer>
+
+  <!-- Vista previa ampliada de la foto de "El Cambio" -->
+  <div class="cx-lightbox" id="cxLightbox" role="dialog" aria-modal="true" aria-label="Vista previa de los apuntes">
+    <button class="cx-close" type="button" aria-label="Cerrar vista previa">&times;</button>
+    <img id="cxLightboxImg" src="" alt="Apuntes reales de Segmentación de Mercados (vista ampliada)">
+    <span class="cx-hint">Toca fuera de la imagen o presiona Esc para cerrar</span>
+  </div>
+
+  <script>
+    /* Clic en la foto de apuntes -> vista previa ampliada (lightbox). Sirve
+       tanto en escritorio (cursor) como en móvil (tap). */
+    (function(){
+      var foto = document.querySelector('.cx-foto img');
+      var lb = document.getElementById('cxLightbox');
+      if(!foto || !lb) return;
+      var lbImg = document.getElementById('cxLightboxImg');
+      function abrir(){
+        lbImg.src = foto.getAttribute('src');
+        lb.classList.add('on');
+        document.body.style.overflow = 'hidden';
+      }
+      function cerrar(){
+        lb.classList.remove('on');
+        document.body.style.overflow = '';
+      }
+      foto.addEventListener('click', abrir);
+      // Cierra al tocar el fondo, la X, o cualquier parte que no sea la imagen.
+      lb.addEventListener('click', function(e){ if(e.target !== lbImg) cerrar(); });
+      document.addEventListener('keydown', function(e){ if(e.key === 'Escape') cerrar(); });
+    })();
+  </script>
 
 </body>
 </html>
