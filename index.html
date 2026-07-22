@@ -48,7 +48,8 @@
 
     /* --- SIN STRAMONT: foto única de apuntes reales (enmarcada) --- */
     .cx-foto{display:flex;justify-content:center;margin:2px auto 0;}
-    .cx-foto img{width:min(700px,90vw);height:auto;border-radius:12px;border:9px solid #fff;box-shadow:0 24px 56px rgba(11,18,32,.26);transform:rotate(-1.2deg);}
+    .cx-foto img{width:min(700px,90vw);height:auto;border-radius:14px;border:9px solid #0B1220;box-shadow:0 24px 56px rgba(11,18,32,.28);transform:rotate(-1.2deg);transition:transform .3s ease, box-shadow .3s ease;}
+    @media (hover:hover){ .cx-foto img:hover{transform:rotate(0deg) translateY(-8px);box-shadow:0 42px 88px rgba(11,18,32,.42);} }
 
     /* listas de puntos como TARJETAS con color (no lista de texto plana) */
     .cx-points{list-style:none;padding:0;margin:26px auto 0;max-width:760px;display:grid;grid-template-columns:1fr 1fr;gap:13px;text-align:left;}
