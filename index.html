@@ -146,6 +146,53 @@
       .hx-btn{width:100%;justify-content:center;box-sizing:border-box;}
       .hx-visual{min-height:80vw;}
     }
+    /* ===== "Así funciona" · infográfico (autocontenido; no toca estilos.css) ===== */
+    .hf-wrap{max-width:1000px;margin:32px auto 0;}
+    .hf-top{display:grid;grid-template-columns:1fr 1fr;gap:24px;position:relative;}
+    .hf-top::before{content:"";position:absolute;top:50%;left:calc(50% - 22px);width:44px;height:0;border-top:2px dashed rgba(42,157,143,.45);z-index:0;}
+    .hf-card{position:relative;display:flex;gap:15px;align-items:flex-start;background:#fff;border:1px solid #e6ebf2;border-radius:16px;padding:24px 22px 22px;box-shadow:0 8px 24px rgba(11,18,32,.06);z-index:1;}
+    .hf-num{position:absolute;top:-15px;left:22px;width:31px;height:31px;border-radius:50%;background:#fff;border:2px solid #2a9d8f;color:#2a9d8f;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;}
+    .hf-ic{flex:0 0 auto;width:52px;height:52px;border-radius:13px;background:rgba(42,157,143,.10);color:#2a9d8f;display:flex;align-items:center;justify-content:center;margin-top:4px;}
+    .hf-txt h3{font-size:18px;font-weight:800;color:#0B1220;margin:2px 0 6px;}
+    .hf-txt p{font-size:14.5px;line-height:1.5;color:#5a6472;margin:0;}
+
+    .hf-big{position:relative;margin-top:28px;background:linear-gradient(160deg,#0e1728,#0a1120);border:1px solid rgba(45,212,191,.22);border-radius:22px;padding:34px 34px 30px;box-shadow:0 30px 70px rgba(11,18,32,.26), inset 0 0 70px rgba(45,212,191,.045);overflow:hidden;}
+    .hf-24{position:absolute;top:24px;right:26px;display:inline-flex;align-items:center;gap:7px;color:#2DD4BF;font-weight:800;font-size:17px;border:1.5px solid rgba(45,212,191,.5);border-radius:40px;padding:9px 16px;box-shadow:0 0 26px rgba(45,212,191,.22);background:rgba(45,212,191,.06);}
+    .hf-big-head{display:flex;align-items:center;gap:16px;}
+    .hf-num-lg{width:54px;height:54px;border-radius:50%;background:#2a9d8f;color:#04211d;font-weight:800;font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 7px rgba(45,212,191,.10);flex:0 0 auto;}
+    .hf-doc{color:#2DD4BF;filter:drop-shadow(0 0 10px rgba(45,212,191,.45));}
+    .band-light .hf-big-title{font-size:clamp(24px,3.3vw,33px);font-weight:800;color:#fff;margin:16px 0 10px;line-height:1.14;max-width:540px;}
+    .hf-big-sub{font-size:15.5px;line-height:1.6;color:#aeb9cc;margin:0 0 20px;max-width:560px;}
+    .hf-chips{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:620px;margin-bottom:24px;}
+    .hf-chip{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.045);border:1px solid rgba(45,212,191,.20);border-radius:11px;padding:13px 15px;color:#e9edf5;font-size:14.5px;font-weight:600;}
+    .hf-chip svg{color:#2DD4BF;flex:0 0 auto;}
+
+    .hf-bonus{display:grid;grid-template-columns:1.5fr 1fr;gap:22px;align-items:center;background:#f4f7fb;border-radius:16px;padding:20px 24px;}
+    .hf-bonus-main{display:flex;gap:15px;align-items:flex-start;}
+    .hf-gift{flex:0 0 auto;color:#2a9d8f;margin-top:2px;}
+    .hf-bonus-main > div > strong{display:block;font-size:16px;color:#0B1220;margin-bottom:5px;}
+    .hf-bonus-main p strong{color:#0B1220;}
+    .hf-bonus-main p{font-size:13.8px;line-height:1.5;color:#55606e;margin:0;}
+    .hf-bonus-mini{display:flex;gap:10px;justify-content:space-between;border-left:1px solid #e0e6ee;padding-left:20px;}
+    .hf-mini{flex:1;text-align:center;font-size:11.5px;color:#6b7688;line-height:1.3;}
+    .hf-mini svg{color:#2a9d8f;margin-bottom:7px;}
+
+    .hf-banner{display:flex;align-items:center;gap:18px;justify-content:center;margin-top:24px;background:linear-gradient(160deg,#0e1728,#0a1120);border:1px solid rgba(45,212,191,.16);border-radius:16px;padding:24px 28px;text-align:left;}
+    .hf-bolt{color:#2DD4BF;flex:0 0 auto;filter:drop-shadow(0 0 9px rgba(45,212,191,.45));}
+    .hf-banner p{font-size:clamp(16px,2.3vw,21px);color:#cfd8e6;margin:0;font-weight:500;line-height:1.3;}
+    .hf-banner strong{color:#fff;font-weight:800;}
+
+    @media (max-width:760px){
+      .hf-top{grid-template-columns:1fr;gap:26px;}
+      .hf-top::before{display:none;}
+      .hf-big{padding:26px 20px 24px;}
+      .hf-24{position:static;margin-bottom:14px;}
+      .hf-big-head{gap:13px;}
+      .hf-chips{grid-template-columns:1fr;max-width:none;}
+      .hf-bonus{grid-template-columns:1fr;gap:16px;}
+      .hf-bonus-mini{border-left:none;border-top:1px solid #e0e6ee;padding-left:0;padding-top:16px;}
+      .hf-banner{flex-direction:column;gap:12px;text-align:center;}
+    }
   </style>
 </head>
 <body>
@@ -289,44 +336,88 @@
       <h2 class="section-title">Así de fácil funciona</h2>
       <p class="section-lead">No necesitas aprender un método nuevo. Sigue tomando apuntes como siempre.</p>
 
-      <div class="proceso2">
-        <div class="proceso2-top">
-          <div class="step step-sm">
-            <div class="step-n">1</div>
-            <h3>Toma apuntes como siempre</h3>
-            <p>En clase, en tu cuaderno, tablet o portátil. No necesitas aprender un método nuevo ni cambiar tu forma de estudiar.</p>
+      <div class="hf-wrap">
+        <!-- Pasos 1 y 2 -->
+        <div class="hf-top">
+          <div class="hf-card">
+            <span class="hf-num">1</span>
+            <span class="hf-ic">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a1 1 0 0 1 1-1h9l4 4v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M14 4v4h4"/><path d="M8 12h6M8 16h4"/><path d="M17.5 14.5l2 2-4 4H13v-2.5z"/></svg>
+            </span>
+            <div class="hf-txt">
+              <h3>Toma apuntes como siempre</h3>
+              <p>En clase, en casa, en tu cuaderno o en digital. No cambies tu forma de estudiar.</p>
+            </div>
           </div>
-          <div class="step step-sm">
-            <div class="step-n">2</div>
-            <h3>Envíanos tus apuntes</h3>
-            <p>Fotos, PDF, capturas o documentos. Nosotros nos encargamos del resto.</p>
+          <div class="hf-card">
+            <span class="hf-num">2</span>
+            <span class="hf-ic">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3L10.5 13.5"/><path d="M21 3l-6.5 18-4-8-8-4z"/></svg>
+            </span>
+            <div class="hf-txt">
+              <h3>Envíanos tus apuntes</h3>
+              <p>Fotos, PDF, capturas o documentos. Nosotros nos encargamos del resto.</p>
+            </div>
           </div>
         </div>
 
-        <div class="step step-lg">
-          <span class="step-badge">24 h</span>
-          <div class="step-head">
-            <div class="step-n">3</div>
-            <span class="step-guideico" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h10a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"></path><path d="M9 8h6M9 12h6M9 16h4"></path></svg>
+        <!-- Paso 3 (tarjeta oscura) -->
+        <div class="hf-big">
+          <span class="hf-24">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            24 h
+          </span>
+          <div class="hf-big-head">
+            <span class="hf-num-lg">3</span>
+            <span class="hf-doc" aria-hidden="true">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14a0 0 0 0 1 0 0H6a0 0 0 0 1 0 0z"/><path d="M14 3v4h4"/><path d="M9 12h6M9 16h6M9 8h2"/></svg>
             </span>
           </div>
-          <h3>Recibe tu guía en menos de 24 horas</h3>
-          <p>Transformamos tus apuntes en una guía diseñada para comprender más rápido, recordar mejor y estudiar con mayor confianza.</p>
-          <ul class="step-checklist">
-            <li>Explicaciones simples</li>
-            <li>Ejemplos reales</li>
-            <li>Preguntas de práctica</li>
-            <li>Plan de repaso</li>
-          </ul>
-          <div class="step-bonus">
-            <span class="bonus-tag">🎁 Bonus incluido</span>
-            <p>Recibirás <strong>gratis</strong> el <strong>Kit Stramont</strong> de toma de apuntes para que tus próximas clases sean todavía más fáciles de transformar.</p>
+          <h3 class="hf-big-title">Recibe tu guía en menos de 24 horas</h3>
+          <p class="hf-big-sub">Nuestros expertos transforman tus apuntes en una guía de estudio personalizada, clara y lista para que entiendas y aprendas mejor.</p>
+          <div class="hf-chips">
+            <span class="hf-chip"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Explicaciones simples</span>
+            <span class="hf-chip"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Ejemplos reales</span>
+            <span class="hf-chip"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Preguntas de práctica</span>
+            <span class="hf-chip"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Plan de repaso</span>
+          </div>
+
+          <!-- Bonus / Kit (el Kit es de TOMA DE APUNTES, no flashcards) -->
+          <div class="hf-bonus">
+            <div class="hf-bonus-main">
+              <span class="hf-gift">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v9H4v-9"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7S11 3 8.5 3 6 5 6 5s.5 2 3 2 3 0 3 0zM12 7s1-4 3.5-4S18 5 18 5s-.5 2-3 2-3 0-3 0z"/></svg>
+              </span>
+              <div>
+                <strong>Bonus incluido</strong>
+                <p>Recibirás <strong>gratis</strong> el <strong>Kit Stramont</strong> de toma de apuntes para que tus próximas clases sean todavía más fáciles de transformar.</p>
+              </div>
+            </div>
+            <div class="hf-bonus-mini">
+              <div class="hf-mini">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+                Plantillas de apuntes
+              </div>
+              <div class="hf-mini">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+                Estructura para tus clases
+              </div>
+              <div class="hf-mini">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>
+                Más fáciles de transformar
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <p class="proceso-msg">⚡ Mientras otros siguen organizando información, tú ya estarás estudiando.</p>
+        <!-- Banner -->
+        <div class="hf-banner">
+          <span class="hf-bolt">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg>
+          </span>
+          <p>Mientras otros siguen organizando información, <strong>tú ya estarás estudiando.</strong></p>
+        </div>
+      </div>
     </section>
 
     <!-- CONFIANZA -->
