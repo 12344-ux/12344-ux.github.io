@@ -199,7 +199,9 @@ Brief grande de 3 frentes (A base de correos ✅, B guías ✅, C landing pendie
 ### Estado
 - ✅ Demo rehecha (PR #88, mergeado) y **aprobada**.
 - ✅ Chip actualizado (PR 2): §5.5 "Layout tablero de estudio" + rail inteligente + flashcards sin localStorage + tablas responsivas + glosario + "sin progreso guardado / sin descargar-compartir". Toda guía nueva se hace así, copiando `segmentacion-de-mercados.html` como esqueleto.
-- **Frente C** (landing "El Cambio" + hero) es lo que sigue. "El Cambio": comparación Sin/Con Stramont con **números reales** de la guía + captura real de la guía nueva. Hero HTML/CSS real. **Bloqueado el hero hasta que el dueño entregue materiales** (captura vertical alta de la guía nueva + foto de apuntes reales). Alternancia intencional claro/oscuro.
+- **Frente C1 — sección "El Cambio" (index.html): ✅ HECHO** (PR aparte). Rediseño fiel al mockup del Kiro de ideas: comparación Sin/Con Stramont con las imágenes visibles (3 fotos de apuntes reales en abanico + **captura REAL de la guía rediseñada** `guia-segmentacion-nueva.jpg`, generada con Chromium headless) y **números reales** (6 secciones · 14 conceptos · 7 ejemplos · 24 preguntas de práctica). "Mejores resultados" se suavizó a "más confianza para tu examen: llegas listo, no a ciegas". CSS autocontenido en un `<style>` de index.html (NO se tocó estilos.css → sin cache-bust). Íconos ✓/✕ como SVG inline (no dependen de fuente). Probado en escritorio y móvil con Chromium.
+  - Assets nuevos en el repo: `apunte-seg-1/2/3.jpg` (apuntes) y `guia-segmentacion-nueva.jpg` (captura del tablero). Nota: para regenerar la captura, hay Playwright+Chromium+Noto emoji en `/projects/sandbox/pw` (fuera del repo); se abre `segmentacion-de-mercados.html?ok=1` a 1360px retina y se posiciona en `#f01`.
+- **Frente C2 — Hero (rediseño): PENDIENTE, bloqueado** hasta que el dueño entregue materiales (o los genero yo): captura vertical alta de la guía + foto de apuntes reales verticales. Hero en HTML/CSS real (no incrustar PNG de IA), dos columnas, eyebrow teal, CTA sólido, "⚡ Entrega en menos de 24 horas" (sin "+150 estudiantes"). Alternancia intencional claro/oscuro de la landing.
 
 ---
 
