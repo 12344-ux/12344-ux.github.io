@@ -209,15 +209,15 @@
     <div class="muro-logo">Stramont</div>
     <h2>Desbloquea esta guía</h2>
     <p>Déjanos tu correo y accede gratis a la guía completa. Solo se pide una vez.</p>
-    <form action="https://formsubmit.co/contacto@montaguth.institute" method="POST">
+    <form id="muroForm" action="https://formsubmit.co/contacto@montaguth.institute" method="POST">
       <input type="hidden" name="_subject" value="Acceso a guia · Stramont">
       <input type="hidden" name="_captcha" value="false">
       <input type="hidden" name="_next" value="https://montaguth.institute/segmentacion-de-mercados.html?ok=1">
       <input type="hidden" name="guia" value="Segmentacion de Mercados">
       <input type="text" name="_honey" style="display:none">
-      <input class="muro-input" type="email" name="email" placeholder="Tu correo *" required>
-      <label class="muro-consent"><input type="checkbox" name="consentimiento" value="si" required><span>Acepto recibir las guías y novedades, según la <a href="privacidad.html" target="_blank">Política de Privacidad</a>.</span></label>
+      <input class="muro-input" type="email" name="email" id="muroEmail" placeholder="Tu correo *" required>
       <button type="submit" class="muro-btn">Desbloquear la guía →</button>
+      <p class="muro-nota">Al continuar aceptas nuestra <a href="privacidad.html" target="_blank" style="color:var(--n1);">Política de Privacidad</a>. Usamos tu correo solo para enviarte la guía y novedades del proyecto; nunca spam ni venta de datos.</p>
     </form>
   </div>
 </div>
@@ -231,6 +231,27 @@
       if (ok){ if (m) m.parentNode.removeChild(m); }
       else { document.documentElement.style.overflow = 'hidden'; }
     }catch(e){ var m=document.getElementById('muro'); if(m) m.parentNode.removeChild(m); }
+  })();
+
+  // Base de correos (Frente A): además del envío a FormSubmit, registra el
+  // correo del prospecto en Supabase. Best-effort: NO bloquea ni altera el
+  // envío del formulario (sin preventDefault, con keepalive y try/catch).
+  (function(){
+    var CAPTURA_URL = "https://ifvnuvjvlzpdaimelmbm.supabase.co/functions/v1/captura";
+    var f = document.getElementById('muroForm');
+    if(!f) return;
+    f.addEventListener('submit', function(){
+      try{
+        var el = document.getElementById('muroEmail');
+        var email = el && el.value ? String(el.value).trim() : '';
+        if(!email) return;
+        fetch(CAPTURA_URL, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ correo: email, origen: 'prospecto_demo' }),
+          keepalive: true
+        }).catch(function(){});
+      }catch(e){}
+    });
   })();
 </script>
 
