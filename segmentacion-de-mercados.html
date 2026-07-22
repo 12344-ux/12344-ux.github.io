@@ -132,7 +132,12 @@
   .lead{color:var(--text-dim);font-size:16px;margin-bottom:10px;max-width:760px;}
   .parte-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:var(--surface2);color:var(--n1);font-weight:800;font-size:13px;margin-right:10px;border:1px solid var(--line);}
   .narrativa{font-size:16px;}
-  .def{background:rgba(129,140,248,.10);border-bottom:1px dashed var(--n2);color:var(--text);font-weight:600;padding:0 2px;cursor:help;}
+  .def{position:relative;background:rgba(129,140,248,.10);border-bottom:1px dashed var(--n2);color:var(--text);font-weight:600;padding:0 2px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .def:focus-visible{outline:2px solid var(--n2);outline-offset:2px;border-radius:3px;}
+  .def::after{content:attr(data-def);position:absolute;left:50%;bottom:calc(100% + 11px);transform:translateX(calc(-50% + var(--def-shift,0px))) translateY(5px);width:max-content;max-width:min(280px,86vw);white-space:normal;background:#0B1220;color:#E9EDF5;font-weight:500;font-size:13.5px;line-height:1.45;letter-spacing:normal;text-transform:none;padding:10px 13px;border-radius:10px;border:1px solid rgba(129,140,248,.55);box-shadow:0 16px 38px rgba(0,0,0,.45);text-align:left;opacity:0;pointer-events:none;transition:opacity .18s ease, transform .18s ease;z-index:60;}
+  .def::before{content:"";position:absolute;left:50%;bottom:calc(100% + 5px);transform:translateX(-50%);border:6px solid transparent;border-top-color:#0B1220;opacity:0;transition:opacity .18s ease;z-index:60;}
+  .def:hover::after,.def:focus-visible::after,.def.open::after{opacity:1;transform:translateX(calc(-50% + var(--def-shift,0px))) translateY(0);}
+  .def:hover::before,.def:focus-visible::before,.def.open::before{opacity:1;}
   .joya{background:linear-gradient(135deg,rgba(217,160,102,.14),rgba(45,212,191,.08));border:1px solid rgba(217,160,102,.4);border-radius:16px;padding:22px 24px;}
   .joya .eyebrow{color:var(--n3);} .joya p{color:var(--text);font-size:16px;} .joya b{color:var(--n3);}
   .secuencia{margin-top:14px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:13.5px;color:var(--text-dim);}
@@ -882,6 +887,62 @@
       });
     }, {rootMargin:'-45% 0px -50% 0px'});
     navLinks.forEach(function(a){ var s=document.querySelector(a.getAttribute('href')); if(s) navObs.observe(s); });
+  })();
+</script>
+
+<script>
+  /* ===== Definiciones tocables: en móvil no hay hover, así que el title
+     nativo era inservible. Movemos el title a un tooltip propio (data-def)
+     que responde a hover (escritorio), foco (teclado) y TAP (móvil). ===== */
+  (function(){
+    var defs = document.querySelectorAll('.def');
+    defs.forEach(function(el){
+      var t = el.getAttribute('title');
+      if(t){ el.setAttribute('data-def', t); el.removeAttribute('title'); } // quita el title para no duplicar tooltip
+      el.setAttribute('tabindex','0');
+      el.setAttribute('role','button');
+      el.setAttribute('aria-label', 'Definición de ' + (el.textContent || '').trim());
+    });
+    // Evita que la burbuja se salga del borde de la pantalla (sobre todo en móvil):
+    // calcula un desplazamiento horizontal según dónde esté la palabra.
+    function posicionar(d){
+      var margen = 10;
+      var vw = document.documentElement.clientWidth;
+      var ancho = Math.min(280, vw * 0.86);       // ancho máximo real de la burbuja
+      var r = d.getBoundingClientRect();
+      var centro = r.left + r.width / 2;
+      var izq = centro - ancho / 2, der = centro + ancho / 2;
+      var shift = 0;
+      if(izq < margen) shift = margen - izq;
+      else if(der > vw - margen) shift = (vw - margen) - der;
+      d.style.setProperty('--def-shift', Math.round(shift) + 'px');
+    }
+    function closeAll(except){
+      document.querySelectorAll('.def.open').forEach(function(d){ if(d!==except) d.classList.remove('open'); });
+    }
+    function toggle(d){
+      var abierto = d.classList.contains('open');
+      closeAll(d);
+      if(!abierto) posicionar(d);
+      d.classList.toggle('open', !abierto);
+    }
+    // Escritorio: recalcula al pasar el mouse o enfocar (para el tooltip por hover).
+    defs.forEach(function(el){
+      el.addEventListener('mouseenter', function(){ posicionar(el); });
+      el.addEventListener('focus', function(){ posicionar(el); });
+    });
+    document.addEventListener('click', function(e){
+      var d = (e.target && e.target.closest) ? e.target.closest('.def') : null;
+      if(d){ e.stopPropagation(); toggle(d); }
+      else { closeAll(null); }
+    });
+    document.addEventListener('keydown', function(e){
+      var a = document.activeElement;
+      if(e.key === 'Escape'){ closeAll(null); return; }
+      if((e.key === 'Enter' || e.key === ' ') && a && a.classList && a.classList.contains('def')){
+        e.preventDefault(); toggle(a);
+      }
+    });
   })();
 </script>
 
