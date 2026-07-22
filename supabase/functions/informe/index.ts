@@ -277,6 +277,19 @@ Deno.serve(async (req) => {
     return json({ ok: true, pedido_id: pedidoId, archivos_borrados: archivosBorrados });
   }
 
+  // ---------- MODO BORRAR CORREO (base de correos) ----------
+  // Borra una entrada de la tabla "correos" (un prospecto). Los clientes
+  // viven en "pedidos" y NO se borran por aquí (solo se muestran).
+  //   POST ?correo_delete=1&id=NNN&key=...
+  if (url.searchParams.get("correo_delete") === "1") {
+    if (req.method !== "POST") return json({ error: "Requiere POST." }, 405);
+    const id = url.searchParams.get("id") || "";
+    if (!id) return json({ error: "Falta id." }, 400);
+    const { error: errDel } = await client.from("correos").delete().eq("id", id);
+    if (errDel) return json({ error: "Error borrando el correo: " + errDel.message }, 500);
+    return json({ ok: true, id });
+  }
+
   // ---------- MODO LECTURA (informe) ----------
   if (req.method !== "GET") return json({ error: "Usa GET." }, 405);
 
@@ -385,5 +398,34 @@ Deno.serve(async (req) => {
   const ventas = { ultimos15: resumen(15), ultimos30: resumen(30) };
   const pedidosPrueba = (pedidosRaw || []).filter((p: any) => esCorreoPrueba(p.correo)).length;
 
-  return json({ storage, pedidos, ventas, pedidosPrueba, opiniones, generadoEn: new Date().toISOString() });
+  // Base de correos: une prospectos (tabla "correos") + clientes (tabla
+  // "pedidos"), deduplica por correo (si un prospecto luego compró, se
+  // muestra como cliente) y excluye pruebas.
+  const { data: correosRaw } = await client
+    .from("correos").select("*").order("creado", { ascending: false }).limit(5000);
+
+  const clientesPorCorreo: Record<string, any> = {};
+  for (const p of (pedidosRaw || [])) {
+    const c = String(p.correo || "").toLowerCase().trim();
+    if (!c || esCorreoPrueba(c)) continue;
+    // nos quedamos con la compra más antigua como "fecha de alta" del cliente
+    if (!clientesPorCorreo[c] || new Date(p.fecha_compra) < new Date(clientesPorCorreo[c].fecha)) {
+      clientesPorCorreo[c] = { correo: c, tipo: "cliente", fecha: p.fecha_compra };
+    }
+  }
+  const listaCorreos: any[] = Object.values(clientesPorCorreo);
+  for (const row of (correosRaw || [])) {
+    const c = String(row.correo || "").toLowerCase().trim();
+    if (!c || row.es_prueba) continue;
+    if (clientesPorCorreo[c]) continue; // ya es cliente -> no duplicar
+    listaCorreos.push({ id: row.id, correo: c, tipo: "prospecto", fecha: row.creado });
+  }
+  listaCorreos.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+  const baseCorreos = {
+    totalClientes: Object.keys(clientesPorCorreo).length,
+    totalProspectos: listaCorreos.filter((x) => x.tipo === "prospecto").length,
+    lista: listaCorreos,
+  };
+
+  return json({ storage, pedidos, ventas, pedidosPrueba, opiniones, baseCorreos, generadoEn: new Date().toISOString() });
 });

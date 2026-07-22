@@ -156,6 +156,33 @@ Lo envía el dueño desde el tablero (como el Correo 2). El aviso "listo para pe
 
 ---
 
+## 2E. Base de correos (Frente A) — CONSTRUIDO, pendiente de deploy manual
+
+Registro **operativo** (no marketing) de todos los correos capturados. Parte de un brief grande de 3 frentes (A base de correos, B rediseño de guías + chip, C rediseño de landing); este es el Frente A.
+
+### Qué se construyó
+1. **Migración `correos`** (`20260709170000_...`): tabla con `correo`, `origen` (default `prospecto_demo`), `es_prueba`, `creado`, único `(correo, origen)`. **RLS activado SIN policies públicas** (igual que `pedido_feedback`): la llave pública no lee ni inserta.
+2. **Edge Function `captura`** (PÚBLICA, Verify JWT **off**): la llama el muro de la demo. Valida formato de correo, **rate-limit básico por IP en memoria (NO guarda IPs** — decisión de privacidad), dedupe idempotente (upsert `onConflict correo,origen ignoreDuplicates`), fija `origen` a valores conocidos, marca `es_prueba`.
+3. **`informe` (función)**: nuevo `GET` devuelve `baseCorreos` (une prospectos de `correos` + clientes de `pedidos`, deduplica por correo — si un prospecto compró aparece como cliente —, excluye pruebas) y nuevo modo `POST ?correo_delete=1&id=` para borrar un prospecto.
+4. **`informe.html`**: sección **"Base de correos"** (separada, como "Banco de opiniones") con pulso (prospectos + clientes reales), lista `correo · tipo · fecha` y 🗑 solo en prospectos.
+5. **`segmentacion-de-mercados.html` (muro de la demo)**: al enviar, además de FormSubmit dispara la captura a Supabase **sin romper nada** (`fetch` con `keepalive`, sin `preventDefault`, en try/catch). La **casilla obligatoria** de consentimiento se cambió por una **microlínea** con enlace a la política (menos fricción; el pre-pago de `simulacion.html` ya tiene su casilla que cubre a los clientes). `privacidad.html` ya dice que el correo es solo para entregar/novedades y que nunca se vende.
+
+### Seguridad (mismo criterio de siempre)
+La captura NO es inserción pública directa (evita inundación de correos falsos), igual que se cerró en `pedido_feedback`. Todo pasa por la función server-side. No se guardan IPs (el rate-limit es en memoria, best-effort).
+
+### CHECKLIST DE DEPLOY MANUAL (tras mergear el Frente A)
+1. **SQL Editor** → correr `20260709170000_crear_tabla_correos.sql`.
+2. **Edge Functions** → crear/deploy **`captura`** (**Verify JWT OFF**).
+3. **Edge Functions** → **redeploy de `informe`** (se le añadió `baseCorreos` y el borrado de correos).
+4. Secretos: ninguno nuevo.
+5. Prueba: abre la demo con un correo `prueba...@...` → debe aparecer en "Base de correos" como prospecto 🧪 (excluido del conteo real); compra de prueba → aparece como cliente.
+
+### Pendiente del mismo brief (siguientes PRs)
+- **Frente B:** rediseño visual de las guías (look "tablero de estudio": nav lateral + rail "Activa tu aprendizaje" + top bar con progreso/tiempo) + actualizar el chip + rehacer la demo de Segmentación. Conservar SIEMPRE: color con significado (teal/índigo/bronce), Express/Dominar y "generar antes de revelar". Quitar progreso guardado y botones descargar/compartir.
+- **Frente C:** landing — "El Cambio" (comparación Sin/Con Stramont con números REALES de la guía y captura real) + hero HTML/CSS real (BLOQUEADO hasta tener B + materiales del dueño). Alternancia intencional claro/oscuro.
+
+---
+
 ## 10. Flujo de BAJA FRICCIÓN para desarrollar guías (comando `DESARROLLA`)
 
 Para no repetir contexto por chat con muchos pedidos, se montó esto:
@@ -187,6 +214,7 @@ Para no repetir contexto por chat con muchos pedidos, se montó esto:
 | `supabase/functions/informe/index.ts` | **Edge Function del tablero.** Lee pedidos/storage y ejecuta entregada/liberar/borrar. service_role server-side + `LINK_SECRET`. **NUEVO:** también devuelve las opiniones (banco) y adjunta el feedback a cada pedido. Ver secciones 2B y 2D. |
 | `supabase/functions/correo-feedback/index.ts` | **NUEVO (Correo 3) — envío de la solicitud de opinión.** Admin, exige `LINK_SECRET`. Genera el `feedback_token`, arma los enlaces de estrella y envía por Resend. Ver sección 2D. |
 | `supabase/functions/feedback/index.ts` | **NUEVO (Correo 3) — registro público de opiniones.** Verify JWT off; valida el token por pedido y escribe con service_role. Ver sección 2D. |
+| `supabase/functions/captura/index.ts` | **NUEVO (Frente A) — captura de correos de prospectos.** Pública (JWT off). Valida formato + rate-limit en memoria (sin guardar IPs) + dedupe; escribe en `correos` con service_role. Ver sección 2E. |
 | `supabase/migrations/*.sql` | **NUEVO — SQL versionado** de las tablas `pedidos` y `pedido_intake` y la columna `apuntes_borrados`. Hay que correrlo a mano en el SQL Editor de Supabase (no se aplica solo con el merge). |
 | `.kiro/steering/metodo-guias.md` | **El método CHIP STRAMONT, versión definitiva.** Ábrelo y aplícalo tal cual para cualquier guía nueva. |
 
