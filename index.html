@@ -26,10 +26,10 @@
     #cambio::before{
       content:"";position:absolute;z-index:0;top:0;bottom:0;left:50%;width:100vw;transform:translateX(-50%);pointer-events:none;
       background:
-        radial-gradient(rgba(11,18,32,.045) 1px, transparent 1.4px) 0 0/26px 26px,
-        radial-gradient(38% 46% at 12% 16%, rgba(45,212,191,.13), transparent 70%),
-        radial-gradient(40% 48% at 88% 86%, rgba(129,140,248,.13), transparent 70%),
-        linear-gradient(180deg,#ffffff 0%, #f5f8fc 50%, #eef3fb 100%);
+        radial-gradient(rgba(11,18,32,.05) 1px, transparent 1.4px) 0 0/26px 26px,
+        radial-gradient(42% 50% at 10% 14%, rgba(45,212,191,.18), transparent 70%),
+        radial-gradient(44% 52% at 90% 88%, rgba(129,140,248,.18), transparent 70%),
+        linear-gradient(180deg,#f3f7fc 0%, #eef3fb 45%, #e9f0f9 100%);
       -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 7%, #000 93%, transparent 100%);
               mask-image:linear-gradient(180deg, transparent 0, #000 7%, #000 93%, transparent 100%);
     }
@@ -50,13 +50,15 @@
     .cx-foto{display:flex;justify-content:center;margin:2px auto 0;}
     .cx-foto img{width:min(700px,90vw);height:auto;border-radius:12px;border:9px solid #fff;box-shadow:0 24px 56px rgba(11,18,32,.26);transform:rotate(-1.2deg);}
 
-    /* listas de puntos (una sola columna centrada, filas con hairline) */
-    .cx-points{list-style:none;padding:0;margin:28px auto 0;max-width:520px;display:flex;flex-direction:column;text-align:left;}
-    .cx-points li{display:flex;gap:13px;align-items:center;font-size:15.5px;line-height:1.4;padding:12px 6px;border-bottom:1px solid rgba(11,18,32,.08);}
-    .cx-points li:last-child{border-bottom:none;}
-    .cx-points .ic{flex:0 0 auto;width:27px;height:27px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;}
-    .cx-points-bad li{color:#57616f;} .cx-points-bad .ic{background:rgba(226,76,76,.12);color:#E24C4C;}
-    .cx-points-good li{color:#232d3b;font-weight:500;} .cx-points-good .ic{background:rgba(45,212,191,.16);color:#0f9e8b;}
+    /* listas de puntos como TARJETAS con color (no lista de texto plana) */
+    .cx-points{list-style:none;padding:0;margin:26px auto 0;max-width:760px;display:grid;grid-template-columns:1fr 1fr;gap:13px;text-align:left;}
+    .cx-points li{display:flex;gap:13px;align-items:center;font-size:15px;line-height:1.36;padding:15px 17px;border-radius:14px;background:#fff;box-shadow:0 6px 18px rgba(11,18,32,.07);}
+    .cx-points li:last-child{grid-column:1 / -1;}      /* la 5ª ocupa el ancho completo: resuelve la paridad impar */
+    .cx-points .ic{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;}
+    .cx-points-bad li{border-left:4px solid #E24C4C;background:linear-gradient(100deg, rgba(226,76,76,.08), #fff 58%);color:#48525f;}
+    .cx-points-bad .ic{background:rgba(226,76,76,.15);color:#E24C4C;}
+    .cx-points-good li{border-left:4px solid #2DD4BF;background:linear-gradient(100deg, rgba(45,212,191,.12), #fff 58%);color:#1e2937;font-weight:500;}
+    .cx-points-good .ic{background:rgba(45,212,191,.2);color:#0f9e8b;}
 
     /* Flecha de transición entre etapas */
     .cx-arrow{text-align:center;margin:46px 0 4px;}
@@ -92,7 +94,8 @@
 
     @media (max-width:760px){
       .cambio-wrap{margin-top:26px;}
-      .cx-points{max-width:100%;}
+      .cx-points{grid-template-columns:1fr;max-width:460px;gap:11px;}
+      .cx-points li:last-child{grid-column:auto;}
       .cx-foto img{width:90vw;border-width:6px;box-shadow:0 16px 38px rgba(11,18,32,.22);}
       .cx-stats{grid-template-columns:repeat(2,1fr);}
       .cx-btn{font-size:15px;padding:16px 22px;width:100%;box-sizing:border-box;justify-content:center;}
