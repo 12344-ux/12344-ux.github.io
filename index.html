@@ -111,6 +111,38 @@
       .cx-btn{font-size:15px;padding:16px 22px;width:100%;box-sizing:border-box;justify-content:center;}
       .cx-open{display:none;}
     }
+
+    /* ===== HERO C2 · dos columnas antes→después (autocontenido; no toca estilos.css) ===== */
+    .hx-hero{position:relative;z-index:10;width:90%;max-width:1140px;margin:0 auto;padding:60px 0 70px;display:grid;grid-template-columns:1.02fr .98fr;gap:50px;align-items:center;text-align:left;}
+    .hx-copy{max-width:560px;}
+    .hx-eyebrow{font-size:12.5px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#2DD4BF;display:block;margin-bottom:20px;}
+    .hx-title{font-size:clamp(32px,4.4vw,54px);font-weight:800;line-height:1.09;letter-spacing:-.5px;color:#fff;margin:0 0 22px;}
+    .hx-title .hx-accent{color:#2DD4BF;}
+    .hx-sub{font-size:17px;line-height:1.65;color:#b9c4d6;margin:0 0 30px;max-width:500px;}
+    .hx-cta{margin:0 0 18px;}
+    .hx-btn{display:inline-flex;align-items:center;gap:11px;background:#2DD4BF;color:#062b26;font-weight:800;font-size:16.5px;padding:17px 32px;border-radius:40px;text-decoration:none;box-shadow:0 14px 34px rgba(45,212,191,.28);transition:transform .2s ease, box-shadow .2s ease, background .2s ease;}
+    .hx-btn:hover{transform:translateY(-2px);background:#3ee0cc;box-shadow:0 20px 46px rgba(45,212,191,.42);}
+    .hx-badge{display:inline-flex;align-items:center;gap:8px;color:#93ebdf;font-size:13.5px;font-weight:600;letter-spacing:.3px;}
+    .hx-badge svg{color:#2DD4BF;flex:0 0 auto;}
+
+    .hx-visual{position:relative;min-height:500px;}
+    .hx-glow{position:absolute;left:52%;top:50%;width:78%;height:74%;transform:translate(-50%,-50%);background:radial-gradient(ellipse at center, rgba(45,212,191,.22), rgba(45,212,191,.06) 45%, transparent 70%);filter:blur(18px);pointer-events:none;z-index:0;}
+    .hx-notas{position:absolute;left:0;top:9%;width:49%;border-radius:12px;transform:rotate(-6deg);box-shadow:0 26px 60px rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.10);z-index:1;}
+    .hx-guia{position:absolute;right:0;top:0;width:62%;border-radius:16px;transform:rotate(3.5deg);box-shadow:0 34px 84px rgba(0,0,0,.6), 0 0 0 1px rgba(45,212,191,.28), 0 0 70px rgba(45,212,191,.14);z-index:2;}
+    .hx-arrow{position:absolute;left:45%;top:47%;transform:translate(-50%,-50%);z-index:3;color:#2DD4BF;filter:drop-shadow(0 6px 14px rgba(0,0,0,.55));}
+    .hx-scroll{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);color:#2a9d8f;z-index:10;}
+
+    @media (max-width:880px){
+      .hx-hero{grid-template-columns:1fr;gap:30px;padding:44px 0 58px;text-align:center;}
+      .hx-copy{max-width:none;margin:0 auto;}
+      .hx-sub{margin-left:auto;margin-right:auto;}
+      .hx-visual{min-height:70vw;max-width:460px;margin:0 auto;width:100%;}
+      .hx-scroll{display:none;}
+    }
+    @media (max-width:480px){
+      .hx-btn{width:100%;justify-content:center;box-sizing:border-box;}
+      .hx-visual{min-height:80vw;}
+    }
   </style>
 </head>
 <body>
@@ -133,15 +165,33 @@
 
   <!-- ════════ BANDA 1 · HERO (OSCURO PREMIUM) ════════ -->
   <div class="band band-hero">
-    <section class="hero hero-centrado">
-      <span class="eyebrow">Transformamos apuntes en guías de estudio</span>
-      <h1>Tus apuntes entran confusos.<br><span class="acento">Tu guía sale lista para estudiar.</span></h1>
-      <p class="hero-sub"><strong class="hero-sub-strong">Envíanos tus apuntes.</strong><br>En menos de 24 horas recibirás una guía diseñada para comprender más rápido, recordar mejor y llegar preparado al examen.</p>
-      <div class="hero-cta">
-        <a href="simulacion.html" class="btn btn-primary btn-lg">🚀 Empezar mi transformación</a>
+    <section class="hx-hero">
+      <div class="hx-copy">
+        <span class="hx-eyebrow">Transformamos apuntes en guías de estudio</span>
+        <h1 class="hx-title">Tus apuntes entran confusos.<br>Tu guía sale <span class="hx-accent">lista para estudiar.</span></h1>
+        <p class="hx-sub">Convertimos tus apuntes desordenados en guías personalizadas con ciencia del aprendizaje, listas para que entiendas y aprendas mejor.</p>
+        <div class="hx-cta">
+          <a href="simulacion.html" class="hx-btn">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+            Empezar mi transformación
+          </a>
+        </div>
+        <div class="hx-badge">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg>
+          Entrega en menos de 24 horas
+        </div>
       </div>
-      <div class="hero-badge24"><span class="dotp"></span> Entrega en menos de 24 horas</div>
-      <a href="#cambio" class="hero-scroll" aria-label="Bajar">
+
+      <div class="hx-visual">
+        <span class="hx-glow"></span>
+        <img class="hx-notas" src="apuntes-hero.jpg" alt="Apuntes a mano de Segmentación de Mercados: el antes, desordenado">
+        <img class="hx-guia" src="guia-hero.jpg" alt="Guía Stramont de Segmentación de Mercados: el después, ordenado y listo para estudiar">
+        <span class="hx-arrow">
+          <svg width="66" height="66" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"/><path d="M13 6l7 6-7 6"/></svg>
+        </span>
+      </div>
+
+      <a href="#cambio" class="hx-scroll" aria-label="Bajar">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </a>
     </section>
