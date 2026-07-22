@@ -183,6 +183,25 @@ La captura NO es inserción pública directa (evita inundación de correos falso
 
 ---
 
+## 2F. Frente B — Rediseño de guías "tablero de estudio" (EN REVISIÓN, chip pendiente)
+
+Brief grande de 3 frentes (A base de correos ✅, B guías, C landing). Este es el **Frente B, PR 1**: rehacer la **guía demo** (`segmentacion-de-mercados.html`) con el nuevo look tipo tablero. **NO se tocó el chip todavía** — decisión del dueño: primero revisa la demo en móvil y PC; si aprueba, en un PR 2 se actualiza `.kiro/steering/metodo-guias.md` para que todas las guías futuras nazcan así.
+
+### Qué se hizo (solo la demo, es rediseño visual, NO motor nuevo)
+- **Layout de 3 columnas:** barra superior (logo, título, tiempo estimado, **progreso honesto de scroll** — sin estado guardado), **nav lateral** por secciones (Introducción · Conceptos clave · Ejemplos reales · Preguntas de práctica · Plan de repaso · Glosario; hamburguesa + drawer en móvil), y **rail derecho "Activa tu aprendizaje"** que en móvil se vuelve **barra inferior plegable**.
+- **RAIL INTELIGENTE (la decisión pivote, opción A):** muestra la pregunta de recuerdo activo de la **sección visible** (scroll-spy con `IntersectionObserver`); las 14 flashcards se movieron del inline a `data-q`/`data-a` en cada ficha y las surface el rail.
+- **Se conservó lo sagrado:** color con significado (teal N1 / índigo N2 / bronce N3), **Express/Dominar** funcional, y **"generar antes de revelar"**.
+- **Cambio respecto al método actual:** las flashcards ya **NO usan `localStorage`** ("sin memoria" entre visitas, como pidió el brief; en sesión sí conserva lo escrito al hacer scroll). El chip habrá que ajustarlo en esa línea si se aprueba.
+- **Tablas → responsivas** (tabla en PC, tarjetas apiladas en móvil, vía `table.responsive` + `data-label`). Caso práctico como **flujo horizontal**. Callouts de **"término clave"**. **Glosario** nuevo.
+- **Quitado:** progreso guardado tipo "68% completado", botones descargar/compartir. Muro con **microlínea corta** (incorpora el intent del PR #87, que se puede cerrar).
+- **Probado:** `node --check` + jsdom (rail cambia de pregunta por sección, flashcard exige escribir antes de revelar, Express/Dominar, 2 tablas responsivas, sin `localStorage`).
+
+### Pendiente
+- Que el dueño revise la demo (móvil + PC). Si aprueba → **PR 2: actualizar el chip** `metodo-guias.md` (layout tablero + rail inteligente + "sin memoria" en flashcards + tablas responsivas + glosario + tiempo estimado), para que las guías futuras nazcan así.
+- **Frente C** (landing "El Cambio" + hero) sigue después, bloqueado hasta tener B aprobado + materiales del dueño.
+
+---
+
 ## 10. Flujo de BAJA FRICCIÓN para desarrollar guías (comando `DESARROLLA`)
 
 Para no repetir contexto por chat con muchos pedidos, se montó esto:
