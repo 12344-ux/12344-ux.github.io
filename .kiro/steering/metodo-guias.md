@@ -89,7 +89,7 @@ STRAMONT                                   (wordmark, letra espaciada, muted)
 ```
 No fuerces los 3 niveles en conceptos simples (buen criterio > relleno), pero el **Nivel 1 y su flashcard son obligatorios siempre**.
 
-**C) Definiciones inline:** todo término difícil = `span` con definición al hover/click (estilo Wikipedia), sin sacar del flujo.
+**C) Definiciones inline (accesibles en móvil — OBLIGATORIO):** todo término difícil = `span.def` con la definición en un atributo **`data-def`** (NUNCA el `title` nativo: solo funciona con hover de mouse → **inservible en móvil**). El tooltip es un **único elemento con `position:fixed`** posicionado por JS y **limitado a los bordes del viewport**, de modo que **ningún contenedor con `overflow:hidden`** (tarjetas redondeadas) lo pueda recortar. Debe abrir con **hover (escritorio) + foco (teclado) + TAP (móvil)** y cerrarse al tocar fuera / `Esc` / scroll. El tap **siempre muestra** (no alterna: en táctil el `mouseenter` sintético lo abriría y un toggle lo cerraría al instante). Copia el patrón ya probado de `segmentacion-de-mercados.html` (bloque `.def` / `.def-tip` + su script).
 
 **G) Flashcard de generación (el gimnasio, obligatorio en cada "Pruébate")**
 - Pregunta → **campo de texto** donde el estudiante ESCRIBE su respuesta → botón "Revelar y comparar" → muestra la respuesta modelo junto a lo que escribió.
@@ -123,7 +123,7 @@ Elige el bloque que MEJOR represente cada contenido:
 - [ ] Nivel 2 "Conecta" + insight de conexión por sección + **mapa de conexiones VISUAL** (no lista).
 - [ ] Usé los bloques que aplicaban (tabla/cuadrícula/flujo/widget), no todo texto.
 - [ ] Cada "Pruébate" es **flashcard de escritura en el RAIL inteligente (§5.5), SIN localStorage. PROBADO** (el rail cambia de pregunta según la sección visible; no revela sin escribir).
-- [ ] Términos difíciles con definición inline.
+- [ ] Términos difíciles con definición inline **accesible por hover Y por TAP, con tooltip `position:fixed` que NO se recorta en móvil. PROBADO en móvil.**
 - [ ] Color = nivel (teal/índigo/bronce).
 - [ ] **Layout de tablero (§5.5):** barra superior (tiempo + progreso de scroll), nav lateral con secciones + glosario, y rail "Activa tu aprendizaje". **Probado en móvil Y en PC.**
 - [ ] Tablas con `class="responsive"` + `data-label` (se apilan como tarjetas en móvil).
