@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Estado de tu pago · Stramont</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="estilos.css?v=16">
+  <style>
+    /* Página de retorno de Wompi. Autocontenida (prefijo pe-). NO toca estilos.css.
+       Es solo INFORMATIVA: la confirmación real del pago la hace el webhook
+       server-side y te llega por correo. */
+    .pe-wrap{position:relative;z-index:10;width:90%;max-width:620px;margin:0 auto;padding:60px 0 90px;text-align:center;}
+    .pe-ic{width:72px;height:72px;border-radius:50%;background:rgba(45,212,191,.12);border:1px solid rgba(45,212,191,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 24px;color:#2DD4BF;}
+    .pe-ic svg{width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+    .pe-title{font-size:clamp(24px,5vw,34px);font-weight:800;color:#fff;margin:0 0 14px;letter-spacing:-.3px;}
+    .pe-msg{font-size:16px;line-height:1.7;color:var(--text-dim);margin:0 auto 14px;max-width:46ch;}
+    .pe-note{font-size:13.5px;color:var(--muted);margin:22px auto 0;max-width:44ch;line-height:1.6;}
+    .pe-ref{display:inline-block;font-size:12px;color:var(--muted);margin-top:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+    .pe-btn{display:inline-flex;align-items:center;gap:8px;margin-top:30px;background:linear-gradient(135deg,#33b6a4,#2a9d8f);color:#04130f;font-weight:800;font-size:15px;padding:14px 28px;border-radius:13px;text-decoration:none;}
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <a href="index.html" class="brand"><span class="brand-name">Stramont</span></a>
+    <nav class="nav-links"><a href="index.html">Inicio</a></nav>
+  </header>
+
+  <main class="pe-wrap">
+    <div class="pe-ic">
+      <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+    </div>
+    <h1 class="pe-title">¡Gracias por tu compra!</h1>
+    <p class="pe-msg">Estamos confirmando tu pago. En cuanto quede verificado, recibirás por <strong>correo</strong> la confirmación y tu <strong>comprobante</strong>, y empezaremos a preparar tu guía.</p>
+    <p class="pe-msg"><strong>Tu guía llegará en menos de 24 horas</strong> al correo que registraste.</p>
+    <p class="pe-note">No necesitas hacer nada más: la confirmación es automática, aunque cierres esta página. Si tienes dudas, escríbenos a <a href="mailto:contacto@montaguth.institute" style="color:var(--c1);">contacto@montaguth.institute</a>.</p>
+    <span class="pe-ref" id="peRef"></span>
+    <br>
+    <a href="index.html" class="pe-btn">Volver al inicio</a>
+  </main>
+
+  <script>
+    // Muestra la referencia de la transacción (informativo). Wompi la manda como ?id=...
+    (function(){
+      try{
+        var id = new URLSearchParams(location.search).get('id');
+        if(id){ document.getElementById('peRef').textContent = 'Referencia de pago: ' + id; }
+      }catch(e){}
+    })();
+  </script>
+
+</body>
+</html>
