@@ -773,6 +773,7 @@
     operacionesActivas = activas !== false; // default a activas si viene undefined
     var estado = document.getElementById('opsEstado');
     var btn = document.getElementById('btnOps');
+    btn.disabled = false; // rehabilitar tras cada refresco (evita que quede bloqueado tras suspender/reactivar)
     if(operacionesActivas){
       estado.innerHTML = '<span style="color:var(--ok);">ACTIVAS \u2713</span>';
       btn.textContent = 'Suspender operaciones';
