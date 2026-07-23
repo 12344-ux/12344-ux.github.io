@@ -4,17 +4,29 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Stramont · Segmentación de Mercados</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0B1220; --surface:#121B2E; --surface2:#182338; --ink:#080D16;
-    --text:#E9EDF5; --text-dim:#AEB9CC; --muted:#7C8AA3; --line:rgba(255,255,255,0.09);
-    --n1:#2DD4BF; --n1-ink:#04211D; --n2:#818CF8; --n2-ink:#171233; --n3:#D9A066; --n3-ink:#2A1B06;
-    --ok:#2DD4BF; --warn:#F87171;
-    --topbar-h:56px; --rail-w:340px; --side-w:250px;
+    --bg:#0A1614; --surface:#101B18; --surface2:#16241F; --ink:#07110E;
+    --text:#FFFFFF; --text-dim:#A8B0B8; --muted:#6E7C77; --line:rgba(60,169,143,0.15);
+    /* Un solo acento: teal. Los "niveles" se diferencian por brillo del mismo teal, no por hue. */
+    --n1:#3CA98F; --n1-ink:#04211D; --n2:#63C6AE; --n2-ink:#04211D; --n3:#2E8C78; --n3-ink:#04211D;
+    /* Acento secundario: ámbar, reservado a término clave / tiempo-urgencia / tips */
+    --amber:#C9A24B; --amber-ink:#241A05;
+    --ok:#3CA98F; --warn:#C9A24B;
+    --serif:"Fraunces",Georgia,"Times New Roman",serif;
+    --sans:"Inter","DM Sans","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+    --topbar-h:56px; --rail-w:360px; --side-w:252px;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   html{scroll-behavior:smooth;}
-  body{background:var(--bg);color:var(--text);font-family:"DM Sans","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;line-height:1.65;}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.68;position:relative;}
+  /* Textura ambiente: glow radial superior + grano sutil (profundidad táctil, sin color extra) */
+  body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(1000px 520px at 50% -10%, rgba(60,169,143,0.12), transparent 68%), radial-gradient(700px 460px at 100% 4%, rgba(60,169,143,0.05), transparent 70%);}
+  body::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.45;mix-blend-mode:soft-light;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:140px 140px;}
+  .app{position:relative;z-index:1;}
   strong{color:var(--text);}
   p{margin-bottom:14px;color:var(--text-dim);}
   a{color:var(--n1);}
@@ -22,7 +34,7 @@
   section, .ficha{scroll-margin-top:72px;}
 
   /* ===== BARRA SUPERIOR ===== */
-  .topbar{position:fixed;top:0;left:0;right:0;height:var(--topbar-h);z-index:200;display:flex;align-items:center;gap:12px;padding:0 16px;background:rgba(11,18,32,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line);}
+  .topbar{position:fixed;top:0;left:0;right:0;height:var(--topbar-h);z-index:200;display:flex;align-items:center;gap:12px;padding:0 16px;background:rgba(10,22,20,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line);}
   .tb-logo{font-size:12px;letter-spacing:4px;text-transform:uppercase;color:var(--n1);font-weight:800;white-space:nowrap;}
   .tb-title{flex:1;text-align:center;font-size:14.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .tb-tiempo{font-size:12px;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:6px;}
@@ -42,18 +54,19 @@
   .side-nav a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;color:var(--text-dim);text-decoration:none;font-size:14px;font-weight:600;margin-bottom:2px;border:1px solid transparent;}
   .side-nav a .ico{font-size:15px;width:18px;text-align:center;}
   .side-nav a:hover{background:var(--surface);color:var(--text);}
-  .side-nav a.activo{background:rgba(45,212,191,.10);border-color:rgba(45,212,191,.35);color:#fff;}
+  .side-nav a.activo{background:rgba(60,169,143,.10);border-color:rgba(60,169,143,.22);box-shadow:inset 3px 0 0 var(--n1);color:#fff;font-weight:700;}
+  .side-nav a.activo .ico{color:var(--n1);}
   .side-modo{margin:18px 8px 8px;padding-top:16px;border-top:1px solid var(--line);}
   .side-modo .control-label{font-size:12px;color:var(--muted);margin-bottom:8px;}
 
   /* ===== RAIL "ACTIVA TU APRENDIZAJE" ===== */
   .rail-eyebrow{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--n1);font-weight:800;margin-bottom:6px;}
-  .rail-card{background:var(--surface);border:1px solid rgba(45,212,191,.30);border-radius:14px;padding:16px;}
+  .rail-card{background:var(--surface);border:1px solid rgba(60,169,143,.35);border-radius:14px;padding:22px;box-shadow:0 0 26px rgba(60,169,143,.12);}
   .rail-seccion{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
   .rail-seccion b{color:var(--n2);}
   .rail-preg{font-size:15px;font-weight:700;color:#fff;margin-bottom:10px;line-height:1.4;}
   .rail textarea{width:100%;background:var(--ink);border:1px solid var(--line);color:var(--text);font-family:inherit;font-size:14px;padding:10px 12px;border-radius:8px;resize:vertical;min-height:88px;}
-  .rail textarea:focus{outline:none;border-color:var(--n1);}
+  .rail textarea:focus{outline:none;border-color:var(--n1);box-shadow:0 0 0 3px rgba(60,169,143,.16);}
   .rail-btn{margin-top:10px;width:100%;background:var(--n1);color:var(--n1-ink);border:none;border-radius:8px;padding:11px;font-size:13.5px;font-weight:800;cursor:pointer;font-family:inherit;}
   .rail-btn:hover{opacity:.9;} .rail-btn:disabled{opacity:.45;cursor:not-allowed;}
   .rail-modelo{display:none;margin-top:12px;border-top:1px solid var(--line);padding-top:12px;}
@@ -77,7 +90,7 @@
   /* ===== RESPONSIVE: el rail se vuelve barra inferior plegable ===== */
   @media (max-width:1080px){
     .app{grid-template-columns:var(--side-w) minmax(0,1fr);}
-    .rail{position:fixed;left:0;right:0;bottom:0;top:auto;height:auto;max-height:78vh;border-left:none;border-top:1px solid rgba(45,212,191,.35);background:rgba(11,18,32,.97);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:195;padding:0;}
+    .rail{position:fixed;left:0;right:0;bottom:0;top:auto;height:auto;max-height:78vh;border-left:none;border-top:1px solid rgba(60,169,143,.35);background:rgba(10,22,20,.97);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:195;padding:0;}
     .rail-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;cursor:pointer;}
     .rail-head .lbl{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--n1);font-weight:800;}
     .rail-head .preview{flex:1;text-align:right;font-size:12.5px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -98,10 +111,10 @@
 
 
   /* ===== MURO DE ACCESO (lógica intacta) ===== */
-  #muro{position:fixed;inset:0;z-index:9999;background:rgba(5,8,14,.975);display:flex;align-items:center;justify-content:center;padding:20px;}
+  #muro{position:fixed;inset:0;z-index:9999;background:rgba(6,14,12,.975);display:flex;align-items:center;justify-content:center;padding:20px;}
   .muro-card{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--n1);border-radius:16px;max-width:440px;width:100%;padding:34px 30px;text-align:center;}
   .muro-logo{font-size:13px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:16px;}
-  .muro-card h2{font-size:26px;font-weight:800;margin-bottom:8px;color:var(--text);}
+  .muro-card h2{font-family:var(--serif);font-size:28px;font-weight:600;letter-spacing:-.3px;margin-bottom:8px;color:var(--text);}
   .muro-card>p{color:var(--text-dim);font-size:15px;margin-bottom:20px;}
   .muro-input{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);font-size:16px;padding:14px 16px;border-radius:10px;}
   .muro-input:focus{outline:none;border-color:var(--n1);}
@@ -113,14 +126,14 @@
   /* ===== INTRO / PORTADA (dentro del main) ===== */
   .portada{padding:14px 0 6px;}
   .marca{font-size:12px;letter-spacing:5px;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:12px;}
-  .portada h1{font-size:clamp(30px,5.2vw,48px);font-weight:800;letter-spacing:.3px;line-height:1.08;margin-bottom:10px;}
+  .portada h1{font-family:var(--serif);font-size:clamp(32px,5.4vw,52px);font-weight:600;letter-spacing:-.5px;line-height:1.06;margin-bottom:10px;}
   .portada h1 .g{background:linear-gradient(90deg,var(--n1),var(--n2) 55%,var(--n3));-webkit-background-clip:text;background-clip:text;color:transparent;}
   .materia-linea{font-size:13.5px;color:var(--muted);margin-bottom:16px;letter-spacing:.5px;}
   .gancho{font-size:17.5px;color:var(--text-dim);max-width:660px;margin:0 0 18px;}
   .gancho b{color:var(--text);}
   .badges-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
   .badge-pill{background:var(--surface);border:1px solid var(--line);border-radius:30px;padding:6px 14px;font-size:12px;color:var(--text-dim);letter-spacing:.5px;}
-  .badge-pill.metodo{color:var(--n1);border-color:rgba(45,212,191,.4);}
+  .badge-pill.metodo{color:var(--n1);border-color:rgba(60,169,143,.4);}
   .control-label{font-size:13px;color:var(--muted);margin-bottom:10px;}
   .control{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:30px;padding:4px;gap:2px;}
   .control button{border:none;background:transparent;padding:9px 20px;border-radius:26px;font-size:13px;font-weight:700;letter-spacing:.3px;color:var(--muted);cursor:pointer;transition:.15s;font-family:inherit;}
@@ -131,53 +144,53 @@
 
 
   /* ===== SECCIONES Y FICHAS ===== */
-  section{padding:34px 0;border-bottom:1px solid var(--line);}
+  section{padding:46px 0;border-bottom:1px solid var(--line);}
   section:last-of-type{border-bottom:none;}
   .eyebrow{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--n2);font-weight:700;margin-bottom:10px;}
-  h2.titulo{font-size:24px;font-weight:800;margin-bottom:8px;line-height:1.2;color:var(--text);}
+  h2.titulo{font-family:var(--serif);font-size:28px;font-weight:600;letter-spacing:-.3px;margin-bottom:10px;line-height:1.15;color:var(--text);}
   .lead{color:var(--text-dim);font-size:16px;margin-bottom:10px;max-width:760px;}
   .parte-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:var(--surface2);color:var(--n1);font-weight:800;font-size:13px;margin-right:10px;border:1px solid var(--line);}
   .narrativa{font-size:16px;}
-  .def{background:rgba(129,140,248,.10);border-bottom:1px dashed var(--n2);color:var(--text);font-weight:600;padding:0 2px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .def{background:rgba(60,169,143,.12);border-bottom:1px dashed var(--n1);color:var(--text);font-weight:600;padding:0 2px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
   .def:focus-visible{outline:2px solid var(--n2);outline-offset:2px;border-radius:3px;}
   /* Tooltip de definición: position:fixed (relativo a la pantalla, NO a la
      tarjeta), así ningún contenedor con overflow:hidden lo recorta. Se posiciona
      por JS y se limita a los bordes del viewport. Funciona con hover, foco y TAP. */
-  .def-tip{position:fixed;top:0;left:0;z-index:9999;max-width:min(300px,92vw);background:#0B1220;color:#E9EDF5;font-size:13.5px;line-height:1.45;font-weight:500;letter-spacing:normal;text-transform:none;text-align:left;padding:10px 13px;border-radius:10px;border:1px solid rgba(129,140,248,.55);box-shadow:0 16px 40px rgba(0,0,0,.5);opacity:0;transform:translateY(4px);pointer-events:none;transition:opacity .15s ease, transform .15s ease;}
+  .def-tip{position:fixed;top:0;left:0;z-index:9999;max-width:min(300px,92vw);background:#0F1A17;color:#E9EDF5;font-size:13.5px;line-height:1.45;font-weight:500;letter-spacing:normal;text-transform:none;text-align:left;padding:10px 13px;border-radius:10px;border:1px solid rgba(60,169,143,.5);box-shadow:0 16px 40px rgba(0,0,0,.5);opacity:0;transform:translateY(4px);pointer-events:none;transition:opacity .15s ease, transform .15s ease;}
   .def-tip.on{opacity:1;transform:translateY(0);}
-  .joya{background:linear-gradient(135deg,rgba(217,160,102,.14),rgba(45,212,191,.08));border:1px solid rgba(217,160,102,.4);border-radius:16px;padding:22px 24px;}
-  .joya .eyebrow{color:var(--n3);} .joya p{color:var(--text);font-size:16px;} .joya b{color:var(--n3);}
+  .joya{background:linear-gradient(135deg,rgba(201,162,75,.13),rgba(60,169,143,.05));border:1px solid rgba(201,162,75,.4);border-radius:14px;padding:24px 26px;box-shadow:0 0 24px rgba(201,162,75,.10);}
+  .joya .eyebrow{color:var(--amber);} .joya p{color:var(--text);font-size:16px;} .joya b{color:var(--amber);}
   .secuencia{margin-top:14px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:13.5px;color:var(--text-dim);}
   .dot{width:12px;height:12px;border-radius:50%;display:inline-block;vertical-align:middle;}
   .d1{background:var(--n1);} .d2{background:var(--n2);} .d3{background:var(--n3);}
   .ficha{background:var(--surface);border:1px solid var(--line);border-radius:14px;margin:0 0 20px;overflow:hidden;}
   .ficha-head{display:flex;align-items:center;gap:14px;padding:15px 20px;border-bottom:1px solid var(--line);background:var(--surface2);}
-  .ficha-head .nombre{font-size:19px;font-weight:800;color:#fff;}
+  .ficha-head .nombre{font-family:var(--serif);font-size:21px;font-weight:600;letter-spacing:-.2px;color:#fff;}
   .ficha-head .et{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
   .num{flex:0 0 auto;width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;background:var(--surface);border:1px solid var(--line);color:var(--muted);}
   .ficha-body{padding:18px 20px;}
   .nivel-bloque{border-radius:12px;padding:15px 17px;margin-bottom:12px;border:1px solid var(--line);}
-  .nivel-bloque.niv1{background:rgba(45,212,191,.07);border-color:rgba(45,212,191,.28);}
-  .nivel-bloque.niv2{background:rgba(129,140,248,.07);border-color:rgba(129,140,248,.28);}
-  .nivel-bloque.niv3{background:rgba(217,160,102,.07);border-color:rgba(217,160,102,.30);}
+  .nivel-bloque.niv1{background:rgba(60,169,143,.09);border-color:rgba(60,169,143,.30);}
+  .nivel-bloque.niv2{background:rgba(60,169,143,.055);border-color:rgba(60,169,143,.18);}
+  .nivel-bloque.niv3{background:rgba(60,169,143,.03);border-color:rgba(60,169,143,.12);}
   .nivel-tag{display:inline-flex;align-items:center;gap:7px;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:800;margin-bottom:8px;}
   .nivel-tag.niv1{color:var(--n1);} .nivel-tag.niv2{color:var(--n2);} .nivel-tag.niv3{color:var(--n3);}
   .nivel-bloque p{color:var(--text);margin-bottom:8px;} .nivel-bloque p:last-child{margin-bottom:0;}
   .ejemplo{margin-top:10px;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px 15px;}
   .ejemplo .tag{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--n2);font-weight:700;display:block;margin-bottom:4px;}
   .ejemplo p{margin:0;color:var(--text-dim);font-size:14.5px;}
-  .altavoz{margin-top:10px;display:flex;align-items:center;gap:12px;background:rgba(217,160,102,.08);border:1px solid rgba(217,160,102,.25);border-radius:10px;padding:11px 15px;}
-  .altavoz .ico{font-size:24px;} .altavoz .txt{font-size:13.5px;color:var(--text-dim);}
+  .altavoz{margin-top:10px;display:flex;align-items:center;gap:13px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:12px 15px;}
+  .altavoz .ico{color:var(--n1);flex:0 0 auto;} .altavoz .txt{font-size:13.5px;color:var(--text-dim);}
   .etim{margin-top:10px;font-size:13.5px;color:var(--text-dim);border-left:3px solid var(--n3);padding-left:12px;}
   .etim b{color:var(--n3);}
   .conexion{margin-top:14px;display:flex;gap:12px;background:var(--surface2);border-radius:10px;padding:12px 15px;border:1px solid var(--line);}
   .conexion .ico{font-size:20px;flex:0 0 auto;} .conexion p{margin:0;font-size:13.5px;color:var(--text-dim);} .conexion b{color:var(--n2);}
 
 
-  /* ===== TÉRMINO CLAVE (callout bronce con estrella) ===== */
-  .termino-clave{display:flex;gap:12px;background:linear-gradient(135deg,rgba(217,160,102,.14),rgba(217,160,102,.04));border:1px solid rgba(217,160,102,.4);border-radius:12px;padding:14px 16px;margin:14px 0;}
-  .termino-clave .estrellita{font-size:20px;color:var(--n3);flex:0 0 auto;}
-  .termino-clave .tc-t{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--n3);font-weight:800;margin-bottom:3px;}
+  /* ===== TÉRMINO CLAVE (callout ámbar con estrella) ===== */
+  .termino-clave{display:flex;gap:12px;background:linear-gradient(135deg,rgba(201,162,75,.13),rgba(201,162,75,.03));border:1px solid rgba(201,162,75,.4);border-radius:12px;padding:15px 17px;margin:16px 0;}
+  .termino-clave .estrellita{color:var(--amber);flex:0 0 auto;}
+  .termino-clave .tc-t{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--amber);font-weight:800;margin-bottom:3px;}
   .termino-clave p{margin:0;font-size:14px;color:var(--text);}
 
   /* ===== TABLA (escritorio) + TARJETAS (móvil) ===== */
@@ -198,10 +211,10 @@
   .cuadricula2x2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .cuad-celda{border-radius:12px;padding:15px 17px;border:1px solid var(--line);}
   .cuad-celda h4{font-size:14px;margin-bottom:6px;color:#fff;} .cuad-celda p{margin:0;font-size:14px;color:var(--text-dim);}
-  .cuad-celda.f{background:rgba(45,212,191,.08);border-color:rgba(45,212,191,.3);} .cuad-celda.f h4{color:var(--n1);}
-  .cuad-celda.d{background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.3);} .cuad-celda.d h4{color:var(--warn);}
-  .cuad-celda.o{background:rgba(129,140,248,.08);border-color:rgba(129,140,248,.3);} .cuad-celda.o h4{color:var(--n2);}
-  .cuad-celda.a{background:rgba(217,160,102,.08);border-color:rgba(217,160,102,.3);} .cuad-celda.a h4{color:var(--n3);}
+  .cuad-celda.f{background:rgba(60,169,143,.09);border-color:rgba(60,169,143,.3);} .cuad-celda.f h4{color:var(--n1);}
+  .cuad-celda.o{background:rgba(60,169,143,.055);border-color:rgba(60,169,143,.2);} .cuad-celda.o h4{color:var(--n2);}
+  .cuad-celda.d{background:rgba(201,162,75,.08);border-color:rgba(201,162,75,.3);} .cuad-celda.d h4{color:var(--amber);}
+  .cuad-celda.a{background:rgba(201,162,75,.11);border-color:rgba(201,162,75,.35);} .cuad-celda.a h4{color:var(--amber);}
   .cuad-caption{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:8px;letter-spacing:.5px;text-transform:uppercase;}
   @media (max-width:560px){.cuadricula2x2{grid-template-columns:1fr;}}
 
@@ -233,10 +246,10 @@
   .pasos-hint{font-size:12px;color:var(--muted);margin-top:6px;}
 
   /* ===== RESUMEN / ANCLA / REPASO / QUIZ / CHISPA / NOTA ===== */
-  .estrella{background:linear-gradient(135deg,rgba(217,160,102,.14),rgba(45,212,191,.10));border:1px solid rgba(217,160,102,.35);border-radius:16px;padding:24px;text-align:center;}
-  .estrella .big{font-size:60px;font-weight:900;line-height:1;color:var(--n3);}
+  .estrella{background:linear-gradient(135deg,rgba(201,162,75,.13),rgba(60,169,143,.06));border:1px solid rgba(201,162,75,.35);border-radius:14px;padding:26px;text-align:center;}
+  .estrella .big{font-family:var(--serif);font-size:58px;font-weight:600;line-height:1;color:var(--amber);}
   .estrella ul{display:inline-block;text-align:left;margin-top:12px;color:var(--text-dim);}
-  .ancla{margin-top:14px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:12px 16px;font-size:14px;color:var(--text-dim);} .ancla b{color:var(--n3);}
+  .ancla{margin-top:14px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:12px 16px;font-size:14px;color:var(--text-dim);} .ancla b{color:var(--amber);}
   .repaso-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
   .rep{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;text-align:center;}
   .rep .cuando{font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--n1);font-weight:700;}
@@ -246,7 +259,7 @@
   .quiz-item{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:10px;padding:15px 17px;}
   .quiz-item .preg{font-weight:700;color:#fff;font-size:15px;display:flex;gap:8px;align-items:flex-start;margin-bottom:2px;}
   .quiz-item .preg::before{content:"?";flex:0 0 auto;width:22px;height:22px;border-radius:6px;background:var(--n2);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;margin-top:1px;}
-  .chispa{background:var(--surface);border-left:5px solid var(--n3);border-radius:0 12px 12px 0;padding:14px 18px;margin-bottom:12px;} .chispa b{color:var(--n3);}
+  .chispa{background:var(--surface);border-left:4px solid var(--amber);border-radius:0 12px 12px 0;padding:14px 18px;margin-bottom:12px;} .chispa b{color:var(--amber);}
   .nota{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:14px 18px;font-size:14px;color:var(--text-dim);margin-bottom:18px;}
 
   /* ===== GLOSARIO ===== */
@@ -322,7 +335,7 @@
         <button type="button" id="btn-express" class="activo" onclick="stramontSetModo('express')"><svg class="lic" width="14" height="14" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg> Express</button>
         <button type="button" id="btn-dominar" onclick="stramontSetModo('dominar')"><svg class="lic" width="14" height="14" viewBox="0 0 24 24"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg> Dominar</button>
       </div>
-      <p class="control-ayuda"><b>Express</b> = solo la idea (teal). <b>Dominar</b> suma conexiones (índigo) y detalle a fondo (bronce).</p>
+      <p class="control-ayuda"><b>Express</b> = solo la idea (Nivel 1). <b>Dominar</b> suma las conexiones (Nivel 2) y el detalle a fondo (Nivel 3).</p>
     </div>
   </aside>
 
@@ -343,10 +356,10 @@
       </header>
       <div class="nota" style="margin-top:18px;"><svg class="lic" width="15" height="15" viewBox="0 0 24 24" style="vertical-align:-2px"><path d="M12 18V5"/><path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"/><path d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/><path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/><path d="M18 18a4 4 0 0 0 2-7.464"/><path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/><path d="M6 18a4 4 0 0 1-2-7.464"/><path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/></svg> <strong>Cómo aprovecharla:</strong> a la derecha (o abajo, en el móvil) tienes el panel <strong>“Activa tu aprendizaje”</strong>: cambia según la sección que estés leyendo. <strong>Escribe tu respuesta antes de revelarla</strong> — eso es lo que fija el conocimiento, no releer.</div>
       <div class="secuencia">
-        <strong style="color:#fff;">El color marca la profundidad:</strong>
-        <span><span class="dot d1"></span> Teal = la idea</span>
-        <span><span class="dot d2"></span> Índigo = conecta</span>
-        <span><span class="dot d3"></span> Bronce = a fondo</span>
+        <strong style="color:#fff;">La intensidad marca la profundidad:</strong>
+        <span><span class="dot d1"></span> Nivel 1 · La idea</span>
+        <span><span class="dot d2"></span> Nivel 2 · Conecta</span>
+        <span><span class="dot d3"></span> Nivel 3 · A fondo</span>
       </div>
       <div class="joya" style="margin-top:18px;">
         <div class="eyebrow"><svg class="lic" width="14" height="14" viewBox="0 0 24 24"><path d="M10.5 3 8 9l4 13 4-13-2.5-6"/><path d="M17 3a2 2 0 0 1 1.6.8l3 4a2 2 0 0 1 .013 2.382l-7.99 10.986a2 2 0 0 1-3.247 0l-7.99-10.986A2 2 0 0 1 2.4 7.8l2.998-3.997A2 2 0 0 1 7 3z"/><path d="M2 9h20"/></svg> La joya de esta clase</div>
@@ -378,7 +391,7 @@
             <div class="nivel-tag niv3"><span class="dot d3"></span>Nivel 3 · A fondo</div>
             <div class="etim"><b>Origen:</b> "mercado" viene del latín <i>mercatus</i>, de <i>merx/mercis</i> ("mercancía"). Misma raíz de "comercio" y del dios romano Mercurio, patrono de los comerciantes.</div>
           </div>
-          <div class="altavoz"><span class="ico">🌎</span><span class="txt"><strong>Imagen para recordar:</strong> un planeta lleno de gente distinta.</span></div>
+          <div class="altavoz"><span class="ico"><svg class="lic" width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></span><span class="txt"><strong>Imagen para recordar:</strong> un planeta lleno de gente distinta.</span></div>
         </div>
       </div>
 
@@ -418,7 +431,7 @@
             <div class="nivel-tag niv3"><span class="dot d3"></span>Nivel 3 · A fondo</div>
             <div class="etim"><b>Origen del concepto:</b> como estrategia formal, la "segmentación de mercados" <b>se le suele atribuir a Wendell R. Smith</b>, en un artículo de 1956 en el Journal of Marketing: ver el mercado como <b>varios mercados pequeños y homogéneos</b>.</div>
           </div>
-          <div class="altavoz"><span class="ico">🍕</span><span class="txt"><strong>Imagen para recordar:</strong> una pizza cortada en porciones: una sola masa, varias rebanadas.</span></div>
+          <div class="altavoz"><span class="ico"><svg class="lic" width="22" height="22" viewBox="0 0 24 24"><path d="m12 14-1 1"/><path d="m13.75 18.25-1.25 1.42"/><path d="M17.775 5.654a15.68 15.68 0 0 0-12.121 12.12"/><path d="M18.8 9.3a1 1 0 0 0 2.1 7.7"/><path d="M21.964 20.732a1 1 0 0 1-1.232 1.232l-18-5a1 1 0 0 1-.695-1.232A19.68 19.68 0 0 1 15.732 2.037a1 1 0 0 1 1.232.695z"/></svg></span><span class="txt"><strong>Imagen para recordar:</strong> una pizza cortada en porciones: una sola masa, varias rebanadas.</span></div>
         </div>
       </div>
 
@@ -437,7 +450,7 @@
             <div class="nivel-tag niv2"><span class="dot d2"></span>Nivel 2 · Conecta</div>
             <p>Este es el puente hacia la ficha <a href="#f16">Estrategias (16)</a>: una vez decides que SÍ vale la pena dividir, el siguiente paso es decidir CUÁNTOS segmentos atender y con qué intensidad.</p>
           </div>
-          <div class="altavoz"><span class="ico">🎯</span><span class="txt"><strong>Imagen para recordar:</strong> una flecha justo en el centro de la diana. Puntería, no suerte.</span></div>
+          <div class="altavoz"><span class="ico"><svg class="lic" width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span><span class="txt"><strong>Imagen para recordar:</strong> una flecha justo en el centro de la diana. Puntería, no suerte.</span></div>
         </div>
       </div>
 
@@ -493,7 +506,7 @@
             <div class="nivel-tag niv1"><span class="dot d1"></span>Nivel 1 · La idea</div>
             <p>Puedes dividir también por el <strong>beneficio</strong> que busca el cliente (salud, ahorro, estatus), la <strong>ocasión</strong> (Navidad, cumpleaños), y, para venderle a empresas, la <strong>firmográfica</strong> (tamaño y sector). Casi siempre se combinan varios criterios a la vez.</p>
           </div>
-          <div class="altavoz"><span class="ico">🧰</span><span class="txt"><strong>Imagen para recordar:</strong> una caja de herramientas: los 4 tipos son la base, pero puedes sumar más.</span></div>
+          <div class="altavoz"><span class="ico"><svg class="lic" width="22" height="22" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z"/></svg></span><span class="txt"><strong>Imagen para recordar:</strong> una caja de herramientas: los 4 tipos son la base, pero puedes sumar más.</span></div>
         </div>
       </div>
 
@@ -513,7 +526,7 @@
             <div class="nivel-tag niv3"><span class="dot d3"></span>Nivel 3 · A fondo</div>
             <div class="etim"><b>El lado oscuro:</b> para conocerte tanto, las apps recogen muchísimos datos tuyos. Más puntería = menos privacidad. ¿Hasta dónde es justo?</div>
           </div>
-          <div class="altavoz"><span class="ico">🎯</span><span class="txt"><strong>Imagen para recordar:</strong> una diana cuyo centro es una sola persona.</span></div>
+          <div class="altavoz"><span class="ico"><svg class="lic" width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span><span class="txt"><strong>Imagen para recordar:</strong> una diana cuyo centro es una sola persona.</span></div>
         </div>
       </div>
 
@@ -551,13 +564,13 @@
             <div class="etim">El FODA (SWOT) <b>se le suele atribuir a Albert Humphrey</b> (Stanford Research Institute, años 60), aunque su autoría se sigue discutiendo. Su nombre original habría sido "SOFT".</div>
           </div>
           <div class="cuadricula2x2" style="margin-top:14px;">
-            <div class="cuad-celda f"><h4>💪 Fortalezas</h4><p>Clases grupales divertidas, instructores certificados.</p></div>
-            <div class="cuad-celda o"><h4>🌱 Oportunidades</h4><p>Tendencia creciente de vida sana en el barrio.</p></div>
-            <div class="cuad-celda d"><h4>⚠️ Debilidades</h4><p>Marca nueva, todavía desconocida.</p></div>
-            <div class="cuad-celda a"><h4>🚧 Amenazas</h4><p>Ya hay 3 gimnasios establecidos cerca.</p></div>
+            <div class="cuad-celda f"><h4><svg class="lic" width="15" height="15" viewBox="0 0 24 24" style="vertical-align:-2px"><path d="M16 7h6v6"/><path d="m22 7-8.5 8.5-5-5L2 17"/></svg> Fortalezas</h4><p>Clases grupales divertidas, instructores certificados.</p></div>
+            <div class="cuad-celda o"><h4><svg class="lic" width="15" height="15" viewBox="0 0 24 24" style="vertical-align:-2px"><path d="M14 9.536V7a4 4 0 0 1 4-4h1.5a.5.5 0 0 1 .5.5V5a4 4 0 0 1-4 4 4 4 0 0 0-4 4c0 2 1 3 1 5a5 5 0 0 1-1 3"/><path d="M4 9a5 5 0 0 1 8 4 5 5 0 0 1-8-4"/><path d="M5 21h14"/></svg> Oportunidades</h4><p>Tendencia creciente de vida sana en el barrio.</p></div>
+            <div class="cuad-celda d"><h4><svg class="lic" width="15" height="15" viewBox="0 0 24 24" style="vertical-align:-2px"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Debilidades</h4><p>Marca nueva, todavía desconocida.</p></div>
+            <div class="cuad-celda a"><h4><svg class="lic" width="15" height="15" viewBox="0 0 24 24" style="vertical-align:-2px"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg> Amenazas</h4><p>Ya hay 3 gimnasios establecidos cerca.</p></div>
           </div>
           <div class="cuad-caption"><span>◀ Interno (tuyo)</span><span>Externo (entorno) ▶</span></div>
-          <div class="altavoz" style="margin-top:14px;"><span class="ico">🪟</span><span class="txt"><strong>Imagen para recordar:</strong> un espejo (adentro: F y D) y una ventana (afuera: O y A).</span></div>
+          <div class="altavoz" style="margin-top:14px;"><span class="ico"><svg class="lic" width="22" height="22" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/></svg></span><span class="txt"><strong>Imagen para recordar:</strong> un espejo (adentro: F y D) y una ventana (afuera: O y A).</span></div>
         </div>
       </div>
 
@@ -623,7 +636,7 @@
             <div class="nivel-tag niv3"><span class="dot d3"></span>Nivel 3 · A fondo</div>
             <div class="etim"><b>Origen:</b> "estrategia" = griego <i>stratēgós</i> ("general"), de <i>stratos</i> ("ejército") + <i>agein</i> ("conducir"). Elegir estrategia es decidir cómo "conduce sus tropas" tu marca.</div>
           </div>
-          <div class="altavoz"><span class="ico">♟️</span><span class="txt"><strong>Imagen para recordar:</strong> piezas de ajedrez: cada jugada según el rival.</span></div>
+          <div class="altavoz"><span class="ico"><svg class="lic" width="22" height="22" viewBox="0 0 24 24"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><line x1="16" x2="20" y1="16" y2="20"/><line x1="19" x2="21" y1="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" x2="9" y1="14" y2="18"/><line x1="7" x2="4" y1="17" y2="20"/><line x1="3" x2="5" y1="19" y2="21"/></svg></span><span class="txt"><strong>Imagen para recordar:</strong> piezas de ajedrez: cada jugada según el rival.</span></div>
         </div>
       </div>
 
@@ -635,7 +648,7 @@
             <p>Buscar segmentos que <strong>nadie ha visto</strong> o nuevas formas de dividir. La creatividad encuentra "huecos" en el mercado donde no hay competencia.</p>
             <div class="ejemplo"><span class="tag">En la vida real</span><p>Cuando una marca sacó ropa deportiva para tallas grandes, descubrió un segmento ignorado por todos.</p></div>
           </div>
-          <div class="altavoz"><span class="ico">💡</span><span class="txt"><strong>Imagen para recordar:</strong> una bombilla encendida: la idea que abre un mercado nuevo.</span></div>
+          <div class="altavoz"><span class="ico"><svg class="lic" width="22" height="22" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></span><span class="txt"><strong>Imagen para recordar:</strong> una bombilla encendida: la idea que abre un mercado nuevo.</span></div>
         </div>
       </div>
 
@@ -673,7 +686,7 @@
         <div class="paso"><h4>Miramos el mercado</h4><p>Toda la gente del barrio que podría hacer ejercicio.</p></div>
         <div class="paso"><h4>Aplicamos los 4 criterios</h4><p><strong>Geo:</strong> a &lt;15 min. <strong>Demo:</strong> 25–40 años, ingresos medios. <strong>Psico:</strong> les importa verse y sentirse bien. <strong>Conductual:</strong> quieren constancia pero les falta motivación.</p></div>
         <div class="paso"><h4>Elegimos un segmento</h4><p>"Adultos jóvenes (25–40) que quieren ponerse en forma pero se aburren entrenando solos."</p></div>
-        <div class="paso"><h4>Lo pasamos por MASA</h4><p><strong>M</strong>✅ <strong>A</strong>✅ <strong>S</strong>✅ <strong>A</strong>✅. ¡Sirve!</p></div>
+        <div class="paso"><h4>Lo pasamos por MASA</h4><p><strong>M</strong><svg class="lic" width="13" height="13" viewBox="0 0 24 24" style="vertical-align:-2px;color:var(--n1)"><path d="M20 6 9 17l-5-5"/></svg> <strong>A</strong><svg class="lic" width="13" height="13" viewBox="0 0 24 24" style="vertical-align:-2px;color:var(--n1)"><path d="M20 6 9 17l-5-5"/></svg> <strong>S</strong><svg class="lic" width="13" height="13" viewBox="0 0 24 24" style="vertical-align:-2px;color:var(--n1)"><path d="M20 6 9 17l-5-5"/></svg> <strong>A</strong><svg class="lic" width="13" height="13" viewBox="0 0 24 24" style="vertical-align:-2px;color:var(--n1)"><path d="M20 6 9 17l-5-5"/></svg>. ¡Sirve!</p></div>
         <div class="paso"><h4>FODA rápido</h4><p>F: clases grupales. D: marca nueva. O: tendencia de vida sana. A: gimnasios vecinos.</p></div>
         <div class="paso"><h4>Proyectamos la demanda</h4><p>300 personas, captamos 10% = 30 clientes × $80.000 = $2.400.000/mes.</p></div>
         <div class="paso"><h4>Elegimos estrategia</h4><p>Concentrada: a fondo en ese único segmento con clases grupales motivadoras.</p></div>
@@ -766,12 +779,12 @@
   <!-- ===================== RAIL "ACTIVA TU APRENDIZAJE" (rail derecho / barra inferior en móvil) ===================== -->
   <aside class="rail" id="rail">
     <div class="rail-head" id="railHead">
-      <span class="lbl"><svg class="lic" width="15" height="15" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg> Activa tu aprendizaje</span>
+      <span class="lbl"><svg class="lic" width="15" height="15" viewBox="0 0 24 24"><path d="M12 18V5"/><path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"/><path d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/><path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/><path d="M18 18a4 4 0 0 0 2-7.464"/><path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/><path d="M6 18a4 4 0 0 1-2-7.464"/><path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/></svg> Activa tu aprendizaje</span>
       <span class="preview" id="railPreview">Toca para practicar</span>
       <span class="chev">▲</span>
     </div>
     <div class="rail-inner">
-      <div class="rail-eyebrow"><svg class="lic" width="15" height="15" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg> Activa tu aprendizaje</div>
+      <div class="rail-eyebrow"><svg class="lic" width="15" height="15" viewBox="0 0 24 24"><path d="M12 18V5"/><path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"/><path d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/><path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/><path d="M18 18a4 4 0 0 0 2-7.464"/><path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/><path d="M6 18a4 4 0 0 1-2-7.464"/><path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/></svg> Activa tu aprendizaje</div>
       <div class="rail-card">
         <div class="rail-seccion">Recuerdo activo · <b id="railSeccion">Introducción</b></div>
         <div class="rail-preg" id="railPreg">Desplázate por los conceptos y aquí aparecerá una pregunta.</div>
