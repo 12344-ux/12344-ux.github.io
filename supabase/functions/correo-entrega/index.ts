@@ -92,9 +92,10 @@ function construirTexto(nombre: string, tema: string, enlace: string, dias: numb
     ``,
     `Tu enlace estará disponible durante ${dias} días, para que vuelvas cuando lo necesites y estudies a tu ritmo.`,
     ``,
-    `Gracias por confiar en nosotros. Estás entre las primeras personas que estudian con Stramont.`,
+    `Gracias por confiar en nosotros.`,
     ``,
-    `Si quieres seguir de cerca el proyecto y más ideas sobre cómo estudiar mejor, síguenos en Instagram: ${INSTAGRAM}`,
+    `Si quieres acceder a contenido exclusivo, síguenos en Instagram: ${INSTAGRAM}`,
+    `Nuestro equipo evaluará tu solicitud.`,
     ``,
     `Cuando hayas usado la guía, nos encantará saber cómo te fue. Y si tienes cualquier duda, responde directamente a este correo.`,
     ``,
@@ -162,9 +163,8 @@ function construirHtml(nombre: string, tema: string, enlace: string, dias: numbe
           <tr>
             <td style="padding:20px 36px 0 36px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
               <p style="margin:0 0 18px 0;font-size:14.5px;line-height:1.6;color:#96a1b5;">Tu enlace estará disponible durante <strong style="color:#E9EDF5;">${d} días</strong>, para que vuelvas cuando lo necesites y estudies a tu ritmo.</p>
-              <p style="margin:0 0 14px 0;font-size:15px;line-height:1.6;color:#c3ccdb;">Gracias por confiar en nosotros.</p>
-              <p style="margin:0 0 16px 0;font-size:15.5px;line-height:1.6;color:#2DD4BF;font-weight:700;">Estás entre las primeras personas que estudian con Stramont.</p>
-              <p style="margin:0 0 18px 0;font-size:13.5px;line-height:1.6;color:#8b97ab;">Si quieres seguir de cerca el proyecto y más ideas sobre cómo estudiar mejor, síguenos en Instagram → <a href="${esc(INSTAGRAM)}" style="color:#818CF8;text-decoration:none;">@montaguth.institute</a></p>
+              <p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#c3ccdb;">Gracias por confiar en nosotros.</p>
+              <p style="margin:0 0 18px 0;font-size:13.5px;line-height:1.6;color:#8b97ab;">Si quieres acceder a contenido exclusivo, síguenos en Instagram → <a href="${esc(INSTAGRAM)}" style="color:#818CF8;text-decoration:none;">@montaguth.institute</a>. Nuestro equipo evaluará tu solicitud.</p>
               <p style="margin:0 0 4px 0;font-size:14.5px;line-height:1.6;color:#96a1b5;">Esperamos que esta guía te ayude a comprender mejor el tema. Cuando la hayas usado, nos encantará saber cómo fue tu experiencia. Y si tienes cualquier duda, <strong style="color:#E9EDF5;">responde directamente a este correo</strong>. Estamos para ayudarte.</p>
             </td>
           </tr>

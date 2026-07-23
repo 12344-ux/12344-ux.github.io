@@ -116,6 +116,29 @@
   .intake-ta{min-height:64px;resize:vertical;font-family:inherit;}
 
   footer{max-width:760px;margin:0 auto;padding:20px;text-align:center;color:var(--muted);font-size:12px;}
+
+  /* Iconos de marca (Lucide inline, reemplazan emojis) */
+  .ic-svg{width:1em;height:1em;flex:0 0 auto;vertical-align:-.14em;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
+  .ic-star{width:1em;height:1em;flex:0 0 auto;vertical-align:-.12em;fill:currentColor;}
+  .trust span svg{width:14px;height:14px;}
+  .exito .check .ic-svg{stroke-width:2.4;}
+
+  /* Bloque "Pago seguro" (Wompi) */
+  .ps-micro{display:flex;align-items:flex-start;gap:7px;font-size:12.5px;line-height:1.5;color:var(--muted);margin:12px 2px 0;}
+  .pago-seguro{margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;}
+  .ps-head{display:flex;align-items:center;gap:9px;margin-bottom:10px;}
+  .ps-head h3{font-size:15px;font-weight:800;color:var(--text);margin:0;}
+  .ps-text{font-size:13px;line-height:1.6;color:var(--dim);margin:0 0 16px;}
+  .ps-badges{display:flex;flex-wrap:wrap;align-items:center;gap:14px 24px;}
+  .ps-wompi{display:flex;align-items:center;gap:12px;}
+  .ps-wompi-logo{height:20px;width:auto;display:block;}
+  .ps-wompi-sub{font-size:11.5px;color:var(--muted);line-height:1.3;max-width:170px;}
+  .ps-card{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--dim);}
+  .pago-seguro svg,.ps-micro svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .ps-micro svg{width:14px;height:14px;flex:0 0 auto;margin-top:1px;color:var(--ok);}
+  .ps-head svg{width:18px;height:18px;flex:0 0 auto;color:var(--ok);}
+  .ps-card svg{width:16px;height:16px;flex:0 0 auto;color:var(--ok);}
+  @media(max-width:560px){ .ps-badges{flex-direction:column;align-items:flex-start;gap:14px;} }
 </style>
 </head>
 <body>
@@ -143,24 +166,24 @@
           <div class="precio">$3<small> USD</small></div>
           <div class="plan-uso">Para un tema y tu examen próximo. Acceso el tiempo justo para un ciclo de repaso: hoy, en 2 días y en 1 semana.</div>
           <ul>
-            <li><span class="ic">🧠</span> Diseñada con repaso espaciado</li>
-            <li><span class="ic">🔗</span> Enlace privado a tu correo</li>
+            <li><span class="ic"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M21.42 10.92a1 1 0 0 0-.02-1.84L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.83l8.57 3.91a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg></span> Diseñada con repaso espaciado</li>
+            <li><span class="ic"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span> Enlace privado a tu correo</li>
           </ul>
           <div class="pick">Elegir este →</div>
         </div>
         <div class="plan rec" data-plan="Acceso 30 días" data-precio="$5 USD" data-limit="45" data-dias="30">
-          <span class="badge-rec">⭐ Recomendado</span>
+          <span class="badge-rec"><svg class="ic-star" viewBox="0 0 24 24"><path d="M11.48 3.5a.56.56 0 0 1 1.04 0l2.13 4.31c.09.18.26.31.46.34l4.76.69c.5.07.7.69.34 1.04l-3.44 3.36c-.14.14-.21.34-.18.54l.81 4.74c.09.5-.44.88-.88.65l-4.26-2.24a.56.56 0 0 0-.52 0l-4.26 2.24c-.45.23-.97-.15-.88-.65l.81-4.74a.56.56 0 0 0-.16-.5L4.09 9.98c-.36-.35-.16-.97.34-1.04l4.76-.69a.56.56 0 0 0 .46-.34z"/></svg> Recomendado</span>
           <div class="pn">Acceso 30 días</div>
           <div class="precio">$5<small> USD</small></div>
           <div class="plan-uso">Para que no se te olvide después del examen. Acceso extendido para repasar varias veces en el mes y fijar la materia a largo plazo.</div>
           <ul>
-            <li><span class="ic">🧠</span> Pensada para retención a largo plazo</li>
-            <li><span class="ic">🔗</span> Enlace privado a tu correo</li>
+            <li><span class="ic"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M21.42 10.92a1 1 0 0 0-.02-1.84L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.83l8.57 3.91a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg></span> Pensada para retención a largo plazo</li>
+            <li><span class="ic"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span> Enlace privado a tu correo</li>
           </ul>
           <div class="pick">Elegir este →</div>
         </div>
       </div>
-      <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:14px;">📎 Puedes subir archivos hasta 45 MB por envío (igual en ambos planes).</p>
+      <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:14px;"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg> Puedes subir archivos hasta 45 MB por envío (igual en ambos planes).</p>
 
       <div class="despues">
         <h2 class="despues-t">¿Qué pasará después de comprar?</h2>
@@ -188,21 +211,21 @@
         <div class="incluye-t">Siempre recibirás esto</div>
         <div class="incluye-sub">No importa cuál elijas: la calidad de tu guía es siempre la misma. Lo único que cambia es cuánto tiempo la tienes disponible para repasar y fijar lo aprendido.</div>
         <div class="incluye-grid">
-          <div class="inc"><span class="ck">✓</span> Guía completamente personalizada</div>
-          <div class="inc"><span class="ck">✓</span> Explicaciones simplificadas</div>
-          <div class="inc"><span class="ck">✓</span> Ejemplos cuando se necesiten</div>
-          <div class="inc"><span class="ck">✓</span> Preguntas para practicar</div>
-          <div class="inc"><span class="ck">✓</span> Basada en ciencia del aprendizaje</div>
-          <div class="inc"><span class="ck">✓</span> Entrega en menos de 24 horas</div>
+          <div class="inc"><span class="ck"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span> Guía completamente personalizada</div>
+          <div class="inc"><span class="ck"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span> Explicaciones simplificadas</div>
+          <div class="inc"><span class="ck"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span> Ejemplos cuando se necesiten</div>
+          <div class="inc"><span class="ck"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span> Preguntas para practicar</div>
+          <div class="inc"><span class="ck"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span> Basada en ciencia del aprendizaje</div>
+          <div class="inc"><span class="ck"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span> Entrega en menos de 24 horas</div>
         </div>
       </div>
 
       <div class="trust">
-        <span>🔒 Enlace privado</span>
-        <span>📧 Entrega por correo</span>
-        <span>⚡ Menos de 24 horas</span>
-        <span>🧠 Ciencia del aprendizaje</span>
-        <span>🛡️ Pago seguro</span>
+        <span><svg class="ic-svg" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Enlace privado</span>
+        <span><svg class="ic-svg" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg> Entrega por correo</span>
+        <span><svg class="ic-svg" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg> Menos de 24 horas</span>
+        <span><svg class="ic-svg" viewBox="0 0 24 24"><path d="M21.42 10.92a1 1 0 0 0-.02-1.84L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.83l8.57 3.91a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg> Ciencia del aprendizaje</span>
+        <span><svg class="ic-svg" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg> Pago seguro</span>
       </div>
     </div>
 
@@ -215,7 +238,7 @@
       <input class="field" type="text" id="nombre" placeholder="Tu nombre completo *" autocomplete="name">
       <input class="field" type="email" id="email" placeholder="Tu correo *" autocomplete="email">
       <div class="dz" id="dz">
-        <span class="i">📎</span>
+        <span class="i"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg></span>
         <strong>Arrastra aquí tus apuntes</strong><br>
         o toca para elegir · puedes subir <strong>varias imágenes</strong> o un PDF
       </div>
@@ -236,42 +259,54 @@
     <div class="pane" id="p3">
       <span class="eyebrow">Paso 3 de 4 · Pago</span>
       <h1>Confirma tu pago</h1>
-      <div class="modo-prueba">🧪 Modo de prueba · no se cobrará dinero real</div>
+      <div class="modo-prueba"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M14 2v6a2 2 0 0 0 .24.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.75-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.45 15h11.1"/><path d="M8.5 2h7"/></svg> Modo de prueba · no se cobrará dinero real</div>
       <div class="resumen">
         <div class="lin"><span>Plan</span><span class="v" id="rPlan">—</span></div>
         <div class="lin"><span>Disponible</span><span id="rDias">—</span></div>
         <div class="lin"><span>Total</span><span class="v" id="rPrecio">—</span></div>
       </div>
       <div class="trust" style="margin-top:0;margin-bottom:18px;">
-        <span>🔒 Enlace privado</span>
-        <span>📧 Entrega por correo</span>
-        <span>⚡ Menos de 24 horas</span>
-        <span>🛡️ Pago seguro</span>
+        <span><svg class="ic-svg" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Enlace privado</span>
+        <span><svg class="ic-svg" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg> Entrega por correo</span>
+        <span><svg class="ic-svg" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg> Menos de 24 horas</span>
+        <span><svg class="ic-svg" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg> Pago seguro</span>
       </div>
       <button class="btn" id="pagar">Simular pago exitoso →</button>
+      <p class="ps-micro"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Tus pagos se procesan de forma segura a través de Wompi, la pasarela de pagos de Bancolombia.</p>
       <div class="spinner" id="spin"></div>
       <div class="err" id="err3"></div>
+      <div class="pago-seguro">
+        <div class="ps-head"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><h3>Pago seguro</h3></div>
+        <p class="ps-text">Tu pago se procesa de forma segura a través de Wompi, la pasarela de pagos de Bancolombia. Para operar como comercio, nuestra identidad fue verificada por Wompi antes de habilitar el procesamiento de pagos. Los datos de tu tarjeta son gestionados por Wompi y Stramont no puede verlos ni los almacena, para que puedas realizar tu compra con tranquilidad.</p>
+        <div class="ps-badges">
+          <div class="ps-wompi">
+            <img src="wompi-logo.svg" alt="Wompi" class="ps-wompi-logo">
+            <span class="ps-wompi-sub">Pasarela de pagos de Bancolombia</span>
+          </div>
+          <div class="ps-card"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg><span>Stramont no almacena los datos de tu tarjeta</span></div>
+        </div>
+      </div>
       <div class="row"><button class="btn btn-ghost" data-go="2">← Atrás</button></div>
     </div>
 
     <!-- PASO 4: ÉXITO -->
     <div class="pane" id="p4">
       <div class="exito">
-        <div class="check">✓</div>
+        <div class="check"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
         <h1>¡Pago confirmado!</h1>
         <p class="lead" id="exitoMsg">Recibimos tu documento correctamente.</p>
         <div class="linkbox" id="linkBox" style="display:none;"></div>
 
         <div class="linkbox" style="background:rgba(47,84,201,.08);border-color:rgba(47,84,201,.3);text-align:center;">
-          <strong>🎁 Tu regalo por confiar en nosotros</strong><br>
+          <strong><svg class="ic-svg" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8"/><path d="M16.5 8a2.5 2.5 0 0 0 0-5C13 3 12 8 12 8"/></svg> Tu regalo por confiar en nosotros</strong><br>
           <span style="color:var(--dim);font-size:14px;">Kit de plantillas para tomar apuntes con método científico (A4, tablet, Word, Notion + instructivo).</span><br>
-          <a href="kit-stramont.zip" download class="btn" style="display:inline-block;width:auto;padding:12px 26px;margin-top:14px;">📥 Descargar mi Kit gratis</a>
+          <a href="kit-stramont.zip" download class="btn" style="display:inline-block;width:auto;padding:12px 26px;margin-top:14px;"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg> Descargar mi Kit gratis</a>
         </div>
 
-        <button id="btnRecibo" class="btn" style="display:inline-block;width:auto;padding:13px 28px;margin-top:4px;">📄 Descargar mi comprobante (PDF)</button>
+        <button id="btnRecibo" class="btn" style="display:inline-block;width:auto;padding:13px 28px;margin-top:4px;"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg> Descargar mi comprobante (PDF)</button>
 
         <div class="linkbox" id="intakeBox" style="margin-top:30px;text-align:left;">
-          <strong>📝 ¿Quieres contarnos algo para personalizar tu guía?</strong><br>
+          <strong><svg class="ic-svg" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg> ¿Quieres contarnos algo para personalizar tu guía?</strong><br>
           <span style="color:var(--dim);font-size:14px;">Opcional, 30 segundos. Nos ayuda a enfocar mejor tu guía.</span>
 
           <div class="intake-q">
@@ -300,7 +335,7 @@
           <div class="err" id="intakeErr"></div>
         </div>
         <div class="linkbox" id="intakeGracias" style="display:none;text-align:center;">
-          <strong>✓ ¡Gracias! Lo tendremos en cuenta.</strong>
+          <strong><svg class="ic-svg" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg> ¡Gracias! Lo tendremos en cuenta.</strong>
         </div>
 
         <p class="nota">¿Dudas o soporte durante esta prueba? Escríbenos a <a href="mailto:contacto@montaguth.institute">contacto@montaguth.institute</a></p>
@@ -393,9 +428,9 @@
       flist.innerHTML = '';
       seleccionados.forEach(function(f, idx){
         var li=document.createElement('li');
-        li.innerHTML = '<span class="fname"><span class="ok" title="Archivo cargado">✓</span> 📄 <span class="txt">'+esc(f.name)+'</span></span>'
+        li.innerHTML = '<span class="fname"><span class="ok" title="Archivo cargado"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span> <svg class="ic-svg" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg> <span class="txt">'+esc(f.name)+'</span></span>'
           + '<span class="fmeta"><span class="peso">'+fmt(f.size)+'</span>'
-          + '<button type="button" class="rm" data-rm="'+idx+'" title="Quitar este archivo"><span class="xi">✕</span> Quitar</button></span>';
+          + '<button type="button" class="rm" data-rm="'+idx+'" title="Quitar este archivo"><span class="xi"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg></span> Quitar</button></span>';
         flist.appendChild(li);
       });
       flist.querySelectorAll('[data-rm]').forEach(function(a){
@@ -576,7 +611,7 @@
         var now = new Date();
         estado.recibo = 'STR-' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '-' + String(now.getTime()).slice(-4);
         estado.fecha = now.toLocaleString('es-CO');
-        document.getElementById('exitoMsg').innerHTML = '¡Gracias, ' + estado.nombre + '! Recibimos tu documento. Te enviaremos tu <strong>enlace de acceso exclusivo</strong> a tu correo en <strong>menos de 24 horas</strong> (disponible ' + estado.dias + ' días).<br><br>🎁 Y como regalo por confiar en nosotros, aquí tienes tu <strong>Kit de plantillas</strong> 👇';
+        document.getElementById('exitoMsg').innerHTML = '¡Gracias, ' + estado.nombre + '! Recibimos tu documento. Te enviaremos tu <strong>enlace de acceso exclusivo</strong> a tu correo en <strong>menos de 24 horas</strong> (disponible ' + estado.dias + ' días).<br><br>Y como regalo por confiar en nosotros, aquí tienes tu <strong>Kit de plantillas</strong>.';
         setTimeout(function(){ spin.style.display='none'; goto(4); }, 700);
       }catch(e){
         spin.style.display='none'; btn.disabled=false;
