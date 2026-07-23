@@ -2,10 +2,9 @@
 
 > **Para el próximo Kiro:** esto te lo escribo yo mismo, la sesión anterior, para que arranques sin perder el hilo. Está escrito como si te lo estuviera contando de viva voz. Léelo completo antes de tocar nada.
 > **Para el dueño (usuario):** en el chat nuevo, dile "Lee CONTEXTO-STRAMONT.md antes de empezar" y con eso el próximo Kiro queda al día.
-> **Última actualización:** 22 de julio de 2026 (sesión "El Cambio" + tooltip móvil de guías).
-> **EN PRODUCCIÓN (todo mergeado y desplegado):** tablero interno `informe.html` (2B) · los **3 correos** automáticos vía Resend — Correo 1 confirmación, Correo 2 entrega, Correo 3 opiniones/feedback (2C, 2D) · **Base de correos** (captura de prospectos + sección en el tablero, 2E) · el **flujo `DESARROLLA`** (10) · y las **guías rediseñadas al layout "tablero de estudio"**, que YA es el ESTÁNDAR en el chip `metodo-guias.md` (2F).
-> **EN CURSO — Frente C (rediseño de la landing):** la sección **"El Cambio" quedó TERMINADA y pulida** (mergeada, PRs #93–#100): narrativa antes→después en 2 etapas · foto REAL de apuntes desordenados (`apuntes-cliente.jpg`, bajada de Supabase) con **vista previa/lightbox** al clic · la guía como **showcase protagonista** (marco tipo ventana) · **puntos como tarjetas con color** (lado "Sin Stramont" en **gris pizarra**, NO rojo → on-brand; "Con Stramont" en teal) · CTA grande · fondo trabajado. Falta solo el **hero (C2)** → **ese es el próximo foco.** 👉 Detalle en la sección 2F.
-> **También esta sesión:** se corrigió el **tooltip de definiciones (`.def`) de las guías** para que funcione en **móvil** (antes usaba el `title` nativo, solo hover). Ahora es un tooltip `position:fixed` que abre con hover+foco+TAP y no lo recorta ningún contenedor. **Ya está reflejado en el chip `metodo-guias.md` (§6-C y checklist §8)**, así que toda guía nueva sale bien. (PR de la guía + chip: ver más abajo.)
+> **Última actualización:** 23 de julio de 2026 (sesión: rediseño TOTAL de la landing + rediseño editorial de la guía). 👉 **El detalle completo de esta sesión está en la nueva sección 2G — léela.**
+> **EN PRODUCCIÓN (todo mergeado y desplegado):** tablero interno `informe.html` (2B) · los **3 correos** automáticos vía Resend (2C, 2D) · **Base de correos** (2E) · el **flujo `DESARROLLA`** (10) · **LANDING COMPLETAMENTE REDISEÑADA** de arriba a abajo — hero pantalla-completa con visual antes→después + flecha animada, "El Cambio", "Así funciona", "Por qué confiar", "La base científica", cierre oscuro (2G) · y la **guía-demo de Segmentación con NUEVO look editorial premium** (Fraunces+Inter, íconos Lucide, teal brillante `#2DD4BF`, ámbar secundario) (2G).
+> **EN CURSO / lo último de la sesión:** el **PR #115** (fix del drawer móvil borroso) quedó **PENDIENTE DE MERGE** cuando se cerró el chat — probablemente ya esté mergeado cuando leas esto; si no, mergéalo. **PENDIENTES DEL REDISEÑO DE GUÍA (2 cosas, importantes):** (1) **auto-hospedar las fuentes** Fraunces+Inter (hoy cargan desde Google Fonts = ÚNICA dependencia externa nueva, va contra la regla de "guías autocontenidas"; embeber el woff2 para volver a cero-dependencias); (2) **llevar el rediseño editorial al chip `metodo-guias.md`** como nuevo estándar (hoy solo se aplicó a la guía de Segmentación como prueba aprobada; el chip todavía describe el look viejo). **Próximo gran pendiente de negocio sigue siendo Wompi (pago real), sección 8.**
 >
 > **TL;DR (60 segundos) si tienes prisa:** Stramont convierte apuntes en guías interactivas (método CHIP STRAMONT, sección 4). Hay un tablero interno en `informe.html` (sección 2B) donde el dueño gestiona pedidos, y un comando `DESARROLLA <pedido_id>` (sección 10) para que tú armes la guía de un pedido con autonomía. Todo pago sigue en modo simulación (Wompi real es el pendiente #1, sección 8). Regla de oro: nunca push a `main`, siempre rama+PR (sección 6). Si un merge no se refleja en el sitio tras varios minutos, no es caché — revisa GitHub Actions (sección 6.7).
 >
@@ -226,6 +225,43 @@ Para no repetir contexto por chat con muchos pedidos, se montó esto:
 
 ---
 
+## 2G. Sesión del 23 de julio — REDISEÑO TOTAL de la landing + rediseño editorial de la guía
+
+Sesión larga y muy visual. Dos grandes frentes, ambos guiados por mockups de la "IA de diseño" que el dueño trae, y ejecutados con criterio (corrigiendo lo que chocaba con la marca). **Todo lo de landing YA está mergeado y en producción; el rediseño de la guía también, salvo el fix final del drawer (#115) que quedó pendiente de merge al cerrar el chat.**
+
+### A) LANDING completa (todos los frentes cerrados, PRs #93–#109)
+La landing (`index.html`) se rediseñó de arriba a abajo. Todo el CSS va **autocontenido en `index.html`** (clases `hx-*` hero, `cx-*` El Cambio, `hf-*` Así funciona, `pc-*` Por qué confiar, `sci-*` La base científica, `cc-*` cierre); **NUNCA se toca `estilos.css`** (por eso no hubo cache-bust). Secciones, en orden:
+- **Hero (C2):** dos columnas — texto izq + **visual antes→después** der (foto de apuntes `apuntes-hero.jpg` → flecha teal → render de la guía `guia-hero.jpg`, con glow). **Llena la primera pantalla** (`min-height:calc(100vh - 48px)`) y la **flecha de scroll rebota** (animación). CTA sólido teal → `simulacion.html`. Correcciones de marca sobre el mockup: eyebrow en **teal** (no ámbar) y **"⚡ Entrega en menos de 24 horas"** (NO "+150 estudiantes", que es falso hoy). ⚠️ **EL HERO NO SE TOCA** salvo que el dueño lo pida explícitamente — sus dos imágenes (`apuntes-hero.jpg`, `guia-hero.jpg`) NO se regeneran.
+- **El Cambio:** narrativa antes→después. Foto real de apuntes desordenados `apuntes-cliente.jpg` — al final quedó **SIN marco, derecha (sin rotación), con viñeta oscura sutil** (se le quitó el marco azul porque parecía "recorte de mala calidad"). Guía como **showcase** en marco tipo ventana de app (usa `guia-segmentacion-nueva.jpg`). Puntos como **tarjetas**; lado "Sin Stramont" en **dorado bronce oscuro `#C48E3A`** (evolución: rojo → gris pizarra → dorado, por gusto del dueño), "Con Stramont" en teal. Hay un **lightbox** al clic en la foto (marco que cubre perfecto, #100).
+- **Así funciona:** infográfico — 2 tarjetas claras (pasos 1-2) + tarjeta oscura grande (paso 3, chips + "24h") + banner. **El Kit es de TOMA DE APUNTES** (NO flashcards): se respetó su copy y los mini-íconos son de apuntes.
+- **Por qué confiar** (banda clara) + **La base científica** (banda oscura): rediseñadas a tarjetas; citas reales Dunlosky 2013 / Weinstein 2018 conservadas.
+- **Cierre:** tarjeta **oscura premium** con glow teal, botón grande **"Necesito mi guía en menos de 24 horas"**, línea blanca separadora arriba. Se **quitó** "Empieza hoy. Recíbela mañana" y "Sin compromiso". **Footer: se eliminó el enlace de Instagram** (regla nueva: el IG solo va en correos, NUNCA en la landing).
+
+### B) GUÍA de Segmentación — nuevo look editorial premium (PRs #110–#115)
+Se aplicó **solo a `segmentacion-de-mercados.html`** como prueba aprobada por el dueño. Cambios (todos autocontenidos en la guía, sin tocar `estilos.css`):
+1. **Iconografía Lucide inline** (#111): se abandonaron TODOS los emojis (incluidos los mnemotécnicos coloridos 🌍🍕🎯♟️ y FODA) por **SVG de Lucide embebidos inline** (licencia **ISC**, copiados directo — **sin CDN, sin npm, cero dependencias**). Clase única **`.lic`** (`fill:none;stroke:currentColor;stroke-width:1.8`) → cada ícono **hereda el color de su sección**. Atribución Lucide en comentario. **Este es el patrón a seguir para toda iconografía.**
+2. **Rediseño editorial** (#112→#113): tipografía de 2 familias — **Fraunces** (serif display) en títulos/énfasis + **Inter** (sans) en el resto (⚠️ HOY cargan desde **Google Fonts** = única dependencia; PENDIENTE auto-hospedar). **Color disciplinado**: un solo acento **teal brillante `#2DD4BF`** (el del hero — el dueño rechazó el verde `#3CA98F` por "pesado") + **ámbar `#C9A24B`** secundario (reservado a: joya, término clave, chispa, ancla, tips). Fondo **azul-navy `#0B1220`**. **YA NO existe teal/índigo/bronce por nivel**: los 3 niveles de profundidad se distinguen por **intensidad del mismo teal** (n1 `#2DD4BF`, n2 `#67E8D6`, n3 `#14B8A6`). Sidebar con **estado activo claro** (barra izquierda teal + tinte + ícono teal). Rail "Activa tu aprendizaje" **protagonista** (cerebro teal, glow propio, foco teal en el input). Textura de fondo (glow radial + grano). Más aire (line-height 1.68).
+3. **Rail "Intentar de nuevo"** (#110): la flashcard del rail ya **se puede re-practicar** (antes revelar la respuesta era de un solo uso). Botón `railReset` que oculta la modelo, limpia el input y reinicia.
+4. **Tooltip de definiciones `.def`** (#101, sesión previa): `position:fixed` posicionado por JS → funciona con **hover + foco + TAP (móvil)** sin recortarse.
+5. **Drawer móvil** (#114 + fix #115): panel elevado (surface + sombra) que se distingue del fondo, **altura completa `100dvh`**, backdrop suave. **Lección de capas (importante):** poner `z-index` a `.app` creaba un contexto que atrapaba el `#sidebar` por debajo del `#backdrop` (body-level) → el `backdrop-filter:blur` lo borroneaba. Fix: **textura del fondo a `z-index:-1`** (detrás de todo) y **`.app` SIN z-index** → el sidebar (190) vuelve al contexto raíz por encima del backdrop (180). **Regla:** cuidado al dar z-index a contenedores; puede atrapar elementos fixed que deben flotar por encima.
+
+### Assets de imagen (ojo con cuáles se tocan)
+- `guia-segmentacion-nueva.jpg` (2720×1700, landscape) → **captura de la guía para el showcase de "El Cambio"**; se **regeneró** con el look azul nuevo (con Chromium: viewport 1360×850 dSF2, scroll a `#conceptos`, `?ok=1` quita el muro). Si el look de la guía vuelve a cambiar, **hay que regenerarla** para que la landing "se venda sola".
+- `guia-hero.jpg` (portrait) y `apuntes-hero.jpg` → **SON DEL HERO, NO TOCAR.**
+- `apuntes-cliente.jpg` → foto real de apuntes desordenados (El Cambio), bajada de Supabase con el correo de pruebas.
+
+### PENDIENTES que dejó esta sesión (retomar aquí)
+1. **Mergear #115** si no está mergeado (fix drawer borroso).
+2. **Auto-hospedar Fraunces + Inter** en la guía (embeber woff2) → volver a cero-dependencias (hoy es la única dependencia externa, choca con la regla de guías autocontenidas).
+3. **Actualizar el chip `metodo-guias.md`** con el nuevo sistema editorial (color disciplinado teal+ámbar, tipografía Fraunces/Inter, iconografía Lucide `.lic`, niveles por intensidad de teal, sidebar activo, rail protagonista). Hoy el chip todavía describe el look viejo (teal/índigo/bronce, layout tablero). **Cuando esto se haga, toda guía nueva nacerá con el look premium; mientras tanto, `segmentacion-de-mercados.html` es el esqueleto de referencia.**
+
+### Reglas de trabajo REFORZADAS esta sesión
+- **SIEMPRE rama nueva + PR por cada cambio.** Solo reusar una rama si el dueño lo dice explícitamente Y no está mergeada. El dueño **mergea muy rápido** → antes de reusar una rama, verificar con `list_pull_requests`; si ya se mergeó, el commit queda huérfano (rescatar: sync main + rama nueva + cherry-pick, o crear rama nueva desde el commit local).
+- **GitHub Pages a veces deja el `deploy` en "Queued"** (candado de concurrencia; hay runs zombis viejos). **Se destraba solo esperando un rato** (confirmado). No entrar en pánico ni asumir que es el código.
+- **Verificar SIEMPRE con Chromium** (headless en `/projects/sandbox/pw`, reinstalar con `npm i playwright-core@1.47` + `npx playwright@1.47 install chromium`; para emojis instalar `google-noto-emoji-color-fonts`). Cuidado: `read_file` de una imagen puede devolver una versión **cacheada** — si el tamaño en bytes es idéntico al render anterior, forzar nombre de archivo nuevo.
+
+---
+
 ## 3. Estado actual del sitio (archivos)
 
 | Archivo | Qué es |
@@ -326,9 +362,12 @@ Súbelo, luego mint, luego **verifica de verdad** haciendo el fetch que haría e
 
 ## 8. Pendientes / roadmap real
 
-1. **Wompi (pago real):** integrar el Payment Link, redirección de éxito, y **quitar todo lo que diga "simulación"** del sitio (badge, textos). Es lo más importante pendiente.
-2. **Correo 3 (opiniones/feedback):** ✅ EN PRODUCCIÓN (sección 2D). Fase 2 futura (no urgente): un cron que lo dispare solo (las funciones ya están listas para engancharlo). **NO hacer reenvíos/recordatorios de opinión** (decisión de marca, ver 2D).
-   - **FRENTE ACTUAL — C (rediseño de la landing, sección 2F):** "El Cambio" rediseñada al zig-zag → **PR #91 pendiente de merge**; el dueño **quiere seguir puliéndola** (ese es el foco inmediato). Luego el **hero (C2)**. Base de correos (2E), guías rediseñadas + chip estándar (2F) y los 3 correos ya están hechos.
+> **⭐ LO PRIMERO A RETOMAR (pendientes directos del rediseño de la guía, sección 2G):**
+
+1. **⭐ LLEVAR EL NUEVO DISEÑO DE GUÍA AL CHIP `metodo-guias.md` (para que TODAS las guías nuevas salgan con el look nuevo).** Hoy el rediseño editorial (Fraunces+Inter, iconografía Lucide `.lic` inline, color disciplinado teal `#2DD4BF` + ámbar `#C9A24B`, niveles por intensidad del teal —NO índigo/bronce—, sidebar activo, rail protagonista) SOLO está aplicado a `segmentacion-de-mercados.html` como prueba aprobada. El chip todavía describe el look viejo. Hasta que se actualice, usar `segmentacion-de-mercados.html` como **esqueleto de referencia** al armar cualquier guía.
+2. **⭐ AUTO-HOSPEDAR las fuentes Fraunces + Inter (cero-dependencias).** Hoy la guía las carga desde **Google Fonts** (un `<link>` externo) = la ÚNICA dependencia nueva y va contra la regla de "guías autocontenidas". Hay que **embeber los `woff2`** (base64 o archivo local) para volver a cero-dependencias.
+3. **Wompi (pago real):** integrar el Payment Link, redirección de éxito, y **quitar todo lo que diga "simulación"** del sitio (badge, textos). Es el pendiente de NEGOCIO más importante.
+4. **Correo 3 (opiniones/feedback):** ✅ EN PRODUCCIÓN (2D). Fase 2 futura (no urgente): cron que lo dispare solo. **NO hacer reenvíos/recordatorios** (decisión de marca). **Landing (Frente C) y guía: ✅ TERMINADOS** (ver 2G).
 3. **Validación legal de `condiciones.html`/`privacidad.html` (PR #68) con un abogado colombiano:** registro de base de datos ante la SIC (RNBD), transferencia internacional, formalización del responsable cuando haya recursos. El contenido ya refleja fielmente cómo funciona el sistema, pero no es asesoría legal certificada.
 4. **Borrado automático de guías vencidas** en el bucket `guias` (hoy es manual con el modo `delete` de la función `entrega`).
 5. **Asegurar el bucket `apuntes`:** limitar tamaño/MIME de subida anónima antes de un lanzamiento con más volumen (el tope de 45 MB hoy es solo del lado del cliente en `simulacion.html`).
