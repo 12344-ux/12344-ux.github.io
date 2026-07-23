@@ -362,9 +362,12 @@ Súbelo, luego mint, luego **verifica de verdad** haciendo el fetch que haría e
 
 ## 8. Pendientes / roadmap real
 
-1. **Wompi (pago real):** integrar el Payment Link, redirección de éxito, y **quitar todo lo que diga "simulación"** del sitio (badge, textos). Es lo más importante pendiente.
-2. **Correo 3 (opiniones/feedback):** ✅ EN PRODUCCIÓN (sección 2D). Fase 2 futura (no urgente): un cron que lo dispare solo (las funciones ya están listas para engancharlo). **NO hacer reenvíos/recordatorios de opinión** (decisión de marca, ver 2D).
-   - **FRENTE ACTUAL — C (rediseño de la landing, sección 2F):** "El Cambio" rediseñada al zig-zag → **PR #91 pendiente de merge**; el dueño **quiere seguir puliéndola** (ese es el foco inmediato). Luego el **hero (C2)**. Base de correos (2E), guías rediseñadas + chip estándar (2F) y los 3 correos ya están hechos.
+> **⭐ LO PRIMERO A RETOMAR (pendientes directos del rediseño de la guía, sección 2G):**
+
+1. **⭐ LLEVAR EL NUEVO DISEÑO DE GUÍA AL CHIP `metodo-guias.md` (para que TODAS las guías nuevas salgan con el look nuevo).** Hoy el rediseño editorial (Fraunces+Inter, iconografía Lucide `.lic` inline, color disciplinado teal `#2DD4BF` + ámbar `#C9A24B`, niveles por intensidad del teal —NO índigo/bronce—, sidebar activo, rail protagonista) SOLO está aplicado a `segmentacion-de-mercados.html` como prueba aprobada. El chip todavía describe el look viejo. Hasta que se actualice, usar `segmentacion-de-mercados.html` como **esqueleto de referencia** al armar cualquier guía.
+2. **⭐ AUTO-HOSPEDAR las fuentes Fraunces + Inter (cero-dependencias).** Hoy la guía las carga desde **Google Fonts** (un `<link>` externo) = la ÚNICA dependencia nueva y va contra la regla de "guías autocontenidas". Hay que **embeber los `woff2`** (base64 o archivo local) para volver a cero-dependencias.
+3. **Wompi (pago real):** integrar el Payment Link, redirección de éxito, y **quitar todo lo que diga "simulación"** del sitio (badge, textos). Es el pendiente de NEGOCIO más importante.
+4. **Correo 3 (opiniones/feedback):** ✅ EN PRODUCCIÓN (2D). Fase 2 futura (no urgente): cron que lo dispare solo. **NO hacer reenvíos/recordatorios** (decisión de marca). **Landing (Frente C) y guía: ✅ TERMINADOS** (ver 2G).
 3. **Validación legal de `condiciones.html`/`privacidad.html` (PR #68) con un abogado colombiano:** registro de base de datos ante la SIC (RNBD), transferencia internacional, formalización del responsable cuando haya recursos. El contenido ya refleja fielmente cómo funciona el sistema, pero no es asesoría legal certificada.
 4. **Borrado automático de guías vencidas** en el bucket `guias` (hoy es manual con el modo `delete` de la función `entrega`).
 5. **Asegurar el bucket `apuntes`:** limitar tamaño/MIME de subida anónima antes de un lanzamiento con más volumen (el tope de 45 MB hoy es solo del lado del cliente en `simulacion.html`).
