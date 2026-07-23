@@ -104,9 +104,9 @@
     .app{grid-template-columns:1fr;}
     .tb-burger{display:block;}
     .main{padding:8px 18px 90px;}
-    .sidebar{position:fixed;top:var(--topbar-h);bottom:0;left:0;width:min(84vw,300px);z-index:190;background:var(--bg);transform:translateX(-104%);transition:transform .25s ease;height:auto;}
+    .sidebar{position:fixed;top:var(--topbar-h);left:0;width:min(84vw,300px);height:calc(100dvh - var(--topbar-h));z-index:190;background:var(--surface);border-right:1px solid var(--line);box-shadow:12px 0 40px rgba(0,0,0,.5);overflow-y:auto;transform:translateX(-104%);transition:transform .25s ease;}
     .sidebar.abierta{transform:translateX(0);}
-    .backdrop.on{display:block;position:fixed;inset:var(--topbar-h) 0 0 0;background:rgba(0,0,0,.5);z-index:180;}
+    .backdrop.on{display:block;position:fixed;inset:var(--topbar-h) 0 0 0;background:rgba(5,9,18,.28);backdrop-filter:blur(1.5px);-webkit-backdrop-filter:blur(1.5px);z-index:180;}
   }
 
 
