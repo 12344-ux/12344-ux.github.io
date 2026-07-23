@@ -91,8 +91,23 @@
   .btn:hover{opacity:.92;}
   .btn:disabled{opacity:.45;cursor:not-allowed;}
   .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--text);}
-  .btn-back{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--dim);font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;padding:2px 0;margin-bottom:12px;transition:color .15s;}
+  .btn-back{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--dim);font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;padding:2px 0;margin-bottom:12px;transition:color .15s;text-decoration:none;}
   .btn-back:hover{color:var(--text);}
+  /* Mensaje de operaciones EN PAUSA (recepción de pedidos pausada) */
+  .pausa-box{max-width:620px;margin:10px auto 0;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:42px 34px;text-align:center;}
+  .pausa-ic{width:64px;height:64px;border-radius:50%;background:rgba(255,180,60,.12);border:1px solid rgba(255,180,60,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;color:#ffd27a;}
+  .pausa-ic svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+  .pausa-box h1{font-size:23px;font-weight:800;margin-bottom:14px;}
+  .pausa-msg{color:var(--dim);font-size:15px;line-height:1.72;margin-bottom:26px;text-align:left;}
+  .pausa-wait{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:20px;text-align:left;}
+  .pausa-wait label{display:block;font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px;}
+  .pausa-row{display:flex;gap:10px;flex-wrap:wrap;}
+  .pausa-row .field{flex:1;min-width:180px;margin-bottom:0;}
+  .pausa-priv{font-size:12px;color:var(--muted);margin-top:12px;}
+  .pausa-priv a{color:var(--azul-2);}
+  .pausa-ok{display:none;color:var(--ok);font-size:14px;font-weight:700;margin-top:8px;align-items:center;gap:8px;}
+  .pausa-ok svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto;}
+  @media(max-width:560px){ .pausa-box{padding:30px 20px;} .pausa-row .btn{width:100%;} }
   .row{display:flex;gap:12px;margin-top:8px;}
   .resumen{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:14px;}
   .resumen .lin{display:flex;justify-content:space-between;padding:4px 0;font-size:14px;color:var(--dim);}
@@ -158,6 +173,7 @@
 
     <!-- PASO 1: PAQUETE -->
     <div class="pane active" id="p1">
+      <a href="index.html" class="btn-back">← Volver al inicio</a>
       <span class="eyebrow">Paso 1 de 4 · Elige tu plan</span>
       <h1>Elige tu plan</h1>
       <p class="benefit">En menos de 24 horas recibirás una <strong>guía personalizada</strong>, lista para estudiar y basada en la <strong>ciencia del aprendizaje</strong>.</p>
@@ -337,6 +353,23 @@
         <p class="nota">¿Dudas o soporte durante esta prueba? Escríbenos a <a href="mailto:contacto@montaguth.institute">contacto@montaguth.institute</a></p>
         <p style="margin-top:24px;"><a href="index.html" class="btn btn-ghost" style="display:inline-block;width:auto;padding:12px 26px;">Volver al inicio</a></p>
       </div>
+    </div>
+    <!-- OPERACIONES EN PAUSA (oculto por defecto; se muestra si config.operaciones_activas=false) -->
+    <div class="pausa-box" id="pausaBox" style="display:none;">
+      <div class="pausa-ic"><svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></div>
+      <h1>Recepción de pedidos en pausa</h1>
+      <p class="pausa-msg">En este momento la recepción de pedidos está pausada. Creemos que entender merece tiempo. Por eso solo recibimos nuevos pedidos cuando podemos dedicarles el proceso y la revisión que merecen. Gracias por pensar en Stramont. Esperamos verte de nuevo muy pronto.</p>
+      <div class="pausa-wait">
+        <label for="waitEmail">¿Quieres que te avisemos cuando reabramos? Déjanos tu correo</label>
+        <div class="pausa-row" id="waitRow">
+          <input type="email" id="waitEmail" class="field" placeholder="tu@correo.com" autocomplete="email">
+          <button class="btn" id="waitBtn" style="width:auto;">Avísenme</button>
+        </div>
+        <div class="err" id="waitErr"></div>
+        <div class="pausa-ok" id="waitOk"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg> ¡Listo! Te avisaremos apenas reabramos.</div>
+        <p class="pausa-priv">Solo usamos tu correo para avisarte de la reapertura. <a href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a>.</p>
+      </div>
+      <p style="margin-top:24px;"><a href="index.html" class="btn btn-ghost" style="display:inline-block;width:auto;padding:12px 26px;">Volver al inicio</a></p>
     </div>
   </div>
 
@@ -664,6 +697,51 @@
       doc.save('Comprobante-Stramont-' + (estado.recibo||'recibo') + '.pdf');
     }
     document.getElementById('btnRecibo').addEventListener('click', generarRecibo);
+
+    // ====== Estado de operaciones (pausa de recepción de pedidos) ======
+    // El sitio SOLO LEE el booleano config.operaciones_activas (lectura pública,
+    // sin secretos). Si está en pausa, oculta el wizard y muestra el mensaje +
+    // la captura de lista de espera. FAIL-OPEN: si no se puede leer (error/red o
+    // la tabla aún no existe), el flujo de pago sigue normal; nunca bloqueamos
+    // ventas por un fallo transitorio de lectura.
+    function mostrarPausa(){
+      var steps = document.querySelector('.steps'); if(steps) steps.style.display = 'none';
+      document.querySelectorAll('.pane').forEach(function(p){ p.style.display = 'none'; p.classList.remove('active'); });
+      var box = document.getElementById('pausaBox'); if(box) box.style.display = 'block';
+      window.scrollTo(0, 0);
+    }
+    async function checkOperaciones(){
+      if(!SUPA_READY) return;
+      try{
+        var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        var res = await sb.from('config').select('operaciones_activas').eq('id', 1).maybeSingle();
+        if(!res.error && res.data && res.data.operaciones_activas === false){ mostrarPausa(); }
+      }catch(e){ /* fail-open: el flujo de pago sigue normal */ }
+    }
+
+    // Captura de lista de espera (reusa la Edge Function "captura" con un origen
+    // propio y claramente identificable). Misma seguridad que la captura de la
+    // demo: server-side, con validación + anti-abuso; nunca inserción pública.
+    var waitBtn = document.getElementById('waitBtn');
+    if(waitBtn){
+      waitBtn.addEventListener('click', async function(){
+        var correo = (document.getElementById('waitEmail').value || '').trim().toLowerCase();
+        var err = document.getElementById('waitErr'); err.style.display = 'none';
+        if(!/^[^@]+@[^@]+\.[^@]+$/.test(correo)){ err.textContent = 'Ingresa un correo válido.'; err.style.display = 'block'; return; }
+        var btn = this, t = btn.textContent; btn.disabled = true; btn.textContent = 'Enviando…';
+        try{
+          var r = await fetch(SUPABASE_URL + '/functions/v1/captura', {
+            method:'POST', headers:{ 'Content-Type':'application/json' },
+            body: JSON.stringify({ correo: correo, origen: 'lista_espera_reapertura' })
+          });
+          var data = await r.json().catch(function(){ return {}; });
+          if(!r.ok || !data.ok){ throw new Error(data.error || ('Error ' + r.status)); }
+          document.getElementById('waitRow').style.display = 'none';
+          document.getElementById('waitOk').style.display = 'flex';
+        }catch(e){ btn.disabled = false; btn.textContent = t; err.textContent = 'No se pudo guardar: ' + e.message; err.style.display = 'block'; }
+      });
+    }
+    checkOperaciones();
   })();
   </script>
 

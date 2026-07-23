@@ -25,7 +25,7 @@ const CORS: Record<string, string> = {
   "access-control-allow-methods": "POST, OPTIONS",
   "access-control-allow-headers": "*",
 };
-const ORIGENES_VALIDOS = ["prospecto_demo"];
+const ORIGENES_VALIDOS = ["prospecto_demo", "lista_espera_reapertura"];
 const MAX_CORREO = 120;
 const RL_MAX = 5;            // máximo de capturas
 const RL_VENTANA_MS = 60000; // por IP y por minuto

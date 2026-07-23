@@ -141,6 +141,19 @@
       <button class="btn btn-sm" id="btnRefrescar">↻ Actualizar</button>
     </div>
 
+    <!-- Estado de operaciones (interruptor Suspender / Reactivar) -->
+    <div class="card" id="opsCard">
+      <div class="top-row" style="margin-bottom:0;">
+        <div>
+          <h2 style="margin-bottom:4px;">⚙️ Operaciones</h2>
+          <div id="opsEstado" style="font-size:16px;font-weight:800;">—</div>
+        </div>
+        <button class="btn btn-sm" id="btnOps" style="display:none;">—</button>
+      </div>
+      <div class="hint" id="opsHint">Pausar detiene la recepción de <b>nuevos pedidos pagados</b> (para no cobrar algo que no puedas entregar en 24h). Los clientes que ya pagaron NO se ven afectados; nada se borra. El sitio muestra un mensaje y capta lista de espera.</div>
+      <div class="err" id="opsErr"></div>
+    </div>
+
     <!-- Capacidad de Storage -->
     <div class="card">
       <h2>📦 Espacio usado · bucket "apuntes"</h2>
@@ -233,6 +246,17 @@
           <div class="num" id="bcClientes">—</div>
           <div class="lbl">compraron</div>
         </div>
+        <div class="mini">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Lista de espera</div>
+          <div class="num" id="bcListaEspera">—</div>
+          <div class="lbl">esperan la reapertura</div>
+        </div>
+      </div>
+      <div class="op-filtros" id="bcFiltros">
+        <button class="chip on" data-fc="todos">Todos</button>
+        <button class="chip" data-fc="cliente">Clientes</button>
+        <button class="chip" data-fc="prospecto">Prospectos</button>
+        <button class="chip" data-fc="lista_espera">Lista de espera</button>
       </div>
       <div class="tabla-wrap">
         <table>
@@ -734,6 +758,7 @@
   }
 
   function pintarTodo(data){
+    pintarOperaciones(data.operaciones_activas);
     pintarStorage(data.storage);
     pintarVentas(data.ventas, data.pedidosPrueba);
     pintarPedidos(data.pedidos);
@@ -742,19 +767,74 @@
     document.getElementById('refresco').textContent = 'Actualizado: ' + new Date(data.generadoEn).toLocaleString('es-CO');
   }
 
+  // ===== Estado de operaciones (interruptor Suspender / Reactivar) =====
+  var operacionesActivas = true;
+  function pintarOperaciones(activas){
+    operacionesActivas = activas !== false; // default a activas si viene undefined
+    var estado = document.getElementById('opsEstado');
+    var btn = document.getElementById('btnOps');
+    if(operacionesActivas){
+      estado.innerHTML = '<span style="color:var(--ok);">ACTIVAS \u2713</span>';
+      btn.textContent = 'Suspender operaciones';
+      btn.className = 'btn btn-sm btn-bad';
+    } else {
+      estado.innerHTML = '<span style="color:var(--warn);">EN PAUSA \u23F8\uFE0F</span>';
+      btn.textContent = 'Reactivar operaciones';
+      btn.className = 'btn btn-sm btn-ok';
+    }
+    btn.style.display = 'inline-block';
+  }
+  async function cambiarOperaciones(estadoNuevo, btn){
+    var err = document.getElementById('opsErr'); err.style.display = 'none';
+    var t = btn.textContent; btn.disabled = true; btn.textContent = 'Guardando…';
+    try{
+      var r = await fetch(FN_URL + '?operaciones=1&estado=' + estadoNuevo + '&key=' + encodeURIComponent(secretoActual), { method:'POST' });
+      var data = await r.json().catch(function(){ return {}; });
+      if(!r.ok || !data.ok){ throw new Error(data.error || ('Error ' + r.status)); }
+      await refrescar();
+    }catch(e){
+      btn.disabled = false; btn.textContent = t;
+      err.textContent = 'No se pudo cambiar: ' + e.message; err.style.display = 'block';
+    }
+  }
+  document.getElementById('btnOps').addEventListener('click', function(){
+    var err = document.getElementById('opsErr'); err.style.display = 'none';
+    if(operacionesActivas){
+      // Suspender: seguro anti-accidente (hay que escribir SUSPENDER).
+      var t = prompt('Vas a SUSPENDER la recepción de nuevos pedidos: el sitio dejará de aceptar pagos y mostrará el mensaje de pausa (los clientes que ya pagaron no se afectan).\n\nPara confirmar, escribe:  SUSPENDER');
+      if(t === null) return;
+      if(String(t).trim().toUpperCase() !== 'SUSPENDER'){ err.textContent = 'Confirmación incorrecta: debes escribir SUSPENDER exactamente.'; err.style.display = 'block'; return; }
+      cambiarOperaciones('pausa', this);
+    } else {
+      // Reactivar: confirmación simple de un clic.
+      if(!confirm('¿Reactivar operaciones? El flujo de pago volverá a funcionar de inmediato.')) return;
+      cambiarOperaciones('activas', this);
+    }
+  });
+
   // Base de correos: prospectos (tabla correos) + clientes (pedidos), unidos.
+  var baseCorreosLista = [];
+  var filtroCorreos = 'todos';
   function pintarBaseCorreos(bc){
-    bc = bc || { lista: [], totalProspectos: 0, totalClientes: 0 };
+    bc = bc || { lista: [], totalProspectos: 0, totalClientes: 0, totalListaEspera: 0 };
     document.getElementById('bcProspectos').textContent = bc.totalProspectos;
     document.getElementById('bcClientes').textContent = bc.totalClientes;
+    var le = document.getElementById('bcListaEspera'); if(le) le.textContent = bc.totalListaEspera || 0;
+    baseCorreosLista = bc.lista || [];
+    renderBaseCorreos();
+  }
+  function renderBaseCorreos(){
     var tb = document.getElementById('bcTbody');
-    if(!bc.lista || !bc.lista.length){ tb.innerHTML = '<tr><td colspan="4" class="op-vacio">Todavía no hay correos capturados.</td></tr>'; return; }
-    tb.innerHTML = bc.lista.map(function(x){
-      var tipo = x.tipo === 'cliente'
-        ? '<span class="pill ok">cliente</span>'
+    var lista = baseCorreosLista.filter(function(x){ return filtroCorreos === 'todos' || x.tipo === filtroCorreos; });
+    if(!lista.length){ tb.innerHTML = '<tr><td colspan="4" class="op-vacio">Sin correos en este filtro.</td></tr>'; return; }
+    tb.innerHTML = lista.map(function(x){
+      var tipo = x.tipo === 'cliente' ? '<span class="pill ok">cliente</span>'
+        : x.tipo === 'lista_espera' ? '<span class="pill pend">lista de espera</span>'
         : '<span class="pill opinion">prospecto</span>';
-      var accion = x.tipo === 'prospecto'
-        ? '<button class="btn btn-bad btn-sm" data-cid="' + esc(x.id) + '" title="Eliminar prospecto">🗑</button>'
+      // Se pueden borrar prospectos y lista de espera (viven en la tabla "correos");
+      // los clientes viven en "pedidos" y no se tocan desde aquí.
+      var accion = (x.tipo === 'prospecto' || x.tipo === 'lista_espera')
+        ? '<button class="btn btn-bad btn-sm" data-cid="' + esc(x.id) + '" title="Eliminar">🗑</button>'
         : '<span style="color:var(--muted);">—</span>';
       return '<tr><td>' + esc(x.correo) + '</td><td>' + tipo + '</td><td>' + fechaLoc(x.fecha) + '</td><td>' + accion + '</td></tr>';
     }).join('');
@@ -762,6 +842,14 @@
       b.addEventListener('click', function(){ borrarCorreo(b.dataset.cid, b); });
     });
   }
+  document.querySelectorAll('#bcFiltros .chip').forEach(function(ch){
+    ch.addEventListener('click', function(){
+      document.querySelectorAll('#bcFiltros .chip').forEach(function(c){ c.classList.remove('on'); });
+      ch.classList.add('on');
+      filtroCorreos = ch.dataset.fc;
+      renderBaseCorreos();
+    });
+  });
 
   async function borrarCorreo(id, btn){
     if(!confirm('¿Eliminar este correo de la base? (Solo aplica a prospectos de la demo.)')) return;

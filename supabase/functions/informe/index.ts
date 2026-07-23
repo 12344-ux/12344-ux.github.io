@@ -290,8 +290,32 @@ Deno.serve(async (req) => {
     return json({ ok: true, id });
   }
 
+  // ---------- MODO OPERACIONES (pausar / reactivar la recepción de pedidos) ----------
+  // Cambia la bandera global config.operaciones_activas. SOLO desde el tablero
+  // (protegido por LINK_SECRET). El sitio público únicamente LEE ese booleano;
+  // nunca lo escribe (la tabla config no tiene policy de escritura pública).
+  //   POST ?operaciones=1&estado=activas|pausa&key=...
+  if (url.searchParams.get("operaciones") === "1") {
+    if (req.method !== "POST") return json({ error: "Requiere POST." }, 405);
+    const estado = url.searchParams.get("estado");
+    if (estado !== "activas" && estado !== "pausa") {
+      return json({ error: "El parámetro 'estado' debe ser 'activas' o 'pausa'." }, 400);
+    }
+    const activas = estado === "activas";
+    const { error: errCfg } = await client.from("config")
+      .update({ operaciones_activas: activas, actualizado: new Date().toISOString() })
+      .eq("id", 1);
+    if (errCfg) return json({ error: "Error actualizando la configuración: " + errCfg.message }, 500);
+    return json({ ok: true, operaciones_activas: activas });
+  }
+
   // ---------- MODO LECTURA (informe) ----------
   if (req.method !== "GET") return json({ error: "Usa GET." }, 405);
+
+  // Estado de operaciones (bandera global). Default: ACTIVAS si falta la fila/tabla
+  // (fail-open: nunca bloqueamos el tablero por un config ausente).
+  const { data: cfgRow } = await client.from("config").select("operaciones_activas").eq("id", 1).maybeSingle();
+  const operaciones_activas = cfgRow ? cfgRow.operaciones_activas !== false : true;
 
   // Capacidad de Storage (bucket "apuntes")
   const uso = await sumarBucket(client, BUCKET_APUNTES);
@@ -418,14 +442,17 @@ Deno.serve(async (req) => {
     const c = String(row.correo || "").toLowerCase().trim();
     if (!c || row.es_prueba) continue;
     if (clientesPorCorreo[c]) continue; // ya es cliente -> no duplicar
-    listaCorreos.push({ id: row.id, correo: c, tipo: "prospecto", fecha: row.creado });
+    // Distinguir el segmento de lista de espera (reapertura) del prospecto normal.
+    const tipo = row.origen === "lista_espera_reapertura" ? "lista_espera" : "prospecto";
+    listaCorreos.push({ id: row.id, correo: c, tipo, origen: row.origen, fecha: row.creado });
   }
   listaCorreos.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
   const baseCorreos = {
     totalClientes: Object.keys(clientesPorCorreo).length,
     totalProspectos: listaCorreos.filter((x) => x.tipo === "prospecto").length,
+    totalListaEspera: listaCorreos.filter((x) => x.tipo === "lista_espera").length,
     lista: listaCorreos,
   };
 
-  return json({ storage, pedidos, ventas, pedidosPrueba, opiniones, baseCorreos, generadoEn: new Date().toISOString() });
+  return json({ storage, pedidos, ventas, pedidosPrueba, opiniones, baseCorreos, operaciones_activas, generadoEn: new Date().toISOString() });
 });
