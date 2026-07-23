@@ -53,7 +53,8 @@
     /* Lightbox / vista previa ampliada de la foto de apuntes */
     .cx-lightbox{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(6,10,18,.88);backdrop-filter:blur(5px);cursor:zoom-out;}
     .cx-lightbox.on{display:flex;animation:cxfade .22s ease;}
-    .cx-lightbox img{max-width:94vw;max-height:90vh;width:auto;height:auto;border-radius:12px;border:6px solid #0B1220;box-shadow:0 34px 90px rgba(0,0,0,.6);cursor:default;animation:cxzoom .22s ease;}
+    .cx-lb-frame{border:6px solid #0B1220;border-radius:14px;overflow:hidden;background:#0B1220;line-height:0;box-shadow:0 34px 90px rgba(0,0,0,.6);cursor:default;animation:cxzoom .22s ease;max-width:94vw;max-height:90vh;}
+    .cx-lightbox img{display:block;width:auto;height:auto;max-width:calc(94vw - 12px);max-height:calc(90vh - 12px);}
     .cx-lightbox .cx-close{position:absolute;top:16px;right:18px;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.32);color:#fff;font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;}
     .cx-lightbox .cx-close:hover{background:rgba(255,255,255,.22);}
     .cx-lightbox .cx-hint{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.75);font-size:13px;letter-spacing:.3px;}
@@ -615,7 +616,7 @@
   <!-- Vista previa ampliada de la foto de "El Cambio" -->
   <div class="cx-lightbox" id="cxLightbox" role="dialog" aria-modal="true" aria-label="Vista previa de los apuntes">
     <button class="cx-close" type="button" aria-label="Cerrar vista previa">&times;</button>
-    <img id="cxLightboxImg" src="" alt="Apuntes reales de Segmentación de Mercados (vista ampliada)">
+    <div class="cx-lb-frame"><img id="cxLightboxImg" src="" alt="Apuntes reales de Segmentación de Mercados (vista ampliada)"></div>
     <span class="cx-hint">Toca fuera de la imagen o presiona Esc para cerrar</span>
   </div>
 
@@ -638,7 +639,7 @@
       }
       foto.addEventListener('click', abrir);
       // Cierra al tocar el fondo, la X, o cualquier parte que no sea la imagen.
-      lb.addEventListener('click', function(e){ if(e.target !== lbImg) cerrar(); });
+      lb.addEventListener('click', function(e){ if(e.target.closest && e.target.closest('.cx-lb-frame')) return; cerrar(); });
       document.addEventListener('keydown', function(e){ if(e.key === 'Escape') cerrar(); });
     })();
   </script>
