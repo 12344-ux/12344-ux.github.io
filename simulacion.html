@@ -91,6 +91,8 @@
   .btn:hover{opacity:.92;}
   .btn:disabled{opacity:.45;cursor:not-allowed;}
   .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--text);}
+  .btn-back{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--dim);font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;padding:2px 0;margin-bottom:12px;transition:color .15s;}
+  .btn-back:hover{color:var(--text);}
   .row{display:flex;gap:12px;margin-top:8px;}
   .resumen{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:14px;}
   .resumen .lin{display:flex;justify-content:space-between;padding:4px 0;font-size:14px;color:var(--dim);}
@@ -239,8 +241,8 @@
       <input class="field" type="email" id="email" placeholder="Tu correo *" autocomplete="email">
       <div class="dz" id="dz">
         <span class="i"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg></span>
-        <strong>Arrastra aquí tus apuntes</strong><br>
-        o toca para elegir · puedes subir <strong>varias imágenes</strong> o un PDF
+        <strong>Arrastra o carga aquí tus apuntes</strong><br>
+        o toca para elegir · imágenes o PDF, hasta 45 MB en total
       </div>
       <input type="file" id="file" accept="image/*,application/pdf" multiple hidden>
       <ul class="flist" id="flist"></ul>
@@ -257,6 +259,7 @@
 
     <!-- PASO 3: PAGO SIMULADO -->
     <div class="pane" id="p3">
+      <button class="btn-back" type="button" data-go="2">← Volver a mis datos</button>
       <span class="eyebrow">Paso 3 de 4 · Pago</span>
       <h1>Confirma tu pago</h1>
       <div class="modo-prueba"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M14 2v6a2 2 0 0 0 .24.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.75-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.45 15h11.1"/><path d="M8.5 2h7"/></svg> Modo de prueba · no se cobrará dinero real</div>
@@ -286,7 +289,6 @@
           <div class="ps-card"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg><span>Stramont no almacena los datos de tu tarjeta</span></div>
         </div>
       </div>
-      <div class="row"><button class="btn btn-ghost" data-go="2">← Atrás</button></div>
     </div>
 
     <!-- PASO 4: ÉXITO -->
@@ -296,12 +298,6 @@
         <h1>¡Pago confirmado!</h1>
         <p class="lead" id="exitoMsg">Recibimos tu documento correctamente.</p>
         <div class="linkbox" id="linkBox" style="display:none;"></div>
-
-        <div class="linkbox" style="background:rgba(47,84,201,.08);border-color:rgba(47,84,201,.3);text-align:center;">
-          <strong><svg class="ic-svg" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8"/><path d="M16.5 8a2.5 2.5 0 0 0 0-5C13 3 12 8 12 8"/></svg> Tu regalo por confiar en nosotros</strong><br>
-          <span style="color:var(--dim);font-size:14px;">Kit de plantillas para tomar apuntes con método científico (A4, tablet, Word, Notion + instructivo).</span><br>
-          <a href="kit-stramont.zip" download class="btn" style="display:inline-block;width:auto;padding:12px 26px;margin-top:14px;"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg> Descargar mi Kit gratis</a>
-        </div>
 
         <button id="btnRecibo" class="btn" style="display:inline-block;width:auto;padding:13px 28px;margin-top:4px;"><svg class="ic-svg" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg> Descargar mi comprobante (PDF)</button>
 
@@ -611,7 +607,7 @@
         var now = new Date();
         estado.recibo = 'STR-' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '-' + String(now.getTime()).slice(-4);
         estado.fecha = now.toLocaleString('es-CO');
-        document.getElementById('exitoMsg').innerHTML = '¡Gracias, ' + estado.nombre + '! Recibimos tu documento. Te enviaremos tu <strong>enlace de acceso exclusivo</strong> a tu correo en <strong>menos de 24 horas</strong> (disponible ' + estado.dias + ' días).<br><br>Y como regalo por confiar en nosotros, aquí tienes tu <strong>Kit de plantillas</strong>.';
+        document.getElementById('exitoMsg').innerHTML = '¡Gracias, ' + estado.nombre + '! Recibimos tu documento. Te enviaremos tu <strong>enlace de acceso exclusivo</strong> a tu correo en <strong>menos de 24 horas</strong> (disponible ' + estado.dias + ' días).<br><br>Además, te enviamos por correo un <strong>Kit de plantillas</strong> de regalo para empezar a tomar mejores apuntes desde hoy.';
         setTimeout(function(){ spin.style.display='none'; goto(4); }, 700);
       }catch(e){
         spin.style.display='none'; btn.disabled=false;
