@@ -356,7 +356,12 @@ Deno.serve(async (req) => {
   }
 
   const ahora = Date.now();
-  const pedidos = (pedidosRaw || []).map((p: any) => {
+  // Solo mostramos en el tablero los pedidos con pago APROBADO (o de prueba,
+  // para poder probar). Los checkouts abandonados/sin pagar NO ensucian la
+  // lista; su correo se captura aparte como "carrito abandonado" (base de correos).
+  const pedidos = (pedidosRaw || [])
+    .filter((p: any) => p.estado_pago === "aprobado" || esCorreoPrueba(p.correo))
+    .map((p: any) => {
     const horasDesdeCompra = p.fecha_compra ? (ahora - new Date(p.fecha_compra).getTime()) / 3_600_000 : 0;
     const it = intakePorPedido[p.pedido_id] || null;
     return {
@@ -448,11 +453,30 @@ Deno.serve(async (req) => {
     const tipo = row.origen === "lista_espera_reapertura" ? "lista_espera" : "prospecto";
     listaCorreos.push({ id: row.id, correo: c, tipo, origen: row.origen, fecha: row.creado });
   }
+  // Carrito abandonado: empezaron el checkout (se creó el pedido) pero el pago
+  // nunca se aprobó. Capturamos su correo como lead de seguimiento, SIN
+  // mostrarlos en la lista de pedidos.
+  const yaEnLista = new Set(listaCorreos.map((x: any) => x.correo));
+  const carritoPorCorreo: Record<string, string> = {};
+  for (const p of (pedidosRaw || [])) {
+    const c = String(p.correo || "").toLowerCase().trim();
+    if (!c || esCorreoPrueba(c)) continue;
+    if (p.estado_pago === "aprobado") continue;            // ya es cliente
+    if (clientesPorCorreo[c] || yaEnLista.has(c)) continue; // ya aparece en otro segmento
+    if (!carritoPorCorreo[c] || new Date(p.fecha_compra) > new Date(carritoPorCorreo[c])) {
+      carritoPorCorreo[c] = p.fecha_compra;
+    }
+  }
+  for (const c of Object.keys(carritoPorCorreo)) {
+    listaCorreos.push({ correo: c, tipo: "carrito", fecha: carritoPorCorreo[c] });
+  }
+
   listaCorreos.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
   const baseCorreos = {
     totalClientes: Object.keys(clientesPorCorreo).length,
     totalProspectos: listaCorreos.filter((x) => x.tipo === "prospecto").length,
     totalListaEspera: listaCorreos.filter((x) => x.tipo === "lista_espera").length,
+    totalCarrito: listaCorreos.filter((x) => x.tipo === "carrito").length,
     lista: listaCorreos,
   };
 

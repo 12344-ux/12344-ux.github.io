@@ -252,12 +252,18 @@
           <div class="num" id="bcListaEspera">—</div>
           <div class="lbl">esperan la reapertura</div>
         </div>
+        <div class="mini">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Carrito (no pagó)</div>
+          <div class="num" id="bcCarrito">—</div>
+          <div class="lbl">empezaron pero no pagaron</div>
+        </div>
       </div>
       <div class="op-filtros" id="bcFiltros">
         <button class="chip on" data-fc="todos">Todos</button>
         <button class="chip" data-fc="cliente">Clientes</button>
         <button class="chip" data-fc="prospecto">Prospectos</button>
         <button class="chip" data-fc="lista_espera">Lista de espera</button>
+        <button class="chip" data-fc="carrito">Carrito (no pagó)</button>
       </div>
       <div class="tabla-wrap">
         <table>
@@ -841,6 +847,7 @@
     document.getElementById('bcProspectos').textContent = bc.totalProspectos;
     document.getElementById('bcClientes').textContent = bc.totalClientes;
     var le = document.getElementById('bcListaEspera'); if(le) le.textContent = bc.totalListaEspera || 0;
+    var ca = document.getElementById('bcCarrito'); if(ca) ca.textContent = bc.totalCarrito || 0;
     baseCorreosLista = bc.lista || [];
     renderBaseCorreos();
   }
@@ -851,6 +858,7 @@
     tb.innerHTML = lista.map(function(x){
       var tipo = x.tipo === 'cliente' ? '<span class="pill ok">cliente</span>'
         : x.tipo === 'lista_espera' ? '<span class="pill pend">lista de espera</span>'
+        : x.tipo === 'carrito' ? '<span class="pill nopago">carrito · no pagó</span>'
         : '<span class="pill opinion">prospecto</span>';
       // Se pueden borrar prospectos y lista de espera (viven en la tabla "correos");
       // los clientes viven en "pedidos" y no se tocan desde aquí.
