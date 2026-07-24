@@ -10,9 +10,11 @@
 //
 // ANTI-MANIPULACIÓN DEL MONTO: el navegador NO decide cuánto se cobra. Esta
 // función lee el pedido (creado justo antes, en estado 'pendiente'), toma su
-// plan (dias_acceso) y saca el monto en centavos COP de un SECRETO de entorno
-// que TÚ configuras (PRECIO_10_COP_CENTS / PRECIO_30_COP_CENTS). Así nadie
-// puede firmar un monto arbitrario ni cobrarse $1 por un plan de $5.
+// plan (dias_acceso) y su PRECIO EN USD de un SECRETO que TÚ configuras
+// (PRECIO_10_USD / PRECIO_30_USD). El sitio muestra el precio en USD, pero
+// Wompi solo cobra en COP: por eso aquí se convierte USD -> COP a la TASA DEL
+// MOMENTO (TRM oficial de Colombia, con respaldos) y se firma ese monto COP.
+// Así nadie puede firmar un monto arbitrario ni cobrarse $1 por un plan de $5.
 //
 //   POST { "pedido_id": "P30-260724-xxxx" }
 //   -> { reference, amountInCents, currency:"COP", signature }
@@ -38,6 +40,40 @@ function json(body: unknown, status = 200) {
 async function sha256Hex(texto: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(texto));
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Rango sano de la tasa COP/USD (evita cobrar montos absurdos si una fuente
+// devuelve basura). El USD/COP ha estado ~3.500–5.000; 2.000–10.000 es un cerco amplio.
+function trmValida(v: number): boolean {
+  return Number.isFinite(v) && v >= 2000 && v <= 10000;
+}
+
+// Tasa USD -> COP del momento. Prioridad: (1) TRM oficial de Colombia
+// (datos.gov.co) -> (2) open.er-api.com (sin llave) -> (3) secreto TRM_FALLBACK.
+// Valida el rango en cada fuente. Si ninguna sirve, lanza error (no cobra).
+async function obtenerTRM(): Promise<number> {
+  try {
+    const r = await fetch(
+      "https://www.datos.gov.co/resource/32sa-8pi3.json?$select=valor&$order=vigenciadesde%20DESC&$limit=1",
+      { headers: { "accept": "application/json" } },
+    );
+    if (r.ok) {
+      const j = await r.json();
+      const v = Number(j?.[0]?.valor);
+      if (trmValida(v)) return v;
+    }
+  } catch (_e) { /* pasamos al respaldo */ }
+  try {
+    const r = await fetch("https://open.er-api.com/v6/latest/USD");
+    if (r.ok) {
+      const j = await r.json();
+      const v = Number(j?.rates?.COP);
+      if (trmValida(v)) return v;
+    }
+  } catch (_e) { /* pasamos al respaldo */ }
+  const fb = Number(Deno.env.get("TRM_FALLBACK"));
+  if (trmValida(fb)) return fb;
+  throw new Error("sin fuente de tasa USD->COP válida (configura el secreto TRM_FALLBACK).");
 }
 
 function sb() {
@@ -76,20 +112,29 @@ Deno.serve(async (req) => {
   if (!row) return json({ error: "Pedido no encontrado." }, 404);
   if (row.estado_pago === "aprobado") return json({ error: "Este pedido ya está pagado." }, 409);
 
-  // Monto en centavos COP según el plan, tomado de SECRETOS DE ENTORNO (los
-  // configuras tú; nunca los inventa el código ni el navegador).
+  // Precio en USD del plan (lo fijas tú vía secreto). El sitio muestra USD; el
+  // cobro se hace en COP a la tasa del día (Wompi solo cobra en COP).
   const dias = Number(row.dias_acceso);
-  const envPrecio = dias === 10 ? "PRECIO_10_COP_CENTS" : dias === 30 ? "PRECIO_30_COP_CENTS" : "";
-  const montoStr = envPrecio ? Deno.env.get(envPrecio) : "";
-  const amountInCents = Number(montoStr);
-  if (!envPrecio || !montoStr || !Number.isInteger(amountInCents) || amountInCents <= 0) {
+  const envPrecio = dias === 10 ? "PRECIO_10_USD" : dias === 30 ? "PRECIO_30_USD" : "";
+  const usd = envPrecio ? Number(Deno.env.get(envPrecio)) : NaN;
+  if (!envPrecio || !Number.isFinite(usd) || usd <= 0) {
     return json({
-      error: "Monto no configurado para este plan. Define el secreto " +
-        (envPrecio || "PRECIO_<dias>_COP_CENTS") + " en Supabase (centavos COP, entero).",
+      error: "Precio USD no configurado para este plan. Define el secreto " +
+        (envPrecio || "PRECIO_<dias>_USD") + " en Supabase (dólares, ej. 3).",
     }, 500);
   }
 
+  // Tasa USD -> COP del momento (TRM oficial, con respaldos). El monto se
+  // "congela" aquí, justo al iniciar el pago.
+  let trm: number;
+  try {
+    trm = await obtenerTRM();
+  } catch (e) {
+    return json({ error: "No se pudo obtener la tasa USD->COP: " + (e as Error).message }, 502);
+  }
+
   const currency = "COP";
+  const amountInCents = Math.round(usd * trm * 100); // centavos de COP
   const signature = await sha256Hex(`${pedidoId}${amountInCents}${currency}${SECRET}`);
-  return json({ reference: pedidoId, amountInCents, currency, signature });
+  return json({ reference: pedidoId, amountInCents, currency, signature, usd, trm });
 });
