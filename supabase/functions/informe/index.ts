@@ -362,7 +362,7 @@ Deno.serve(async (req) => {
     return {
       ...p,
       es_prueba: esCorreoPrueba(p.correo),
-      alerta_pendiente: !p.guia_entregada && horasDesdeCompra >= HORAS_ALERTA,
+      alerta_pendiente: p.estado_pago === "aprobado" && !p.guia_entregada && horasDesdeCompra >= HORAS_ALERTA,
       horas_desde_compra: Math.round(horasDesdeCompra),
       intake: it ? { uso: it.uso, cuesta: it.cuesta, extra: it.extra } : null,
       feedback: feedbackPorPedido[p.pedido_id]
@@ -407,7 +407,8 @@ Deno.serve(async (req) => {
     const enRango = (pedidosRaw || []).filter((p: any) =>
       p.fecha_compra &&
       new Date(p.fecha_compra).getTime() >= desde &&
-      !esCorreoPrueba(p.correo)
+      !esCorreoPrueba(p.correo) &&
+      p.estado_pago === "aprobado" // SOLO pagos confirmados por el webhook (no checkouts abandonados)
     );
     const porPlan: Record<string, number> = {};
     let ingreso = 0;
@@ -432,6 +433,7 @@ Deno.serve(async (req) => {
   for (const p of (pedidosRaw || [])) {
     const c = String(p.correo || "").toLowerCase().trim();
     if (!c || esCorreoPrueba(c)) continue;
+    if (p.estado_pago !== "aprobado") continue; // solo clientes que SÍ pagaron
     // nos quedamos con la compra más antigua como "fecha de alta" del cliente
     if (!clientesPorCorreo[c] || new Date(p.fecha_compra) < new Date(clientesPorCorreo[c].fecha)) {
       clientesPorCorreo[c] = { correo: c, tipo: "cliente", fecha: p.fecha_compra };
