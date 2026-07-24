@@ -10,8 +10,9 @@
 //
 // ANTI-MANIPULACIÓN DEL MONTO: el navegador NO decide cuánto se cobra. Esta
 // función lee el pedido (creado justo antes, en estado 'pendiente'), toma su
-// plan (dias_acceso) y su PRECIO EN USD de un SECRETO que TÚ configuras
-// (PRECIO_10_USD / PRECIO_30_USD). El sitio muestra el precio en USD, pero
+// plan (dias_acceso) y su PRECIO EN USD (por defecto 10d=$3, 30d=$5; se puede
+// sobreescribir con los secretos PRECIO_10_USD / PRECIO_30_USD). El sitio
+// muestra el precio en USD, pero
 // Wompi solo cobra en COP: por eso aquí se convierte USD -> COP a la TASA DEL
 // MOMENTO (TRM oficial de Colombia, con respaldos) y se firma ese monto COP.
 // Así nadie puede firmar un monto arbitrario ni cobrarse $1 por un plan de $5.
@@ -112,16 +113,18 @@ Deno.serve(async (req) => {
   if (!row) return json({ error: "Pedido no encontrado." }, 404);
   if (row.estado_pago === "aprobado") return json({ error: "Este pedido ya está pagado." }, 409);
 
-  // Precio en USD del plan (lo fijas tú vía secreto). El sitio muestra USD; el
+  // Precio en USD del plan. Por defecto: 10 días = $3, 30 días = $5.
+  // Se pueden cambiar SIN tocar código con los secretos PRECIO_10_USD /
+  // PRECIO_30_USD (si algún día suben los precios). El sitio muestra USD; el
   // cobro se hace en COP a la tasa del día (Wompi solo cobra en COP).
   const dias = Number(row.dias_acceso);
+  const defaultUsd = dias === 10 ? 3 : dias === 30 ? 5 : 0;
   const envPrecio = dias === 10 ? "PRECIO_10_USD" : dias === 30 ? "PRECIO_30_USD" : "";
-  const usd = envPrecio ? Number(Deno.env.get(envPrecio)) : NaN;
-  if (!envPrecio || !Number.isFinite(usd) || usd <= 0) {
-    return json({
-      error: "Precio USD no configurado para este plan. Define el secreto " +
-        (envPrecio || "PRECIO_<dias>_USD") + " en Supabase (dólares, ej. 3).",
-    }, 500);
+  const raw = envPrecio ? Deno.env.get(envPrecio) : undefined;
+  const usdEnv = raw ? Number(raw) : NaN;
+  const usd = (Number.isFinite(usdEnv) && usdEnv > 0) ? usdEnv : defaultUsd;
+  if (!usd || usd <= 0) {
+    return json({ error: "Plan sin precio (dias_acceso inesperado: " + row.dias_acceso + ")." }, 500);
   }
 
   // Tasa USD -> COP del momento (TRM oficial, con respaldos). El monto se
