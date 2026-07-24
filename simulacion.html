@@ -396,7 +396,7 @@
        - La firma de integridad y el MONTO en COP los calcula el servidor
          (función wompi-firma); el navegador nunca ve el secreto ni fija el monto.
        - El pago se confirma por WEBHOOK server-side, no por esta página. */
-    var WOMPI_PUBLIC_KEY = "";
+    var WOMPI_PUBLIC_KEY = "pub_prod_cgh6AAtgyESVCHFFTMo7YE3Ze9VxMyWe";
     var WOMPI_REDIRECT_URL = "https://montaguth.institute/pago-estado.html";
     var PAGO_REAL = /^pub_(prod|test)_/.test(WOMPI_PUBLIC_KEY);
     /* ======================================== */
