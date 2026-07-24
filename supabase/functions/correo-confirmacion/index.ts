@@ -67,12 +67,31 @@ function esc(s: unknown): string {
 }
 
 // Versión de texto plano (multipart mejora la entregabilidad / anti-spam).
-function construirTexto(nombre: string, tema: string, dias: number | string): string {
+interface Comprobante { pedidoId: string; plan: string; monto: string; fecha: string; }
+
+function fmtMonto(cents: number | null | undefined, moneda: string | null | undefined): string {
+  if (!cents && cents !== 0) return "";
+  const pesos = Number(cents) / 100;
+  let s: string;
+  try { s = pesos.toLocaleString("es-CO"); } catch { s = String(pesos); }
+  return "$" + s + " " + (moneda || "COP");
+}
+
+function construirTexto(nombre: string, tema: string, dias: number | string, comp: Comprobante | null): string {
+  const compLineas = comp ? [
+    `--- Comprobante de pago ---`,
+    `No. de pedido: ${comp.pedidoId}`,
+    `Plan: ${comp.plan}`,
+    `Monto pagado: ${comp.monto}`,
+    `Fecha: ${comp.fecha}`,
+    ``,
+  ] : [];
   return [
     `Hola, ${nombre}.`,
     ``,
     `Todo salió bien. Ya recibimos tu pago y también tus apuntes sobre ${tema}.`,
     ``,
+    ...compLineas,
     `Desde este momento nuestro equipo empezará a convertirlos en una guía de estudio personalizada.`,
     ``,
     `¿Qué pasará ahora?`,
@@ -92,10 +111,26 @@ function construirTexto(nombre: string, tema: string, dias: number | string): st
   ].join("\n");
 }
 
-function construirHtml(nombre: string, tema: string, dias: number | string): string {
+function construirHtml(nombre: string, tema: string, dias: number | string, comp: Comprobante | null): string {
   const n = esc(nombre);
   const t = esc(tema);
   const d = esc(dias);
+  const fila = (k: string, v: string) =>
+    `<tr><td style="padding:3px 0;color:#96a1b5;font-size:13px;">${esc(k)}</td><td style="padding:3px 0;text-align:right;color:#E9EDF5;font-size:13px;font-weight:700;">${esc(v)}</td></tr>`;
+  const compHtml = comp ? `
+          <tr>
+            <td style="padding:6px 36px 0 36px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+              <div style="border:1px solid rgba(255,255,255,0.10);border-radius:12px;padding:16px 18px;">
+                <div style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#2DD4BF;font-weight:700;margin-bottom:10px;">Comprobante de pago</div>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  ${fila("No. de pedido", comp.pedidoId)}
+                  ${fila("Plan", comp.plan)}
+                  ${fila("Monto pagado", comp.monto)}
+                  ${fila("Fecha", comp.fecha)}
+                </table>
+              </div>
+            </td>
+          </tr>` : "";
   const preheader = "Pago confirmado \u2713 \u00b7 Apuntes recibidos \u2713 \u00b7 Tu gu\u00eda llegar\u00e1 en menos de 24 horas.";
   return `<!DOCTYPE html>
 <html lang="es">
@@ -127,7 +162,7 @@ function construirHtml(nombre: string, tema: string, dias: number | string): str
               <p style="margin:0 0 18px 0;font-size:15.5px;line-height:1.65;color:#c3ccdb;">Ya recibimos tu pago y también tus apuntes sobre <strong style="color:#E9EDF5;">${t}</strong>.</p>
               <p style="margin:0 0 24px 0;font-size:15.5px;line-height:1.65;color:#c3ccdb;">Desde este momento nuestro equipo empezará a convertirlos en una guía de estudio personalizada, diseñada para ayudarte a comprender el tema con mayor claridad y estudiar de forma más organizada.</p>
             </td>
-          </tr>
+          </tr>${compHtml}
           <tr>
             <td style="padding:0 36px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
               <div style="font-size:13px;text-transform:uppercase;letter-spacing:1px;color:#818CF8;font-weight:700;margin-bottom:14px;">¿Qué pasará ahora?</div>
@@ -202,6 +237,14 @@ Deno.serve(async (req) => {
   const correo = String(row.correo);
   const dias = row.dias_acceso || "";
   const tema = "tu materia"; // el tema no se conoce en el momento de la compra
+  // Comprobante de pago: solo si el pedido ya tiene datos de pago (flujo Wompi
+  // por webhook). En modo simulación (sin monto) NO se muestra -> correo igual que antes.
+  const comp: Comprobante | null = (row.monto_cents !== null && row.monto_cents !== undefined) ? {
+    pedidoId: String(row.pedido_id || pedidoId),
+    plan: String(row.plan || ("Acceso " + (row.dias_acceso || "") + " días")),
+    monto: fmtMonto(row.monto_cents, row.moneda),
+    fecha: row.pagado_en ? new Date(row.pagado_en).toLocaleString("es-CO") : new Date().toLocaleString("es-CO"),
+  } : null;
   const prueba = esCorreoPrueba(correo);
   const asunto = (prueba ? "[TEST] " : "") + (nombre ? nombre + ", " : "") + "ya recibimos tus apuntes.";
 
@@ -216,8 +259,8 @@ Deno.serve(async (req) => {
       to: [correo],
       reply_to: REPLY_TO,
       subject: asunto,
-      html: construirHtml(nombre, tema, dias),
-      text: construirTexto(nombre, tema, dias),
+      html: construirHtml(nombre, tema, dias, comp),
+      text: construirTexto(nombre, tema, dias, comp),
       headers: { "X-Entity-Ref-ID": pedidoId },
     }),
   });

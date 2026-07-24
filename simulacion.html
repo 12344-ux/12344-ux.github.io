@@ -284,6 +284,7 @@
         <div class="lin"><span>Disponible</span><span id="rDias">—</span></div>
         <div class="lin"><span>Total</span><span class="v" id="rPrecio">—</span></div>
       </div>
+      <p class="cop-nota" style="display:none;font-size:12px;color:var(--muted);margin:-4px 0 16px;line-height:1.5;">El precio se muestra en USD. El cobro se realiza en pesos colombianos (COP) a la tasa de cambio del día; verás el monto exacto en COP en la pantalla de pago de Wompi.</p>
       <div class="trust" style="margin-top:0;margin-bottom:18px;">
         <span><svg class="ic-svg" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Enlace privado</span>
         <span><svg class="ic-svg" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg> Entrega por correo</span>
@@ -384,6 +385,20 @@
     var SUPABASE_ANON_KEY = "sb_publishable_VqJi_KckupruFwz1DWynVA_qt-wlZLU";
     var BUCKET = "apuntes";
     var SUPA_READY = SUPABASE_URL.indexOf("TU-PROYECTO") === -1 && SUPABASE_ANON_KEY !== "TU_ANON_KEY";
+    /* ======================================== */
+
+    /* ====== WOMPI (pago real) ======
+       Pega aquí tu LLAVE PÚBLICA de Wompi (empieza por pub_prod_ para producción
+       o pub_test_ para probar en sandbox). Es PÚBLICA: es seguro tenerla aquí.
+       - Si queda VACÍA, el sitio sigue en MODO SIMULACIÓN (nada cambia).
+       - La llave PRIVADA y los secretos (integridad, eventos) van SOLO en
+         Supabase, NUNCA aquí.
+       - La firma de integridad y el MONTO en COP los calcula el servidor
+         (función wompi-firma); el navegador nunca ve el secreto ni fija el monto.
+       - El pago se confirma por WEBHOOK server-side, no por esta página. */
+    var WOMPI_PUBLIC_KEY = "";
+    var WOMPI_REDIRECT_URL = "https://montaguth.institute/pago-estado.html";
+    var PAGO_REAL = /^pub_(prod|test)_/.test(WOMPI_PUBLIC_KEY);
     /* ======================================== */
 
     var estado = { plan:null, precio:null, limitMB:0, dias:0 };
@@ -625,10 +640,46 @@
       });
     })();
 
+    // === PAGO REAL con Wompi (Web Checkout) ===
+    // Sube los apuntes, registra el pedido como PENDIENTE, pide al SERVIDOR la
+    // firma de integridad + el monto (nunca en el front), arma el formulario del
+    // Web Checkout y redirige a Wompi. El "pagado" lo confirma el WEBHOOK
+    // server-side (aunque el cliente cierre la pestaña). No se envían correos
+    // desde el navegador: el webhook dispara el Correo 1.
+    async function iniciarPagoWompi(){
+      estado.email = document.getElementById('email').value.trim();
+      estado.nombre = (document.getElementById('nombre').value.trim() || 'Cliente');
+      var pedidoId = generarPedidoId(estado.email, estado.dias);
+      estado.pedidoId = pedidoId;
+      await procesar(estado.email, pedidoId);          // subir apuntes
+      await registrarPedido(pedidoId, estado.email, {}); // pedido 'pendiente'
+      var fr = await fetch(SUPABASE_URL + '/functions/v1/wompi-firma', {
+        method:'POST', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ pedido_id: pedidoId })
+      });
+      var f = await fr.json().catch(function(){ return {}; });
+      if(!fr.ok || !f.signature){ throw new Error(f.error || ('No se pudo iniciar el pago (' + fr.status + ')')); }
+      var form = document.createElement('form');
+      form.method = 'GET';
+      form.action = 'https://checkout.wompi.co/p/';
+      function campo(n, v){ var i=document.createElement('input'); i.type='hidden'; i.name=n; i.value=v; form.appendChild(i); }
+      campo('public-key', WOMPI_PUBLIC_KEY);
+      campo('currency', f.currency);
+      campo('amount-in-cents', String(f.amountInCents));
+      campo('reference', f.reference);
+      campo('signature:integrity', f.signature);
+      campo('redirect-url', WOMPI_REDIRECT_URL);
+      campo('customer-data:email', estado.email);
+      if(estado.nombre){ campo('customer-data:full-name', estado.nombre); }
+      document.body.appendChild(form);
+      form.submit(); // -> el navegador se va a Wompi; el webhook confirmará el pago
+    }
+
     document.getElementById('pagar').addEventListener('click', async function(){
       var btn=this, spin=document.getElementById('spin'), err=document.getElementById('err3');
       err.style.display='none'; btn.disabled=true; spin.style.display='block';
       try{
+        if(PAGO_REAL){ await iniciarPagoWompi(); return; } // redirige a Wompi
         estado.email = document.getElementById('email').value.trim();
         estado.nombre = (document.getElementById('nombre').value.trim() || 'Cliente');
         var pedidoId = generarPedidoId(estado.email, estado.dias);
@@ -742,6 +793,19 @@
       });
     }
     checkOperaciones();
+
+    // Ajusta el modo visible según si el pago real (Wompi) está configurado.
+    (function(){
+      var badge = document.querySelector('.sandbox-badge');
+      var btnPagar = document.getElementById('pagar');
+      var modoPrueba = document.querySelector('.modo-prueba');
+      if(PAGO_REAL){
+        if(badge){ badge.textContent = '● Pago seguro'; badge.style.color = '#27c093'; badge.style.background = 'rgba(39,192,147,.12)'; badge.style.borderColor = 'rgba(39,192,147,.4)'; }
+        if(btnPagar){ btnPagar.textContent = 'Pagar con Wompi →'; }
+        if(modoPrueba){ modoPrueba.style.display = 'none'; }
+        var copNota = document.querySelector('.cop-nota'); if(copNota){ copNota.style.display = 'block'; }
+      }
+    })();
   })();
   </script>
 
