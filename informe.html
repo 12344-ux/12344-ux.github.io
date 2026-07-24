@@ -117,6 +117,7 @@
   .op-vacio{color:var(--muted);font-size:13px;font-style:italic;}
   .op-marca{color:#ffc857;font-size:12px;margin-left:5px;}
   .pill.opinion{background:rgba(129,140,248,.16);color:#a9b2f8;}
+  .pill.nopago{background:rgba(255,107,107,.16);color:#ff9a9a;}
   .fb-detalle .grande{font-size:26px;letter-spacing:4px;}
 </style>
 </head>
@@ -336,8 +337,26 @@
 
   function estadoPill(p){
     if(p.guia_entregada) return '<span class="pill ok">✓ Entregada</span>';
+    // Antes que nada: ¿el pago está confirmado por el webhook? Si NO, se marca
+    // bien claro para NO entregar a alguien que no pagó (checkout abandonado, etc.).
+    if(p.estado_pago && p.estado_pago !== 'aprobado'){
+      var txt = p.estado_pago === 'rechazado' ? '✕ Pago rechazado'
+              : p.estado_pago === 'error' ? '✕ Pago con error'
+              : '✕ Sin pagar';
+      return '<span class="pill nopago">' + txt + '</span>';
+    }
     if(p.alerta_pendiente) return '<span class="pill alerta">⚠ Sin procesar (' + p.horas_desde_compra + 'h)</span>';
-    return '<span class="pill pend">Pendiente</span>';
+    return '<span class="pill pend">Pagado · por procesar</span>';
+  }
+
+  // Detalle de pago para el panel del pedido.
+  function pagoDetalle(p){
+    var e = p.estado_pago || 'pendiente';
+    var monto = (p.monto_cents != null) ? ' · $' + Number(p.monto_cents/100).toLocaleString('es-CO') + ' ' + (p.moneda||'COP') : '';
+    if(e === 'aprobado') return '✓ Aprobado' + monto + (p.pagado_en ? ' · ' + fechaLoc(p.pagado_en) : '');
+    if(e === 'rechazado') return '✕ Rechazado (no pagó)';
+    if(e === 'error') return '✕ Error de pago (no pagó)';
+    return '⏳ Sin confirmar — NO entregar (no completó el pago)';
   }
 
   // Estrellas estáticas (rating de 1-5). off = grises, on = doradas.
@@ -546,6 +565,7 @@
         fila('Correo', esc(p.correo || '—')) +
         fila('Plan', esc(p.plan || '—')) +
         fila('Acceso', (p.dias_acceso ? p.dias_acceso + ' días' : '—')) +
+        fila('Pago', pagoDetalle(p)) +
         fila('Fecha de compra', fechaLoc(p.fecha_compra)) +
         fila('Apuntes', p.apuntes_borrados
           ? '🧹 Liberados el ' + fechaLoc(p.apuntes_borrados)
