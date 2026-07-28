@@ -17,6 +17,7 @@
 > 6. **Nueva sección de landing "Del caos al orden"** (el método/criterio, sin fotos, flujo con íconos Lucide) + **demo pública compartible en `/demo`** (abierta, SIN muro, con CTAs "Quiero mi guía"/"← Inicio" y **tarjeta de vista previa `og-demo.png`** para compartir como publicidad; 2K). ⚠️ La demo tiene bloques marcados **`SOLO DEMO`** que NO van en guías de cliente.
 > 7. **⭐ REVISIÓN GLOBAL DE LENGUAJE DE MARCA (2L):** el protagonista deja de ser "apuntes" y pasa a la **comprensión/transformación**. Aplicado a la **landing Y a todo el ecosistema** (Correo 1, checkout, quiénes-somos, privacidad, gracias). **Regla nueva permanente:** *"¿describo el archivo que recibo o la transformación que entrego?"* → siempre la transformación. `condiciones.html` se dejó intacto a propósito (ahí "Apuntes" es un término legal **definido**, pendiente de abogado).
 > 8. Fixes móviles de la demo (CTA de la topbar y CTA final tapado por la barra inferior) y colores de la sección nueva sobre banda clara.
+> 9. **⭐ TARJETAS DE COMPRENSIÓN descargables — APROBADAS Y EN EL CHIP (§2M):** imágenes PNG "HOY ENTENDÍ …" que el estudiante descarga y comparte (crecimiento orgánico), dibujadas en `<canvas>` cero-deps con 6 paletas. Van en TODA guía nueva: 1–2 tarjetas "momento" en hitos + **1 certificado** al final con el **nombre del comprador** (`body[data-nombre]`). El dueño las aprobó ("ME FASCINARON"), se afinó el copy (PR #137) y se **llevó al chip `metodo-guias.md` (nueva §5.6)**. Descarga verificada **dentro del `<iframe srcdoc>` de `entrega.html`** (escritorio + móvil, 0 errores).
 >
 > **🔜 QUÉ SIGUE (próximo Kiro — lo que quedó pendiente, en orden de oportunidad):**
 > - **Sección de testimonios en la landing + copy del Correo 3:** ya hay ~2 opiniones en el tablero. Cuando el dueño quiera, se crea la sección de testimonios (nombre + comentario + **@IG opcional** de quien autorizó) y se ajusta el copy del Correo 3 para comunicarlo. **Todo el groundwork ya está** (captura de IG + permiso).
@@ -447,7 +448,7 @@ Cambio de **posicionamiento** (no solo de palabras), trabajado con la IA de pers
 
 ---
 
-## 2M. Tarjetas de comprensión descargables (crecimiento por compartición) — EN LA DEMO, pendiente de aprobación del dueño (28-jul)
+## 2M. Tarjetas de comprensión descargables (crecimiento por compartición) — ✅ APROBADAS Y EN EL CHIP: van en TODA guía nueva (28-jul)
 
 **El encargo:** el dueño (con su IA de persuasión) trajo varias ideas de "compartición masiva". Las **auditamos juntas** contra la arquitectura real y **descartamos** lo caro/riesgoso: compartir la Joya, enlaces públicos `/e/ID`, microexperiencias, Web Share. **Se aprobó SOLO** lo de alto encaje y bajo riesgo: **tarjetas que se DESCARGAN como imagen** (nada de abrir el editor de IG/WhatsApp) en **puntos específicos de la guía** ("hoy entendí X") + **UNA al final tipo "certificado"** de comprensión, con **nombre del alumno** (en guías de cliente = el comprador).
 
@@ -461,17 +462,23 @@ Cambio de **posicionamiento** (no solo de palabras), trabajado con la IA de pers
 - CSS `.momento` / `.tarjeta-btn` / `.certi` / `#tarjetaModal` / `.tm-*` (antes de `</style>`).
 - **2 tarjetas "concepto"** (`.momento`) al cierre de **Conceptos clave** y de **Ejemplos reales**; **1 "certificado"** (`.certi`) en una `section#certificado` nueva antes del footer. **Son NÚCLEO de guía** (marcadas como tal, **no** SOLO DEMO): van también en las guías de cliente.
 - **Modal** `#tarjetaModal` (preview en canvas + 6 chips de color + campo **nombre** + **Descargar imagen** + Cerrar).
-- **Motor JS** (canvas 1080×1350): fondo+glow+marco, marca **STRAMONT** arriba y **MONTAGUTH.INSTITUTE** abajo (wordmark de texto, como en las guías; el ícono inline queda como el mismo follow-up pendiente), título en Fraunces, línea, y nombre "— X". El **check ✓ del certificado se dibuja a mano** (Inter no trae ese glifo → salía cuadrito). Descarga por `canvas.toBlob` → `<a download>`. Nombre se pre-rellena desde **`body[data-nombre]`** (lo inyectará la entrega en guías de cliente) o `localStorage`.
+- **Motor JS** (canvas 1080×1350): fondo+glow+marco, marca **STRAMONT** arriba y **MONTAGUTH.INSTITUTE** abajo (wordmark de texto, como en las guías; el ícono inline queda como el mismo follow-up pendiente), encabezado fijo **HOY ENTENDÍ**, título en Fraunces, línea, reflexión y firma. El **check ✓ del certificado se dibuja a mano** (Inter no trae ese glifo → salía cuadrito). Descarga por `canvas.toBlob` → `<a download>`. Nombre se pre-rellena desde **`body[data-nombre]`** (lo inyecta la entrega en guías de cliente) o `localStorage`.
+
+**Revisión de copy del dueño (aprobada, PR #137 sobre el #136 ya mergeado):**
+- **Estructura FIJA de las tarjetas "momento":** `HOY ENTENDÍ` → **Logro** (`data-logro`) → **Reflexión** corta que haga pensar (`data-reflexion`) → **Firma** (nombre). Se corrigió el bug del **guion `—`** delante del nombre: ahora el nombre sale limpio, en color de acento.
+- **Certificado:** `STRAMONT` → `HOY ENTENDÍ` → **Tema** (`data-tema`) → **frase joya** entre comillas (`data-reflexion`) → pill `✔ Tema comprendido` → **nombre del dueño de la guía** → `montaguth.institute`. Se **quitó la fecha** (el dueño confirmó que el certificado **sí** lleva nombre).
 
 **Verificado con Playwright/Chromium** (escritorio 1360 + **móvil 390px**): 0 errores JS, las 6 paletas renderizan premium, fuentes cargan, nombre redibuja, modal móvil limpio, y la **descarga dispara de verdad** (`stramont-certificado-....png`). Capturas de referencia en el PR.
 
 **Deploy:** TODO frontend → solo **GitHub Pages** (sin Edge Functions, sin SQL). Recarga forzada tras el merge.
 
-⚠️ **PENDIENTE (próximo Kiro / tras aprobación del dueño):**
-1. Si el dueño lo aprueba en la demo → **llevarlo al chip `metodo-guias.md`** (nuevo bloque: cómo añadir `.momento`/`.certi` + el motor; el nombre del comprador se inyecta con `body[data-nombre]`) y **a las guías de cliente**.
-2. **Probar la descarga dentro del `<iframe srcdoc>` de `entrega.html`** (no tiene `sandbox`, así que debería funcionar; si el navegador bloquea el download del iframe, añadir el atributo adecuado al iframe). En la demo (página normal) ya funciona.
-3. **Medición (opcional):** hoy la tarjeta es solo imagen (no rastreable). Si se quiere medir la viralidad, el pie `montaguth.institute` podría apuntar a una URL con UTM o un QR discreto. Se dejó SIN rastreo por ahora (decisión de simplicidad/estética).
+✅ **HECHO (28-jul, tras la aprobación del dueño "ME FASCINARON"):**
+1. **Ya está en el chip `metodo-guias.md` → nueva §5.6 "Tarjetas de comprensión descargables"** (NÚCLEO, va en TODA guía nueva): dónde poner los botones (1–2 `.momento` en hitos reales + **1** `.certi` al final), la estructura de copy FIJA, las 6 paletas, y cómo se pre-rellena el nombre del comprador con `body[data-nombre]` (se hornea en el `<body>` al construir la guía del cliente; el campo queda editable). Se quitó la **contradicción** del chip (§3 y §8 decían "sin botones descargar/compartir" → ahora aclaran que eso aplica a **descargar la GUÍA**, y las tarjetas son la **única** descarga permitida). §5.5 avisa de NO confundir las tarjetas (NÚCLEO) con los bloques `SOLO DEMO`. Checklist §8 con ítem propio de tarjetas.
+2. **Descarga dentro del `<iframe srcdoc>` de `entrega.html` VERIFICADA** (Playwright, escritorio 1360 + móvil 390): el iframe **no** tiene `sandbox`, así que la descarga dispara, el canvas dibuja y **el nombre se pre-rellena desde `body[data-nombre]`** (probado con "Juan Pérez" horneado en el `<body>`), 0 errores. No hizo falta tocar `entrega.html`.
 
+⚠️ **PENDIENTE (roadmap, no bloquea):**
+1. **Ícono de marca inline** arriba de la tarjeta (hoy es wordmark de texto STRAMONT) — mismo follow-up que ya estaba anotado.
+2. **Medición (opcional):** hoy la tarjeta es solo imagen (no rastreable). Si se quiere medir viralidad, el pie `montaguth.institute` podría llevar UTM o un QR discreto. Se dejó SIN rastreo por simplicidad/estética.
 ---
 
 ## 3. Estado actual del sitio (archivos)
