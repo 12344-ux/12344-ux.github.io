@@ -759,7 +759,7 @@
       </div>
 
       <!-- Tarjeta de comprensión (NÚCLEO de guía, no es SOLO DEMO) -->
-      <div class="momento" data-tipo="concepto" data-concepto="Segmentación de mercados" data-linea="Hoy entendí qué es segmentar un mercado y por qué venderle distinto a cada grupo funciona mejor.">
+      <div class="momento" data-tipo="concepto" data-logro="Segmentación de mercados" data-reflexion="Cuando le hablas a todos, en realidad no le hablas a nadie.">
         <div class="momento-txt"><b>¿Sientes que esto te quedó claro?</b> Llévate una tarjeta de este momento para recordarlo.</div>
         <button class="tarjeta-btn" type="button"><svg class="lic" width="16" height="16" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg> Descargar tarjeta</button>
       </div>
@@ -805,7 +805,7 @@
       <div class="ancla"><b>Ancla mnemónica:</b> "Un <b>MER</b>cado se <b>CORTA</b> (segmentar) con <b>4 preguntas</b>, se filtra con <b>MASA</b>, se analiza con <b>FODA</b> y se ataca con <b>1 de 4 estrategias</b>." Si recuerdas esa frase, recuerdas el 80% de la clase.</div>
 
       <!-- Tarjeta de comprensión (NÚCLEO de guía, no es SOLO DEMO) -->
-      <div class="momento" data-tipo="concepto" data-concepto="Aplicar la segmentación a un caso real" data-linea="Hoy no solo lo entendí: lo apliqué paso a paso a un caso real, de principio a fin.">
+      <div class="momento" data-tipo="concepto" data-logro="Aplicar la segmentación a un caso real" data-reflexion="Entender un concepto es útil. Poder aplicarlo es cuando de verdad se vuelve tuyo.">
         <div class="momento-txt"><b>Acabas de resolver un caso completo.</b> Guarda la tarjeta de este avance.</div>
         <button class="tarjeta-btn" type="button"><svg class="lic" width="16" height="16" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg> Descargar tarjeta</button>
       </div>
@@ -866,7 +866,7 @@
 
     <!-- ===== CERTIFICADO DE COMPRENSIÓN (NÚCLEO de guía, no es SOLO DEMO) ===== -->
     <section id="certificado">
-      <div class="certi" data-tipo="certificado" data-tema="Segmentación de Mercados" data-materia="Dirección de Ventas">
+      <div class="certi" data-tipo="certificado" data-tema="Segmentación de Mercados" data-reflexion="No basta con dividir clientes. La clave es entender por qué compran.">
         <div class="certi-eyebrow">Terminaste la guía</div>
         <h3>Comprendiste "Segmentación de Mercados"</h3>
         <p>Descarga tu tarjeta de comprensión: una imagen con tu nombre para recordar —y mostrar— lo que hoy entendiste.</p>
@@ -919,7 +919,7 @@
       <div class="tm-sub">Personalízala y descárgala como imagen para compartirla donde quieras.</div>
       <p class="tm-label">Color</p>
       <div class="tm-colores" id="tmColores"></div>
-      <p class="tm-label">Tu nombre (opcional)</p>
+      <p class="tm-label" id="tmNombreLabel">Tu nombre (opcional)</p>
       <input class="tm-input" id="tmNombre" type="text" maxlength="32" placeholder="Escribe tu nombre" autocomplete="name">
       <div class="tm-acciones">
         <button class="tm-descargar" id="tmDescargar" type="button"><svg class="lic" width="18" height="18" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg> Descargar imagen</button>
@@ -1174,7 +1174,6 @@
     function paletaActual(){ for(var i=0;i<PALETAS.length;i++){ if(PALETAS[i].id===estado.paleta) return PALETAS[i]; } return PALETAS[0]; }
     function pxOf(font){ var m=/(\d+(?:\.\d+)?)px/.exec(font); return m?parseFloat(m[1]):30; }
     function hexA(h,a){ h=h.replace('#',''); if(h.length===3){h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];} var r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return 'rgba('+r+','+g+','+b+','+a+')'; }
-    function fecha(){ try{ return new Date().toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'}); }catch(e){ return ''; } }
     function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
     function wrap(text,maxW,font){ ctx.font=font; var words=String(text).split(/\s+/), lines=[], line=''; for(var i=0;i<words.length;i++){ var t=line?line+' '+words[i]:words[i]; if(ctx.measureText(t).width>maxW && line){ lines.push(line); line=words[i]; } else line=t; } if(line) lines.push(line); return lines; }
     function drawSpaced(str,cx,y,font,sp,color){
@@ -1188,18 +1187,21 @@
     // ---- bloques centrales según el tipo de tarjeta ----
     function bloques(){
       var p=paletaActual(), cfg=estado.cfg||{}, nombre=(inputNombre.value||'').trim(), arr=[];
+      // Encabezado fijo para ambas ("HOY ENTENDÍ")
+      arr.push({t:'spaced', s:'HOY ENTENDÍ', font:'800 30px Inter', sp:8, color:p.acc, gap:40});
       if(cfg.tipo==='certificado'){
-        arr.push({t:'spaced', s:'CERTIFICADO DE COMPRENSIÓN', font:'800 27px Inter', sp:5, color:p.acc, gap:36});
-        arr.push({t:'text', lines:[ nombre ? (nombre + ' comprendió') : 'Comprendí' ], font:'500 38px Inter', lh:50, color:p.txt, gap:16});
-        arr.push({t:'title', text:'"'+cfg.tema+'"', font:'600 74px Fraunces', lh:84, color:p.tit, maxW:1080-200, gap:30});
-        arr.push({t:'pill', s:'Tema comprendido', color:p.acc, gap:26});
-        arr.push({t:'text', lines:[ fecha() ], font:'500 29px Inter', lh:38, color:p.pie, gap:0});
+        // Tema → frase reflexiva (Fraunces, entre comillas) → "✓ Tema comprendido". Sin nombre, sin fecha.
+        arr.push({t:'title', text:cfg.tema||'', font:'600 80px Fraunces', lh:90, color:p.tit, maxW:1080-180, gap:32});
+        arr.push({t:'rule', color:p.acc, gap:34});
+        arr.push({t:'text', lines:wrap('“'+(cfg.reflexion||'')+'”', 1080-210, '500 41px Fraunces'), font:'500 41px Fraunces', lh:56, color:p.txt, gap:36});
+        arr.push({t:'pill', s:'Tema comprendido', color:p.acc, gap: nombre?34:0});
+        if(nombre) arr.push({t:'text', lines:[nombre], font:'600 38px Inter', lh:48, color:p.tit, gap:0});
       } else {
-        arr.push({t:'spaced', s:'HOY ENTENDÍ', font:'800 30px Inter', sp:8, color:p.acc, gap:40});
-        arr.push({t:'title', text:cfg.concepto||'', font:'600 82px Fraunces', lh:92, color:p.tit, maxW:1080-190, gap:34});
-        arr.push({t:'rule', color:p.acc, gap:36});
-        arr.push({t:'text', lines:wrap(cfg.linea||'', 1080-260, '400 35px Inter'), font:'400 35px Inter', lh:49, color:p.txt, gap: nombre?28:0});
-        if(nombre) arr.push({t:'text', lines:['— '+nombre], font:'600 34px Inter', lh:44, color:p.tit, gap:0});
+        // Logro → reflexión → firma (nombre, SIN guion).
+        arr.push({t:'title', text:cfg.logro||'', font:'600 80px Fraunces', lh:90, color:p.tit, maxW:1080-180, gap:32});
+        arr.push({t:'rule', color:p.acc, gap:34});
+        arr.push({t:'text', lines:wrap(cfg.reflexion||'', 1080-240, '400 35px Inter'), font:'400 35px Inter', lh:50, color:p.txt, gap: nombre?34:0});
+        if(nombre) arr.push({t:'text', lines:[nombre], font:'600 37px Inter', lh:47, color:p.acc, gap:0});
       }
       return arr;
     }
@@ -1271,10 +1273,9 @@
     function cfgDe(el){
       return {
         tipo: el.getAttribute('data-tipo') || 'concepto',
-        concepto: el.getAttribute('data-concepto') || '',
-        linea: el.getAttribute('data-linea') || '',
-        tema: el.getAttribute('data-tema') || '',
-        materia: el.getAttribute('data-materia') || ''
+        logro: el.getAttribute('data-logro') || '',
+        reflexion: el.getAttribute('data-reflexion') || '',
+        tema: el.getAttribute('data-tema') || ''
       };
     }
 
@@ -1300,7 +1301,7 @@
     btnDesc.addEventListener('click', function(){
       var cfg = estado.cfg || {};
       var base = (cfg.tipo==='certificado') ? 'certificado' : 'tarjeta';
-      var slug = ((cfg.tipo==='certificado' ? cfg.tema : cfg.concepto) || 'stramont')
+      var slug = ((cfg.tipo==='certificado' ? cfg.tema : cfg.logro) || 'stramont')
         .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
         .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40) || 'stramont';
       function baja(url){ var a=document.createElement('a'); a.href=url; a.download='stramont-'+base+'-'+slug+'.png'; document.body.appendChild(a); a.click(); a.remove(); }
