@@ -501,6 +501,24 @@ Cambio de **posicionamiento** (no solo de palabras), trabajado con la IA de pers
 
 ---
 
+## 2O. Contenido de video para anuncios (VENTAS) — v1 en revisión (28-jul)
+
+Arranca el frente de **ventas/marketing**: producir **video para anuncios**. El dueño pidió el estilo **"hero" limpio** (referencia: un asset de video de la home de Claude) — nada de anuncios recargados: animación premium de la **guía real**, en loop suave. Delegó en Kiro la dirección creativa (qué mostrar/contar/sonido) y quiere **probar varios formatos** (9:16, 1:1, 16:9 para IG/FB/WhatsApp/etc.).
+
+**Hallazgo técnico clave:** esos videos "hero" son **animaciones HTML/CSS grabadas**. Con **Playwright `recordVideo`** (el chromium del entorno trae su ffmpeg) se puede **producir video real `.webm`** desde una escena web. Cero dependencias, reproducible, on-brand.
+
+**Qué se construyó (carpeta `ads/`, solo frontend):**
+- `ads/anuncio.html` — escena animada (CSS keyframes, timeline fija ~12s), **adaptable por `?f=9x16|1x1|16x9`**. Muestra la guía real dentro de un teléfono con glow de marca, captions cinéticos, pills (Explica simple · Pruébate · Repaso), tarjeta "HOY ENTENDÍ", y outro con logo + "Entiende. No solo memorices." + montaguth.institute.
+- `ads/assets/` — capturas reales de la guía demo (móvil + escritorio) hechas con Playwright (se ocultó el rail y los CTA para un mockup limpio).
+- `ads/video/anuncio-{9x16,1x1,16x9}.webm` — los 3 videos grabados (artefactos de revisión, regenerables).
+- Scripts en el entorno (no en repo): `pw/record-anuncio.mjs`, `pw/stills.mjs`, `pw/capture-guia.mjs`.
+
+**Guion v1:** "Tu clase entra **confusa**" → scroll de la guía + método + tarjeta HOY ENTENDÍ → "Sale como una guía **para entender**" → cierre de marca. **Sin audio** por defecto (el feed se ve en mute; el asset de referencia es mudo). Opción futura: música/clics con ffmpeg (solo audio libre/CC0).
+
+**Verificado:** 0 errores de consola; keyframes revisados en los 3 formatos (se ven premium). **Pendiente:** feedback del dueño sobre el look antes de pulir/estampar variaciones (y decidir audio). ⚠️ Los `.webm` + capturas pesan (~12 MB); son para revisar — si no se quieren en `main`, mover a hosting aparte o borrar tras aprobar.
+
+---
+
 ## 3. Estado actual del sitio (archivos)
 
 | Archivo | Qué es |
