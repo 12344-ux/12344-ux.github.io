@@ -16,7 +16,7 @@ Las fichas siguen un semáforo de colores (amarillo → azul → rojo) como ritm
 ## Contenido
 
 - `index.html` — página principal (método + catálogo + apoyo).
-- `segmentacion-de-mercados.html` — guía interactiva de Segmentación de Mercados.
+- `demo/index.html` — guía interactiva de Segmentación de Mercados (URL pública `/demo`; `segmentacion-de-mercados.html` en la raíz es solo un redirect).
 - `segmentacion-de-mercados.pdf` — versión imprimible/descargable.
 - `estilos.css` — identidad visual.
 
