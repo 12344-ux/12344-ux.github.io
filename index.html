@@ -164,6 +164,29 @@
       .hx-btn{width:100%;justify-content:center;box-sizing:border-box;}
       .hx-visual{min-height:80vw;}
     }
+    /* ===== "Del caos al orden" · flujo del método (autocontenido; no toca estilos.css) ===== */
+    .mo-flow{max-width:1060px;margin:8px auto 0;}
+    .mo-rail{display:flex;align-items:center;gap:18px;}
+    .mo-end{flex:0 0 auto;width:104px;text-align:center;font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;line-height:1.35;color:#8ea0b8;border:1px dashed rgba(255,255,255,.2);border-radius:14px;padding:16px 10px;}
+    .mo-finish{color:#2DD4BF;border-color:rgba(45,212,191,.5);background:rgba(45,212,191,.06);}
+    .mo-steps{position:relative;flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:0;}
+    .mo-steps::before{content:"";position:absolute;top:27px;left:9%;right:9%;height:2px;background:rgba(45,212,191,.4);z-index:0;}
+    .mo-step{position:relative;z-index:1;padding:0 12px;text-align:center;}
+    .mo-ic{width:56px;height:56px;margin:0 auto 14px;border-radius:15px;background:#0e1626;border:1px solid rgba(45,212,191,.4);display:flex;align-items:center;justify-content:center;color:#2DD4BF;}
+    .mo-ic svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+    .mo-step h3{font-size:15px;font-weight:800;color:#fff;margin:0 0 6px;}
+    .mo-step p{font-size:12.5px;line-height:1.5;color:#aeb9cc;margin:0;}
+    .mo-close{text-align:center;font-size:clamp(17px,2.4vw,21px);font-weight:700;color:#fff;margin:38px auto 0;max-width:600px;line-height:1.4;}
+    .mo-close b{color:#2DD4BF;}
+    @media (max-width:760px){
+      .mo-rail{flex-direction:column;gap:14px;}
+      .mo-end{width:auto;align-self:stretch;}
+      .mo-steps{grid-template-columns:1fr;gap:20px;width:100%;}
+      .mo-steps::before{display:none;}
+      .mo-step{display:flex;align-items:flex-start;gap:14px;text-align:left;padding:0;}
+      .mo-ic{margin:0;flex:0 0 auto;width:48px;height:48px;}
+    }
+
     /* ===== "Así funciona" · infográfico (autocontenido; no toca estilos.css) ===== */
     .hf-wrap{max-width:1000px;margin:32px auto 0;}
     .hf-top{display:grid;grid-template-columns:1fr 1fr;gap:24px;position:relative;}
@@ -354,7 +377,7 @@
           </span>
 
           <!-- Showcase de la guía: grande, en marco de ventana, clicable -->
-          <a class="cx-showcase" href="segmentacion-de-mercados.html" target="_blank" rel="noopener" aria-label="Abrir la guía completa de Segmentación de Mercados">
+          <a class="cx-showcase" href="/demo" target="_blank" rel="noopener" aria-label="Abrir la guía completa de Segmentación de Mercados">
             <div class="cx-window">
               <div class="cx-bar"><i></i><i></i><i></i><em>Segmentación de Mercados · Guía Stramont</em></div>
               <img src="guia-segmentacion-nueva.jpg" alt="Guía Stramont de Segmentación de Mercados: nav lateral, contenido y panel de práctica" loading="lazy">
@@ -380,7 +403,7 @@
           </div>
 
           <div class="cx-cta">
-            <a href="segmentacion-de-mercados.html" class="cx-btn" target="_blank" rel="noopener">
+            <a href="/demo" class="cx-btn" target="_blank" rel="noopener">
               <span class="lead"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h10a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"></path><path d="M9 8h6M9 12h6M9 16h4"></path></svg></span>
               Abrir la guía completa de Segmentación de Mercados
               <span class="arr"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
@@ -388,6 +411,43 @@
             <div><span class="cx-pill">🕐 Transformado en menos de 24 horas</span></div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- 2.5 DEL CAOS AL ORDEN (el método / el criterio) -->
+    <section class="section" id="metodo">
+      <span class="section-eyebrow">Del caos al orden</span>
+      <h2 class="section-title">De un montón de apuntes a un plan para entender.</h2>
+      <p class="section-lead">Reunimos todo el material de una materia —por disperso que esté— y lo convertimos en un solo camino ordenado, donde cada idea prepara la siguiente.</p>
+
+      <div class="mo-flow">
+        <div class="mo-rail">
+          <div class="mo-end mo-start">Tus apuntes</div>
+          <div class="mo-steps">
+            <div class="mo-step">
+              <span class="mo-ic"><svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg></span>
+              <h3>Reunimos todo</h3>
+              <p>Analizamos todo tu material como un solo tema.</p>
+            </div>
+            <div class="mo-step">
+              <span class="mo-ic"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>
+              <h3>Encontramos la estructura</h3>
+              <p>Lo esencial, lo que conecta y lo que profundiza.</p>
+            </div>
+            <div class="mo-step">
+              <span class="mo-ic"><svg viewBox="0 0 24 24"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg></span>
+              <h3>Creamos el orden</h3>
+              <p>Cada idea prepara la que sigue, sin saltos.</p>
+            </div>
+            <div class="mo-step">
+              <span class="mo-ic"><svg viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1.3.5 2.6 1.5 3.5.8.8 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></span>
+              <h3>Lo hacemos memorable</h3>
+              <p>Ejemplos, ideas clave y práctica de recuerdo.</p>
+            </div>
+          </div>
+          <div class="mo-end mo-finish">Tu guía Stramont</div>
+        </div>
+        <p class="mo-close">No entregamos un resumen. <b>Entregamos un camino para aprender.</b></p>
       </div>
     </section>
 
