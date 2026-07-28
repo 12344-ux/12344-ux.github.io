@@ -74,6 +74,33 @@ function esCorreoPrueba(correo: string): boolean {
   return c.startsWith("prueba") || c.endsWith("@example.com") || c.endsWith(".test");
 }
 
+// Horas mínimas que debe tener un pedido 'pendiente' antes de poder limpiar sus
+// apuntes. Un 'pendiente' significa que el webhook NUNCA recibió un APPROVED;
+// pero un pago PSE/transferencia puede aprobarse tarde, y ahí SÍ querríamos sus
+// apuntes. Por eso no borramos apuntes de un 'pendiente' reciente (guarda de
+// seguridad para no borrar apuntes de un pago que aún podría entrar).
+const HORAS_SEGURIDAD_PENDIENTE = 24;
+
+// ¿Los apuntes de este pedido son basura de un intento SIN pagar, limpiable?
+// Criterio (candados de seguridad): NO prueba, NO aprobado, NO reversado (esos
+// son ventas), con carpeta correo/pedidoId (nunca la carpeta completa de una
+// persona), apuntes aún no borrados, y —si sigue 'pendiente'— más viejo que
+// HORAS_SEGURIDAD_PENDIENTE. Los estados finales fallidos (rechazado/error) se
+// pueden limpiar a cualquier edad.
+function apunteSinPagarLimpiable(p: any, ahora: number): boolean {
+  if (!p) return false;
+  if (esCorreoPrueba(p.correo)) return false;
+  if (p.estado_pago === "aprobado" || p.estado_pago === "reversado") return false;
+  if (p.apuntes_borrados) return false;
+  const carpeta = p.carpeta_storage || "";
+  if (!carpeta.includes("/")) return false;
+  if (!p.estado_pago || p.estado_pago === "pendiente") {
+    const horas = p.fecha_compra ? (ahora - new Date(p.fecha_compra).getTime()) / 3_600_000 : Infinity;
+    if (horas < HORAS_SEGURIDAD_PENDIENTE) return false;
+  }
+  return true;
+}
+
 // El bucket "apuntes" tiene estructura correo/pedidoId/archivo, así que
 // list() de un solo nivel no basta: hay que recorrer subcarpetas.
 async function sumarBucket(client: ReturnType<typeof sb>, bucket: string, prefijo = "", profundidadMax = 6): Promise<{ bytes: number; archivos: number }> {
@@ -247,6 +274,37 @@ Deno.serve(async (req) => {
 
     await client.from("pedidos").update({ apuntes_borrados: new Date().toISOString() }).eq("pedido_id", pedidoId);
     return json({ ok: true, pedido_id: pedidoId, archivos_borrados: archivosBorrados });
+  }
+
+  // ---------- MODO LIMPIAR APUNTES DE INTENTOS SIN PAGAR (limpieza masiva) ----------
+  // Borra de Storage los apuntes de los checkouts que NUNCA se aprobaron
+  // (pendiente/rechazado/error) para vaciar el espacio que dejan los intentos
+  // abandonados. CONSERVA el registro (el correo sigue como lead "carrito" en
+  // la base de correos). No cambia nada del flujo de compra que ya funciona.
+  // Candados (todos en apunteSinPagarLimpiable):
+  //   - NUNCA toca pedidos APROBADOS ni REVERSADOS (son ventas).
+  //   - NUNCA toca pedidos de PRUEBA.
+  //   - NUNCA toca un 'pendiente' reciente (< 24h): un PSE/transferencia podría
+  //     aprobarse tarde y ahí sí necesitaríamos sus apuntes.
+  //   - Solo la subcarpeta correo/pedidoId (nunca la carpeta de una persona).
+  //   POST ?limpiar_sin_pagar=1&key=...
+  if (url.searchParams.get("limpiar_sin_pagar") === "1") {
+    if (req.method !== "POST") return json({ error: "Requiere POST." }, 405);
+    const { data: filas, error: errRows } = await client
+      .from("pedidos").select("*").limit(5000);
+    if (errRows) return json({ error: "Error leyendo pedidos: " + errRows.message }, 500);
+    const ahoraMs = Date.now();
+    const objetivo = (filas || []).filter((p: any) => apunteSinPagarLimpiable(p, ahoraMs));
+    let pedidosLimpiados = 0;
+    let archivosBorrados = 0;
+    for (const p of objetivo) {
+      try {
+        archivosBorrados += await borrarCarpeta(client, BUCKET_APUNTES, p.carpeta_storage);
+        await client.from("pedidos").update({ apuntes_borrados: new Date().toISOString() }).eq("pedido_id", p.pedido_id);
+        pedidosLimpiados += 1;
+      } catch (_e) { /* si falla uno, seguimos con el resto */ }
+    }
+    return json({ ok: true, pedidos_limpiados: pedidosLimpiados, archivos_borrados: archivosBorrados });
   }
 
   // ---------- MODO BORRADO (solo pedidos de prueba) ----------
@@ -482,5 +540,11 @@ Deno.serve(async (req) => {
     lista: listaCorreos,
   };
 
-  return json({ storage, pedidos, ventas, pedidosPrueba, opiniones, baseCorreos, operaciones_activas, generadoEn: new Date().toISOString() });
+  // Apuntes de intentos SIN pagar que aún ocupan Storage (candidatos a la
+  // limpieza manual del tablero). Mismo criterio que la acción limpiar_sin_pagar.
+  const apuntesSinPagar = {
+    pedidos: (pedidosRaw || []).filter((p: any) => apunteSinPagarLimpiable(p, ahora)).length,
+  };
+
+  return json({ storage, pedidos, ventas, pedidosPrueba, opiniones, baseCorreos, apuntesSinPagar, operaciones_activas, generadoEn: new Date().toISOString() });
 });
