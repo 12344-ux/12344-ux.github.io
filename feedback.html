@@ -80,10 +80,12 @@
         <!-- Nota alta (4-5): permiso de testimonio -->
         <div class="permiso" id="permisoBox">
           <p>Nos alegra que la guía te sirviera. Si nos dejas, podríamos mostrar tus palabras para que otras personas sepan qué esperar de Stramont.</p>
-          <label class="chk"><input type="checkbox" id="permisoChk"> Autorizo a Stramont a publicar mi comentario junto a mi nombre.</label>
+          <label class="chk"><input type="checkbox" id="permisoChk"> Autorizo a Stramont a publicar mi comentario junto a mi nombre (y mi Instagram, si lo dejo).</label>
           <div class="nombre-wrap" id="nombreWrap">
             <input class="field" id="nombreMostrar" placeholder="¿Cómo quieres aparecer? (ej. tu primer nombre)" autocomplete="off" maxlength="60">
             <div style="font-size:12px;color:var(--muted);margin-top:6px;">Mostraremos solo lo que escribas aquí. Con tu primer nombre basta.</div>
+            <input class="field" id="instagram" placeholder="Instagram (opcional, ej. @tu_usuario)" autocomplete="off" maxlength="40" style="margin-top:10px;">
+            <div style="font-size:12px;color:var(--muted);margin-top:6px;">Opcional. Si lo dejas, podríamos mostrar tu @ junto a tu testimonio: así quien nos lee sabe que eres una persona real (y de paso, más ojos en tu perfil).</div>
           </div>
         </div>
 
@@ -194,7 +196,8 @@
       await enviar("comment", {
         comentario: document.getElementById("comentario").value,
         permiso: (ratingActual >= 4) && permisoChk.checked,
-        nombre: document.getElementById("nombreMostrar").value
+        nombre: document.getElementById("nombreMostrar").value,
+        instagram: document.getElementById("instagram").value
       });
       vista.classList.add("oculto");
       finalBox.classList.remove("oculto");

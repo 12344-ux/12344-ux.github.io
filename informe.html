@@ -450,12 +450,13 @@
     }
     lista.innerHTML = filtradas.map(function(o){
       var pub = o.permiso_publicar ? '<span class="pub">✓ dio permiso'+(o.nombre_mostrar?': '+esc(o.nombre_mostrar):'')+'</span>' : '';
+      var ig = (o.permiso_publicar && o.instagram) ? ' · <a href="https://instagram.com/'+encodeURIComponent(o.instagram)+'" target="_blank" style="color:#a9b2f8;text-decoration:none;">@'+esc(o.instagram)+'</a>' : '';
       var coment = o.comentario ? '<div class="coment">'+esc(o.comentario)+'</div>' : '<div class="coment" style="color:var(--muted);font-style:italic;">(Sin comentario, solo calificación.)</div>';
       var fecha = o.comentario_recibido_at || o.feedback_recibido_at;
       return '<div class="op-card">' +
         '<div class="top">'+starsHtml(o.rating)+pub+'</div>' +
         coment +
-        '<div class="meta">'+esc(o.nombre||'—')+' · '+esc(o.plan||'—')+' · '+esc(o.pedido_id)+' · '+fechaLoc(fecha)+'</div>' +
+        '<div class="meta">'+esc(o.nombre||'—')+' · '+esc(o.plan||'—')+' · '+esc(o.pedido_id)+' · '+fechaLoc(fecha)+ig+'</div>' +
         '</div>';
     }).join('');
   }
@@ -548,7 +549,7 @@
           ? '<div class="op-card" style="margin:0;"><div class="coment">' + esc(fb.comentario) + '</div></div>'
           : '<div class="hint">Sin comentario, solo calificación.</div>') +
         (fb.permiso_publicar
-          ? '<div class="nota-seg" style="margin-top:10px;"><b>✓ Autorizó publicar</b>' + (fb.nombre_mostrar ? ' como “' + esc(fb.nombre_mostrar) + '”' : '') + ' — candidata a testimonio del sitio.</div>'
+          ? '<div class="nota-seg" style="margin-top:10px;"><b>✓ Autorizó publicar</b>' + (fb.nombre_mostrar ? ' como “' + esc(fb.nombre_mostrar) + '”' : '') + (fb.instagram ? ' · <a href="https://instagram.com/' + encodeURIComponent(fb.instagram) + '" target="_blank" style="color:#7fe8c4;text-decoration:none;">@' + esc(fb.instagram) + '</a>' : '') + ' — candidata a testimonio del sitio.</div>'
           : '') +
         '<div class="hint" style="margin-top:8px;">Recibida el ' + fechaLoc(fb.comentario_recibido_at || fb.feedback_recibido_at) + '.</div>';
     } else if(p.correo_feedback_enviado){
