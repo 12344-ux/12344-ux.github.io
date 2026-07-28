@@ -215,6 +215,15 @@ Deno.serve(async (req) => {
   if (!row) return json({ error: "Pedido no encontrado." }, 404);
   if (!row.correo) return json({ error: "El pedido no tiene correo." }, 422);
 
+  // CANDADO DE PAGO (invariante del proyecto: nada se entrega sin pago
+  // aprobado). Aunque hoy el tablero solo lista pedidos aprobados/prueba, este
+  // candado lo garantiza a nivel de SERVIDOR (defensa en profundidad): bloquea
+  // entregar a un pedido sin pagar o REVERSADO/anulado tras la aprobación. Se
+  // permite el correo de PRUEBA (equipo) para poder probar la entrega.
+  if (row.estado_pago !== "aprobado" && !esCorreoPrueba(row.correo)) {
+    return json({ error: "No se puede entregar: el pago de este pedido no está aprobado (estado: " + (row.estado_pago || "pendiente") + "). Solo se entrega con pago confirmado por Wompi." }, 409);
+  }
+
   // Idempotencia: si ya se entregó por correo, no reenviar.
   if (row.correo_entrega_enviado) {
     return json({ ok: true, yaEnviado: true, pedido_id: pedidoId });

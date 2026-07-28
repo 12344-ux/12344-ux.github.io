@@ -265,6 +265,11 @@
         <button class="chip" data-fc="lista_espera">Lista de espera</button>
         <button class="chip" data-fc="carrito">Carrito (no pagó)</button>
       </div>
+      <div id="bcLimpieza" style="display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 14px;padding:12px 15px;background:rgba(255,107,107,.06);border:1px solid rgba(255,107,107,.25);border-radius:12px;">
+        <span style="font-size:12.5px;color:var(--dim);line-height:1.5;">🧹 <b id="bcLimpiezaN">0</b> intento(s) sin pagar tienen apuntes ocupando Storage. Puedes borrar esos archivos (se conserva el correo como lead). No toca pagos aprobados, pruebas, ni intentos recientes (por si un pago está en curso).</span>
+        <button class="btn btn-bad btn-sm" id="btnLimpiarSinPagar">🧹 Limpiar apuntes sin pagar</button>
+        <div class="err" id="bcLimpiezaErr" style="display:none;flex-basis:100%;"></div>
+      </div>
       <div class="tabla-wrap">
         <table>
           <thead><tr><th>Correo</th><th>Tipo</th><th>Fecha</th><th></th></tr></thead>
@@ -342,6 +347,9 @@
   }
 
   function estadoPill(p){
+    // REVERSA primero, incluso si ya se entregó: un pago anulado/devuelto tras
+    // la aprobación debe verse SÍ o SÍ para revocar el acceso si ya se entregó.
+    if(p.estado_pago === 'reversado') return '<span class="pill alerta">⚠ Pago anulado/reversado</span>';
     if(p.guia_entregada) return '<span class="pill ok">✓ Entregada</span>';
     // Antes que nada: ¿el pago está confirmado por el webhook? Si NO, se marca
     // bien claro para NO entregar a alguien que no pagó (checkout abandonado, etc.).
@@ -360,6 +368,7 @@
     var e = p.estado_pago || 'pendiente';
     var monto = (p.monto_cents != null) ? ' · $' + Number(p.monto_cents/100).toLocaleString('es-CO') + ' ' + (p.moneda||'COP') : '';
     if(e === 'aprobado') return '✓ Aprobado' + monto + (p.pagado_en ? ' · ' + fechaLoc(p.pagado_en) : '');
+    if(e === 'reversado') return '⚠ Pago ANULADO/REVERSADO tras aprobación' + monto + ' — ya no cuenta como venta. Si entregaste la guía, revoca el acceso.';
     if(e === 'rechazado') return '✕ Rechazado (no pagó)';
     if(e === 'error') return '✕ Error de pago (no pagó)';
     return '⏳ Sin confirmar — NO entregar (no completó el pago)';
@@ -400,7 +409,7 @@
       var tagPrueba = p.es_prueba ? '<span class="tag-prueba">🧪 prueba</span>' : '';
       var marca = p.feedback ? '<span class="op-marca" title="Ya dejó su opinión">★</span>' : '';
       var pillOpinion = listo ? ' <span class="pill opinion">📊 pedir opinión</span>' : '';
-      return '<tr class="'+(p.alerta_pendiente?'alerta':'')+'" data-idx="'+idx+'">' +
+      return '<tr class="'+((p.alerta_pendiente||p.estado_pago==='reversado')?'alerta':'')+'" data-idx="'+idx+'">' +
         '<td>'+esc(p.pedido_id)+tagPrueba+marca+'</td>' +
         '<td>'+esc(p.nombre)+'</td>' +
         '<td>'+esc(p.correo)+'</td>' +
@@ -790,8 +799,36 @@
     pintarPedidos(data.pedidos);
     pintarOpiniones(data.opiniones);
     pintarBaseCorreos(data.baseCorreos);
+    pintarLimpieza(data.apuntesSinPagar);
     document.getElementById('refresco').textContent = 'Actualizado: ' + new Date(data.generadoEn).toLocaleString('es-CO');
   }
+
+  // Limpieza de apuntes de intentos sin pagar (carritos abandonados).
+  function pintarLimpieza(info){
+    var n = (info && info.pedidos) || 0;
+    var box = document.getElementById('bcLimpieza');
+    var nEl = document.getElementById('bcLimpiezaN');
+    if(nEl) nEl.textContent = n;
+    if(box) box.style.display = n > 0 ? 'flex' : 'none';
+  }
+  async function limpiarSinPagar(btn){
+    var err = document.getElementById('bcLimpiezaErr'); if(err) err.style.display = 'none';
+    var n = document.getElementById('bcLimpiezaN').textContent;
+    if(!confirm('¿Borrar de Storage los apuntes de ' + n + ' intento(s) de pago SIN aprobar?\n\nSolo se borran los archivos originales; se conserva el correo como lead de recuperación. NO toca pagos aprobados, pruebas, ni intentos recientes (por si un pago está en curso). Esto no se puede deshacer.')) return;
+    var t = btn.textContent; btn.disabled = true; btn.textContent = 'Limpiando…';
+    try{
+      var r = await fetch(FN_URL + '?limpiar_sin_pagar=1&key=' + encodeURIComponent(secretoActual), { method:'POST' });
+      var data = await r.json().catch(function(){ return {}; });
+      if(!r.ok || !data.ok){ throw new Error(data.error || ('Error ' + r.status)); }
+      alert('Listo: ' + (data.pedidos_limpiados || 0) + ' intento(s) limpiados · ' + (data.archivos_borrados || 0) + ' archivo(s) borrado(s).');
+      await refrescar();
+    }catch(e){
+      btn.disabled = false; btn.textContent = t;
+      if(err){ err.textContent = 'No se pudo limpiar: ' + e.message; err.style.display = 'block'; }
+      else { alert('No se pudo limpiar: ' + e.message); }
+    }
+  }
+  document.getElementById('btnLimpiarSinPagar').addEventListener('click', function(){ limpiarSinPagar(this); });
 
   // ===== Estado de operaciones (interruptor Suspender / Reactivar) =====
   var operacionesActivas = true;
