@@ -406,7 +406,7 @@ La guía demo se volvió una herramienta de captación:
 - **CTAs:** botón fijo **"Quiero mi guía →"** en la barra superior (visible en todo el scroll) + **CTA grande al final** (ambos → `/checkout.html`), y **"← Inicio"** + logo enlazado a la home.
 - **Tarjeta de vista previa al compartir (Open Graph):** `og-demo.png` (1200×630) **generada con PIL** — antes→después (apuntes reales → guía) + titular **"Del caos a entender."** + chip "Guía real" + logo discreto. Copy og (título/descr.) = opción recomendada de la IA de persuasión. Así el link se ve "llamativo" en WhatsApp/IG (no una captura pelada). Tags OG/Twitter en el `<head>` de `demo/index.html`.
 - **Los 2 enlaces de "El Cambio"** en `index.html` ahora apuntan a `/demo`.
-- ⚠️ **Regla actualizada:** el **esqueleto de referencia de las guías** ahora es **`demo/index.html`** (antes `segmentacion-de-mercados.html`). El chip `metodo-guias.md` y el README ya se actualizaron.
+- ⚠️ **Regla actualizada:** el **esqueleto de referencia de las guías** ahora es **`demo/index.html`** (antes `segmentacion-de-mercados.html`). El chip `metodo-guias.md` y el README ya se actualizaron. Los **bloques SOLO-DEMO** (CTA "Quiero mi guía", "← Inicio", CTA final y tags Open Graph) van marcados con comentarios **`SOLO DEMO`** y el método indica quitarlos al armar una guía de cliente — así **ninguna guía de cliente los hereda** (las de cliente se entregan por link privado: sin CTA de compra, sin "Inicio", sin preview social).
 - **Deploy:** TODO es frontend → solo **GitHub Pages** (sin Edge Functions, sin SQL). Recarga forzada tras el merge.
 
 ---
