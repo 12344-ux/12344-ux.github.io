@@ -515,7 +515,14 @@ Arranca el frente de **ventas/marketing**: producir **video para anuncios**. El 
 
 **Guion v1:** "Tu clase entra **confusa**" → scroll de la guía + método + tarjeta HOY ENTENDÍ → "Sale como una guía **para entender**" → cierre de marca. **Sin audio** por defecto (el feed se ve en mute; el asset de referencia es mudo). Opción futura: música/clics con ffmpeg (solo audio libre/CC0).
 
-**Verificado:** 0 errores de consola; keyframes revisados en los 3 formatos (se ven premium). **Pendiente:** feedback del dueño sobre el look antes de pulir/estampar variaciones (y decidir audio). ⚠️ Los `.webm` + capturas pesan (~12 MB); son para revisar — si no se quieren en `main`, mover a hosting aparte o borrar tras aprobar.
+**Verificado:** 0 errores de consola; keyframes revisados en los 3 formatos (se ven premium).
+
+### v2 (feedback del dueño: "me voló la cabeza", pero el fondo salía con **banding/remolinos**)
+- **Causa del banding:** Playwright `recordVideo` graba a **bitrate bajo (VP8)** y los degradados oscuros suaves + glows son el peor caso para comprimir → bandeo. El diseño estaba bien; se degradaba al comprimir.
+- **Solución (calidad, la que se usa ahora):** **render frame-a-frame** — `pw/render-frames.mjs` posiciona la escena con `window.__seek(t)` (usando `document.getAnimations()`, con la escena en `?render=1`), captura **PNG sin pérdida** por frame (30fps) y ensambla con el **ffmpeg estático** (`/projects/sandbox/fftmp/ffmpeg`, con libx264) a **H.264 CRF 16 + faststart**. Además se añadió una **capa de grano finísimo** (`.grain`, feTurbulence SVG, opacity ~.07, blend overlay) que **rompe el banding** en fondo y outro. Resultado: fondo limpio y nítido. ⚠️ **Trampa:** NO usar `animations:'disabled'` en `page.screenshot` — Playwright con esa opción **salta las animaciones a su estado final** (todos los frames salían en el outro); se quita y se controla el tiempo solo con `__seek`.
+- **Sonido (v2):** se añadió un **bed ambiente sutil** sintetizado con ffmpeg (acorde La menor en sines + `tremolo` lento + `lowpass`, volumen bajo, fades) + un **chime** suave (E5) en el reveal del logo (~8.7s). Solo audio generado (nada con copyright). Se entregan **ambas** versiones por formato: silenciosa (`anuncio-<f>.mp4`) y con sonido (`anuncio-<f>-sonido.mp4`).
+- **Entregado:** 3 formatos (9:16, 1:1, 16:9) en alta calidad, cada uno silencioso + con sonido (6 MP4). Se borraron los `.webm` v1 (con banding).
+- **Pendiente:** OK del dueño al look final + al sonido; luego, variaciones de copy/ganchos por formato. Los MP4 pesan (~28 MB en total); son artefactos — si no se quieren en `main`, mover a hosting aparte o borrar tras aprobar.
 
 ---
 

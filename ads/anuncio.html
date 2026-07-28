@@ -37,6 +37,11 @@
     background-image:radial-gradient(rgba(255,255,255,.9) 1px,transparent 1px);
     background-size:34px 34px;mask-image:radial-gradient(120% 90% at 50% 40%,#000 30%,transparent 78%);
     -webkit-mask-image:radial-gradient(120% 90% at 50% 40%,#000 30%,transparent 78%);}
+  /* Grano finísimo (rompe el "banding"/remolinos de los degradados al comprimir).
+     Va por encima de TODO a muy baja opacidad → textura filmica premium + fondo limpio. */
+  .grain{position:absolute;inset:0;z-index:60;pointer-events:none;opacity:.07;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size:200px 200px;}
 
   /* ===== Marca superior persistente ===== */
   .topmark{position:absolute;top:6.2%;left:0;right:0;text-align:center;z-index:6;
@@ -157,6 +162,7 @@
     <div class="glow g1"></div>
     <div class="glow g2"></div>
     <div class="grid"></div>
+    <div class="grain"></div>
 
     <!-- Marca superior -->
     <div class="topmark">
@@ -207,9 +213,30 @@
   <script>
     // Formato por query (?f=9x16|1x1|16x9). Por defecto 9x16.
     (function(){
-      var f = (new URLSearchParams(location.search).get('f') || '9x16').toLowerCase();
+      var params = new URLSearchParams(location.search);
+      var f = (params.get('f') || '9x16').toLowerCase();
       if(['9x16','1x1','16x9'].indexOf(f) === -1) f = '9x16';
       document.documentElement.className = 'f-' + f;
+
+      // ===== Modo RENDER (?render=1): render determinista frame-a-frame =====
+      // Pausa todas las animaciones y expone window.__seek(t_ms) para posicionar
+      // la escena en cualquier instante. Así se capturan PNG sin pérdida y se
+      // ensamblan en video de alta calidad (sin el banding de una grabación).
+      window.__seek = function(t){
+        var anims = document.getAnimations ? document.getAnimations() : [];
+        for (var i=0;i<anims.length;i++){ try{ anims[i].pause(); anims[i].currentTime = t; }catch(e){} }
+      };
+      window.__renderReady = false;
+      if (params.get('render') === '1'){
+        window.addEventListener('load', function(){
+          var imgs = Array.prototype.slice.call(document.images);
+          Promise.all(imgs.map(function(im){ return (im.decode ? im.decode().catch(function(){}) : Promise.resolve()); }))
+            .then(function(){
+              // un tick para asegurar que las animaciones existen y luego pausar
+              requestAnimationFrame(function(){ window.__seek(0); window.__renderReady = true; });
+            });
+        });
+      }
     })();
   </script>
 </body>
