@@ -447,6 +447,33 @@ Cambio de **posicionamiento** (no solo de palabras), trabajado con la IA de pers
 
 ---
 
+## 2M. Tarjetas de comprensión descargables (crecimiento por compartición) — EN LA DEMO, pendiente de aprobación del dueño (28-jul)
+
+**El encargo:** el dueño (con su IA de persuasión) trajo varias ideas de "compartición masiva". Las **auditamos juntas** contra la arquitectura real y **descartamos** lo caro/riesgoso: compartir la Joya, enlaces públicos `/e/ID`, microexperiencias, Web Share. **Se aprobó SOLO** lo de alto encaje y bajo riesgo: **tarjetas que se DESCARGAN como imagen** (nada de abrir el editor de IG/WhatsApp) en **puntos específicos de la guía** ("hoy entendí X") + **UNA al final tipo "certificado"** de comprensión, con **nombre del alumno** (en guías de cliente = el comprador).
+
+**Por qué así (chispas de la auditoría):**
+- Las guías son **cero-dependencias** y se sirven en `<iframe srcdoc>` → **no** se puede cargar html2canvas de un CDN. Solución correcta: **dibujar la tarjeta a mano en `<canvas>`** (API nativa), usando las fuentes Fraunces+Inter **ya embebidas**. Cero peticiones externas, funciona offline.
+- Los enlaces públicos `/e/ID` se **parquearon** (roadmap): exigen backend (tabla + render + IDs) y te vuelven **publicador de UGC** → superficie de moderación (ojo con la cláusula CSAM de `condiciones.html`). No va en el MVP.
+- Las flashcards son de **escritura auto-evaluada** (no hay "correcto/incorrecto" automático) → el disparador "acertó tras varios intentos" **no existe**; por eso las tarjetas se ofrecen en cierres de bloque, no atadas a un acierto detectado.
+- **Colores curados, no selector libre** (protege la marca): 6 paletas premium — teal, ámbar, azul/navy, morado, rosa, clara.
+
+**Qué se construyó (SOLO en `demo/index.html`, autocontenido, NO toca `estilos.css` ni otras páginas):**
+- CSS `.momento` / `.tarjeta-btn` / `.certi` / `#tarjetaModal` / `.tm-*` (antes de `</style>`).
+- **2 tarjetas "concepto"** (`.momento`) al cierre de **Conceptos clave** y de **Ejemplos reales**; **1 "certificado"** (`.certi`) en una `section#certificado` nueva antes del footer. **Son NÚCLEO de guía** (marcadas como tal, **no** SOLO DEMO): van también en las guías de cliente.
+- **Modal** `#tarjetaModal` (preview en canvas + 6 chips de color + campo **nombre** + **Descargar imagen** + Cerrar).
+- **Motor JS** (canvas 1080×1350): fondo+glow+marco, marca **STRAMONT** arriba y **MONTAGUTH.INSTITUTE** abajo (wordmark de texto, como en las guías; el ícono inline queda como el mismo follow-up pendiente), título en Fraunces, línea, y nombre "— X". El **check ✓ del certificado se dibuja a mano** (Inter no trae ese glifo → salía cuadrito). Descarga por `canvas.toBlob` → `<a download>`. Nombre se pre-rellena desde **`body[data-nombre]`** (lo inyectará la entrega en guías de cliente) o `localStorage`.
+
+**Verificado con Playwright/Chromium** (escritorio 1360 + **móvil 390px**): 0 errores JS, las 6 paletas renderizan premium, fuentes cargan, nombre redibuja, modal móvil limpio, y la **descarga dispara de verdad** (`stramont-certificado-....png`). Capturas de referencia en el PR.
+
+**Deploy:** TODO frontend → solo **GitHub Pages** (sin Edge Functions, sin SQL). Recarga forzada tras el merge.
+
+⚠️ **PENDIENTE (próximo Kiro / tras aprobación del dueño):**
+1. Si el dueño lo aprueba en la demo → **llevarlo al chip `metodo-guias.md`** (nuevo bloque: cómo añadir `.momento`/`.certi` + el motor; el nombre del comprador se inyecta con `body[data-nombre]`) y **a las guías de cliente**.
+2. **Probar la descarga dentro del `<iframe srcdoc>` de `entrega.html`** (no tiene `sandbox`, así que debería funcionar; si el navegador bloquea el download del iframe, añadir el atributo adecuado al iframe). En la demo (página normal) ya funciona.
+3. **Medición (opcional):** hoy la tarjeta es solo imagen (no rastreable). Si se quiere medir la viralidad, el pie `montaguth.institute` podría apuntar a una URL con UTM o un QR discreto. Se dejó SIN rastreo por ahora (decisión de simplicidad/estética).
+
+---
+
 ## 3. Estado actual del sitio (archivos)
 
 | Archivo | Qué es |
