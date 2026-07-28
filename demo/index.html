@@ -61,7 +61,7 @@
   .tb-cta{margin-left:auto;display:inline-flex;align-items:center;gap:6px;background:#2DD4BF;color:#04231e;font-weight:800;font-size:13px;letter-spacing:.2px;text-decoration:none;padding:9px 15px;border-radius:30px;white-space:nowrap;}
   .tb-cta:hover{filter:brightness(1.07);}
   .tb-cta svg{fill:none;stroke:currentColor;stroke-width:2.4;}
-  @media (max-width:640px){ .tb-title,.tb-tiempo{display:none;} .tb-back-txt{display:none;} .tb-cta{font-size:12px;padding:8px 12px;} }
+  /* (el ajuste móvil de la topbar va MÁS ABAJO, después de las reglas base de .tb-title/.tb-tiempo, para ganar el orden de cascada) */
   /* CTA grande al final (compartir la demo como publicidad) */
   .demo-final{max-width:760px;margin:20px auto 0;padding:44px 24px 12px;text-align:center;}
   .demo-final h3{font-size:clamp(20px,3vw,26px);font-weight:800;color:#fff;margin:0 0 10px;}
@@ -71,6 +71,15 @@
   .demo-final a svg{fill:none;stroke:currentColor;stroke-width:2.4;}
   .tb-title{flex:1;text-align:center;font-size:14.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .tb-tiempo{font-size:12px;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:6px;}
+  /* Móvil: liberar espacio para que el CTA "Quiero mi guía" NO se corte. Va
+     después de las reglas base para ganar la cascada (antes quedaba antes y no aplicaba). */
+  @media (max-width:640px){
+    .topbar{gap:8px;padding:0 10px;}
+    .tb-title,.tb-tiempo{display:none;}
+    .tb-back-txt{display:none;}
+    .tb-logo{letter-spacing:2px;font-size:11px;}
+    .tb-cta{font-size:11.5px;padding:7px 12px;letter-spacing:0;}
+  }
   .tb-burger{display:none;background:var(--surface);border:1px solid var(--line);color:var(--text);width:38px;height:38px;border-radius:9px;font-size:18px;cursor:pointer;flex:0 0 auto;}
   /* barra de progreso honesta (solo scroll, sin estado guardado) */
   .progreso{position:fixed;top:var(--topbar-h);left:0;height:3px;width:0;background:linear-gradient(90deg,var(--n1),var(--n2));z-index:200;transition:width .1s linear;}
