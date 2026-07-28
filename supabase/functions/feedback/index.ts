@@ -31,6 +31,19 @@ const CORS: Record<string, string> = {
 const MAX_COMENTARIO = 4000;
 const MAX_NOMBRE = 60;
 
+// Sanea el Instagram que deja el cliente: acepta URL, @handle o handle pelado,
+// devuelve SOLO el handle (sin @) si es un usuario válido de IG, o null. Nunca
+// se confía en el texto crudo del navegador (evita inyectar URLs raras).
+function limpiarInstagram(v: unknown): string | null {
+  let s = String(v || "").trim();
+  if (!s) return null;
+  s = s.replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/[/?#].*$/, "");
+  s = s.replace(/^@+/, "").trim();
+  // Handle de Instagram: letras, números, punto y guion bajo; 1..30 caracteres.
+  if (!/^[A-Za-z0-9._]{1,30}$/.test(s)) return null;
+  return s;
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -108,12 +121,16 @@ Deno.serve(async (req) => {
   const nombreMostrar = permiso
     ? (String(body?.nombre || "").trim().slice(0, MAX_NOMBRE) || null)
     : null;
+  // El Instagram SOLO se guarda si autorizó publicar (y su nota es alta). Si no
+  // hay permiso, se descarta aunque lo hayan escrito.
+  const instagram = permiso ? limpiarInstagram(body?.instagram) : null;
 
   const { error: errUp } = await client.from("pedido_feedback").upsert({
     pedido_id: pedidoId,
     comentario: comentario || null,
     permiso_publicar: permiso,
     nombre_mostrar: nombreMostrar,
+    instagram: instagram,
     es_prueba: prueba,
     comentario_recibido_at: ahora,
   }, { onConflict: "pedido_id" });

@@ -9,7 +9,7 @@
 // Por qué existe esta función y no se lee la tabla "pedidos" ni el
 // bucket "apuntes" directo desde el navegador con la llave pública:
 // esa llave YA es pública (queda visible en el código fuente de
-// simulacion.html). Si le diéramos permiso de lectura sobre pedidos
+// checkout.html). Si le diéramos permiso de lectura sobre pedidos
 // o listado completo del bucket, cualquier visitante podría enumerar
 // correos y carpetas de todos los clientes. Eso rompe la línea
 // ética del proyecto (nunca exponer datos de clientes).
@@ -64,7 +64,7 @@ function sb() {
 // Correos de PRUEBA. Un pedido de prueba: (a) NO cuenta como venta en el
 // resumen del tablero, (b) se marca con es_prueba (badge 🧪), (c) es
 // borrable desde el tablero. Debe coincidir con la misma regla en
-// simulacion.html. Correo dedicado + heurística.
+// checkout.html. Correo dedicado + heurística.
 // CANDADO DE SEGURIDAD: un pedido real NUNCA cumple esto, así que el
 // borrado no lo puede tocar aunque se tenga el secreto.
 const CORREOS_PRUEBA = ["pruebasmontaguth@gmail.com"];
@@ -436,6 +436,7 @@ Deno.serve(async (req) => {
             comentario: feedbackPorPedido[p.pedido_id].comentario,
             permiso_publicar: feedbackPorPedido[p.pedido_id].permiso_publicar,
             nombre_mostrar: feedbackPorPedido[p.pedido_id].nombre_mostrar,
+            instagram: feedbackPorPedido[p.pedido_id].instagram,
             feedback_recibido_at: feedbackPorPedido[p.pedido_id].feedback_recibido_at,
             comentario_recibido_at: feedbackPorPedido[p.pedido_id].comentario_recibido_at,
           }
@@ -456,6 +457,7 @@ Deno.serve(async (req) => {
       comentario: fb.comentario,
       permiso_publicar: fb.permiso_publicar,
       nombre_mostrar: fb.nombre_mostrar,
+      instagram: fb.instagram,
       feedback_recibido_at: fb.feedback_recibido_at,
       comentario_recibido_at: fb.comentario_recibido_at,
       es_prueba: fb.es_prueba === true || esCorreoPrueba(p.correo || ""),

@@ -1,10 +1,10 @@
 // ============================================================
 // Stramont · Correo automático de confirmación de compra (Correo 1 de 3)
-// Se dispara desde simulacion.html (Paso 4) tras registrar el pedido, y
+// Se dispara desde checkout.html (Paso 4) tras registrar el pedido, y
 // envía al CLIENTE un correo branded vía Resend.
 //
 // SEGURIDAD (por qué NO recibe datos ni secretos desde el navegador):
-//   simulacion.html es público. Si le pasáramos el LINK_SECRET quedaría
+//   checkout.html es público. Si le pasáramos el LINK_SECRET quedaría
 //   expuesto (protege informe/entrega). Y si aceptáramos "manda un correo
 //   a X" desde el front, sería un relay de spam abierto sobre nuestro
 //   dominio Resend. Por eso el navegador SOLO manda el pedido_id:
@@ -46,7 +46,7 @@ function sb() {
   );
 }
 
-// Misma regla de "correo de prueba" que usan simulacion.html e informe.
+// Misma regla de "correo de prueba" que usan checkout.html e informe.
 function esCorreoPrueba(correo: string): boolean {
   const c = (correo || "").toLowerCase().trim();
   if (c === "pruebasmontaguth@gmail.com") return true;
