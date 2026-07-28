@@ -49,7 +49,7 @@
       <!-- PASO B -->
       <div class="paso-card b">
         <span class="paso-tag">Paso B · Después de tu clase</span>
-        <h3>Sube tus apuntes</h3>
+        <h3>Sube el material de tu clase</h3>
         <p>Cuando termines de tomar notas en tu plantilla, súbelas aquí (foto o archivo). En menos de 24 horas recibirás tu Guía de Alta Retención en tu correo.</p>
 
         <form id="formSubir" action="https://formsubmit.co/contacto@montaguth.institute" method="POST" enctype="multipart/form-data">
@@ -59,20 +59,20 @@
           <input type="text" name="_honey" style="display:none">
 
           <input class="form-field" type="email" name="email" placeholder="Tu correo (el mismo del pago) *" required autocomplete="email">
-          <input class="form-field" type="text" name="materia" placeholder="¿De qué clase/materia son los apuntes?">
+          <input class="form-field" type="text" name="materia" placeholder="¿De qué clase/materia es el material?">
 
           <div class="dropzone" id="dropzone">
             <span class="dz-ico">📎</span>
-            <strong>Arrastra aquí tus apuntes</strong><br>
+            <strong>Arrastra aquí el material de tu clase</strong><br>
             o toca para elegir (fotos o PDF)
           </div>
           <input id="fileInput" type="file" name="attachment" accept="image/*,application/pdf" multiple hidden>
           <ul class="filelist" id="fileList"></ul>
 
-          <button type="submit" class="btn btn-primary" style="width:100%;margin-top:16px;">Enviar mis apuntes →</button>
+          <button type="submit" class="btn btn-primary" style="width:100%;margin-top:16px;">Enviar mi material →</button>
         </form>
 
-        <p class="soporte">💡 ¿Aún no has ido a clase? Guarda el enlace de esta página en tus marcadores y sube tus apuntes aquí apenas los tengas listos. ¿Los archivos pesan mucho? Envíalos por <a href="https://wa.me/573223643728" target="_blank" style="color:var(--c1);">WhatsApp</a> o <a href="https://instagram.com/montaguth.institute" target="_blank" style="color:var(--c1);">Instagram</a> con el correo de tu pago.</p>
+        <p class="soporte">💡 ¿Aún no has ido a clase? Guarda el enlace de esta página en tus marcadores y sube el material de tu clase aquí apenas lo tengas listo. ¿Los archivos pesan mucho? Envíalos por <a href="https://wa.me/573223643728" target="_blank" style="color:var(--c1);">WhatsApp</a> o <a href="https://instagram.com/montaguth.institute" target="_blank" style="color:var(--c1);">Instagram</a> con el correo de tu pago.</p>
       </div>
 
     </div>
@@ -93,7 +93,7 @@
       if (params.get('ok') === '1') {
         var sec = document.getElementById('conf');
         if (sec) {
-          sec.innerHTML = '<div class="ok-box"><h2 class="section-title">📨 ¡Apuntes recibidos!</h2>'
+          sec.innerHTML = '<div class="ok-box"><h2 class="section-title">📨 ¡Material recibido!</h2>'
             + '<p class="section-lead" style="margin-bottom:0;">Ya estamos creando tu Guía de Alta Retención. La recibirás en tu correo en menos de 24 horas. ¡Gracias por confiar en Stramont!</p>'
             + '<p style="margin-top:22px;"><a href="kit-stramont.zip" download class="btn btn-dark">Volver a descargar mi Kit</a></p></div>';
         }

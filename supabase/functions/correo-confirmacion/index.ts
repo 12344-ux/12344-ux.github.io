@@ -89,13 +89,13 @@ function construirTexto(nombre: string, tema: string, dias: number | string, com
   return [
     `Hola, ${nombre}.`,
     ``,
-    `Todo salió bien. Ya recibimos tu pago y también tus apuntes sobre ${tema}.`,
+    `Todo salió bien. Ya recibimos tu pago y también el material de tu clase sobre ${tema}.`,
     ``,
     ...compLineas,
     `Desde este momento nuestro equipo empezará a convertirlos en una guía de estudio personalizada.`,
     ``,
     `¿Qué pasará ahora?`,
-    `1. Revisaremos cuidadosamente tus apuntes.`,
+    `1. Revisaremos con cuidado el material de tu clase.`,
     `2. Prepararemos tu guía personalizada con el método Stramont.`,
     `3. La recibirás en menos de 24 horas, a este mismo correo. Estará disponible durante ${dias} días.`,
     ``,
@@ -104,7 +104,7 @@ function construirTexto(nombre: string, tema: string, dias: number | string, com
     ``,
     `Si hay algo importante que debamos tener en cuenta (un examen próximo, un tema que te cueste, etc.), responde este correo. Leemos cada mensaje.`,
     ``,
-    `Gracias por confiar en nosotros. Nuestro objetivo no es resumir tus apuntes; es ayudarte a entenderlos.`,
+    `Gracias por confiar en nosotros. Nuestro objetivo no es resumir tu clase; es ayudarte a entenderla.`,
     ``,
     `Nos vemos en menos de 24 horas.`,
     `Equipo Montaguth Institute · montaguth.institute`,
@@ -131,7 +131,7 @@ function construirHtml(nombre: string, tema: string, dias: number | string, comp
               </div>
             </td>
           </tr>` : "";
-  const preheader = "Pago confirmado \u2713 \u00b7 Apuntes recibidos \u2713 \u00b7 Tu gu\u00eda llegar\u00e1 en menos de 24 horas.";
+  const preheader = "Pago confirmado \u2713 \u00b7 Material recibido \u2713 \u00b7 Tu gu\u00eda llegar\u00e1 en menos de 24 horas.";
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -139,7 +139,7 @@ function construirHtml(nombre: string, tema: string, dias: number | string, comp
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="dark">
 <meta name="supported-color-schemes" content="dark">
-<title>Ya recibimos tus apuntes</title>
+<title>Ya recibimos el material de tu clase</title>
 </head>
 <body style="margin:0;padding:0;background-color:#0B1220;">
   <!-- preheader oculto (texto de preview en la bandeja) -->
@@ -159,7 +159,7 @@ function construirHtml(nombre: string, tema: string, dias: number | string, comp
             <td style="padding:10px 36px 0 36px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#E9EDF5;">
               <h1 style="margin:0 0 6px 0;font-size:23px;line-height:1.3;color:#E9EDF5;font-weight:800;">Hola, ${n}.</h1>
               <p style="margin:0 0 18px 0;font-size:16px;line-height:1.6;color:#E9EDF5;">Todo salió bien.</p>
-              <p style="margin:0 0 18px 0;font-size:15.5px;line-height:1.65;color:#c3ccdb;">Ya recibimos tu pago y también tus apuntes sobre <strong style="color:#E9EDF5;">${t}</strong>.</p>
+              <p style="margin:0 0 18px 0;font-size:15.5px;line-height:1.65;color:#c3ccdb;">Ya recibimos tu pago y también el material de tu clase sobre <strong style="color:#E9EDF5;">${t}</strong>.</p>
               <p style="margin:0 0 24px 0;font-size:15.5px;line-height:1.65;color:#c3ccdb;">Desde este momento nuestro equipo empezará a convertirlos en una guía de estudio personalizada, diseñada para ayudarte a comprender el tema con mayor claridad y estudiar de forma más organizada.</p>
             </td>
           </tr>${compHtml}
@@ -167,8 +167,8 @@ function construirHtml(nombre: string, tema: string, dias: number | string, comp
             <td style="padding:0 36px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
               <div style="font-size:13px;text-transform:uppercase;letter-spacing:1px;color:#818CF8;font-weight:700;margin-bottom:14px;">¿Qué pasará ahora?</div>
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                <tr><td style="padding:0 0 14px 0;color:#E9EDF5;font-size:15px;line-height:1.55;"><strong style="color:#E9EDF5;">1. Revisaremos cuidadosamente tus apuntes.</strong><br><span style="color:#96a1b5;">Nos aseguraremos de entender el contenido antes de comenzar.</span></td></tr>
-                <tr><td style="padding:0 0 14px 0;color:#E9EDF5;font-size:15px;line-height:1.55;"><strong style="color:#E9EDF5;">2. Prepararemos tu guía personalizada.</strong><br><span style="color:#96a1b5;">Aplicaremos el método Stramont para transformar tus apuntes en un material claro, visual y fácil de estudiar.</span></td></tr>
+                <tr><td style="padding:0 0 14px 0;color:#E9EDF5;font-size:15px;line-height:1.55;"><strong style="color:#E9EDF5;">1. Revisaremos con cuidado el material de tu clase.</strong><br><span style="color:#96a1b5;">Nos aseguraremos de entender el contenido antes de comenzar.</span></td></tr>
+                <tr><td style="padding:0 0 14px 0;color:#E9EDF5;font-size:15px;line-height:1.55;"><strong style="color:#E9EDF5;">2. Prepararemos tu guía personalizada.</strong><br><span style="color:#96a1b5;">Aplicaremos el método Stramont para transformar el material de tu clase en una guía clara, visual y fácil de estudiar.</span></td></tr>
                 <tr><td style="padding:0 0 6px 0;color:#E9EDF5;font-size:15px;line-height:1.55;"><strong style="color:#E9EDF5;">3. La recibirás en menos de 24 horas.</strong><br><span style="color:#96a1b5;">Te enviaremos un enlace privado a este mismo correo. Tu guía estará disponible durante <strong style="color:#E9EDF5;">${d} días</strong>, según el plan que elegiste.</span></td></tr>
               </table>
             </td>
@@ -186,9 +186,9 @@ function construirHtml(nombre: string, tema: string, dias: number | string, comp
           <tr><td style="padding:24px 36px;"><div style="height:1px;background-color:rgba(255,255,255,0.10);line-height:1px;font-size:1px;">&nbsp;</div></td></tr>
           <tr>
             <td style="padding:0 36px 8px 36px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-              <p style="margin:0 0 18px 0;font-size:14.5px;line-height:1.6;color:#96a1b5;">Si hay algo importante que debamos tener en cuenta al preparar tu guía (un examen próximo, un tema que te esté costando o cualquier aclaración sobre tus apuntes), simplemente <strong style="color:#E9EDF5;">responde este correo</strong>. Leemos personalmente cada mensaje.</p>
+              <p style="margin:0 0 18px 0;font-size:14.5px;line-height:1.6;color:#96a1b5;">Si hay algo importante que debamos tener en cuenta al preparar tu guía (un examen próximo, un tema que te esté costando o cualquier aclaración sobre tu material), simplemente <strong style="color:#E9EDF5;">responde este correo</strong>. Leemos personalmente cada mensaje.</p>
               <p style="margin:0 0 4px 0;font-size:15px;line-height:1.6;color:#c3ccdb;">Gracias por confiar en nosotros.</p>
-              <p style="margin:0 0 18px 0;font-size:15px;line-height:1.6;color:#c3ccdb;">Nuestro objetivo no es resumir tus apuntes; es ayudarte a entenderlos.</p>
+              <p style="margin:0 0 18px 0;font-size:15px;line-height:1.6;color:#c3ccdb;">Nuestro objetivo no es resumir tu clase; es ayudarte a entenderla.</p>
               <p style="margin:0 0 4px 0;font-size:15px;line-height:1.6;color:#E9EDF5;">Nos vemos en menos de 24 horas.</p>
               <p style="margin:0 0 4px 0;font-size:15px;font-weight:700;color:#E9EDF5;">Equipo Montaguth Institute</p>
             </td>
@@ -260,7 +260,7 @@ Deno.serve(async (req) => {
     fecha: row.pagado_en ? new Date(row.pagado_en).toLocaleString("es-CO") : new Date().toLocaleString("es-CO"),
   } : null;
   const prueba = esCorreoPrueba(correo);
-  const asunto = (prueba ? "[TEST] " : "") + (nombre ? nombre + ", " : "") + "ya recibimos tus apuntes.";
+  const asunto = (prueba ? "[TEST] " : "") + (nombre ? nombre + ", " : "") + "ya recibimos el material de tu clase.";
 
   const resp = await fetch(RESEND_ENDPOINT, {
     method: "POST",
