@@ -107,12 +107,43 @@ Deno.serve(async (req) => {
 
   const client = sb();
 
-  // Si NO está aprobada, registramos el estado (rechazada/error) sin disparar correos.
+  // Si NO está aprobada, hay DOS situaciones distintas (ojo, no son lo mismo):
+  //
+  //  (1) PRIMER estado final y NO fue aprobado (el pedido sigue 'pendiente'):
+  //      es un rechazo/error normal. Se registra sin disparar correos. El
+  //      filtro .eq('estado_pago','pendiente') evita que un evento fuera de
+  //      orden pise un pago que ya quedó bueno.
+  //
+  //  (2) REVERSA de un pago YA APROBADO (anulación/reembolso/contracargo): la
+  //      MISMA transacción que se aprobó llega ahora como VOIDED/ERROR. Antes
+  //      esto se IGNORABA en silencio (el filtro 'pendiente' no lo tocaba), así
+  //      que un pago devuelto seguía contando como venta y entregable. Ahora se
+  //      degrada a 'reversado' para que (a) deje de contar como venta/cliente y
+  //      (b) quede VISIBLE en el tablero con alerta (el dueño pudo haber
+  //      entregado ya y debe revocar el acceso). El match por txId garantiza
+  //      que solo la transacción aprobada puede revertir su propio pago (un
+  //      evento viejo de otro intento no puede tumbar el pago bueno).
   if (estado !== "APPROVED") {
     if (referencia) {
-      await client.from("pedidos")
-        .update({ estado_pago: estado === "DECLINED" || estado === "VOIDED" ? "rechazado" : "error", wompi_transaction_id: txId })
-        .eq("pedido_id", referencia).eq("estado_pago", "pendiente");
+      const { data: cur } = await client
+        .from("pedidos").select("estado_pago, wompi_transaction_id")
+        .eq("pedido_id", referencia).maybeSingle();
+      if (cur) {
+        if (cur.estado_pago === "pendiente") {
+          await client.from("pedidos")
+            .update({ estado_pago: estado === "DECLINED" || estado === "VOIDED" ? "rechazado" : "error", wompi_transaction_id: txId })
+            .eq("pedido_id", referencia).eq("estado_pago", "pendiente");
+        } else if (
+          cur.estado_pago === "aprobado" &&
+          (estado === "VOIDED" || estado === "ERROR") &&
+          txId && txId === cur.wompi_transaction_id
+        ) {
+          await client.from("pedidos")
+            .update({ estado_pago: "reversado" })
+            .eq("pedido_id", referencia).eq("estado_pago", "aprobado");
+          return resp(200, { ok: true, estado, reversado: true });
+        }
+      }
     }
     return resp(200, { ok: true, estado });
   }

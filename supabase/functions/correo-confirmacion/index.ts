@@ -225,6 +225,20 @@ Deno.serve(async (req) => {
   if (!row) return json({ error: "Pedido no encontrado." }, 404);
   if (!row.correo) return json({ error: "El pedido no tiene correo." }, 422);
 
+  // CANDADO DE PAGO (invariante del proyecto: nada ocurre sin pago aprobado).
+  // El Correo 1 dice "ya recibimos tu pago" e incluye el comprobante: JAMÁS
+  // debe salir si el pago no está confirmado por el webhook verificado. Este
+  // endpoint es PÚBLICO (solo recibe pedido_id), así que sin este candado
+  // alguien podría disparar un falso "pago recibido" a un correo con solo
+  // adivinar un pedido_id, o un cambio futuro podría llamarlo antes de aprobar.
+  // En operación normal el webhook lo llama SOLO tras marcar 'aprobado', así
+  // que esto no cambia el flujo real; solo cierra el hueco. Se permite el
+  // correo de PRUEBA (direcciones del equipo) para no romper el flujo de
+  // pruebas/simulación.
+  if (row.estado_pago !== "aprobado" && !esCorreoPrueba(row.correo)) {
+    return json({ ok: false, noAprobado: true, estado_pago: row.estado_pago || null, pedido_id: pedidoId }, 409);
+  }
+
   // Idempotencia: si ya se envió, no reenviar.
   if (row.correo_confirmacion_enviado) {
     return json({ ok: true, yaEnviado: true, pedido_id: pedidoId });

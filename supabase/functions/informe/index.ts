@@ -356,17 +356,19 @@ Deno.serve(async (req) => {
   }
 
   const ahora = Date.now();
-  // Solo mostramos en el tablero los pedidos con pago APROBADO (o de prueba,
-  // para poder probar). Los checkouts abandonados/sin pagar NO ensucian la
-  // lista; su correo se captura aparte como "carrito abandonado" (base de correos).
+  // Mostramos: pagos APROBADOS + pedidos REVERSADOS (pago devuelto/anulado tras
+  // aprobar: hay que verlos para revocar acceso si ya se entregó) + pruebas.
+  // Los checkouts abandonados/sin pagar NO ensucian la lista; su correo se
+  // captura aparte como "carrito abandonado" (base de correos).
   const pedidos = (pedidosRaw || [])
-    .filter((p: any) => p.estado_pago === "aprobado" || esCorreoPrueba(p.correo))
+    .filter((p: any) => p.estado_pago === "aprobado" || p.estado_pago === "reversado" || esCorreoPrueba(p.correo))
     .map((p: any) => {
     const horasDesdeCompra = p.fecha_compra ? (ahora - new Date(p.fecha_compra).getTime()) / 3_600_000 : 0;
     const it = intakePorPedido[p.pedido_id] || null;
     return {
       ...p,
       es_prueba: esCorreoPrueba(p.correo),
+      alerta_reversado: p.estado_pago === "reversado",
       alerta_pendiente: p.estado_pago === "aprobado" && !p.guia_entregada && horasDesdeCompra >= HORAS_ALERTA,
       horas_desde_compra: Math.round(horasDesdeCompra),
       intake: it ? { uso: it.uso, cuesta: it.cuesta, extra: it.extra } : null,
@@ -461,7 +463,7 @@ Deno.serve(async (req) => {
   for (const p of (pedidosRaw || [])) {
     const c = String(p.correo || "").toLowerCase().trim();
     if (!c || esCorreoPrueba(c)) continue;
-    if (p.estado_pago === "aprobado") continue;            // ya es cliente
+    if (p.estado_pago === "aprobado" || p.estado_pago === "reversado") continue; // cliente o pago reversado (ya sale en la lista de pedidos), no es carrito
     if (clientesPorCorreo[c] || yaEnLista.has(c)) continue; // ya aparece en otro segmento
     if (!carritoPorCorreo[c] || new Date(p.fecha_compra) > new Date(carritoPorCorreo[c])) {
       carritoPorCorreo[c] = p.fecha_compra;

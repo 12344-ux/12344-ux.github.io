@@ -342,6 +342,9 @@
   }
 
   function estadoPill(p){
+    // REVERSA primero, incluso si ya se entregó: un pago anulado/devuelto tras
+    // la aprobación debe verse SÍ o SÍ para revocar el acceso si ya se entregó.
+    if(p.estado_pago === 'reversado') return '<span class="pill alerta">⚠ Pago anulado/reversado</span>';
     if(p.guia_entregada) return '<span class="pill ok">✓ Entregada</span>';
     // Antes que nada: ¿el pago está confirmado por el webhook? Si NO, se marca
     // bien claro para NO entregar a alguien que no pagó (checkout abandonado, etc.).
@@ -360,6 +363,7 @@
     var e = p.estado_pago || 'pendiente';
     var monto = (p.monto_cents != null) ? ' · $' + Number(p.monto_cents/100).toLocaleString('es-CO') + ' ' + (p.moneda||'COP') : '';
     if(e === 'aprobado') return '✓ Aprobado' + monto + (p.pagado_en ? ' · ' + fechaLoc(p.pagado_en) : '');
+    if(e === 'reversado') return '⚠ Pago ANULADO/REVERSADO tras aprobación' + monto + ' — ya no cuenta como venta. Si entregaste la guía, revoca el acceso.';
     if(e === 'rechazado') return '✕ Rechazado (no pagó)';
     if(e === 'error') return '✕ Error de pago (no pagó)';
     return '⏳ Sin confirmar — NO entregar (no completó el pago)';
@@ -400,7 +404,7 @@
       var tagPrueba = p.es_prueba ? '<span class="tag-prueba">🧪 prueba</span>' : '';
       var marca = p.feedback ? '<span class="op-marca" title="Ya dejó su opinión">★</span>' : '';
       var pillOpinion = listo ? ' <span class="pill opinion">📊 pedir opinión</span>' : '';
-      return '<tr class="'+(p.alerta_pendiente?'alerta':'')+'" data-idx="'+idx+'">' +
+      return '<tr class="'+((p.alerta_pendiente||p.estado_pago==='reversado')?'alerta':'')+'" data-idx="'+idx+'">' +
         '<td>'+esc(p.pedido_id)+tagPrueba+marca+'</td>' +
         '<td>'+esc(p.nombre)+'</td>' +
         '<td>'+esc(p.correo)+'</td>' +
