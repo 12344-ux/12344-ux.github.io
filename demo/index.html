@@ -69,6 +69,8 @@
   .demo-final a{display:inline-flex;align-items:center;gap:10px;background:#2DD4BF;color:#04231e;font-weight:800;font-size:16px;letter-spacing:.3px;text-decoration:none;padding:16px 34px;border-radius:40px;box-shadow:0 0 30px rgba(45,212,191,.35);}
   .demo-final a:hover{filter:brightness(1.07);}
   .demo-final a svg{fill:none;stroke:currentColor;stroke-width:2.4;}
+  /* En móvil el rail es una barra inferior FIJA que tapaba el CTA final: le dejamos aire debajo. */
+  @media (max-width:1080px){ .demo-final{padding-bottom:104px;} }
   .tb-title{flex:1;text-align:center;font-size:14.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .tb-tiempo{font-size:12px;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:6px;}
   /* Móvil: liberar espacio para que el CTA "Quiero mi guía" NO se corte. Va
