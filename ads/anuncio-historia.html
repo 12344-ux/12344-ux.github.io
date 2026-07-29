@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stramont · Anuncio 45s</title>
+<style>
+  :root{
+    --teal:#2DD4BF; --indigo:#6f8bf5; --ink:#eaf1fb; --dim:#a7b6cc; --muted:#6d7f96;
+    --bg0:#080c14; --bg1:#0c1522;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;
+    font-family:'DM Sans','Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  #stage{position:fixed;inset:0;overflow:hidden;background:#000;}
+  .scene{position:absolute;inset:0;opacity:0;will-change:opacity,transform;}
+
+  /* ---- Mesa / apuntes (caos) ---- */
+  .desk{position:absolute;inset:0;background-size:cover;background-position:center;will-change:transform,filter;}
+  .desk.d1{background-image:url("../apuntes-cliente.jpg");}
+  .vig{position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(120% 100% at 50% 45%, transparent 40%, rgba(0,0,0,.55) 100%);}
+  .dark{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;}
+
+  /* Cursor */
+  .cursor{position:absolute;width:26px;height:26px;z-index:40;pointer-events:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6));}
+  .cursor svg{width:100%;height:100%;}
+
+  /* Ventanas UI (búsqueda) */
+  .win{position:absolute;border-radius:16px;overflow:hidden;background:#0e1626;
+    border:1px solid rgba(255,255,255,.14);box-shadow:0 30px 70px rgba(0,0,0,.6);opacity:0;will-change:opacity,transform;}
+  .win .bar{height:34px;background:#131d2f;display:flex;align-items:center;gap:7px;padding:0 12px;border-bottom:1px solid rgba(255,255,255,.08);}
+  .win .dot{width:11px;height:11px;border-radius:50%;background:#3a4a63;}
+  .win .bt{margin-left:10px;font-size:13px;color:#8ea0ba;font-weight:600;}
+  .win .body{position:absolute;top:34px;left:0;right:0;bottom:0;background-size:cover;background-position:top center;}
+  .win.wa .body{background:#0b141a;}
+  .win.wa .bubble{margin:9px 14px;max-width:72%;background:#1f2c3a;color:#cfe0f0;font-size:19px;padding:11px 15px;border-radius:12px;}
+  .win.wa .bubble.me{margin-left:auto;background:#134d44;color:#d7fff6;}
+
+  /* Preguntas (pantalla negra) */
+  .qwrap{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;padding:0 12%;}
+  .q{font-family:'Fraunces',Georgia,serif;font-weight:500;color:#e9eef7;text-align:center;line-height:1.15;opacity:0;will-change:opacity,transform;
+     font-size:clamp(34px,6.4vw,68px);}
+  .q .accent{color:var(--teal);}
+
+  /* Timer cansancio */
+  .timer{position:absolute;left:0;right:0;top:24%;text-align:center;opacity:0;}
+  .timer .num{font-variant-numeric:tabular-nums;font-size:120px;font-weight:800;color:#5b6a82;letter-spacing:2px;}
+  .timer .lbl{margin-top:8px;font-size:26px;color:#54637b;font-weight:600;letter-spacing:1px;}
+
+  /* Revelación / marca */
+  .brandbg{position:absolute;inset:0;background:radial-gradient(120% 80% at 50% -8%, #12283f 0%, var(--bg1) 44%, var(--bg0) 80%);}
+  .glow{position:absolute;border-radius:50%;filter:blur(80px);opacity:.5;pointer-events:none;}
+  .glow.g1{width:70vw;height:70vw;left:-14vw;top:-12vw;background:radial-gradient(circle,rgba(45,212,191,.5),transparent 66%);}
+  .glow.g2{width:72vw;height:72vw;right:-18vw;bottom:-16vw;background:radial-gradient(circle,rgba(111,139,245,.45),transparent 66%);}
+
+  .phone{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);width:640px;border-radius:56px;padding:15px;
+    background:linear-gradient(160deg,#1b2637,#0f1826);box-shadow:0 40px 90px rgba(0,0,0,.6),0 0 0 2px rgba(255,255,255,.06) inset,0 0 60px rgba(45,212,191,.14);
+    opacity:0;will-change:opacity,transform;}
+  .phone .screen{position:relative;overflow:hidden;border-radius:44px;height:1180px;background:#0a0e16;}
+  .phone .screen img{width:100%;display:block;will-change:transform;}
+  .rev-badge{position:absolute;left:0;right:0;top:8%;text-align:center;opacity:0;z-index:5;}
+  .rev-badge .eye{font-size:15px;letter-spacing:4px;text-transform:uppercase;color:var(--teal);font-weight:800;}
+
+  .startbtn{position:absolute;left:50%;bottom:17.5%;transform:translateX(-50%) scale(.9);z-index:6;opacity:0;
+    display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,#39d7c4,#2a9d8f);color:#04130f;
+    font-size:26px;font-weight:800;padding:18px 34px;border-radius:16px;box-shadow:0 16px 40px rgba(42,157,143,.4);white-space:nowrap;}
+  .startbtn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}
+
+  /* Tarjetas del sistema */
+  .cards{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:76%;display:flex;flex-direction:column;gap:20px;}
+  .kcard{position:relative;background:linear-gradient(160deg,#101b2b,#0c1420);border:1px solid rgba(255,255,255,.12);
+    border-radius:18px;padding:24px 26px;opacity:0;will-change:opacity,transform;box-shadow:0 20px 50px rgba(0,0,0,.4);}
+  .kcard::before{content:"";position:absolute;left:0;top:18px;bottom:18px;width:4px;border-radius:4px;background:var(--teal);}
+  .kcard .kt{font-size:15px;letter-spacing:2px;text-transform:uppercase;color:var(--teal);font-weight:800;margin-bottom:8px;}
+  .kcard .kd{font-size:26px;color:#fff;font-weight:700;line-height:1.2;}
+  .kcard.i2::before{background:var(--indigo);} .kcard.i2 .kt{color:var(--indigo);}
+  .kcard.i3::before{background:#e3b85a;} .kcard.i3 .kt{color:#e3b85a;}
+  .kcard.i4::before{background:#f4a8d4;} .kcard.i4 .kt{color:#f4a8d4;}
+
+  /* Outro marca */
+  .outro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+  .outro .mark{opacity:0;will-change:opacity,transform;}
+  .outro .mark img{height:120px;filter:drop-shadow(0 12px 34px rgba(0,0,0,.5));}
+  .outro .nm{font-size:82px;font-weight:800;color:#fff;letter-spacing:.5px;margin-top:16px;opacity:0;will-change:opacity,transform;}
+  .outro .pos{font-size:30px;font-weight:500;color:var(--dim);margin-top:20px;line-height:1.4;max-width:20ch;opacity:0;will-change:opacity,transform;}
+  .outro .pos b{color:var(--teal);font-weight:800;}
+  .outro .cta{margin-top:34px;font-size:27px;font-weight:800;color:#04130f;background:linear-gradient(135deg,#39d7c4,#2a9d8f);
+    padding:17px 36px;border-radius:16px;box-shadow:0 16px 40px rgba(42,157,143,.4);opacity:0;will-change:opacity,transform;}
+  .outro .url{margin-top:22px;font-size:22px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);font-weight:700;opacity:0;}
+
+  /* Scrim para legibilidad de subtítulos sobre foto */
+  .capscrim{position:absolute;left:0;right:0;bottom:0;height:32%;z-index:44;pointer-events:none;opacity:0;
+    background:linear-gradient(0deg, rgba(3,6,12,.9), rgba(3,6,12,.45) 42%, transparent);}
+  /* Caption (subtítulo de la voz) */
+  .cap{position:absolute;left:8%;right:8%;bottom:8.5%;text-align:center;z-index:45;
+    font-size:40px;font-weight:700;color:#fff;line-height:1.25;opacity:0;text-shadow:0 2px 12px rgba(0,0,0,.9),0 1px 3px rgba(0,0,0,.9);will-change:opacity,transform;}
+  .cap b{color:var(--teal);}
+  .cap.center{top:50%;bottom:auto;transform:translateY(-50%);font-size:48px;}
+
+  /* Grano anti-banding global */
+  .grain{position:absolute;inset:0;z-index:60;pointer-events:none;opacity:.06;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size:200px 200px;}
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- ESCENA 1 y 2 y 4 comparten la mesa -->
+  <div class="scene" id="s1">
+    <div class="desk d1" id="desk1"></div>
+    <div class="vig"></div>
+  </div>
+
+  <div class="scene" id="s2">
+    <div class="desk d1" id="desk2" style="filter:brightness(.5) blur(2px)"></div>
+    <div class="vig"></div>
+    <div class="win" id="w1" style="left:9%;top:14%;width:64%;height:44%;">
+      <div class="bar"><span class="dot"></span><span class="bt">apuntes.pdf</span></div>
+      <div class="body" style="background-image:url('../apunte-seg-1.jpg')"></div>
+    </div>
+    <div class="win" id="w2" style="right:7%;top:30%;width:60%;height:40%;">
+      <div class="bar"><span class="dot"></span><span class="bt">foto_2847.jpg</span></div>
+      <div class="body" style="background-image:url('../apunte-seg-2.jpg')"></div>
+    </div>
+    <div class="win" id="w3" style="left:12%;bottom:12%;width:62%;height:40%;">
+      <div class="bar"><span class="dot"></span><span class="bt">cuaderno.jpg</span></div>
+      <div class="body" style="background-image:url('../apunte-seg-3.jpg')"></div>
+    </div>
+    <div class="win wa" id="w4" style="right:8%;top:17%;width:54%;height:25.5%;">
+      <div class="bar"><span class="dot" style="background:#25d366"></span><span class="bt">Grupo · Parcial mañana</span></div>
+      <div class="body"><div class="bubble">¿alguien tiene el resumen?</div><div class="bubble me">¿qué entra??</div><div class="bubble">no sé jaja</div><div class="bubble" style="opacity:.65">escribiendo…</div></div>
+    </div>
+    <div class="cursor" id="cur2"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.6L9.5 19 5 3z" fill="#fff" stroke="#0a0e16" stroke-width="1.3"/></svg></div>
+  </div>
+
+  <!-- ESCENA 3: preguntas -->
+  <div class="scene" id="s3" style="background:#05070c">
+    <div class="qwrap">
+      <div class="q" id="q1">¿Qué <span class="accent">entra</span>?</div>
+      <div class="q" id="q2">¿Qué estudio <span class="accent">primero</span>?</div>
+      <div class="q" id="q3">¿Esto es <span class="accent">importante</span>?</div>
+      <div class="q" id="q4">¿Dónde estaba esa <span class="accent">explicación</span>?</div>
+      <div class="q" id="q5">¿Me falta <span class="accent">algo</span>?</div>
+    </div>
+  </div>
+
+  <!-- ESCENA 4: cansancio -->
+  <div class="scene" id="s4">
+    <div class="desk d1" id="desk4" style="filter:brightness(.32) saturate(.7)"></div>
+    <div class="vig"></div>
+    <div class="timer" id="timer"><div class="num" id="timernum">20:00</div><div class="lbl">y todavía no empiezas.</div></div>
+  </div>
+
+  <!-- ESCENA 5: revelación -->
+  <div class="scene" id="s5">
+    <div class="brandbg"></div><div class="glow g1"></div><div class="glow g2"></div>
+    <div class="rev-badge" id="revbadge"><div class="eye">Con Stramont</div></div>
+    <div class="phone" id="phone5"><div class="screen"><img id="shot5" src="assets/guia-movil.png" alt=""></div></div>
+    <div class="startbtn" id="startbtn"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg> Empieza aquí</div>
+  </div>
+
+  <!-- ESCENA 6A: sistema -->
+  <div class="scene" id="s6a">
+    <div class="brandbg"></div><div class="glow g1" style="opacity:.32"></div><div class="glow g2" style="opacity:.3"></div>
+    <div class="cards">
+      <div class="kcard i1" id="c1"><div class="kt">Idea principal</div><div class="kd">El concepto que sostiene todo el tema.</div></div>
+      <div class="kcard i2" id="c2"><div class="kt">Ejemplo</div><div class="kd">Un caso real que lo vuelve concreto.</div></div>
+      <div class="kcard i3" id="c3"><div class="kt">Pruébate</div><div class="kd">Una pregunta para fijar lo aprendido.</div></div>
+      <div class="kcard i4" id="c4"><div class="kt">Plan de repaso</div><div class="kd">Cuándo repasar para no olvidarlo.</div></div>
+    </div>
+  </div>
+
+  <!-- ESCENA 6B: cierre -->
+  <div class="scene" id="s6b">
+    <div class="brandbg"></div><div class="glow g1" style="opacity:.4"></div><div class="glow g2" style="opacity:.36"></div>
+    <div class="outro">
+      <div class="mark" id="omark"><img src="../logo-mark.png" alt="Stramont"></div>
+      <div class="nm" id="onm">Stramont</div>
+      <div class="pos" id="opos">Organizamos el conocimiento. <b>Para que tú solo tengas que entender.</b></div>
+      <div class="cta" id="octa">Conoce Stramont</div>
+      <div class="url" id="ourl">montaguth.institute</div>
+    </div>
+  </div>
+
+  <!-- Subtítulos de voz -->
+  <div class="capscrim" id="capscrim"></div>
+  <div class="cap" id="cap1">¿Te ha pasado esto?</div>
+  <div class="cap" id="cap2">Te sientas a estudiar… pero primero tienes que <b>descubrir…</b></div>
+  <div class="cap center" id="cap3">…qué estudiar.</div>
+  <div class="cap" id="cap4">Y cuando por fin empiezas… <b>ya estás cansado.</b></div>
+  <div class="cap" id="cap5">Envíanos todo tu material de una materia.<br><b>Nosotros encontramos el orden.</b></div>
+  <div class="cap" id="cap6a">Entender no depende de <b>estudiar más.</b></div>
+  <div class="cap" id="cap6b">Depende de <b>empezar por el lugar correcto.</b></div>
+
+  <div class="grain"></div>
+</div>
+
+<script>
+  // ====== Timeline (ms). Editable para ajustar a la voz real. ======
+  var T = { s1:[0,5000], s2:[5000,10000], s3:[10000,17000], s4:[17000,23000],
+            s5:[23000,30000], s6a:[30000,38000], s6b:[38000,45000] };
+  var END = 45000, XF = 500;
+
+  var clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+  var lerp=(a,b,x)=>a+(b-a)*x;
+  var ease=(x)=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2; // easeInOutCubic
+  var eo=(x)=>1-Math.pow(1-x,3); // easeOut
+  // progreso local 0..1 dentro de [a,b]
+  var seg=(t,a,b)=>clamp((t-a)/(b-a),0,1);
+  // fade in/out: opacidad 1 dentro, con rampas
+  function band(t,a,b,fin,fout){ fin=fin||XF; fout=fout||XF;
+    return clamp(Math.min((t-a)/fin,(b-t)/fout),0,1); }
+  var $=id=>document.getElementById(id);
+  function set(id,o,tr){ var e=$(id); if(!e)return; e.style.opacity=o; if(tr!=null)e.style.transform=tr; }
+
+  function frame(t){
+    // ---- Escenas (contenedor) ----
+    set('s1', band(t,T.s1[0],T.s1[1],300,XF));
+    set('s2', band(t,T.s2[0],T.s2[1],XF,XF));
+    set('s3', band(t,T.s3[0],T.s3[1],XF,XF));
+    set('s4', band(t,T.s4[0],T.s4[1],XF,700));
+    set('s5', band(t,T.s5[0],T.s5[1],700,XF));
+    set('s6a', band(t,T.s6a[0],T.s6a[1],XF,XF));
+    set('s6b', band(t,T.s6b[0],T.s6b[1],XF,600));
+
+    // ---- S1: Ken Burns sobre la mesa ----
+    var p1=seg(t,T.s1[0],T.s1[1]);
+    $('desk1').style.transform='scale('+lerp(1.03,1.12,p1)+') translateY('+lerp(-1,2,p1)+'%)';
+
+    // ---- S2: ventanas saltando + cursor ----
+    var s2=T.s2[0];
+    set('w1', band(t,s2+200,s2+2200,180,220), 'translateY('+lerp(24,0,eo(seg(t,s2+200,s2+700)))+'px)');
+    set('w2', band(t,s2+1200,s2+3200,180,220), 'translateY('+lerp(24,0,eo(seg(t,s2+1200,s2+1700)))+'px)');
+    set('w4', band(t,s2+2200,s2+4000,180,220), 'translateY('+lerp(24,0,eo(seg(t,s2+2200,s2+2700)))+'px)');
+    set('w3', band(t,s2+3200,s2+4900,180,260), 'translateY('+lerp(24,0,eo(seg(t,s2+3200,s2+3700)))+'px)');
+    // cursor saltando entre ventanas
+    var cx, cy, ph=seg(t,s2,T.s2[1]);
+    var pts=[[35,40],[70,55],[55,35],[40,70],[68,48]];
+    var idx=Math.min(pts.length-1, Math.floor(ph*pts.length));
+    var pf=(ph*pts.length)-idx; var a=pts[idx], b=pts[Math.min(pts.length-1,idx+1)];
+    cx=lerp(a[0],b[0],ease(pf)); cy=lerp(a[1],b[1],ease(pf));
+    set('cur2',1,'translate('+cx+'vw,'+cy+'vh) scale('+(pf<.12?0.82:1)+')');
+
+    // ---- S3: preguntas apareciendo en cascada ----
+    var s3=T.s3[0];
+    var qt=[10300,11400,12500,13600,14600];  // sincronizado con los blips del audio
+    for(var i=0;i<5;i++){
+      var st=qt[i];
+      var op=band(t,st,T.s3[1]-200,350,900);
+      set('q'+(i+1), op, 'translateY('+lerp(18,0,eo(seg(t,st,st+450)))+'px)');
+    }
+
+    // ---- S4: timer + oscurecer al final (valle) ----
+    var p4=seg(t,T.s4[0],T.s4[1]);
+    set('timer', band(t,T.s4[0]+300,T.s4[1]-200,500,700));
+    var mins=Math.floor(lerp(0,20,seg(t,T.s4[0],T.s4[0]+3500)));
+    $('timernum').textContent=(mins<10?'0':'')+mins+':00';
+
+    // ---- S5: reveal guía ----
+    var s5=T.s5[0];
+    set('revbadge', band(t,s5+400,T.s5[1]-200,600,400), 'translateY('+lerp(10,0,eo(seg(t,s5+400,s5+1000)))+'px)');
+    set('phone5', band(t,s5+250,T.s5[1]-150,700,400));
+    var pph=eo(seg(t,s5+250,s5+1200));
+    $('phone5').style.transform='translate(-50%,-50%) translateY('+lerp(70,0,pph)+'px) scale('+lerp(.94,1,pph)+')';
+    // scroll suave de la guía
+    $('shot5').style.transform='translateY('+lerp(0,-26,seg(t,s5+1200,T.s5[1]))*1+'%)';
+    set('startbtn', band(t,s5+3200,T.s5[1]-150,500,400),'translateX(-50%) scale('+lerp(.9,1,eo(seg(t,s5+3200,s5+3800)))+')');
+
+    // ---- S6A: tarjetas en cascada ----
+    var s6=T.s6a[0];
+    var ct=[s6+300,s6+1300,s6+2300,s6+3300];
+    for(var j=0;j<4;j++){
+      var cst=ct[j];
+      set('c'+(j+1), band(t,cst,T.s6a[1]-200,450,600),'translateY('+lerp(26,0,eo(seg(t,cst,cst+600)))+'px)');
+    }
+
+    // ---- S6B: outro ----
+    var s7=T.s6b[0];
+    set('omark', band(t,s7+300,END,700,700),'scale('+lerp(.8,1,eo(seg(t,s7+300,s7+1100)))+')');
+    set('onm', band(t,s7+700,END,600,700),'translateY('+lerp(16,0,eo(seg(t,s7+700,s7+1300)))+'px)');
+    set('opos', band(t,s7+1300,END,600,700),'translateY('+lerp(14,0,eo(seg(t,s7+1300,s7+1900)))+'px)');
+    set('octa', band(t,s7+2100,END-300,600,600),'scale('+lerp(.9,1,eo(seg(t,s7+2100,s7+2700)))+')');
+    set('ourl', band(t,s7+2700,END-200,600,600));
+
+    // ---- Subtítulos, sincronizados con la voz real (ElevenLabs) ----
+    var o1=band(t, 2300, 4600, 350,400);      // voz 01: 2.55-4.12
+    var o2=band(t, 5400,10900, 350,450);      // voz 02+03: 5.60-10.72
+    var o3=band(t,15200,17900, 350,400);      // voz 04: 15.40-17.75
+    var o4=band(t,17850,22800, 350,450);      // voz 05+06: 18.00-22.57
+    var o5=band(t,23900,29000, 400,450);      // voz 07+08: 24.00-28.76
+    var o6a=band(t,30400,33500, 350,400);     // voz 09: 30.60-33.19
+    var o6b=band(t,34200,37200, 350,450);     // voz 10: 34.40-36.59
+    set('cap1',o1,''); set('cap2',o2,'');
+    set('cap3',o3,'translateY(-50%)');
+    set('cap4',o4,''); set('cap5',o5,'');
+    set('cap6a',o6a,''); set('cap6b',o6b,'');
+    // scrim solo donde hay foto/reveal detrás
+    set('capscrim', Math.max(o1,o2,o4,o5));
+  }
+
+  // ====== Motor: preview en vivo o render frame-a-frame ======
+  var params=new URLSearchParams(location.search);
+  window.__seek=function(t){ frame(t); };
+  window.__renderReady=false;
+  window.addEventListener('load',function(){
+    var imgs=[].slice.call(document.images);
+    Promise.all(imgs.map(function(im){return im.decode?im.decode().catch(function(){}):Promise.resolve();}))
+      .then(function(){ frame(0); window.__renderReady=true;
+        if(params.get('render')!=='1'){
+          var t0=performance.now();
+          (function loop(){ var t=(performance.now()-t0)% (END+1000); frame(Math.min(t,END)); requestAnimationFrame(loop); })();
+        }
+      });
+  });
+</script>
+</body>
+</html>

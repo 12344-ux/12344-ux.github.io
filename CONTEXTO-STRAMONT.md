@@ -524,6 +524,17 @@ Arranca el frente de **ventas/marketing**: producir **video para anuncios**. El 
 - **Entregado:** 3 formatos (9:16, 1:1, 16:9) en alta calidad, cada uno silencioso + con sonido (6 MP4). Se borraron los `.webm` v1 (con banding).
 - **Pendiente:** OK del dueño al look final + al sonido; luego, variaciones de copy/ganchos por formato. Los MP4 pesan (~28 MB en total); son artefactos — si no se quieren en `main`, mover a hosting aparte o borrar tras aprobar.
 
+### v3 — ANUNCIO NARRATIVO DE 45s CON VOZ EN OFF ("La hora que nunca cuenta como estudiar")
+El dueño subió la dificultad: trajo un **guion técnico completo** (6 escenas, arco emocional, dirección de voz y SFX con timestamps) y pidió **motion graphics** + **9:16**.
+- **Voz en off: ElevenLabs.** ⚠️ La clave de **Gemini falló** (formato `AQ.Ab8…` → `ACCESS_TOKEN_TYPE_UNSUPPORTED`; la API espera `AIza…`). Se usó **ElevenLabs** con el **modelo `eleven_v3`**, que acepta **etiquetas de emoción** (`[whispering]`, `[tired]`, `[sighs]`, `[warm]`, `[calm]`) → encaja perfecto con la dirección actoral del guion. Voz: *Will – Relaxed Optimist* (`bIHbv24MWmeRgasZH58o`), 11 líneas.
+- **Cómo verificar TTS sin poder oír** (dos chequeos objetivos): (1) generar la misma frase **con y sin etiquetas** — si la etiquetada dura **menos**, las etiquetas se interpretan y **no se leen en voz alta**; (2) `volumedetect` para confirmar que hay voz real (media −17/−22 dB, pico ≈ −2 dB) y no silencio.
+- **Diseño sonoro propio:** `ads/audio/mezcla.py` sintetiza **con numpy** (sin libs de audio) todos los SFX (clics, ráfaga de UI, blips, whoosh, card-flips, chime con cola de reverb, kick del pulso a 85 BPM) + la música (drone tenso para el caos, **pad en La mayor** para la revelación) y **mezcla la voz** en los timestamps del guion, con **ducking** automático (la música baja ~4,7 dB cuando habla la voz).
+- **Verificación del arco emocional:** se midió **RMS por segundo** de la pista final → confirma silencio inicial (−60 dB), caos denso, el **corte seco**, el **valle** antes de la revelación y la **pausa de 1 s innegociable** en el segundo 33. Es la forma objetiva de validar diseño sonoro sin oírlo.
+- **Visual:** `ads/anuncio-historia.html` con **material real del proyecto** — la foto `apuntes-cliente.jpg` como mesa cenital (Ken Burns), `apunte-seg-1/2/3.jpg` dentro de ventanas de PDF/foto/cuaderno, un WhatsApp de grupo ("¿qué entra??"), cursor saltando, las 5 preguntas en cascada, contador a **20:00**, el reveal de la guía real y las 4 tarjetas del método.
+- **Render:** 1350 frames @30fps por **tramos** (`pw/render-hist-chunk.mjs <from> <to>`, ~230 frames por llamada para no exceder timeouts) + `encode` y muxeo AAC 192k. Resultado: `ads/video/anuncio-historia.mp4` (45,00 s, 1080×1920, 12,6 MB).
+- **Lección de proceso:** los renders largos en una sola llamada **se abortan**; hay que trocearlos. Y `page.screenshot({animations:'disabled'})` **salta las animaciones al estado final** → no usarlo con `__seek`.
+- Se guardan las 11 líneas de voz en `ads/audio/voz/` para re-renderizar sin gastar créditos. **Ninguna clave queda en el repo** (verificado con grep).
+
 ---
 
 ## 3. Estado actual del sitio (archivos)
