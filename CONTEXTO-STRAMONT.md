@@ -535,6 +535,17 @@ El dueño subió la dificultad: trajo un **guion técnico completo** (6 escenas,
 - **Lección de proceso:** los renders largos en una sola llamada **se abortan**; hay que trocearlos. Y `page.screenshot({animations:'disabled'})` **salta las animaciones al estado final** → no usarlo con `__seek`.
 - Se guardan las 11 líneas de voz en `ads/audio/voz/` para re-renderizar sin gastar créditos. **Ninguna clave queda en el repo** (verificado con grep).
 
+### v4 — ANUNCIO VIRAL DE 25s con FOTOS DEL DUEÑO ("La hora que nunca cuenta como estudiar")
+Primera pieza con **material aportado por el dueño** (4 imágenes de un estudiante en su cuarto de noche). Estructura en **dos mitades**: la escena real (0–12 s, **sin música**, decisión narrativa) y el mensaje de marca (12–25 s, texto + reveal).
+- **Recursos del dueño:** llegan a `main` con nombres UUID → organizarlos en **`ads/fuentes/<campaña>/`** con nombres descriptivos (`git mv`). Las 4 fotos cubrían justo los beats del guion (abre el portátil · carpeta caótica · su cara ante la pantalla · cierra y se acuesta). Una venía como **composición de 2 viñetas** → se separó por recorte.
+- **Marcas de agua (Gemini):** se localizaron **midiendo píxeles** (idénticas en las 4: x≈468–498, y≈918–948 sobre 572×1024) y se eliminaron **RECORTANDO** (`crop=572:915:0:0`) + escalado `lanczos` con `unsharp` a 1080 px. **Regla:** recortar/tapar, nunca rellenar (el inpainting deja manchas y baja más la calidad, que era justo la queja del dueño). Ver la nota de licencias/ToS en `.kiro/steering/anuncios.md` §6.
+- **Tipografía real de marca:** se **extrajeron los woff2** embebidos en base64 de `demo/index.html` a `ads/assets/fonts/` (Fraunces + Inter, 254 KB) y se usan por `@font-face` local. Mucho mejor que depender de fuentes del sistema: las pantallas de texto quedan editoriales de verdad. Reutilizable en toda pieza futura.
+- **Voz:** una sola línea (*"Hoy sí voy a estudiar"*) con ElevenLabs v3 y etiquetas `[quietly][to himself][unenthusiastic]`; se guardó también una alterna con suspiro. El resto del spot es texto en pantalla (sin narración), como pedía el guion.
+- **Diseño sonoro (`ads/audio/mezcla25.py`):** sonido **real de habitación** sintetizado — bisagra del portátil, teclas, clics, scroll entre archivos, golpe de cerrar la tapa, roce de sábanas, cuerpo cayendo, exhalación y zumbido de cuarto. **Los primeros 12 s no llevan música**; entra sutil con el texto y se vuelve cálida (La mayor) en la revelación. Verificado por RMS/segundo: **18 dB de contraste** entre la voz y el beat de silencio, pico −2,9 dBFS. **Ojo:** normalizar siempre al final (la primera mezcla quedó a −40 dB RMS y sonaba muy floja).
+- **Detalle de realismo que funcionó:** una barra de estado tipo Windows en ámbar (*"247 elementos · Material Clases_Caótico"*) en vez de un rótulo publicitario — refuerza el dolor sin romper el tono orgánico.
+- **Render:** 750 frames @30fps por tramos de 200 + muxeo. Entregables: `ads/video/anuncio-viral25.mp4` (con sonido) y `anuncio-viral25-muda.mp4`.
+- **Aprendizaje de composición:** los chips de "Ordenado/Explicado/Listo" se solapaban con el teléfono en el reveal → se quitaron. En 9:16, con el mockup grande, **menos elementos = más premium**.
+
 ---
 
 ## 3. Estado actual del sitio (archivos)
