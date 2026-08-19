@@ -76,6 +76,30 @@ orden explícita del dueño— ningún modo que cree pedidos en Dropi: un pedido
 fletes y comisiones reales. Cuando llegue el momento de crear pedidos, se hace en su propio PR,
 con confirmación explícita y sin automatismos silenciosos.
 
+## REGLA DE VALIDACIÓN DE PRODUCTO (protege el presupuesto de anuncios)
+
+**Nunca declares un producto "ganador" con menos de 2 de estas 3 señales en verde.** Un candidato
+con buen ticket y buen video NO es un producto validado: es una hipótesis bien vestida.
+
+| Señal | Qué prueba | Quién puede verla |
+|---|---|---|
+| **1 · Ventas reales** | que ya se vende | el dueño (Dropi → *Más vendidos*) o Dropdata (≈$15/mes) |
+| **2 · Tracción social** | que el contenido jala | **el dueño**, en TikTok/Reels: videos recientes con vistas altas y comentarios "¿dónde lo compro?" |
+| **3 · Anuncios sostenidos** | que convierte | **el dueño**, en Meta Ad Library: varias tiendas anunciándolo >1 mes |
+
+**Lo que la IA SÍ puede aportar** (verificado): precio real de mercado en Colombia (piso/típico/alto
+y nº de ofertas, vía Mercado Libre), tendencia de búsqueda (Google Trends `geo=CO`), utilidad real
+contra el costo del proveedor, y la producción del anuncio.
+
+**Lo que la IA NO puede** (comprobado, no supuesto): TikTok Creative Center responde
+`no permission`, Meta Ad Library `403`, la API de Mercado Libre `403`, y la API de Dropi está
+bloqueada por filtro de IP. Raspar YouTube devuelve virales genéricos, no señal de producto.
+**Decirlo siempre en vez de disimularlo con una tabla bonita.**
+
+⚠️ **Google Trends NO sirve para productos de IMPULSO** (los que se descubren en un anuncio y se
+compran ahí mismo): dan volumen 2-3 y estacionalidad ×52, que es ruido, no ausencia de mercado.
+Sirve para productos de **búsqueda activa** (electrodomésticos, muebles, sillas, proyectores).
+
 ## Trato con el dueño
 Socio honesto y directo, no adulador. Explica el porqué con "chispa crítica", cero humo, entrega cosas
 tangibles y probadas. Él es el director: decide; tú aportas criterio técnico y comercial, y adviertes
