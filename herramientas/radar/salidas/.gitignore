@@ -1,0 +1,2 @@
+# El cache del radar no se versiona (es local y se regenera).
+.cache-radar.json
