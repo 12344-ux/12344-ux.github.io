@@ -81,10 +81,40 @@ async function dropi(ruta: string, cuerpo: Record<string, unknown>) {
   let datos: any = null;
   try { datos = JSON.parse(texto); } catch { /* Dropi devolvió algo que no es JSON */ }
   if (!r.ok) {
-    // 401 = token inválido o vencido. Mensaje claro, sin filtrar el token.
-    throw new Error(`Dropi respondió ${r.status}: ${(datos?.message || texto || "").slice(0, 200)}`);
+    // 401 "Access denied" NO significa siempre "token malo": Dropi también filtra por
+    // IP AUTORIZADA en la integración, y en ese caso devuelve en el JSON la IP que vio.
+    // La incluimos en el error porque es EXACTAMENTE el dato que hay que autorizar en
+    // el panel de Dropi (y la IP de una Edge Function no es la del navegador del dueño).
+    const ip = datos?.ip ? ` · IP que vio Dropi: ${datos.ip}` : "";
+    throw new Error(`Dropi respondió ${r.status}: ${(datos?.message || texto || "").slice(0, 200)}${ip}`);
   }
   return datos;
+}
+
+/**
+ * Lee el payload PÚBLICO del JWT de integración (la parte del medio, base64).
+ * NO valida ni revela la firma, y no devuelve el token: solo la configuración que
+ * trae dentro, que es justo lo que explica un 401 (URL e IPs autorizadas, caducidad).
+ */
+function radiografiaToken() {
+  const t = Deno.env.get("DROPI_TOKEN") || "";
+  const partes = t.split(".");
+  if (partes.length !== 3) return { formato: t ? "no parece un JWT" : "sin token" } as Record<string, unknown>;
+  try {
+    const b64 = partes[1].replace(/-/g, "+").replace(/_/g, "/");
+    const p = JSON.parse(atob(b64 + "=".repeat((4 - b64.length % 4) % 4)));
+    return {
+      formato: "JWT",
+      tipo: p.token_type ?? null,
+      integracion: p.integration_type ?? p.aud ?? null,
+      integration_url: p.integration_url ?? null,
+      ips_autorizadas: Array.isArray(p.ip_url) ? p.ip_url : p.ip_url ?? null,
+      creado: p.iat ? new Date(p.iat * 1000).toISOString().slice(0, 10) : null,
+      expira: p.exp ? new Date(p.exp * 1000).toISOString().slice(0, 10) : null,
+    } as Record<string, unknown>;
+  } catch {
+    return { formato: "JWT ilegible" } as Record<string, unknown>;
+  }
 }
 
 /** Primer número válido entre varios alias posibles (el esquema de Dropi no está documentado). */
@@ -161,7 +191,28 @@ Deno.serve(async (req) => {
     } catch (e) {
       ping = "error: " + (e as Error).message;
     }
-    return json({ ok: tieneToken && ping === "ok", token_configurado: tieneToken, api: base(), ping });
+    const radiografia = radiografiaToken();
+    const pistas: string[] = [];
+    if (ping !== "ok") {
+      const ips = radiografia.ips_autorizadas;
+      if (Array.isArray(ips) && ips.length === 0) {
+        pistas.push("El token no tiene NINGUNA IP autorizada (ip_url vacío). Dropi filtra por IP: " +
+          "autoriza en el panel de Dropi la IP que aparece en el mensaje de error, " +
+          "o pide a soporte que habilite el acceso por dominio.");
+      }
+      if (radiografia.integration_url) {
+        pistas.push(`El token está atado a ${radiografia.integration_url}, pero la llamada sale ` +
+          "desde los servidores de Supabase, no desde ese dominio.");
+      }
+    }
+    return json({
+      ok: tieneToken && ping === "ok",
+      token_configurado: tieneToken,
+      api: base(),
+      ping,
+      token: radiografia,   // configuración del token; nunca el token en sí
+      pistas,
+    });
   }
 
   // ---------- MUESTRA CRUDA (para descubrir el esquema real) ----------
