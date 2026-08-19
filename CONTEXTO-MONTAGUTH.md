@@ -16,8 +16,13 @@ que despachan por nosotros). Vive en el mismo dominio de siempre: **montaguth.in
 - **Repo:** `12344-ux/12344-ux.github.io`, rama `main` = lo publicado. **Repo público.**
 - **Marca:** MONTAGUTH · *"Tu mundo. Tus compras."* Rojo `#D32F2F`, negro `#111111`, blanco `#FFFFFF`, tipografía **Poppins SemiBold**.
   El logo es una **bolsa/domo/montaña** (compras + protección + crecimiento).
-  ⚠️ El `favicon.png` / `logo-mark.png` actuales son una **reconstrucción provisional** hecha con PIL:
-  hay que reemplazarlos por el archivo original del manual de marca cuando el dueño lo suba.
+  ✅ **El logo ya es el ORIGINAL del manual.** El archivo que entregó el dueño está en
+  `marca/logo-original.jpg` (ícono blanco sobre rojo, 1254 px). De ahí se derivaron con PIL:
+  `logo-mark.png` (ícono rojo, fondo transparente → para fondos claros),
+  `logo-mark-blanco.png` (para fondos oscuros/rojos), `favicon.png` y `logo.png` (tile app-icon).
+  Receta para regenerarlos: `alpha = canal MÍNIMO(R,G,B)` normalizado entre 45 y 225 → recorte al
+  bbox → lienzo cuadrado con 10 % de aire. (El truco del canal mínimo evita el halo rojo que deja
+  un JPG con antialiasing.) **No hay SVG**: si algún día hace falta vectorial, hay que vectorizarlo.
 - **Premisa del dueño (textual):** *"No queremos competir con Amazon o Mercado Libre; queremos vender por
   internet a clientes reales haciendo dropshipping."*
 - **Diferenciador declarado:** confianza desde el primer vistazo + **anuncios hechos a medida** (aprovechando
@@ -78,6 +83,8 @@ al sistema de archivos: todo lo revisa por **Pull Request** en GitHub y en el na
 | `supabase/functions/*` | 8 Edge Functions (ver §3). |
 | `supabase/migrations/*` | SQL versionado de las tablas. |
 | `ads/` | **Pipeline de video** (el activo más valioso): escenas HTML de referencia + `audio/mezcla.py`. |
+| `herramientas/rastreador/` | **Rastreador de nichos v1**: mide demanda en Google Trends (`geo=CO`), descubre términos en alza, veta categorías prohibidas y puntúa 0-100. Ver su `LEEME.md`. |
+| `marca/logo-original.jpg` | El archivo de marca que entregó el dueño (fuente de los assets). |
 | `.kiro/steering/montaguth.md` | Instrucción permanente del proyecto. |
 | `.kiro/steering/anuncios.md` | Receta técnica de producción de video (sigue vigente). |
 
@@ -110,6 +117,14 @@ en el repo NO la despliega**: el deploy es manual (dashboard de Supabase), lo ha
 
 **Interruptor de operaciones:** `informe.html` → ⚙️ Operaciones → Suspender/Reactivar. Sirve para cerrar la caja.
 ⚠️ **Pendiente del dueño: dejar operaciones EN PAUSA** mientras la tienda no exista (hoy `checkout.html` todavía cobraría).
+
+### ⚠️ Riesgo operativo confirmado: Supabase gratuito se PAUSA por inactividad
+El 18-ago el proyecto estaba pausado y **el subdominio dejó de resolver** (`ENOTFOUND`) → todo el
+backend caído (captura, tablero, pagos) sin ningún aviso. Se restauró desde el dashboard y se
+**verificó en vivo**: `captura` responde `200 {"ok":true}`, es idempotente al repetir el mismo
+correo y rechaza inválidos con `400`. **Implicación para una tienda que cobra:** si pasa una semana
+sin actividad, la tienda se cae sola. Mitigación pendiente: un ping programado que mantenga el
+proyecto despierto, o plan pago cuando entren las primeras ventas.
 
 ### Deudas técnicas heredadas (documentadas en la auditoría de Stramont, siguen vigentes)
 1. **El aviso de compra al dueño no se envía** desde que Wompi entró en producción: vivía en el Paso 4 de
@@ -155,13 +170,25 @@ en el repo NO la despliega**: el deploy es manual (dashboard de Supabase), lo ha
 
 ## 6. Roadmap acordado (en orden)
 
-1. **Desmontaje de Stramont + portada de marca** ← *este PR*.
-2. **Arquitectura de la tienda (decisión pendiente del dueño):** home tipo marketplace generalista
-   vs. **marca paraguas + landings de producto** (recomendación técnica: la segunda; ver el análisis del PR).
-3. **Rastreador de nichos** (Google Trends + Meta Ad Library + TikTok Creative Center + catálogos de proveedores,
-   con descarte automático de categorías malas).
-4. **Proveedor**: nacional para Colombia (entrega 24–72 h) y/o catálogo internacional con API
-   (CJ Dropshipping publica API abierta de desarrolladores; no hace falta Shopify para usar sus proveedores).
+1. ✅ **Desmontaje de Stramont + portada de marca** (PR #142, mergeado). Logo original aplicado después.
+2. ✅ **Arquitectura DECIDIDA: marca paraguas + landings de producto.** La home es la credencial de
+   confianza; la venta ocurre en `/p/<producto>`, donde cae el anuncio. Cada producto = una landing con
+   su ángulo y su video (así se sostiene el multi-nicho sin fingir un inventario que no existe).
+   Se descartó la home tipo marketplace: competir por surtido/precio/logística es el terreno donde
+   Amazon y Mercado Libre ganan siempre, y una tienda generalista con 12 productos se ve vacía.
+   **Del mockup del dueño se conservan** logo, Poppins, la paleta, la barra superior de confianza y la
+   grilla de garantías; **se descartan** buscador central, 6 categorías vacías, carrusel, login y
+   precios en rojo (el rojo va en dosis: a pantalla completa lee como "marketplace de descuentos").
+3. ✅ **Rastreador de nichos v1** (PR #143, mergeado). Fuentes verificadas desde el sandbox:
+   Google Trends vía pytrends ✅ (con caché en disco por el 429), Amazon best sellers ✅,
+   TikTok Creative Center ✅, Dropi ✅, CJ ✅ (requiere cuenta) · **Meta Ad Library y API de
+   Mercado Libre devuelven 403 desde servidor** → se revisan a mano.
+4. **Proveedor**: el dueño ya creó cuenta en **Dropi** (nacional, entrega 24–72 h). Falta cargar
+   **precios reales de proveedor** al rastreador para pasar de "demanda interesante" a margen por venta.
+   Opción internacional: CJ Dropshipping tiene API abierta (no hace falta Shopify).
+   ⚠️ Preguntar siempre al proveedor por **envío neutro/sin marca** (si el paquete llega con la marca
+   de otro, se rompe la confianza que es nuestro diferenciador) y declarar la **transferencia de datos
+   personales** al proveedor en la política de privacidad (solo nombre, dirección y teléfono; nunca pago).
 5. **Motor de tienda**: catálogo/variantes/carrito/órdenes + checkout de carrito + correos + centro de pedidos.
 6. **Legales de tienda**: privacidad, condiciones, **envíos** y **devoluciones/retracto**.
 7. **Anuncios** con el pipeline de `ads/` y publicación sostenida.
