@@ -1,0 +1,11 @@
+termino,score,veredicto,razon,media_12m,crecimiento_pct,estacional,pico,origen,tipo,semanas
+silla ergonomica,69.5,investigar,demanda alta y estable (-2%): buscar precio de proveedor,75.2,-1.8,1.33,100.0,manual,manual,52
+humidificador,67.5,investigar,demanda alta y estable (-10%): buscar precio de proveedor,66.4,-10.2,1.51,100.0,manual,manual,52
+cafetera electrica,50.9,vigilar,creciendo fuerte (+41%) pero volumen bajo (11.2): seguir de cerca,11.2,40.9,2.68,30.0,manual,manual,52
+organizador ropa,36.4,descartar,"señal débil (volumen 12.1, -13%) frente al esfuerzo",12.1,-13.0,1.82,22.0,manual,manual,52
+proyector portatil,23.4,descartar,"señal débil (volumen 11.3, -22%) frente al esfuerzo",11.3,-22.4,3.62,41.0,manual,manual,52
+botella termica,17.6,descartar,demanda demasiado baja para sostener una landing,3.2,0.0,28.99,92.0,manual,manual,52
+lampara de luna,16.3,descartar,demanda demasiado baja para sostener una landing,1.6,0.0,52.0,83.0,manual,manual,52
+tapete antifatiga,15.0,descartar,demanda demasiado baja para sostener una landing,0.0,0.0,10.0,1.0,manual,manual,52
+soporte para portatil,10.9,descartar,demanda demasiado baja para sostener una landing,3.9,-29.0,5.69,22.0,manual,manual,52
+masajeador cuello,6.4,descartar,demanda demasiado baja para sostener una landing,3.5,-45.6,10.06,35.0,manual,manual,52
