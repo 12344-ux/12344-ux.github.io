@@ -1,17 +1,22 @@
-# CHIP DE ANUNCIOS — Producción de video para Stramont
+# CHIP DE ANUNCIOS — Producción de video (Montaguth)
 
 > Receta probada y aprobada por el dueño (reacción: *"me voló la cabeza"*, *"una auténtica locura"*).
 > Lee esto **antes** de producir cualquier pieza de video/publicidad. Guardar y reutilizar
 > el pipeline; no reinventarlo. Y recordar: **siempre se puede mejorar**.
+>
+> ⚠️ **Nota del pivote (ago 2026):** el pipeline TÉCNICO es 100 % reutilizable para la tienda, pero
+> las piezas de ejemplo eran de *Stramont* (guías de estudio). Los MP4 entregados, las capturas de la
+> guía y la voz en off vieja **se retiraron de `main`** por peso e irrelevancia; están en el tag
+> `stramont-v1.0-final` si quieres verlos. Las escenas HTML se conservan **como plantilla técnica**
+> (timeline, `__seek`, grano, layouts por formato), no como creatividad a copiar.
 
 ## 0. Lo que ya existe (no rehacer)
 | Pieza | Archivo | Qué es |
 |---|---|---|
-| **Hero** (~12 s, mudo/con sonido) | `ads/anuncio.html` | Loop premium de la guía. Adaptable `?f=9x16\|1x1\|16x9` |
-| **Narrativo** (45 s, con voz) | `ads/anuncio-historia.html` | Spot con historia, 6 escenas, arco emocional |
+| **Plantilla "hero"** (~12 s) | `ads/anuncio.html` | Escena animada de referencia. Adaptable `?f=9x16\|1x1\|16x9` |
+| **Plantilla narrativa** (45 s) | `ads/anuncio-historia.html` | Estructura de spot con historia, 6 escenas, arco emocional |
 | Motor de audio | `ads/audio/mezcla.py` | Síntesis de SFX + música + mezcla de voz (numpy) |
-| Voz en off | `ads/audio/voz/01..11.mp3` | 11 líneas ya generadas (re-render sin gastar créditos) |
-| Videos | `ads/video/*.mp4` | Entregables (artefactos regenerables) |
+| Material del dueño | `ads/fuentes/` | Fotos/videos propios por campaña (ver §5) |
 
 ## 1. Pipeline técnico de video (OBLIGATORIO)
 **Nunca grabar pantalla.** `recordVideo` de Playwright usa bitrate bajo (VP8) y produce
