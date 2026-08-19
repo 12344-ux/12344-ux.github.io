@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!--
+  ================================================================
+  MONTAGUTH · PLANTILLA DE LANDING DE PRODUCTO
+  ================================================================
+  Cómo se usa: se copia este archivo a  p/<slug-del-producto>.html
+  y se reemplaza TODO lo que está marcado con  [[ ]].  Nada más.
+
+  Decisiones de diseño (no son gusto, son conversión):
+  · UNA landing por producto. Sin catálogo, sin carrito, sin login:
+    el tráfico llega de un anuncio, ya sabe qué quiere, y cada clic extra pierde gente.
+  · MÓVIL PRIMERO: el tráfico viene de TikTok/Reels. Botón fijo abajo siempre visible.
+  · El rojo va en DOSIS (CTA y detalles) sobre base neutra. Rojo a pantalla completa
+    lee como "marketplace de descuentos" y mata la confianza que es nuestro diferenciador.
+  · Sin trucos: nada de contadores falsos, ni "quedan 3", ni reseñas inventadas.
+    Las garantías que se prometen aquí tienen que poder cumplirse (§ética del proyecto).
+  · CSS autocontenido con prefijo pd-. NO enlaza estilos.css.
+  ================================================================
+-->
+
+<title>[[NOMBRE DEL PRODUCTO]] · Montaguth</title>
+<meta name="description" content="[[UNA FRASE: qué problema resuelve, en lenguaje del cliente. Máx. 155 caracteres]]">
+<link rel="icon" type="image/png" href="/favicon.png">
+<meta name="theme-color" content="#111111">
+
+<!-- Vista previa al compartir (WhatsApp/redes) -->
+<meta property="og:type" content="product">
+<meta property="og:site_name" content="Montaguth">
+<meta property="og:title" content="[[NOMBRE DEL PRODUCTO]]">
+<meta property="og:description" content="[[LA MISMA FRASE DE ARRIBA]]">
+<meta property="og:image" content="https://montaguth.institute/p/img/[[imagen-principal.jpg]]">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  *{box-sizing:border-box}
+  :root{
+    --rojo:#D32F2F; --rojo-osc:#B02525; --negro:#111111; --blanco:#FFFFFF;
+    --hueso:#FAF7F5; --gris:#6B6B6B; --gris-cl:#8A8A8A; --linea:rgba(17,17,17,.10);
+    --verde:#1B7A46;
+  }
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--blanco); color:var(--negro);
+    font-family:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+    padding-bottom:86px; /* espacio para la barra fija de compra en móvil */
+  }
+  img{max-width:100%;display:block}
+
+  /* ---------- barra de confianza + marca ---------- */
+  .pd-barra{background:var(--negro);color:#fff;font-size:12px;letter-spacing:.3px;
+    display:flex;justify-content:center;gap:26px;padding:8px 14px;flex-wrap:wrap}
+  .pd-barra span{display:inline-flex;align-items:center;gap:6px;opacity:.92}
+  .pd-barra svg{width:14px;height:14px;flex:none}
+  .pd-head{display:flex;align-items:center;justify-content:space-between;
+    padding:14px 20px;border-bottom:1px solid var(--linea);position:sticky;top:0;
+    background:rgba(255,255,255,.96);backdrop-filter:blur(6px);z-index:50}
+  .pd-marca{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--negro)}
+  .pd-marca img{width:34px;height:34px}
+  .pd-marca b{font-weight:600;letter-spacing:.18em;font-size:15px}
+  .pd-marca b i{color:var(--rojo);font-style:normal}
+  .pd-head a.pd-rastreo{font-size:12.5px;color:var(--gris);text-decoration:none}
+  .pd-head a.pd-rastreo:hover{color:var(--rojo)}
+
+  /* ---------- bloque principal ---------- */
+  .pd-wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+  .pd-top{display:grid;grid-template-columns:1fr 1fr;gap:38px;padding:34px 0 10px 0;align-items:start}
+  .pd-media{position:relative}
+  .pd-media img,.pd-media video{border-radius:16px;border:1px solid var(--linea);width:100%}
+  .pd-mini{display:flex;gap:8px;margin-top:10px}
+  .pd-mini img{width:72px;height:72px;object-fit:cover;border-radius:10px;cursor:pointer;
+    border:1px solid var(--linea);transition:border-color .15s}
+  .pd-mini img:hover{border-color:var(--rojo)}
+
+  .pd-eyebrow{display:inline-block;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--rojo);font-weight:600;background:rgba(211,47,47,.06);
+    border:1px solid rgba(211,47,47,.22);border-radius:999px;padding:5px 13px}
+  h1{font-size:clamp(25px,4.6vw,38px);line-height:1.18;font-weight:600;margin:16px 0 12px 0;letter-spacing:-.4px}
+  .pd-sub{font-size:16px;color:#3C3C3C;margin:0 0 20px 0}
+
+  .pd-precio{display:flex;align-items:baseline;gap:12px;margin:18px 0 6px 0;flex-wrap:wrap}
+  .pd-precio b{font-size:34px;font-weight:700;letter-spacing:-.5px}
+  .pd-precio s{color:var(--gris-cl);font-size:17px}
+  .pd-precio em{font-style:normal;font-size:12.5px;color:var(--verde);font-weight:600;
+    background:rgba(27,122,70,.08);border-radius:999px;padding:4px 10px}
+  .pd-envio{font-size:13.5px;color:var(--gris);margin:0 0 18px 0}
+
+  .pd-cta{display:inline-flex;align-items:center;justify-content:center;gap:9px;
+    width:100%;background:var(--rojo);color:#fff;border:0;border-radius:13px;
+    padding:17px 24px;font-family:inherit;font-size:17px;font-weight:600;cursor:pointer;
+    text-decoration:none;transition:background .15s,transform .08s}
+  .pd-cta:hover{background:var(--rojo-osc)}
+  .pd-cta:active{transform:translateY(1px)}
+  .pd-cta svg{width:18px;height:18px}
+  .pd-garantias{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:16px}
+  .pd-gar{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--gris);
+    background:var(--hueso);border:1px solid var(--linea);border-radius:11px;padding:11px 12px}
+  .pd-gar svg{width:16px;height:16px;color:var(--rojo);flex:none;margin-top:1px}
+  .pd-gar b{display:block;color:var(--negro);font-size:13px;font-weight:600}
+
+  /* ---------- secciones ---------- */
+  section{padding:44px 0;border-top:1px solid var(--linea)}
+  h2{font-size:clamp(21px,3.4vw,29px);font-weight:600;margin:0 0 8px 0;letter-spacing:-.3px}
+  .pd-lead{color:var(--gris);margin:0 0 26px 0;font-size:15.5px}
+
+  .pd-dolor{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .pd-col{background:var(--hueso);border:1px solid var(--linea);border-radius:14px;padding:20px}
+  .pd-col.pd-si{background:#fff;border-color:rgba(211,47,47,.25)}
+  .pd-col h3{font-size:14px;text-transform:uppercase;letter-spacing:.1em;margin:0 0 14px 0;color:var(--gris)}
+  .pd-col.pd-si h3{color:var(--rojo)}
+  .pd-col ul{margin:0;padding:0;list-style:none}
+  .pd-col li{display:flex;gap:9px;align-items:flex-start;font-size:14.5px;margin-bottom:11px}
+  .pd-col li svg{width:16px;height:16px;flex:none;margin-top:3px}
+  .pd-col.pd-no li svg{color:var(--gris-cl)}
+  .pd-col.pd-si li svg{color:var(--rojo)}
+
+  .pd-benes{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .pd-bene{border:1px solid var(--linea);border-radius:14px;padding:20px}
+  .pd-bene svg{width:22px;height:22px;color:var(--rojo);margin-bottom:10px}
+  .pd-bene b{display:block;font-size:15px;font-weight:600;margin-bottom:5px}
+  .pd-bene span{font-size:13.5px;color:var(--gris)}
+
+  .pd-pasos{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;counter-reset:p}
+  .pd-paso{background:var(--hueso);border:1px solid var(--linea);border-radius:14px;padding:20px;position:relative}
+  .pd-paso::before{counter-increment:p;content:counter(p);position:absolute;top:16px;right:18px;
+    font-size:30px;font-weight:700;color:rgba(211,47,47,.18);line-height:1}
+  .pd-paso b{display:block;font-size:15px;margin-bottom:5px}
+  .pd-paso span{font-size:13.5px;color:var(--gris)}
+
+  .pd-ficha{width:100%;border-collapse:collapse;font-size:14.5px}
+  .pd-ficha td{padding:11px 4px;border-bottom:1px solid var(--linea)}
+  .pd-ficha td:first-child{color:var(--gris);width:44%}
+  .pd-ficha td:last-child{font-weight:500}
+
+  details{border:1px solid var(--linea);border-radius:12px;padding:15px 17px;margin-bottom:10px}
+  details[open]{background:var(--hueso)}
+  summary{cursor:pointer;font-weight:600;font-size:15px;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"+";float:right;color:var(--rojo);font-weight:700}
+  details[open] summary::after{content:"−"}
+  details p{margin:11px 0 0 0;font-size:14.5px;color:var(--gris)}
+
+  .pd-cierre{background:var(--negro);color:#fff;border-radius:18px;padding:36px 28px;text-align:center;margin:8px 0}
+  .pd-cierre h2{color:#fff}
+  .pd-cierre p{color:#B9B9B9;margin:0 auto 22px auto;max-width:440px}
+  .pd-cierre .pd-cta{max-width:340px;margin:0 auto}
+
+  footer{padding:28px 20px 40px 20px;border-top:1px solid var(--linea);text-align:center}
+  footer p{font-size:12.5px;color:var(--gris-cl);margin:0 0 7px 0}
+  footer a{color:var(--gris);text-decoration:none;font-size:12.5px;margin:0 8px}
+  footer a:hover{color:var(--rojo)}
+
+  /* ---------- barra fija de compra (móvil) ---------- */
+  .pd-fija{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.97);
+    backdrop-filter:blur(8px);border-top:1px solid var(--linea);padding:11px 16px;
+    display:none;align-items:center;gap:12px;z-index:60}
+  .pd-fija .pd-fp{flex:none}
+  .pd-fija .pd-fp b{display:block;font-size:19px;font-weight:700;line-height:1.1}
+  .pd-fija .pd-fp span{font-size:11.5px;color:var(--gris)}
+  .pd-fija .pd-cta{padding:14px 18px;font-size:15.5px}
+
+  @media (max-width:860px){
+    .pd-top{grid-template-columns:1fr;gap:22px;padding-top:22px}
+    .pd-benes,.pd-pasos{grid-template-columns:1fr}
+    .pd-dolor{grid-template-columns:1fr}
+    .pd-barra{gap:14px;font-size:11px}
+    .pd-fija{display:flex}
+    .pd-garantias{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- Iconografía: Lucide (ISC), SVG inline. Sin CDN, sin emojis. -->
+<div class="pd-barra">
+  <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>[[Envío a todo Colombia]]</span>
+  <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>Compra protegida</span>
+  <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>[[5 días para devolverlo]]</span>
+</div>
+
+<header class="pd-head">
+  <a class="pd-marca" href="/">
+    <img src="/logo-mark.png" alt="Montaguth" width="34" height="34">
+    <b>MONT<i>A</i>GUTH</b>
+  </a>
+  <a class="pd-rastreo" href="/rastrear.html">Rastrear mi pedido</a>
+</header>
+
+<div class="pd-wrap">
+
+  <!-- ============ ARRIBA: imagen + oferta ============ -->
+  <div class="pd-top">
+    <div class="pd-media">
+      <!-- Si hay video del producto, va aquí (convierte mucho más que una foto):
+           <video src="img/[[demo.mp4]]" autoplay muted loop playsinline poster="img/[[principal.jpg]]"></video> -->
+      <img id="pdPrincipal" src="img/[[principal.jpg]]" alt="[[NOMBRE DEL PRODUCTO]]" width="900" height="900">
+      <div class="pd-mini">
+        <img src="img/[[foto-2.jpg]]" alt="[[detalle 2]]" onclick="pdCambiar(this)">
+        <img src="img/[[foto-3.jpg]]" alt="[[detalle 3]]" onclick="pdCambiar(this)">
+        <img src="img/[[foto-4.jpg]]" alt="[[detalle 4]]" onclick="pdCambiar(this)">
+      </div>
+    </div>
+
+    <div>
+      <span class="pd-eyebrow">[[Categoría o gancho corto]]</span>
+      <h1>[[TITULAR: el resultado que quiere el cliente, no el nombre técnico]]</h1>
+      <p class="pd-sub">[[Una o dos frases: para quién es y qué cambia en su día. Lenguaje del cliente.]]</p>
+
+      <div class="pd-precio">
+        <b>$[[PRECIO]]</b>
+        <s>$[[PRECIO ANTES — solo si es verdad. Si no, borra esta línea]]</s>
+        <em>[[Ahorras $X]]</em>
+      </div>
+      <p class="pd-envio">
+        [[Envío $X · llega en X días hábiles]] · <strong>Pago seguro con Wompi</strong>
+      </p>
+
+      <a class="pd-cta" href="/checkout.html?p=[[slug-del-producto]]">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        Comprar ahora
+      </a>
+
+      <div class="pd-garantias">
+        <div class="pd-gar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg><span><b>[[Llega en X días]]</b>Con número de guía para seguirlo</span></div>
+        <div class="pd-gar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span><b>5 días para devolverlo</b>Derecho de retracto, sin peleas</span></div>
+        <div class="pd-gar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span><b>Pago seguro</b>Nunca vemos tu tarjeta</span></div>
+        <div class="pd-gar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/></svg><span><b>Te contestamos</b>Una persona real, por WhatsApp</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ EL PROBLEMA / LA SOLUCIÓN ============ -->
+  <section>
+    <h2>[[El problema que resuelve, en una frase]]</h2>
+    <p class="pd-lead">[[Describe la situación incómoda tal como la vive el cliente. Sin exagerar.]]</p>
+    <div class="pd-dolor">
+      <div class="pd-col pd-no">
+        <h3>Sin [[producto]]</h3>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>[[Molestia 1]]</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>[[Molestia 2]]</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>[[Molestia 3]]</li>
+        </ul>
+      </div>
+      <div class="pd-col pd-si">
+        <h3>Con [[producto]]</h3>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>[[Beneficio 1 — concreto, medible si se puede]]</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>[[Beneficio 2]]</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>[[Beneficio 3]]</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ POR QUÉ ESTE Y NO OTRO ============ -->
+  <section>
+    <h2>Por qué este y no cualquiera</h2>
+    <p class="pd-lead">[[Qué lo diferencia de la versión barata que se ve igual en la foto.]]</p>
+    <div class="pd-benes">
+      <div class="pd-bene"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg><b>[[Diferencia 1]]</b><span>[[Explicación breve]]</span></div>
+      <div class="pd-bene"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg><b>[[Diferencia 2]]</b><span>[[Explicación breve]]</span></div>
+      <div class="pd-bene"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg><b>[[Diferencia 3]]</b><span>[[Explicación breve]]</span></div>
+    </div>
+  </section>
+
+  <!-- ============ CÓMO SE USA ============ -->
+  <section>
+    <h2>Se usa así</h2>
+    <p class="pd-lead">[[Si el producto necesita explicación, aquí va. Tres pasos máximo.]]</p>
+    <div class="pd-pasos">
+      <div class="pd-paso"><b>[[Paso 1]]</b><span>[[Detalle corto]]</span></div>
+      <div class="pd-paso"><b>[[Paso 2]]</b><span>[[Detalle corto]]</span></div>
+      <div class="pd-paso"><b>[[Paso 3]]</b><span>[[Detalle corto]]</span></div>
+    </div>
+  </section>
+
+  <!-- ============ FICHA TÉCNICA ============ -->
+  <section>
+    <h2>Lo que recibes</h2>
+    <p class="pd-lead">Sin sorpresas: esto es exactamente lo que llega a tu casa.</p>
+    <table class="pd-ficha">
+      <tr><td>Incluye</td><td>[[qué viene en la caja]]</td></tr>
+      <tr><td>Medidas</td><td>[[alto × ancho × profundo]]</td></tr>
+      <tr><td>Peso</td><td>[[peso]]</td></tr>
+      <tr><td>Material</td><td>[[material]]</td></tr>
+      <tr><td>[[Energía / batería / conexión]]</td><td>[[dato]]</td></tr>
+      <tr><td>Garantía</td><td>[[X meses por defectos de fábrica]]</td></tr>
+    </table>
+  </section>
+
+  <!-- ============ PREGUNTAS ============ -->
+  <section>
+    <h2>Preguntas que nos hacen</h2>
+    <p class="pd-lead">Si te queda alguna, escríbenos por WhatsApp: contestamos nosotros.</p>
+    <details open><summary>¿Cuánto tarda en llegar?</summary><p>[[Plazo REAL. Nunca prometas menos de lo que el proveedor cumple.]]</p></details>
+    <details><summary>¿Puedo devolverlo si no me gusta?</summary><p>Sí. Tienes <strong>5 días hábiles</strong> desde que lo recibes para ejercer tu derecho de retracto, según el Estatuto del Consumidor. [[Explica quién paga el flete de devolución.]]</p></details>
+    <details><summary>¿Cómo pago?</summary><p>Con tarjeta débito o crédito, PSE o Nequi, a través de Wompi (la pasarela de pagos del grupo de Bancolombia). Nosotros nunca vemos ni guardamos los datos de tu tarjeta. <a href="/por-que-wompi.html">Más sobre nuestros pagos</a>.</p></details>
+    <details><summary>¿Tiene garantía?</summary><p>[[X meses]] por defectos de fábrica. Si llega dañado o falla, escríbenos y lo resolvemos.</p></details>
+    <details><summary>¿Cómo sé dónde va mi pedido?</summary><p>Cuando lo despachamos te enviamos por correo el <strong>número de guía</strong> para que lo sigas. También puedes consultarlo en <a href="/rastrear.html">Rastrear mi pedido</a>.</p></details>
+  </section>
+
+  <!-- ============ CIERRE ============ -->
+  <section style="border:0">
+    <div class="pd-cierre">
+      <h2>[[Cierre: repite el resultado, no el producto]]</h2>
+      <p>[[Una frase de cierre honesta. Sin urgencia falsa.]]</p>
+      <a class="pd-cta" href="/checkout.html?p=[[slug-del-producto]]">Comprar ahora · $[[PRECIO]]</a>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <p>Montaguth · contacto@montaguth.institute</p>
+  <p>
+    <a href="/">Inicio</a>·
+    <a href="/envios.html">Envíos</a>·
+    <a href="/devoluciones.html">Devoluciones</a>·
+    <a href="/privacidad.html">Privacidad</a>·
+    <a href="/condiciones.html">Condiciones</a>
+  </p>
+</footer>
+
+<!-- Barra fija de compra: en móvil el botón nunca se pierde de vista -->
+<div class="pd-fija">
+  <div class="pd-fp">
+    <b>$[[PRECIO]]</b>
+    <span>[[Envío incluido / + envío]]</span>
+  </div>
+  <a class="pd-cta" href="/checkout.html?p=[[slug-del-producto]]">Comprar ahora</a>
+</div>
+
+<script>
+  /* Cambiar la imagen principal al tocar una miniatura. Nada más:
+     cero dependencias, cero rastreadores de terceros. */
+  function pdCambiar(mini) {
+    var p = document.getElementById('pdPrincipal');
+    var tmp = p.src; p.src = mini.src; mini.src = tmp;
+  }
+</script>
+</body>
+</html>
