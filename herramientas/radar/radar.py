@@ -168,19 +168,29 @@ def plata(txt):
 # ------------------------------------------------------------------ 1) descubrir
 
 def leer_listado(html):
-    """Extrae (titulo, precio, es_mas_vendido) de un listado de Mercado Libre."""
+    """
+    Extrae (titulo, precio, es_mas_vendido) de un listado de Mercado Libre.
+
+    OJO — BUG CORREGIDO: la primera versión buscaba todos los
+    `andes-money-amount__fraction` del HTML y los emparejaba por orden con los
+    títulos. Pero cada producto trae VARIOS precios (el precio, el precio tachado
+    "antes" y el VALOR DE LA CUOTA). Resultado: aparecían "pisos de mercado" de
+    $2.694 que en realidad eran cuotas mensuales, y eso hacía ver guerra de precios
+    donde no la había. Ahora se SEGMENTA el HTML por producto y se toma el PRIMER
+    precio de cada bloque (el precio de venta real).
+    """
     items = []
-    # Los títulos y precios vienen en clases estables del componente 'poly'.
-    titulos = re.findall(r'class="poly-component__title[^"]*"[^>]*>(?:<a[^>]*>)?([^<]{5,120})<', html)
-    precios = re.findall(r'class="andes-money-amount__fraction"[^>]*>([\d.]+)<', html)
-    # El badge "MÁS VENDIDO" viaja en el JSON embebido; contamos su presencia global
-    # y la asociamos por orden de aparición aproximado.
     destacados = html.count("MÁS VENDIDO")
-    for i, t in enumerate(titulos):
-        items.append({
-            "titulo": t.strip(),
-            "precio": plata(precios[i]) if i < len(precios) else None,
-        })
+    # Cada tarjeta de producto arranca en su título; partimos por ahí.
+    bloques = re.split(r'class="poly-component__title', html)[1:]
+    for b in bloques:
+        mt = re.match(r'[^>]*>(?:<a[^>]*>)?([^<]{5,140})<', b)
+        if not mt:
+            continue
+        titulo = mt.group(1).strip()
+        # Dentro del bloque, el primer 'fraction' es el precio actual del producto.
+        mp = re.search(r'class="andes-money-amount__fraction"[^>]*>([\d.]+)<', b[:4000])
+        items.append({"titulo": titulo, "precio": plata(mp.group(1)) if mp else None})
     return items, destacados
 
 
