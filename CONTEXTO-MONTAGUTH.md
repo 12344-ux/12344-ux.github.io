@@ -195,6 +195,33 @@ proyecto despierto, o plan pago cuando entren las primeras ventas.
 
 ---
 
+## 6.5. Comando `BUSCA PRODUCTO` (flujo de baja fricción)
+
+Igual que el viejo `DESARROLLA <pedido_id>` de Stramont, pero para elegir producto. El dueño escribe
+**`BUSCA PRODUCTO`** (opcional: `BUSCA PRODUCTO cocina`, `BUSCA PRODUCTO 20`) y la IA ejecuta sola:
+catálogo de Dropi vía Edge Function → filtro duro de descarte → utilidad real por producto →
+demanda en Google Trends (`geo=CO`) → cruce → **3 finalistas con argumento y recomendación**.
+El protocolo completo está en `.kiro/steering/montaguth.md` (se carga siempre).
+
+**Lo que hace falta para usarlo:** la `DROPI_LINK_KEY` (el dueño la comparte una vez por sesión;
+nunca se guarda en el repo) y que el token de Dropi esté vigente en el secreto `DROPI_TOKEN`.
+
+**Candado:** el puente `dropi` es de **SOLO LECTURA**. No hay ningún modo que cree pedidos en Dropi,
+y no se agrega sin orden explícita del dueño (un pedido mal disparado cuesta fletes y comisiones reales).
+
+### Estado del puente con Dropi (19-ago-2026)
+- ✅ API encontrada y verificada: `POST api.dropi.co/integrations/products/index`, header
+  `dropi-integration-key`. El contrato salió del **plugin oficial de WooCommerce** (código abierto),
+  porque Dropi no publica documentación.
+- ✅ Edge Function `dropi` desplegada (Verify JWT OFF) con `DROPI_TOKEN` + `DROPI_LINK_KEY`.
+- ⚠️ El primer token dio `401 Access denied`. Se descartó que fuera la clave o el nombre del secreto.
+  Dos hipótesis: (A) cuenta sin validar, (B) filtro por IP autorizada (`ip_url: []` en el JWT).
+  **El dueño ya validó la cuenta** → se regenera el token y se reprueba.
+- 🔴 **Lección grabada:** el dueño pegó su token de Dropi en el chat. Ese token es `token_type:
+  INTEGRATIONS`, **expira en 2126** y permite crear pedidos → un token filtrado cuesta plata real.
+  Se regenera. Regla reforzada: los secretos NO van al chat; la única llave que se puede compartir
+  con la IA es la de bajo privilegio (`DROPI_LINK_KEY`), y es rotable.
+
 ## 7. Cómo arrancar (próximo Kiro)
 
 1. Lee este documento y `.kiro/steering/montaguth.md`.

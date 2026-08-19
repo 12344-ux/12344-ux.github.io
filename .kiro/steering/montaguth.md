@@ -42,6 +42,40 @@ Contiene el estado real, la infraestructura heredada, las decisiones tomadas y e
 - Tipografía: **Poppins** (SemiBold en el wordmark).
 - Iconografía: **SVG de Lucide inline** (licencia ISC), `currentColor`. **Sin emojis en la UI.**
 
+## Comando `BUSCA PRODUCTO` (flujo de baja fricción, como el viejo `DESARROLLA`)
+
+El dueño escribe **`BUSCA PRODUCTO`** (opcionalmente con una pista: `BUSCA PRODUCTO cocina`,
+`BUSCA PRODUCTO 20` para pedir 20 candidatos). Con eso, y sin pedir más instrucciones, ejecutas
+TODO esto y entregas una decisión, no una lista cruda:
+
+1. **Catálogo del proveedor.** Llama la Edge Function `dropi` (necesitas la `DROPI_LINK_KEY`; pídela
+   una vez por sesión, nunca la guardes en el repo):
+   `GET .../functions/v1/dropi?catalogo=1&pagina=N&tam=50&con_stock=1&key=...`
+   Pagina hasta juntar una muestra suficiente (o filtra con `&buscar=`). Si es la primera vez en el
+   proyecto o algo huele raro, corre antes `?muestra=1` para ver el esquema crudo real.
+2. **Filtro duro de descarte** (mismo criterio del rastreador, §`herramientas/rastreador/LEEME.md`):
+   fuera marcas de terceros y clones, salud/suplementos/cosmética con promesas, categorías con
+   riesgo o certificación, commodities de solo-precio, y todo lo que tenga tallas o variantes
+   complicadas al inicio.
+3. **Números reales por producto:** utilidad = precio sugerido − costo del proveedor. Exige
+   **ticket ≥ $80.000 COP** y **utilidad ≥ $40.000** (o margen ≥ 50 %). Lo que no llegue, se descarta:
+   con menos margen, los anuncios se comen la venta.
+4. **Demanda real:** pasa los sobrevivientes por `herramientas/rastreador/rastreador.py`
+   (`--candidatos "..."`, Google Trends `geo=CO`, con caché). Descarta lo que caiga ≥25 % o tenga
+   volumen < 5.
+5. **Cruce y veredicto:** ordena por demanda × utilidad y entrega **3 finalistas** con argumento
+   (por qué ese, qué ángulo de anuncio tiene, qué riesgo tiene). Di explícitamente cuál elegirías tú.
+6. **Verifica lo que se pueda:** si el producto es demostrable en video en <10 s, si hay saturación
+   (TikTok Creative Center / Meta Ad Library, a mano: dan 403 desde servidor), y si las imágenes del
+   proveedor sirven o hay que producir material.
+7. **Di lo que NO pudiste verificar** (siempre): envío neutro/sin marca, quién paga el flete,
+   comisión de recaudo. Eso es política comercial del proveedor y hay que preguntárselo.
+
+**Candado de seguridad:** el puente `dropi` es **de SOLO LECTURA**. No existe —y no se agrega sin
+orden explícita del dueño— ningún modo que cree pedidos en Dropi: un pedido mal disparado cuesta
+fletes y comisiones reales. Cuando llegue el momento de crear pedidos, se hace en su propio PR,
+con confirmación explícita y sin automatismos silenciosos.
+
 ## Trato con el dueño
 Socio honesto y directo, no adulador. Explica el porqué con "chispa crítica", cero humo, entrega cosas
 tangibles y probadas. Él es el director: decide; tú aportas criterio técnico y comercial, y adviertes
