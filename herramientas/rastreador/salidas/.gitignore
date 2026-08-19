@@ -1,0 +1,2 @@
+# El cache de Google Trends no se versiona (es local y se regenera solo).
+.cache-trends.json
