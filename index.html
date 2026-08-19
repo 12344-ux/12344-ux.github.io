@@ -1,713 +1,277 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Stramont · No estudies más. Estudia mejor.</title>
-  <meta name="description" content="No estudies más. Estudia mejor. Convertimos el contenido de tu clase en una guía de estudio personalizada, con ciencia del aprendizaje y lista en menos de 24 horas.">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Montaguth · Tu mundo. Tus compras.</title>
+<meta name="description" content="Montaguth es una tienda online que selecciona productos con criterio y los entrega con reglas claras. Estamos abriendo: déjanos tu correo y te avisamos.">
+<link rel="icon" type="image/png" href="favicon.png">
+<meta name="theme-color" content="#D32F2F">
 
-  <!-- Open Graph / vista previa al compartir en redes -->
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Stramont">
-  <meta property="og:title" content="Stramont · No estudies más. Estudia mejor.">
-  <meta property="og:description" content="Convertimos el contenido de tu clase en una guía de estudio personalizada, con ciencia del aprendizaje y lista en menos de 24 horas.">
-  <meta property="og:url" content="https://montaguth.institute/">
-  <meta property="og:image" content="https://montaguth.institute/logo.png">
-  <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Stramont · No estudies más. Estudia mejor.">
-  <meta name="twitter:description" content="Convertimos el contenido de tu clase en una guía de estudio personalizada, con ciencia del aprendizaje y lista en menos de 24 horas.">
+<!-- Vista previa al compartir -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Montaguth">
+<meta property="og:url" content="https://montaguth.institute/">
+<meta property="og:title" content="Montaguth · Tu mundo. Tus compras.">
+<meta property="og:description" content="Una tienda online con productos elegidos con criterio y reglas claras. Estamos abriendo.">
+<meta property="og:image" content="https://montaguth.institute/logo.png">
+<meta name="twitter:card" content="summary">
 
-  <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="stylesheet" href="estilos.css?v=16">
-  <style>
-    /* ===== "El Cambio" · showcase del producto (autocontenido; no toca estilos.css) ===== */
-    /* Fondo trabajado, full-bleed y sutil, solo detrás de #cambio (se funde con la banda por la máscara). */
-    .band-light{overflow-x:clip;}
-    #cambio::before{
-      content:"";position:absolute;z-index:0;top:0;bottom:0;left:50%;width:100vw;transform:translateX(-50%);pointer-events:none;
-      background:
-        radial-gradient(rgba(11,18,32,.05) 1px, transparent 1.4px) 0 0/26px 26px,
-        radial-gradient(42% 50% at 10% 14%, rgba(45,212,191,.18), transparent 70%),
-        radial-gradient(44% 52% at 90% 88%, rgba(129,140,248,.18), transparent 70%),
-        linear-gradient(180deg,#f3f7fc 0%, #eef3fb 45%, #e9f0f9 100%);
-      -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 7%, #000 93%, transparent 100%);
-              mask-image:linear-gradient(180deg, transparent 0, #000 7%, #000 93%, transparent 100%);
-    }
-    #cambio > *{position:relative;z-index:1;}
-    .cambio-wrap{max-width:980px;margin:34px auto 0;}
-    .cx-stage{text-align:center;}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    /* Etiqueta de etapa (chip) */
-    .cx-label{display:inline-flex;align-items:center;gap:11px;font-size:14px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;padding:7px 18px 7px 7px;border-radius:40px;}
-    .cx-label-bad{background:rgba(196,142,58,.17);color:#7f560f;}
-    .cx-label-good{background:rgba(45,212,191,.16);color:#0c7d6e;}
-    .cx-dot{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;}
-    .cx-dot.bad{background:#C48E3A;color:#2c1e06;}
-    .cx-dot.good{background:#2DD4BF;color:#04211D;}
-    .cx-sub{color:#6b7688;font-size:15px;margin:14px 0 24px;}
+<!--
+  MONTAGUTH · portada provisional (fase de apertura)
+  · CSS autocontenido en este <style>: NO enlaza estilos.css (que es el shell heredado).
+  · Marca: rojo #D32F2F como ACENTO sobre base neutra (blanco hueso + negro profundo).
+    La proporción es intencional: rojo saturado a pantalla completa lee como
+    "marketplace de descuentos"; en dosis lee como marca. Ver nota en el PR.
+  · El ícono (favicon/logo-mark) es una RECONSTRUCCIÓN provisional del logo del manual,
+    dibujada en PIL. Se reemplaza cuando el dueño suba el archivo original.
+-->
+<style>
+  *{box-sizing:border-box}
+  :root{
+    --rojo:#D32F2F;
+    --rojo-osc:#B02525;
+    --negro:#111111;
+    --blanco:#FFFFFF;
+    --hueso:#FAF7F5;
+    --gris:#6B6B6B;
+    --linea:rgba(17,17,17,.10);
+  }
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--hueso);
+    color:var(--negro);
+    font-family:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
 
-    /* --- SIN STRAMONT: foto única de apuntes reales (enmarcada) --- */
-    .cx-foto{position:relative;width:fit-content;max-width:100%;margin:2px auto 0;}
-    .cx-foto img{display:block;width:min(700px,90vw);height:auto;border-radius:14px;box-shadow:0 26px 60px rgba(11,18,32,.4);cursor:zoom-in;}
-    /* efecto oscuro sutil (viñeta), sin marco: acaba con el look de "recorte" */
-    .cx-foto::after{content:"";position:absolute;inset:0;border-radius:14px;pointer-events:none;background:radial-gradient(130% 108% at 50% 0%, transparent 50%, rgba(6,10,20,.55) 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);}
+  /* ---------- barra superior de confianza ---------- */
+  .barra{
+    background:var(--negro);color:#fff;font-size:12.5px;letter-spacing:.4px;
+    display:flex;justify-content:center;gap:34px;padding:9px 16px;flex-wrap:wrap;
+  }
+  .barra span{display:inline-flex;align-items:center;gap:7px;opacity:.92}
+  .barra svg{width:15px;height:15px;flex:none}
 
-    /* Lightbox / vista previa ampliada de la foto de apuntes */
-    .cx-lightbox{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(6,10,18,.88);backdrop-filter:blur(5px);cursor:zoom-out;}
-    .cx-lightbox.on{display:flex;animation:cxfade .22s ease;}
-    .cx-lb-frame{border:6px solid #0B1220;border-radius:14px;overflow:hidden;background:#0B1220;line-height:0;box-shadow:0 34px 90px rgba(0,0,0,.6);cursor:default;animation:cxzoom .22s ease;max-width:94vw;max-height:90vh;}
-    .cx-lightbox img{display:block;width:auto;height:auto;max-width:calc(94vw - 12px);max-height:calc(90vh - 12px);}
-    .cx-lightbox .cx-close{position:absolute;top:16px;right:18px;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.32);color:#fff;font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;}
-    .cx-lightbox .cx-close:hover{background:rgba(255,255,255,.22);}
-    .cx-lightbox .cx-hint{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.75);font-size:13px;letter-spacing:.3px;}
-    @keyframes cxfade{from{opacity:0}to{opacity:1}}
-    @keyframes cxzoom{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+  /* ---------- encabezado ---------- */
+  header{
+    display:flex;align-items:center;justify-content:center;
+    padding:34px 20px 0 20px;
+  }
+  .marca{display:flex;flex-direction:column;align-items:center;gap:14px;text-decoration:none}
+  .marca img{width:72px;height:72px;display:block}
+  .wordmark{
+    font-weight:600;font-size:clamp(26px,5.4vw,38px);letter-spacing:.22em;
+    color:var(--negro);line-height:1;white-space:nowrap;
+  }
+  .wordmark i{color:var(--rojo);font-style:normal}
+  .tagline{
+    font-size:clamp(10px,2.2vw,12px);letter-spacing:.36em;color:var(--gris);
+    text-transform:uppercase;margin-top:-4px;
+  }
+  .tagline b{color:var(--rojo);font-weight:500}
 
-    /* listas de puntos como TARJETAS con color (no lista de texto plana) */
-    .cx-points{list-style:none;padding:0;margin:26px auto 0;max-width:760px;display:grid;grid-template-columns:1fr 1fr;gap:13px;text-align:left;}
-    .cx-points li{display:flex;gap:13px;align-items:center;font-size:15px;line-height:1.36;padding:15px 17px;border-radius:14px;background:#fff;box-shadow:0 6px 18px rgba(11,18,32,.07);}
-    .cx-points li:last-child{grid-column:1 / -1;}      /* la 5ª ocupa el ancho completo: resuelve la paridad impar */
-    .cx-points .ic{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;}
-    .cx-points-bad li{border-left:4px solid #C48E3A;background:linear-gradient(100deg, rgba(196,142,58,.14), #fff 58%);color:#4f4632;}
-    .cx-points-bad .ic{background:rgba(196,142,58,.20);color:#7f560f;}
-    .cx-points-good li{border-left:4px solid #2DD4BF;background:linear-gradient(100deg, rgba(45,212,191,.12), #fff 58%);color:#1e2937;font-weight:500;}
-    .cx-points-good .ic{background:rgba(45,212,191,.2);color:#0f9e8b;}
+  /* ---------- bloque central ---------- */
+  main{max-width:760px;margin:0 auto;padding:54px 22px 20px 22px;text-align:center}
+  .kicker{
+    display:inline-block;font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--rojo);font-weight:600;border:1px solid rgba(211,47,47,.28);
+    border-radius:999px;padding:6px 15px;background:rgba(211,47,47,.05);
+  }
+  h1{
+    font-size:clamp(30px,6.6vw,52px);line-height:1.14;font-weight:600;
+    margin:26px 0 18px 0;letter-spacing:-.5px;
+  }
+  h1 em{font-style:normal;color:var(--rojo)}
+  .lead{font-size:clamp(15.5px,2.6vw,18px);color:#3C3C3C;margin:0 auto 8px auto;max-width:560px}
+  .lead-2{font-size:15px;color:var(--gris);margin:14px auto 0 auto;max-width:520px}
 
-    /* Flecha de transición entre etapas */
-    .cx-arrow{text-align:center;margin:46px 0 4px;}
-    .cx-arrow-txt{display:block;font-style:italic;color:#8a94a3;font-size:14.5px;margin-bottom:8px;}
-    .cx-arrow svg{color:#2DD4BF;}
+  /* ---------- captura de correo ---------- */
+  .aviso{
+    margin:42px auto 0 auto;max-width:520px;background:var(--blanco);
+    border:1px solid var(--linea);border-radius:16px;padding:26px 24px;
+    box-shadow:0 12px 34px rgba(17,17,17,.055);text-align:left;
+  }
+  .aviso h2{font-size:17px;font-weight:600;margin:0 0 6px 0}
+  .aviso p{font-size:14px;color:var(--gris);margin:0 0 18px 0}
+  .fila{display:flex;gap:10px}
+  .fila input{
+    flex:1;min-width:0;font-family:inherit;font-size:15px;color:var(--negro);
+    background:var(--hueso);border:1px solid var(--linea);border-radius:11px;
+    padding:13px 15px;outline:none;transition:border-color .15s,box-shadow .15s;
+  }
+  .fila input:focus{border-color:var(--rojo);box-shadow:0 0 0 3px rgba(211,47,47,.12)}
+  .fila button{
+    font-family:inherit;font-size:15px;font-weight:600;color:#fff;cursor:pointer;
+    background:var(--rojo);border:0;border-radius:11px;padding:13px 22px;white-space:nowrap;
+    transition:background .15s,transform .08s;
+  }
+  .fila button:hover{background:var(--rojo-osc)}
+  .fila button:active{transform:translateY(1px)}
+  .fila button[disabled]{opacity:.55;cursor:default}
+  .nota{font-size:12px;color:#8A8A8A;margin:13px 0 0 0;line-height:1.5}
+  .nota a{color:var(--rojo);text-decoration:none}
+  .nota a:hover{text-decoration:underline}
+  .msg{font-size:14px;margin:14px 0 0 0;display:none}
+  .msg.ok{display:block;color:#1B7A46}
+  .msg.err{display:block;color:var(--rojo)}
 
-    /* --- CON STRAMONT: showcase de la guía (protagonista) --- */
-    .cx-showcase{display:block;position:relative;margin:24px auto 0;text-decoration:none;max-width:940px;}
-    .cx-window{border-radius:16px;overflow:hidden;background:#0B1220;border:1px solid rgba(11,18,32,.14);box-shadow:0 34px 90px rgba(11,18,32,.34), 0 0 0 1px rgba(45,212,191,.08);transition:transform .28s ease, box-shadow .28s ease;}
-    .cx-showcase:hover .cx-window{transform:translateY(-5px);box-shadow:0 46px 110px rgba(11,18,32,.44), 0 0 0 1px rgba(45,212,191,.4);}
-    .cx-bar{display:flex;align-items:center;gap:7px;padding:11px 16px;background:#0d1526;border-bottom:1px solid rgba(255,255,255,.06);}
-    .cx-bar i{width:11px;height:11px;border-radius:50%;display:inline-block;}
-    .cx-bar i:nth-child(1){background:#ff5f57;} .cx-bar i:nth-child(2){background:#febc2e;} .cx-bar i:nth-child(3){background:#28c840;}
-    .cx-bar em{margin-left:12px;font-style:normal;font-size:12.5px;color:#8b96a8;letter-spacing:.2px;}
-    .cx-window img{display:block;width:100%;height:auto;}
-    .cx-open{position:absolute;left:50%;bottom:20px;transform:translateX(-50%) translateY(10px);opacity:0;transition:all .28s ease;background:rgba(11,18,32,.88);color:#fff;border:1px solid rgba(45,212,191,.55);padding:10px 20px;border-radius:30px;font-size:13.5px;font-weight:700;display:inline-flex;gap:7px;align-items:center;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.35);}
-    .cx-showcase:hover .cx-open{opacity:1;transform:translateX(-50%) translateY(0);}
+  /* ---------- valores ---------- */
+  .valores{
+    max-width:900px;margin:64px auto 0 auto;padding:0 22px;
+    display:grid;grid-template-columns:repeat(4,1fr);gap:14px;
+  }
+  .val{
+    background:var(--blanco);border:1px solid var(--linea);border-radius:14px;
+    padding:20px 16px;text-align:center;
+  }
+  .val svg{width:22px;height:22px;color:var(--rojo);margin-bottom:9px}
+  .val b{display:block;font-size:13.5px;font-weight:600;margin-bottom:3px}
+  .val span{font-size:12.5px;color:var(--gris);line-height:1.5}
 
-    /* Stats */
-    .cx-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;max-width:720px;margin:32px auto 0;}
-    .cx-stat{background:#fff;border:1px solid #e3e8ef;border-radius:14px;padding:18px 8px;box-shadow:0 6px 18px rgba(11,18,32,.05);}
-    .cx-stat .n{font-size:30px;font-weight:900;color:#0f9e8b;line-height:1;}
-    .cx-stat .l{font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;color:#8a94a3;margin-top:7px;line-height:1.25;}
+  footer{
+    margin-top:70px;border-top:1px solid var(--linea);
+    padding:26px 22px 40px 22px;text-align:center;
+  }
+  footer p{font-size:12.5px;color:#8A8A8A;margin:0 0 7px 0}
+  footer a{color:var(--gris);text-decoration:none;font-size:12.5px;margin:0 9px}
+  footer a:hover{color:var(--rojo)}
 
-    /* CTA grande (abrir la guía = protagonista) */
-    .cx-cta{text-align:center;margin:38px 0 0;}
-    .cx-btn{display:inline-flex;align-items:center;gap:12px;background:#0B1220;color:#fff;font-weight:800;font-size:16.5px;line-height:1.2;padding:18px 32px;border-radius:14px;text-decoration:none;box-shadow:0 18px 40px rgba(11,18,32,.28);border:1px solid rgba(45,212,191,.28);transition:transform .2s ease, box-shadow .2s ease, background .2s ease;}
-    .cx-btn .lead{color:#2DD4BF;display:inline-flex;flex:0 0 auto;}
-    .cx-btn .arr{transition:transform .2s ease;flex:0 0 auto;}
-    .cx-btn:hover{transform:translateY(-3px);background:#101c31;box-shadow:0 24px 50px rgba(11,18,32,.38);}
-    .cx-btn:hover .arr{transform:translateX(5px);}
-    .cx-pill{display:inline-flex;align-items:center;gap:8px;margin-top:22px;background:#fff;border:1px solid #d7dee7;border-radius:30px;padding:11px 22px;font-size:14px;color:#3a4457;font-weight:600;box-shadow:0 6px 20px rgba(11,18,32,.07);}
-
-    @media (max-width:760px){
-      .cambio-wrap{margin-top:26px;}
-      .cx-points{grid-template-columns:1fr;max-width:460px;gap:11px;}
-      .cx-points li:last-child{grid-column:auto;}
-      .cx-foto img{width:90vw;box-shadow:0 18px 40px rgba(11,18,32,.3);}
-      .cx-stats{grid-template-columns:repeat(2,1fr);}
-      .cx-btn{font-size:15px;padding:16px 22px;width:100%;box-sizing:border-box;justify-content:center;}
-      .cx-open{display:none;}
-    }
-
-    /* ===== Cierre / CTA final · oscuro premium (autocontenido; no toca estilos.css) ===== */
-    .cc-band{position:relative;}
-    .cc-band::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;z-index:5;background:linear-gradient(90deg, transparent, rgba(255,255,255,.92) 50%, transparent);}
-    .cc-card{position:relative;max-width:900px;margin:0 auto;background:linear-gradient(165deg, rgba(45,212,191,.07), rgba(255,255,255,.02));border:1px solid rgba(45,212,191,.28);border-radius:26px;padding:58px 40px;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.4), inset 0 0 90px rgba(45,212,191,.05);overflow:hidden;}
-    .cc-glow{position:absolute;left:50%;top:62%;width:70%;height:60%;transform:translate(-50%,-50%);background:radial-gradient(ellipse at center, rgba(45,212,191,.16), transparent 70%);filter:blur(30px);pointer-events:none;}
-    .cc-title{position:relative;font-size:clamp(28px,4.2vw,44px);font-weight:800;color:#fff;line-height:1.12;margin:0 auto 20px;max-width:620px;}
-    .cc-sub{position:relative;font-size:16.5px;line-height:1.65;color:#aeb9cc;margin:0 auto 34px;max-width:520px;}
-    .cc-sub strong{color:#fff;font-weight:700;}
-    .cc-btn{position:relative;display:inline-flex;align-items:center;gap:12px;background:#2DD4BF;color:#04231e;font-weight:800;font-size:16.5px;letter-spacing:.4px;text-transform:uppercase;padding:20px 42px;border-radius:44px;text-decoration:none;box-shadow:0 0 0 1px rgba(45,212,191,.5), 0 0 44px rgba(45,212,191,.42), 0 16px 40px rgba(0,0,0,.4);transition:transform .2s ease, box-shadow .2s ease;}
-    .cc-btn:hover{transform:translateY(-2px);box-shadow:0 0 0 1px rgba(45,212,191,.75), 0 0 66px rgba(45,212,191,.6), 0 22px 52px rgba(0,0,0,.5);}
-    @media (max-width:600px){
-      .cc-card{padding:44px 22px;border-radius:20px;}
-      .cc-btn{width:100%;justify-content:center;box-sizing:border-box;font-size:15px;padding:18px 18px;}
-    }
-
-    /* ===== HERO C2 · dos columnas antes→después (autocontenido; no toca estilos.css) ===== */
-    .hx-hero{position:relative;z-index:10;width:90%;max-width:1140px;margin:0 auto;min-height:calc(100vh - 48px);padding:40px 0 66px;display:grid;grid-template-columns:1.02fr .98fr;gap:50px;align-items:center;text-align:left;}
-    .hx-copy{max-width:560px;}
-    .hx-eyebrow{font-size:12.5px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#2DD4BF;display:block;margin-bottom:20px;}
-    .hx-title{font-size:clamp(32px,4.4vw,54px);font-weight:800;line-height:1.09;letter-spacing:-.5px;color:#fff;margin:0 0 22px;}
-    .hx-title .hx-accent{color:#2DD4BF;}
-    .hx-sub{font-size:17px;line-height:1.65;color:#b9c4d6;margin:0 0 30px;max-width:500px;}
-    .hx-cta{margin:0 0 18px;}
-    .hx-btn{display:inline-flex;align-items:center;gap:11px;background:#2DD4BF;color:#062b26;font-weight:800;font-size:16.5px;padding:17px 32px;border-radius:40px;text-decoration:none;box-shadow:0 14px 34px rgba(45,212,191,.28);transition:transform .2s ease, box-shadow .2s ease, background .2s ease;}
-    .hx-btn:hover{transform:translateY(-2px);background:#3ee0cc;box-shadow:0 20px 46px rgba(45,212,191,.42);}
-    .hx-badge{display:inline-flex;align-items:center;gap:8px;color:#93ebdf;font-size:13.5px;font-weight:600;letter-spacing:.3px;}
-    .hx-badge svg{color:#2DD4BF;flex:0 0 auto;}
-
-    .hx-visual{position:relative;min-height:500px;}
-    .hx-glow{position:absolute;left:52%;top:50%;width:78%;height:74%;transform:translate(-50%,-50%);background:radial-gradient(ellipse at center, rgba(45,212,191,.22), rgba(45,212,191,.06) 45%, transparent 70%);filter:blur(18px);pointer-events:none;z-index:0;}
-    .hx-notas{position:absolute;left:0;top:9%;width:49%;border-radius:12px;transform:rotate(-6deg);box-shadow:0 26px 60px rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.10);z-index:1;}
-    .hx-guia{position:absolute;right:0;top:0;width:62%;border-radius:16px;transform:rotate(3.5deg);box-shadow:0 34px 84px rgba(0,0,0,.6), 0 0 0 1px rgba(45,212,191,.28), 0 0 70px rgba(45,212,191,.14);z-index:2;}
-    .hx-arrow{position:absolute;left:45%;top:47%;transform:translate(-50%,-50%);z-index:3;color:#2DD4BF;filter:drop-shadow(0 6px 14px rgba(0,0,0,.55));}
-    .hx-scroll{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);color:#2DD4BF;z-index:10;opacity:.85;animation:hxbob 1.8s ease-in-out infinite;}
-    .hx-scroll:hover{opacity:1;}
-    @keyframes hxbob{0%,100%{transform:translateX(-50%) translateY(0);}50%{transform:translateX(-50%) translateY(7px);}}
-    @media (prefers-reduced-motion:reduce){ .hx-scroll{animation:none;} }
-
-    @media (max-width:880px){
-      .hx-hero{grid-template-columns:1fr;gap:30px;padding:44px 0 58px;text-align:center;}
-      .hx-copy{max-width:none;margin:0 auto;}
-      .hx-sub{margin-left:auto;margin-right:auto;}
-      .hx-visual{min-height:70vw;max-width:460px;margin:0 auto;width:100%;}
-      .hx-scroll{display:none;}
-    }
-    @media (max-width:480px){
-      .hx-btn{width:100%;justify-content:center;box-sizing:border-box;}
-      .hx-visual{min-height:80vw;}
-    }
-    /* ===== "Del caos al orden" · flujo del método (autocontenido; no toca estilos.css) ===== */
-    .mo-flow{max-width:1060px;margin:8px auto 0;}
-    .mo-rail{display:flex;align-items:flex-start;gap:18px;}
-    .mo-end{flex:0 0 auto;width:104px;height:56px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:10.5px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;line-height:1.25;color:#41506a;border:1px dashed rgba(15,23,42,.22);border-radius:14px;padding:6px 8px;}
-    .mo-finish{color:#1f8a7d;border-color:rgba(31,138,125,.5);background:rgba(31,138,125,.07);}
-    .mo-steps{position:relative;flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:0;}
-    .mo-steps::before{content:"";position:absolute;top:27px;left:9%;right:9%;height:2px;background:rgba(31,138,125,.4);z-index:0;}
-    .mo-step{position:relative;z-index:1;padding:0 12px;text-align:center;}
-    .mo-ic{width:56px;height:56px;margin:0 auto 16px;border-radius:15px;background:#0e1626;border:1px solid rgba(31,138,125,.45);display:flex;align-items:center;justify-content:center;color:#2DD4BF;box-shadow:0 6px 18px rgba(15,23,42,.12);}
-    .mo-ic svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
-    .mo-step h3{font-size:15px;font-weight:800;color:#0f1620;margin:0 0 6px;}
-    .mo-step p{font-size:12.5px;line-height:1.5;color:#41506a;margin:0;}
-    .mo-close{text-align:center;font-size:clamp(17px,2.4vw,21px);font-weight:700;color:#0f1620;margin:38px auto 0;max-width:600px;line-height:1.4;}
-    .mo-close b{color:#1f8a7d;}
-    @media (max-width:760px){
-      .mo-rail{flex-direction:column;gap:14px;align-items:stretch;}
-      .mo-end{width:auto;height:auto;padding:12px;}
-      .mo-steps{grid-template-columns:1fr;gap:20px;width:100%;}
-      .mo-steps::before{display:none;}
-      .mo-step{display:flex;align-items:flex-start;gap:14px;text-align:left;padding:0;}
-      .mo-ic{margin:0;flex:0 0 auto;width:48px;height:48px;}
-    }
-
-    /* ===== "Así funciona" · infográfico (autocontenido; no toca estilos.css) ===== */
-    .hf-wrap{max-width:1000px;margin:32px auto 0;}
-    .hf-top{display:grid;grid-template-columns:1fr 1fr;gap:24px;position:relative;}
-    .hf-top::before{content:"";position:absolute;top:50%;left:calc(50% - 22px);width:44px;height:0;border-top:2px dashed rgba(42,157,143,.45);z-index:0;}
-    .hf-card{position:relative;display:flex;gap:15px;align-items:flex-start;background:#fff;border:1px solid #e6ebf2;border-radius:16px;padding:24px 22px 22px;box-shadow:0 8px 24px rgba(11,18,32,.06);z-index:1;}
-    .hf-num{position:absolute;top:-15px;left:22px;width:31px;height:31px;border-radius:50%;background:#fff;border:2px solid #2a9d8f;color:#2a9d8f;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;}
-    .hf-ic{flex:0 0 auto;width:52px;height:52px;border-radius:13px;background:rgba(42,157,143,.10);color:#2a9d8f;display:flex;align-items:center;justify-content:center;margin-top:4px;}
-    .hf-txt h3{font-size:18px;font-weight:800;color:#0B1220;margin:2px 0 6px;}
-    .hf-txt p{font-size:14.5px;line-height:1.5;color:#5a6472;margin:0;}
-
-    .hf-big{position:relative;margin-top:28px;background:linear-gradient(160deg,#0e1728,#0a1120);border:1px solid rgba(45,212,191,.22);border-radius:22px;padding:34px 34px 30px;box-shadow:0 30px 70px rgba(11,18,32,.26), inset 0 0 70px rgba(45,212,191,.045);overflow:hidden;}
-    .hf-24{position:absolute;top:24px;right:26px;display:inline-flex;align-items:center;gap:7px;color:#2DD4BF;font-weight:800;font-size:17px;border:1.5px solid rgba(45,212,191,.5);border-radius:40px;padding:9px 16px;box-shadow:0 0 26px rgba(45,212,191,.22);background:rgba(45,212,191,.06);}
-    .hf-big-head{display:flex;align-items:center;gap:16px;}
-    .hf-num-lg{width:54px;height:54px;border-radius:50%;background:#2a9d8f;color:#04211d;font-weight:800;font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 7px rgba(45,212,191,.10);flex:0 0 auto;}
-    .hf-doc{color:#2DD4BF;filter:drop-shadow(0 0 10px rgba(45,212,191,.45));}
-    .band-light .hf-big-title{font-size:clamp(24px,3.3vw,33px);font-weight:800;color:#fff;margin:16px 0 10px;line-height:1.14;max-width:540px;}
-    .hf-big-sub{font-size:15.5px;line-height:1.6;color:#aeb9cc;margin:0 0 20px;max-width:560px;}
-    .hf-chips{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:620px;margin-bottom:24px;}
-    .hf-chip{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.045);border:1px solid rgba(45,212,191,.20);border-radius:11px;padding:13px 15px;color:#e9edf5;font-size:14.5px;font-weight:600;}
-    .hf-chip svg{color:#2DD4BF;flex:0 0 auto;}
-
-    .hf-bonus{display:grid;grid-template-columns:1.5fr 1fr;gap:22px;align-items:center;background:#f4f7fb;border-radius:16px;padding:20px 24px;}
-    .hf-bonus-main{display:flex;gap:15px;align-items:flex-start;}
-    .hf-gift{flex:0 0 auto;color:#2a9d8f;margin-top:2px;}
-    .hf-bonus-main > div > strong{display:block;font-size:16px;color:#0B1220;margin-bottom:5px;}
-    .hf-bonus-main p strong{color:#0B1220;}
-    .hf-bonus-main p{font-size:13.8px;line-height:1.5;color:#55606e;margin:0;}
-    .hf-bonus-mini{display:flex;gap:10px;justify-content:space-between;border-left:1px solid #e0e6ee;padding-left:20px;}
-    .hf-mini{flex:1;text-align:center;font-size:11.5px;color:#6b7688;line-height:1.3;}
-    .hf-mini svg{color:#2a9d8f;margin-bottom:7px;}
-
-    .hf-banner{display:flex;align-items:center;gap:18px;justify-content:center;margin-top:24px;background:linear-gradient(160deg,#0e1728,#0a1120);border:1px solid rgba(45,212,191,.16);border-radius:16px;padding:24px 28px;text-align:left;}
-    .hf-bolt{color:#2DD4BF;flex:0 0 auto;filter:drop-shadow(0 0 9px rgba(45,212,191,.45));}
-    .hf-banner p{font-size:clamp(16px,2.3vw,21px);color:#cfd8e6;margin:0;font-weight:500;line-height:1.3;}
-    .hf-banner strong{color:#fff;font-weight:800;}
-
-    @media (max-width:760px){
-      .hf-top{grid-template-columns:1fr;gap:26px;}
-      .hf-top::before{display:none;}
-      .hf-big{padding:26px 20px 24px;}
-      .hf-24{position:static;margin-bottom:14px;}
-      .hf-big-head{gap:13px;}
-      .hf-chips{grid-template-columns:1fr;max-width:none;}
-      .hf-bonus{grid-template-columns:1fr;gap:16px;}
-      .hf-bonus-mini{border-left:none;border-top:1px solid #e0e6ee;padding-left:0;padding-top:16px;}
-      .hf-banner{flex-direction:column;gap:12px;text-align:center;}
-    }
-    /* ===== "Por qué confiar" · 3 tarjetas (autocontenido; no toca estilos.css) ===== */
-    .pc-eyebrow-ic{vertical-align:-3px;margin-right:7px;color:#2a9d8f;}
-    .pc-grid{display:grid;grid-template-columns:1.28fr 1fr 1fr;gap:22px;max-width:1050px;margin:34px auto 0;text-align:left;}
-    .pc-card{background:#fff;border:1px solid #e6ebf2;border-radius:18px;padding:28px 26px;box-shadow:0 10px 30px rgba(11,18,32,.06);}
-    .pc-card.feat{background:linear-gradient(165deg, rgba(45,212,191,.12), #ffffff 62%);border:1.5px solid rgba(45,212,191,.55);box-shadow:0 18px 46px rgba(42,157,143,.16);}
-    .pc-tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#0c7d6e;background:rgba(45,212,191,.15);border:1px solid rgba(45,212,191,.45);border-radius:30px;padding:5px 13px;margin-bottom:20px;}
-    .pc-ic{color:#2a9d8f;margin-bottom:14px;display:block;}
-    .pc-card h4{font-size:19px;font-weight:800;line-height:1.2;margin:0 0 10px;}
-    .pc-card p{font-size:14.5px;line-height:1.55;color:#5a6472;margin:0 0 18px;}
-    .pc-chips{display:flex;flex-wrap:wrap;gap:9px 16px;}
-    .pc-chip{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:#0c7d6e;}
-    .pc-chip svg{color:#2a9d8f;flex:0 0 auto;}
-
-    /* ===== "La base científica" · tarjetas oscuras (autocontenido) ===== */
-    .sci-cite{display:inline-flex;align-items:center;gap:14px;margin:4px auto 32px;background:rgba(45,212,191,.05);border:1px solid rgba(45,212,191,.32);border-radius:12px;padding:14px 20px;text-align:left;}
-    .sci-cite .doc{color:#2DD4BF;flex:0 0 auto;}
-    .sci-cite .txt{font-size:13px;color:#aeb9cc;line-height:1.45;}
-    .sci-cite a{color:#2DD4BF;text-decoration:none;font-weight:600;}
-    .sci-cite a:hover{text-decoration:underline;}
-    .sci-top{display:grid;grid-template-columns:1fr 1fr;gap:22px;max-width:1000px;margin:0 auto 20px;text-align:left;}
-    .sci-big{display:flex;gap:20px;align-items:flex-start;background:linear-gradient(165deg, rgba(45,212,191,.09), rgba(255,255,255,.02));border:1px solid rgba(45,212,191,.30);border-radius:18px;padding:26px;box-shadow:inset 0 0 60px rgba(45,212,191,.05);}
-    .sci-ring{width:62px;height:62px;border-radius:50%;border:1px solid rgba(45,212,191,.35);background:rgba(45,212,191,.05);display:flex;align-items:center;justify-content:center;color:#2DD4BF;flex:0 0 auto;}
-    .sci-big h4{color:#fff;font-size:19px;font-weight:800;margin:4px 0 8px;line-height:1.2;}
-    .sci-big p{color:#aeb9cc;font-size:14px;line-height:1.55;margin:0;}
-    .sci-note{display:flex;gap:9px;align-items:flex-start;margin-top:14px;color:#8fe9dd;font-size:12.5px;line-height:1.4;}
-    .sci-note svg{color:#2DD4BF;flex:0 0 auto;margin-top:1px;}
-    .sci-bot{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;max-width:1000px;margin:0 auto;text-align:left;}
-    .sci-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:22px 20px;}
-    .sci-ring-sm{width:46px;height:46px;border-radius:50%;border:1px solid rgba(45,212,191,.3);background:rgba(45,212,191,.05);display:flex;align-items:center;justify-content:center;color:#2DD4BF;margin-bottom:14px;}
-    .sci-card h4{color:#fff;font-size:16px;font-weight:800;margin:0 0 8px;}
-    .sci-card p{color:#9aa7ba;font-size:13px;line-height:1.5;margin:0;}
-
-    @media (max-width:820px){
-      .pc-grid{grid-template-columns:1fr;max-width:460px;}
-      .sci-top{grid-template-columns:1fr;}
-      .sci-bot{grid-template-columns:1fr 1fr;}
-    }
-    @media (max-width:480px){
-      .sci-bot{grid-template-columns:1fr;}
-      .sci-big{flex-direction:column;gap:14px;}
-      .sci-cite{flex-direction:column;align-items:flex-start;gap:10px;}
-    }
-  </style>
+  @media (max-width:720px){
+    .barra{gap:18px;font-size:11.5px}
+    .valores{grid-template-columns:repeat(2,1fr);margin-top:48px}
+    main{padding-top:40px}
+  }
+  @media (max-width:430px){
+    .fila{flex-direction:column}
+    .fila button{width:100%}
+  }
+</style>
 </head>
 <body>
 
-  <!-- ── HEADER ── -->
-  <header class="site-header">
-    <a href="index.html" class="brand">
-      <img src="logo-mark.png" alt="Stramont" style="height:28px;width:auto;display:block;">
-      <span class="brand-name">Stramont</span>
-    </a>
-    <input type="checkbox" id="nav-toggle" class="nav-toggle" hidden>
-    <label for="nav-toggle" class="nav-burger" aria-label="Abrir menú">
-      <span></span><span></span><span></span>
-    </label>
-    <nav class="nav-links">
-      <a href="#proceso">Cómo funciona</a>
-      <a href="#ciencia">Ciencia</a>
-      <a href="#empezar">Recibir mi guía</a>
-    </nav>
-  </header>
+<!-- Iconografía: Lucide (ISC), SVG inline. Sin CDN, sin emojis. -->
+<div class="barra">
+  <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>Envíos con seguimiento</span>
+  <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>Compra protegida</span>
+  <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/></svg>Atención por WhatsApp</span>
+</div>
 
-  <!-- ════════ BANDA 1 · HERO (OSCURO PREMIUM) ════════ -->
-  <div class="band band-hero">
-    <section class="hx-hero">
-      <div class="hx-copy">
-        <span class="hx-eyebrow">Transformamos tu clase en una guía para entender</span>
-        <h1 class="hx-title">Tu clase entra confusa.<br>Tu guía sale <span class="hx-accent">lista para estudiar.</span></h1>
-        <p class="hx-sub">Convertimos el material de tu clase en una guía personalizada, con ciencia del aprendizaje, para que entiendas y aprendas de verdad.</p>
-        <div class="hx-cta">
-          <a href="checkout.html" class="hx-btn">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
-            Empezar mi transformación
-          </a>
-        </div>
-        <div class="hx-badge">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg>
-          Entrega en menos de 24 horas
-        </div>
-      </div>
+<header>
+  <a class="marca" href="/">
+    <img src="logo-mark.png" alt="Montaguth" width="72" height="72">
+    <div>
+      <div class="wordmark">MONT<i>A</i>GUTH</div>
+      <div class="tagline">Tu mundo. <b>Tus compras.</b></div>
+    </div>
+  </a>
+</header>
 
-      <div class="hx-visual">
-        <span class="hx-glow"></span>
-        <img class="hx-notas" src="apuntes-hero.jpg" alt="Apuntes a mano de Segmentación de Mercados: el antes, desordenado">
-        <img class="hx-guia" src="guia-hero.jpg" alt="Guía Stramont de Segmentación de Mercados: el después, ordenado y listo para estudiar">
-        <span class="hx-arrow">
-          <svg width="66" height="66" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"/><path d="M13 6l7 6-7 6"/></svg>
-        </span>
-      </div>
+<main>
+  <span class="kicker">Estamos abriendo</span>
 
-      <a href="#cambio" class="hx-scroll" aria-label="Bajar">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-      </a>
-    </section>
+  <h1>Una tienda que <em>responde</em> por lo que vende.</h1>
+
+  <p class="lead">
+    Montaguth selecciona productos con criterio, los explica sin exagerar
+    y los entrega con reglas claras: plazos reales, seguimiento y devoluciones sin peleas.
+  </p>
+  <p class="lead-2">
+    Estamos montando la tienda ahora mismo. No vamos a abrir con mil productos:
+    vamos a abrir con los que podamos sostener bien.
+  </p>
+
+  <div class="aviso">
+    <h2>Te avisamos cuando abramos</h2>
+    <p>Un solo correo, el día que la tienda esté lista. Nada más.</p>
+    <form class="fila" id="formAviso" novalidate>
+      <input type="email" id="correo" inputmode="email" autocomplete="email"
+             placeholder="tucorreo@ejemplo.com" aria-label="Tu correo electrónico" required>
+      <button type="submit" id="btnAviso">Avisarme</button>
+    </form>
+    <p class="msg" id="msg" role="status" aria-live="polite"></p>
+    <p class="nota">
+      Guardamos tu correo solo para avisarte de la apertura. No lo vendemos ni lo compartimos.
+      Puedes pedir que lo borremos cuando quieras — <a href="privacidad.html">política de privacidad</a>.
+    </p>
   </div>
 
-  <!-- ════════ BANDA 2 · CLARO (alivio: cambio + proceso + confianza) ════════ -->
-  <div class="band band-light">
+  <section class="valores">
+    <div class="val">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+      <b>Confianza</b><span>Reglas claras antes de que pagues.</span>
+    </div>
+    <div class="val">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+      <b>Alcance</b><span>Productos de dentro y fuera del país.</span>
+    </div>
+    <div class="val">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      <b>Experiencia</b><span>Comprar simple, sin trampas.</span>
+    </div>
+    <div class="val">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+      <b>Cercanía</b><span>Una persona real contestando.</span>
+    </div>
+  </section>
+</main>
 
-    <!-- 2. EL CAMBIO -->
-    <section class="section" id="cambio">
-      <span class="section-eyebrow">El cambio</span>
-      <h2 class="section-title">La misma clase.<br>Dos experiencias completamente distintas.</h2>
-      <p class="section-lead">La diferencia no es estudiar más horas. Es estudiar con el material correcto.</p>
+<footer>
+  <p>Montaguth · montaguth.institute · contacto@montaguth.institute</p>
+  <p>
+    <a href="privacidad.html">Privacidad</a>·
+    <a href="condiciones.html">Condiciones</a>
+  </p>
+</footer>
 
-      <div class="cambio-wrap">
+<script>
+/* Lista de espera de apertura.
+   Va a la Edge Function "captura" (server-side, service_role): la tabla `correos`
+   NO acepta inserción con la llave pública, así que nadie puede inundarla con
+   correos falsos. La función valida formato, limita por IP (sin guardar IPs) y
+   deduplica. Aquí no viaja ninguna llave ni secreto. */
+(function () {
+  var FN = "https://ifvnuvjvlzpdaimelmbm.supabase.co/functions/v1/captura";
+  var form = document.getElementById("formAviso");
+  var input = document.getElementById("correo");
+  var btn = document.getElementById("btnAviso");
+  var msg = document.getElementById("msg");
 
-        <!-- ETAPA 1 · SIN STRAMONT: el punto de partida (apuntes reales grandes) -->
-        <div class="cx-stage cx-before">
-          <span class="cx-label cx-label-bad">
-            <span class="cx-dot bad"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>
-            Sin Stramont
-          </span>
-          <p class="cx-sub">Así llega el material de una clase: disperso, sin estructura y difícil de estudiar.</p>
+  function decir(texto, clase) {
+    msg.textContent = texto;
+    msg.className = "msg " + clase;
+  }
 
-          <div class="cx-foto">
-            <img src="apuntes-cliente.jpg" alt="Apuntes reales de Segmentación de Mercados, escritos a mano en hojas sueltas sobre el escritorio" loading="lazy">
-          </div>
-
-          <ul class="cx-points cx-points-bad">
-            <li><span class="ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span> El material de tu clase, disperso y difícil de entender.</li>
-            <li><span class="ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span> Información incompleta y sin estructura.</li>
-            <li><span class="ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span> Horas buscando qué estudiar realmente.</li>
-            <li><span class="ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span> Olvidos constantes y repaso poco efectivo.</li>
-            <li><span class="ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span> Estrés, frustración y resultados irregulares.</li>
-          </ul>
-        </div>
-
-        <!-- TRANSICIÓN -->
-        <div class="cx-arrow">
-          <span class="cx-arrow-txt">Y en esto los convertimos</span>
-          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
-        </div>
-
-        <!-- ETAPA 2 · CON STRAMONT: el producto (protagonista) -->
-        <div class="cx-stage cx-after">
-          <span class="cx-label cx-label-good">
-            <span class="cx-dot good"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>
-            Con Stramont
-          </span>
-
-          <!-- Showcase de la guía: grande, en marco de ventana, clicable -->
-          <a class="cx-showcase" href="/demo" target="_blank" rel="noopener" aria-label="Abrir la guía completa de Segmentación de Mercados">
-            <div class="cx-window">
-              <div class="cx-bar"><i></i><i></i><i></i><em>Segmentación de Mercados · Guía Stramont</em></div>
-              <img src="guia-segmentacion-nueva.jpg" alt="Guía Stramont de Segmentación de Mercados: nav lateral, contenido y panel de práctica" loading="lazy">
-            </div>
-            <span class="cx-open">Abrir la guía completa
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
-            </span>
-          </a>
-
-          <ul class="cx-points cx-points-good">
-            <li><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span> Una guía clara y lista para estudiar.</li>
-            <li><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span> Contenido completo, estructurado y claro.</li>
-            <li><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span> Sabes exactamente qué estudiar y en qué orden.</li>
-            <li><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span> Repaso efectivo con técnicas de aprendizaje.</li>
-            <li><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span> Más confianza para tu examen: llegas listo, no a ciegas.</li>
-          </ul>
-
-          <div class="cx-stats">
-            <div class="cx-stat"><div class="n">6</div><div class="l">Secciones</div></div>
-            <div class="cx-stat"><div class="n">14</div><div class="l">Conceptos clave</div></div>
-            <div class="cx-stat"><div class="n">7</div><div class="l">Ejemplos reales</div></div>
-            <div class="cx-stat"><div class="n">24</div><div class="l">Preguntas de práctica</div></div>
-          </div>
-
-          <div class="cx-cta">
-            <a href="/demo" class="cx-btn" target="_blank" rel="noopener">
-              <span class="lead"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h10a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"></path><path d="M9 8h6M9 12h6M9 16h4"></path></svg></span>
-              Abrir la guía completa de Segmentación de Mercados
-              <span class="arr"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-            </a>
-            <div><span class="cx-pill">🕐 Transformado en menos de 24 horas</span></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 2.5 DEL CAOS AL ORDEN (el método / el criterio) -->
-    <section class="section" id="metodo">
-      <span class="section-eyebrow">Del caos al orden</span>
-      <h2 class="section-title">De un montón de apuntes a un plan para entender.</h2>
-      <p class="section-lead">Reunimos todo el material de una materia —por disperso que esté— y lo convertimos en un solo camino ordenado, donde cada idea prepara la siguiente.</p>
-
-      <div class="mo-flow">
-        <div class="mo-rail">
-          <div class="mo-end mo-start">Tus apuntes</div>
-          <div class="mo-steps">
-            <div class="mo-step">
-              <span class="mo-ic"><svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg></span>
-              <h3>Reunimos todo</h3>
-              <p>Analizamos todo tu material como un solo tema.</p>
-            </div>
-            <div class="mo-step">
-              <span class="mo-ic"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>
-              <h3>Encontramos la estructura</h3>
-              <p>Lo esencial, lo que conecta y lo que profundiza.</p>
-            </div>
-            <div class="mo-step">
-              <span class="mo-ic"><svg viewBox="0 0 24 24"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg></span>
-              <h3>Creamos el orden</h3>
-              <p>Cada idea prepara la que sigue, sin saltos.</p>
-            </div>
-            <div class="mo-step">
-              <span class="mo-ic"><svg viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1.3.5 2.6 1.5 3.5.8.8 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></span>
-              <h3>Lo hacemos memorable</h3>
-              <p>Ejemplos, ideas clave y práctica de recuerdo.</p>
-            </div>
-          </div>
-          <div class="mo-end mo-finish">Tu guía Stramont</div>
-        </div>
-        <p class="mo-close">No entregamos un resumen. <b>Entregamos un camino para aprender.</b></p>
-      </div>
-    </section>
-
-    <!-- 3. CÓMO FUNCIONA (proceso) -->
-    <section class="section" id="proceso">
-      <span class="section-eyebrow">Cómo funciona</span>
-      <h2 class="section-title">Así de fácil funciona</h2>
-      <p class="section-lead">No necesitas aprender un método nuevo. Sigue tomando apuntes como siempre.</p>
-
-      <div class="hf-wrap">
-        <!-- Pasos 1 y 2 -->
-        <div class="hf-top">
-          <div class="hf-card">
-            <span class="hf-num">1</span>
-            <span class="hf-ic">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a1 1 0 0 1 1-1h9l4 4v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M14 4v4h4"/><path d="M8 12h6M8 16h4"/><path d="M17.5 14.5l2 2-4 4H13v-2.5z"/></svg>
-            </span>
-            <div class="hf-txt">
-              <h3>Toma apuntes como siempre</h3>
-              <p>En clase, en casa, en tu cuaderno o en digital. No cambies tu forma de estudiar.</p>
-            </div>
-          </div>
-          <div class="hf-card">
-            <span class="hf-num">2</span>
-            <span class="hf-ic">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3L10.5 13.5"/><path d="M21 3l-6.5 18-4-8-8-4z"/></svg>
-            </span>
-            <div class="hf-txt">
-              <h3>Envíanos el material de tu clase</h3>
-              <p>Fotos, PDF, capturas o documentos. Nosotros nos encargamos del resto.</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Paso 3 (tarjeta oscura) -->
-        <div class="hf-big">
-          <span class="hf-24">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-            24 h
-          </span>
-          <div class="hf-big-head">
-            <span class="hf-num-lg">3</span>
-            <span class="hf-doc" aria-hidden="true">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14a0 0 0 0 1 0 0H6a0 0 0 0 1 0 0z"/><path d="M14 3v4h4"/><path d="M9 12h6M9 16h6M9 8h2"/></svg>
-            </span>
-          </div>
-          <h3 class="hf-big-title">Recibe tu guía en menos de 24 horas</h3>
-          <p class="hf-big-sub">Nuestros expertos transforman el material de tu clase en una guía de estudio personalizada, clara y lista para que entiendas y aprendas mejor.</p>
-          <div class="hf-chips">
-            <span class="hf-chip"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Explicaciones simples</span>
-            <span class="hf-chip"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Ejemplos reales</span>
-            <span class="hf-chip"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Preguntas de práctica</span>
-            <span class="hf-chip"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Plan de repaso</span>
-          </div>
-
-          <!-- Bonus / Kit (el Kit es de TOMA DE APUNTES, no flashcards) -->
-          <div class="hf-bonus">
-            <div class="hf-bonus-main">
-              <span class="hf-gift">
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v9H4v-9"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7S11 3 8.5 3 6 5 6 5s.5 2 3 2 3 0 3 0zM12 7s1-4 3.5-4S18 5 18 5s-.5 2-3 2-3 0-3 0z"/></svg>
-              </span>
-              <div>
-                <strong>Bonus incluido</strong>
-                <p>Recibirás <strong>gratis</strong> el <strong>Kit Stramont</strong> de toma de apuntes para que tus próximas clases sean todavía más fáciles de transformar.</p>
-              </div>
-            </div>
-            <div class="hf-bonus-mini">
-              <div class="hf-mini">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-                Plantillas de apuntes
-              </div>
-              <div class="hf-mini">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
-                Estructura para tus clases
-              </div>
-              <div class="hf-mini">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>
-                Más fáciles de transformar
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Banner -->
-        <div class="hf-banner">
-          <span class="hf-bolt">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg>
-          </span>
-          <p>Mientras otros siguen organizando información, <strong>tú ya estarás estudiando.</strong></p>
-        </div>
-      </div>
-    </section>
-
-    <!-- CONFIANZA -->
-    <section class="section" id="confianza">
-      <span class="section-eyebrow"><svg class="pc-eyebrow-ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Por qué confiar</span>
-      <h2 class="section-title">Hecho en serio, con método</h2>
-      <p class="section-lead">Basado en investigación revisada por pares — <a href="https://www.researchgate.net/publication/258180568_Improving_Students'_Learning_With_Effective_Learning_Techniques" target="_blank" rel="noopener" style="color:#2a9d8f;text-decoration:none;font-weight:600;">Dunlosky et al.</a>, <a href="https://link.springer.com/doi/10.1186/s41235-017-0087-y" target="_blank" rel="noopener" style="color:#2a9d8f;text-decoration:none;font-weight:600;">Weinstein et al.</a></p>
-
-      <div class="pc-grid">
-        <div class="pc-card feat">
-          <span class="pc-tag">Diferenciador clave</span>
-          <span class="pc-ic">
-            <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4a2.5 2.5 0 0 0-2.5 2.5A2.5 2.5 0 0 0 4 9c0 1 .5 1.8 1.2 2.3A2.5 2.5 0 0 0 4 13.5 2.5 2.5 0 0 0 6.5 16 2.5 2.5 0 0 0 9 18.5V4z"/><path d="M15 4a2.5 2.5 0 0 1 2.5 2.5A2.5 2.5 0 0 1 20 9c0 1-.5 1.8-1.2 2.3A2.5 2.5 0 0 1 20 13.5 2.5 2.5 0 0 1 17.5 16 2.5 2.5 0 0 1 15 18.5V4z"/><path d="M9 8h2M13 8h2M9 12h2M13 12h2"/></svg>
-          </span>
-          <h4>Basado en cómo aprende tu cerebro</h4>
-          <p>Aplicamos principios de la ciencia del aprendizaje que han demostrado mejorar la retención y la comprensión a largo plazo.</p>
-          <div class="pc-chips">
-            <span class="pc-chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Recuperación activa</span>
-            <span class="pc-chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Espaciado</span>
-            <span class="pc-chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Intercalado</span>
-          </div>
-        </div>
-
-        <div class="pc-card">
-          <span class="pc-ic">
-            <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M12 5V2M9 2h6"/></svg>
-          </span>
-          <h4>Disponible cuando todavía importa</h4>
-          <p>Entregamos tu guía personalizada en menos de 24 horas, para que puedas estudiar a tiempo, no cuando ya es tarde.</p>
-          <div class="pc-chips"><span class="pc-chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Entrega en &lt; 24 horas</span></div>
-        </div>
-
-        <div class="pc-card">
-          <span class="pc-ic">
-            <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9l10-4 10 4-10 4z"/><path d="M6 11v4c0 1.5 2.7 3 6 3s6-1.5 6-3v-4"/><path d="M22 9v5"/></svg>
-          </span>
-          <h4>Tú toma apuntes. Nosotros hacemos el resto.</h4>
-          <p>Convertimos el material de tu clase en una guía clara, estructurada y lista para estudiar. Tú enfócate en aprender, no en organizar.</p>
-          <div class="pc-chips"><span class="pc-chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Menos esfuerzo, mejores resultados</span></div>
-        </div>
-      </div>
-    </section>
-
-  </div>
-
-  <!-- ════════ BANDA 3 · OSCURO (la base científica · tono laboratorio) ════════ -->
-  <div class="band band-science">
-    <section class="section" id="ciencia">
-      <span class="section-eyebrow">La base científica</span>
-      <h2 class="section-title">La mayoría estudia más.<br>Los mejores estudiantes estudian mejor.</h2>
-      <p class="section-lead">En Stramont aplicamos principios de la ciencia del aprendizaje para transformar el contenido de tu clase en una guía que realmente funciona.</p>
-
-      <div class="sci-cite">
-        <span class="doc"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 12h6M9 16h6"/></svg></span>
-        <span class="txt">Respaldado por investigación en ciencia del aprendizaje<br>
-          <a href="https://www.researchgate.net/publication/258180568_Improving_Students'_Learning_With_Effective_Learning_Techniques" target="_blank" rel="noopener">Dunlosky et al., 2013</a> &nbsp;|&nbsp;
-          <a href="https://link.springer.com/doi/10.1186/s41235-017-0087-y" target="_blank" rel="noopener">Weinstein et al., 2018</a>
-        </span>
-      </div>
-
-      <div class="sci-top">
-        <div class="sci-big">
-          <span class="sci-ring">
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4a2.5 2.5 0 0 0-2.5 2.5A2.5 2.5 0 0 0 4 9c0 1 .5 1.8 1.2 2.3A2.5 2.5 0 0 0 4 13.5 2.5 2.5 0 0 0 6.5 16 2.5 2.5 0 0 0 9 18.5V4z"/><path d="M15 4a2.5 2.5 0 0 1 2.5 2.5A2.5 2.5 0 0 1 20 9c0 1-.5 1.8-1.2 2.3A2.5 2.5 0 0 1 20 13.5 2.5 2.5 0 0 1 17.5 16 2.5 2.5 0 0 1 15 18.5V4z"/></svg>
-          </span>
-          <div>
-            <h4>Preguntas que obligan a recordar</h4>
-            <p>Usamos recuperación activa para que tu cerebro trabaje más y retenga mejor la información.</p>
-            <div class="sci-note"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg> Uno de los métodos con mayor evidencia para mejorar el aprendizaje.</div>
-          </div>
-        </div>
-        <div class="sci-big">
-          <span class="sci-ring">
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/><path d="M9 15a3 3 0 1 0 3-3"/><path d="M12 12v2.2"/></svg>
-          </span>
-          <div>
-            <h4>Plan de repaso inteligente</h4>
-            <p>Programamos repeticiones espaciadas en el momento justo para consolidar tu aprendizaje a largo plazo.</p>
-            <div class="sci-note"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg> La repetición espaciada aumenta la retención y reduce el olvido.</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="sci-bot">
-        <div class="sci-card">
-          <span class="sci-ring-sm"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg></span>
-          <h4>Visual + texto</h4>
-          <p>Combinamos diagramas y resúmenes claros para facilitar la comprensión y la memoria.</p>
-        </div>
-        <div class="sci-card">
-          <span class="sci-ring-sm"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.2 1 2.5h6c0-1.3.3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg></span>
-          <h4>Comprensión profunda</h4>
-          <p>Explicamos los conceptos desde la raíz, conectando ideas para que realmente entiendas.</p>
-        </div>
-        <div class="sci-card">
-          <span class="sci-ring-sm"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg></span>
-          <h4>Ejemplos reales</h4>
-          <p>Aplicamos lo que estudias a situaciones reales para que lo recuerdes cuando más lo necesites.</p>
-        </div>
-        <div class="sci-card">
-          <span class="sci-ring-sm"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></span>
-          <h4>Entrenamiento mixto</h4>
-          <p>Variamos formatos y tipos de práctica para fortalecer tu aprendizaje desde múltiples ángulos.</p>
-        </div>
-      </div>
-    </section>
-  </div>
-
-  <!-- ════════ BANDA 4 · OSCURO (cierre / decisión final) ════════ -->
-  <div class="band band-science cc-band">
-
-    <section class="section cierre" id="empezar">
-      <div class="cc-card">
-        <span class="cc-glow"></span>
-        <h2 class="cc-title">Imagina abrir tu guía y saber exactamente qué estudiar.</h2>
-        <p class="cc-sub">Sin horas ordenando tu material. Sin empezar desde cero. Sin releer páginas que no entiendes.<br><strong>Solo abrir tu guía y comenzar.</strong></p>
-        <a href="checkout.html" class="cc-btn">
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
-          Necesito mi guía en menos de 24 horas
-        </a>
-      </div>
-    </section>
-
-  </div>
-
-  <!-- ── FOOTER ── -->
-  <footer>
-    <span>Stramont</span>
-    <span>
-      <a href="mailto:contacto@montaguth.institute" style="color:var(--muted);text-decoration:none;">contacto@montaguth.institute</a>
-      &nbsp;·&nbsp;
-      <a href="quienes-somos.html" style="color:var(--muted);text-decoration:none;">Quiénes somos</a>
-      &nbsp;·&nbsp;
-      <a href="privacidad.html" style="color:var(--muted);text-decoration:none;">Privacidad</a>
-      &nbsp;·&nbsp;
-      <a href="condiciones.html" style="color:var(--muted);text-decoration:none;">Condiciones</a>
-    </span>
-  </footer>
-
-  <!-- Vista previa ampliada de la foto de "El Cambio" -->
-  <div class="cx-lightbox" id="cxLightbox" role="dialog" aria-modal="true" aria-label="Vista previa de los apuntes">
-    <button class="cx-close" type="button" aria-label="Cerrar vista previa">&times;</button>
-    <div class="cx-lb-frame"><img id="cxLightboxImg" src="" alt="Apuntes reales de Segmentación de Mercados (vista ampliada)"></div>
-    <span class="cx-hint">Toca fuera de la imagen o presiona Esc para cerrar</span>
-  </div>
-
-  <script>
-    /* Clic en la foto de apuntes -> vista previa ampliada (lightbox). Sirve
-       tanto en escritorio (cursor) como en móvil (tap). */
-    (function(){
-      var foto = document.querySelector('.cx-foto img');
-      var lb = document.getElementById('cxLightbox');
-      if(!foto || !lb) return;
-      var lbImg = document.getElementById('cxLightboxImg');
-      function abrir(){
-        lbImg.src = foto.getAttribute('src');
-        lb.classList.add('on');
-        document.body.style.overflow = 'hidden';
-      }
-      function cerrar(){
-        lb.classList.remove('on');
-        document.body.style.overflow = '';
-      }
-      foto.addEventListener('click', abrir);
-      // Cierra al tocar el fondo, la X, o cualquier parte que no sea la imagen.
-      lb.addEventListener('click', function(e){ if(e.target.closest && e.target.closest('.cx-lb-frame')) return; cerrar(); });
-      document.addEventListener('keydown', function(e){ if(e.key === 'Escape') cerrar(); });
-    })();
-  </script>
-
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var correo = (input.value || "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)) {
+      decir("Revisa el correo: parece que le falta algo.", "err");
+      input.focus();
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = "Enviando…";
+    fetch(FN, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ correo: correo, origen: "lista_espera_reapertura" })
+    }).then(function (r) {
+      if (!r.ok) throw new Error("http " + r.status);
+      form.style.display = "none";
+      decir("Listo. Te escribimos el día que abramos.", "ok");
+    }).catch(function () {
+      btn.disabled = false;
+      btn.textContent = "Avisarme";
+      decir("No se pudo guardar ahora mismo. Inténtalo en un momento.", "err");
+    });
+  });
+})();
+</script>
 </body>
 </html>
