@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Página de prueba: no se indexa mientras la tienda está parqueada -->
+<meta name="robots" content="noindex, nofollow">
+<title>Transcriptor de audio en inglés</title>
+<style>
+  :root{
+    --fondo:#0B1220; --panel:#111C2E; --panel2:#0E1727; --linea:#1F2E45;
+    --texto:#E9EDF5; --suave:#93A3BC; --acento:#2DD4BF; --ambar:#C9A24B; --rojo:#F87171;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--fondo); color:var(--texto);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .envoltura{max-width:920px; margin:0 auto; padding:32px 20px 64px}
+  h1{font-size:26px; margin:0 0 6px; letter-spacing:-.02em}
+  .sub{color:var(--suave); margin:0 0 28px; font-size:15px}
+  .tarjeta{background:var(--panel); border:1px solid var(--linea); border-radius:14px; padding:20px; margin-bottom:16px}
+  .etq{display:block; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--suave); margin-bottom:10px; font-weight:600}
+
+  /* Zona de archivo */
+  #zona{
+    border:2px dashed var(--linea); border-radius:14px; padding:38px 20px; text-align:center;
+    cursor:pointer; transition:border-color .18s, background .18s;
+  }
+  #zona:hover,#zona.encima{border-color:var(--acento); background:rgba(45,212,191,.06)}
+  #zona svg{width:38px;height:38px;stroke:var(--acento);fill:none;stroke-width:1.6;margin-bottom:10px}
+  #zona b{display:block; font-size:17px; margin-bottom:4px}
+  #zona span{color:var(--suave); font-size:14px}
+  #archInfo{display:none; margin-top:14px; padding:12px 14px; background:var(--panel2); border:1px solid var(--linea); border-radius:10px; font-size:14px}
+  #archInfo .nom{font-weight:600; word-break:break-all}
+  #archInfo .dur{color:var(--acento)}
+
+  /* Opciones */
+  .fila{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end}
+  .campo{flex:1; min-width:220px}
+  select,button{font:inherit}
+  select{
+    width:100%; background:var(--panel2); color:var(--texto); border:1px solid var(--linea);
+    border-radius:10px; padding:11px 12px; appearance:none;
+  }
+  .nota{font-size:13px; color:var(--suave); margin-top:8px}
+  .chk{display:flex; align-items:center; gap:9px; font-size:14px; color:var(--suave); margin-top:12px}
+  .chk input{width:16px;height:16px;accent-color:var(--acento)}
+
+  button.principal{
+    background:var(--acento); color:#06231F; border:0; border-radius:10px; padding:13px 22px;
+    font-weight:700; cursor:pointer; transition:filter .15s;
+  }
+  button.principal:hover:not(:disabled){filter:brightness(1.1)}
+  button.principal:disabled{opacity:.4; cursor:not-allowed}
+  button.fantasma{
+    background:transparent; color:var(--texto); border:1px solid var(--linea);
+    border-radius:10px; padding:9px 16px; cursor:pointer; font-size:14px;
+  }
+  button.fantasma:hover{border-color:var(--acento); color:var(--acento)}
+
+  /* Progreso */
+  #progreso{display:none}
+  .barra{height:8px; background:var(--panel2); border-radius:99px; overflow:hidden; border:1px solid var(--linea)}
+  .barra i{display:block; height:100%; width:0%; background:var(--acento); transition:width .25s}
+  .estado{display:flex; justify-content:space-between; font-size:13px; color:var(--suave); margin-top:9px; gap:12px}
+  .estado b{color:var(--texto); font-weight:600}
+
+  /* Resultado */
+  #resultado{display:none}
+  .cab{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px}
+  .acciones{display:flex; gap:8px; flex-wrap:wrap}
+  #texto{
+    background:var(--panel2); border:1px solid var(--linea); border-radius:10px; padding:18px;
+    max-height:460px; overflow:auto; white-space:pre-wrap; font-size:15.5px; line-height:1.75;
+  }
+  #texto:empty::after{content:"El texto irá apareciendo aquí bloque por bloque…"; color:var(--suave)}
+  .avisos{font-size:13px; color:var(--ambar); margin-top:12px}
+  .err{background:rgba(248,113,113,.1); border:1px solid rgba(248,113,113,.4); color:#FCA5A5;
+       padding:12px 14px; border-radius:10px; font-size:14px; margin-top:14px; display:none}
+  .privacidad{
+    display:flex; gap:10px; align-items:flex-start; font-size:13.5px; color:var(--suave);
+    background:rgba(45,212,191,.06); border:1px solid rgba(45,212,191,.25);
+    border-radius:10px; padding:12px 14px; margin-bottom:16px;
+  }
+  .privacidad svg{width:18px;height:18px;stroke:var(--acento);fill:none;stroke-width:1.8;flex-shrink:0;margin-top:2px}
+  footer{color:var(--suave); font-size:13px; text-align:center; margin-top:28px}
+  footer a{color:var(--acento)}
+</style>
+</head>
+<body>
+<div class="envoltura">
+
+  <h1>Transcriptor de audio en inglés</h1>
+  <p class="sub">Sueltas el archivo, sale el texto. No necesitas micrófono.</p>
+
+  <div class="privacidad">
+    <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    <div><b>Tu audio nunca sale de este dispositivo.</b> El modelo se descarga a tu navegador y transcribe aquí mismo. No hay servidor, no hay cuenta, no hay clave de API, no hay costo por minuto.</div>
+  </div>
+
+  <div class="tarjeta">
+    <span class="etq">1 · El archivo</span>
+    <div id="zona" tabindex="0" role="button" aria-label="Elegir archivo de audio">
+      <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L8 8m4-4l4 4"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+      <b>Arrastra tu audio aquí o haz clic</b>
+      <span>mp3 · wav · m4a · ogg · mp4 · webm</span>
+    </div>
+    <input type="file" id="archivo" accept="audio/*,video/*,.mp3,.wav,.m4a,.ogg,.opus,.mp4,.webm,.flac" hidden>
+    <div id="archInfo"></div>
+  </div>
+
+  <div class="tarjeta">
+    <span class="etq">2 · La precisión</span>
+    <div class="fila">
+      <div class="campo">
+        <select id="modelo">
+          <option value="onnx-community/whisper-tiny.en" data-mb="38">Rápido — 38 MB de descarga</option>
+          <option value="onnx-community/whisper-base.en" data-mb="75" selected>Equilibrado — 75 MB (recomendado)</option>
+          <option value="onnx-community/whisper-small.en" data-mb="239">Máxima precisión — 239 MB</option>
+        </select>
+      </div>
+      <button class="principal" id="btn" disabled>Transcribir</button>
+    </div>
+    <p class="nota">Se descarga una sola vez y queda guardado en el navegador. Más grande = mejor con nombres propios, acentos marcados y audio con ruido.</p>
+    <label class="chk"><input type="checkbox" id="gpu"> Usar la tarjeta gráfica (más rápido, requiere Chrome o Edge)</label>
+  </div>
+
+  <div class="tarjeta" id="progreso">
+    <span class="etq" id="faseEtq">Trabajando</span>
+    <div class="barra"><i id="barra"></i></div>
+    <div class="estado">
+      <span id="fase">Preparando…</span>
+      <span id="reloj"></span>
+    </div>
+  </div>
+
+  <div class="tarjeta" id="resultado">
+    <div class="cab">
+      <span class="etq" style="margin:0">3 · El texto</span>
+      <div class="acciones">
+        <button class="fantasma" id="copiar">Copiar</button>
+        <button class="fantasma" id="txt">Descargar .txt</button>
+        <button class="fantasma" id="srt">Descargar subtítulos .srt</button>
+      </div>
+    </div>
+    <div id="texto"></div>
+    <div class="avisos" id="avisos"></div>
+  </div>
+
+  <div class="err" id="error"></div>
+
+  <footer>
+    Funciona con <a href="https://github.com/huggingface/transformers.js" target="_blank" rel="noopener">Transformers.js</a>
+    y el modelo <a href="https://github.com/openai/whisper" target="_blank" rel="noopener">Whisper</a> de OpenAI (licencia MIT).
+  </footer>
+</div>
+
+<!-- ============ Código del trabajador (hilo aparte) ============ -->
+<script id="fuenteWorker" type="text/plain">
+// Versión FIJADA a propósito: la 4.2.0 rompe Whisper en el navegador
+// ("Missing required scale ... MatMulNBits" al crear la sesión de ONNX).
+// La 3.8.1 está verificada y funciona. No subir sin volver a probar.
+import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
+
+let motor = null;
+let claveActual = null;
+
+self.onmessage = async (e) => {
+  const m = e.data;
+  try {
+    if (m.tipo === 'cargar') {
+      const clave = m.modelo + '|' + m.device;
+      if (claveActual !== clave) {
+        if (motor) { try { await motor.dispose(); } catch (_) {} motor = null; claveActual = null; }
+        motor = await pipeline('automatic-speech-recognition', m.modelo, {
+          device: m.device,
+          dtype: m.device === 'webgpu' ? 'fp32' : 'q8',
+          progress_callback: (info) => {
+            if (info.status === 'progress' && info.total) {
+              self.postMessage({ tipo: 'descarga', archivo: info.file, cargado: info.loaded, total: info.total });
+            }
+          }
+        });
+        claveActual = clave;
+      }
+      self.postMessage({ tipo: 'cargado' });
+
+    } else if (m.tipo === 'bloque') {
+      const salida = await motor(m.audio, {
+        chunk_length_s: 30,
+        stride_length_s: 5,
+        return_timestamps: true
+      });
+      self.postMessage({
+        tipo: 'bloque-listo',
+        chunks: (salida.chunks || []).map(c => ({ timestamp: c.timestamp, text: c.text })),
+        text: salida.text || ''
+      });
+    }
+  } catch (err) {
+    self.postMessage({ tipo: 'error', mensaje: String((err && err.message) || err) });
+  }
+};
+</script>
+
+<script type="module">
+const SR = 16000;      // Whisper solo entiende 16 kHz mono
+const BLOQUE_S = 120;  // tamaño del bloque externo (da progreso y texto en vivo)
+
+const $ = (id) => document.getElementById(id);
+const zona = $('zona'), entrada = $('archivo'), archInfo = $('archInfo');
+const selModelo = $('modelo'), chkGpu = $('gpu'), btn = $('btn');
+const cajaProg = $('progreso'), barra = $('barra'), fase = $('fase'), reloj = $('reloj'), faseEtq = $('faseEtq');
+const cajaRes = $('resultado'), salidaTexto = $('texto'), avisos = $('avisos'), cajaErr = $('error');
+
+let audio = null;        // Float32Array a 16 kHz
+let duracion = 0;
+let nombreArchivo = '';
+let segmentos = [];      // resultado final con marcas de tiempo
+let trabajando = false;
+
+/* ---------- utilidades ---------- */
+const mmss = (s) => {
+  s = Math.max(0, Math.round(s));
+  const m = Math.floor(s / 60), r = s % 60;
+  return m + ':' + String(r).padStart(2, '0');
+};
+const mb = (b) => (b / 1048576).toFixed(1) + ' MB';
+
+function mostrarError(msg) {
+  cajaErr.textContent = msg;
+  cajaErr.style.display = 'block';
+}
+function limpiarError() { cajaErr.style.display = 'none'; }
+
+/* ---------- 1. Elegir y decodificar el archivo ---------- */
+zona.addEventListener('click', () => entrada.click());
+zona.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); entrada.click(); } });
+['dragenter', 'dragover'].forEach(ev => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.add('encima'); }));
+['dragleave', 'drop'].forEach(ev => zona.addEventListener(ev, () => zona.classList.remove('encima')));
+zona.addEventListener('drop', (e) => {
+  e.preventDefault();
+  if (e.dataTransfer.files[0]) recibir(e.dataTransfer.files[0]);
+});
+entrada.addEventListener('change', () => { if (entrada.files[0]) recibir(entrada.files[0]); });
+
+async function recibir(archivo) {
+  if (trabajando) return;
+  limpiarError();
+  nombreArchivo = archivo.name.replace(/\.[^.]+$/, '');
+  archInfo.style.display = 'block';
+  archInfo.innerHTML = '<div class="nom">' + archivo.name + '</div><div>Leyendo y convirtiendo…</div>';
+  btn.disabled = true;
+
+  try {
+    const bytes = await archivo.arrayBuffer();
+    audio = await aMono16k(bytes);
+    duracion = audio.length / SR;
+    archInfo.innerHTML = '<div class="nom">' + archivo.name + '</div>' +
+      '<div>' + mb(archivo.size) + ' · duración <span class="dur">' + mmss(duracion) + '</span></div>';
+    btn.disabled = false;
+  } catch (err) {
+    audio = null;
+    archInfo.style.display = 'none';
+    mostrarError('No pude leer ese archivo. Puede estar dañado o usar un formato que el navegador no decodifica. Detalle: ' + err.message);
+  }
+}
+
+// Decodifica cualquier formato que el navegador soporte y lo pasa a mono 16 kHz
+async function aMono16k(arrayBuffer) {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  const tmp = new Ctx();
+  let decodificado;
+  try {
+    decodificado = await tmp.decodeAudioData(arrayBuffer);
+  } finally {
+    tmp.close();
+  }
+  const muestras = Math.max(1, Math.ceil(decodificado.duration * SR));
+  const off = new OfflineAudioContext(1, muestras, SR);
+  const fuente = off.createBufferSource();
+  fuente.buffer = decodificado;
+  fuente.connect(off.destination);
+  fuente.start();
+  const listo = await off.startRendering();
+  return listo.getChannelData(0);
+}
+
+/* ---------- 2. El trabajador ---------- */
+let worker = null;
+let esperando = null;
+
+function crearWorker() {
+  const fuente = $('fuenteWorker').textContent;
+  const url = URL.createObjectURL(new Blob([fuente], { type: 'text/javascript' }));
+  const w = new Worker(url, { type: 'module' });
+  w.onmessage = (e) => {
+    const m = e.data;
+    if (m.tipo === 'descarga') {
+      descargas[m.archivo] = { cargado: m.cargado, total: m.total };
+      pintarDescarga();
+    } else if (esperando) {
+      const r = esperando; esperando = null;
+      if (m.tipo === 'error') r.rechazar(new Error(m.mensaje)); else r.resolver(m);
+    }
+  };
+  w.onerror = (e) => {
+    if (esperando) { const r = esperando; esperando = null; r.rechazar(new Error(e.message || 'fallo en el hilo de trabajo')); }
+  };
+  return w;
+}
+
+function pedir(mensaje, transferibles) {
+  return new Promise((resolver, rechazar) => {
+    esperando = { resolver, rechazar };
+    worker.postMessage(mensaje, transferibles || []);
+  });
+}
+
+let descargas = {};
+function pintarDescarga() {
+  let cargado = 0, total = 0;
+  for (const k in descargas) { cargado += descargas[k].cargado; total += descargas[k].total; }
+  if (!total) return;
+  const pct = Math.min(100, cargado / total * 100);
+  barra.style.width = pct.toFixed(1) + '%';
+  fase.textContent = 'Descargando el modelo (solo esta vez)';
+  reloj.innerHTML = '<b>' + mb(cargado) + '</b> de ' + mb(total);
+}
+
+/* ---------- 3. Transcribir ---------- */
+btn.addEventListener('click', async () => {
+  if (!audio || trabajando) return;
+  trabajando = true; btn.disabled = true; limpiarError();
+  descargas = {}; segmentos = [];
+  salidaTexto.textContent = ''; avisos.textContent = '';
+  cajaProg.style.display = 'block'; cajaRes.style.display = 'block';
+  barra.style.width = '0%'; faseEtq.textContent = 'Trabajando';
+  fase.textContent = 'Preparando el modelo…'; reloj.textContent = '';
+
+  const modelo = selModelo.value;
+  const arranque = Date.now();
+
+  try {
+    if (!worker) worker = crearWorker();
+
+    // Cargar el modelo, con retirada a CPU si la GPU falla
+    let device = chkGpu.checked && 'gpu' in navigator ? 'webgpu' : 'wasm';
+    try {
+      await pedir({ tipo: 'cargar', modelo, device });
+    } catch (err) {
+      if (device === 'webgpu') {
+        avisos.textContent = 'La tarjeta gráfica no pudo con este modelo, seguí con el procesador. ';
+        descargas = {};
+        device = 'wasm';
+        await pedir({ tipo: 'cargar', modelo, device });
+      } else throw err;
+    }
+
+    // --- Bloques encadenados: cada uno arranca donde terminó el segmento
+    //     completo anterior. Sin solapamiento y sin huecos. ---
+    let pos = 0, nBloques = 0;
+    const t0 = Date.now();
+
+    while (pos < duracion - 0.3) {
+      const fin = Math.min(duracion, pos + BLOQUE_S);
+      const esUltimo = fin >= duracion - 0.05;
+      nBloques++;
+
+      const pct = pos / duracion * 100;
+      barra.style.width = pct.toFixed(1) + '%';
+      fase.textContent = 'Transcribiendo · minuto ' + mmss(pos) + ' de ' + mmss(duracion);
+      const transcurrido = (Date.now() - t0) / 1000;
+      if (pos > 1) {
+        const restante = transcurrido / pos * (duracion - pos);
+        reloj.innerHTML = '<b>' + pct.toFixed(0) + '%</b> · faltan ~' + mmss(restante);
+      }
+
+      const trozo = audio.slice(Math.round(pos * SR), Math.round(fin * SR));
+      const res = await pedir({ tipo: 'bloque', audio: trozo }, [trozo.buffer]);
+
+      let segs = (res.chunks || [])
+        .filter(c => String(c.text).trim().length)
+        .map(c => {
+          const a = (c.timestamp && c.timestamp[0] != null) ? c.timestamp[0] : 0;
+          let b = (c.timestamp && c.timestamp[1] != null) ? c.timestamp[1] : a;
+          return { ini: a + pos, fin: b + pos, text: c.text };
+        });
+
+      if (!segs.length) { pos = fin; continue; }
+
+      if (esUltimo) {
+        segmentos.push(...segs);
+        pos = fin;
+      } else {
+        // El último segmento viene cortado a mitad de frase: se descarta y
+        // se vuelve a transcribir al inicio del bloque siguiente.
+        const guardar = segs.slice(0, -1);
+        let siguiente = guardar.length ? guardar[guardar.length - 1].fin : null;
+        if (siguiente == null || !isFinite(siguiente) || siguiente <= pos + 1) {
+          segmentos.push(...segs);      // bloque raro: lo guardamos completo
+          siguiente = fin;
+        } else {
+          segmentos.push(...guardar);
+        }
+        pos = siguiente;
+      }
+
+      salidaTexto.textContent = segmentos.map(s => s.text.trim()).join(' ');
+      salidaTexto.scrollTop = salidaTexto.scrollHeight;
+    }
+
+    // Red de seguridad: quitar repeticiones del decodificador
+    const textoCrudo = segmentos.map(s => s.text.trim()).join(' ');
+    const limpio = limpiarRepeticiones(segmentos);
+    segmentos = limpio.segmentos;
+    salidaTexto.textContent = limpio.texto;
+    // Gancho de diagnóstico (útil para auditar qué se borró)
+    window.__diagnostico = { crudo: textoCrudo, limpio: limpio.texto, reportes: limpio.reportes };
+
+    const total = (Date.now() - arranque) / 1000;
+    barra.style.width = '100%';
+    faseEtq.textContent = 'Listo';
+    fase.textContent = 'Terminado · ' + nBloques + ' bloques';
+    const palabras = limpio.texto.split(/\s+/).filter(Boolean).length;
+    reloj.innerHTML = '<b>' + palabras + ' palabras</b> en ' + mmss(total) +
+      ' (' + (duracion / Math.max(1, total)).toFixed(1) + '× tiempo real)';
+
+    const extra = [];
+    if (limpio.quitadas) extra.push('Quité ' + limpio.quitadas + ' palabras repetidas por el modelo.');
+    extra.push('Revisa los nombres propios y las frases en otros idiomas: son el punto débil de estos modelos.');
+    avisos.textContent = (avisos.textContent || '') + extra.join(' ');
+
+  } catch (err) {
+    mostrarError('Se cayó la transcripción: ' + err.message);
+    faseEtq.textContent = 'Falló';
+    fase.textContent = 'Detenido';
+  } finally {
+    trabajando = false;
+    btn.disabled = !audio;
+  }
+});
+
+/* ---------- 4. Limpiador de repeticiones (red de seguridad) ---------- */
+// Whisper a veces se queda en bucle y repite una frase varias veces.
+// Esto borra bloques de 5+ palabras que aparecen dos veces SEGUIDAS.
+// Exige coincidencia exacta a propósito: difuso borraría texto legítimo.
+function limpiarRepeticiones(segs, minPalabras = 5, maxVentana = 60) {
+  const palabras = [];
+  segs.forEach((s, i) => {
+    for (const w of String(s.text).trim().split(/\s+/)) if (w) palabras.push({ w, seg: i });
+  });
+  const norm = (s) => s.toLowerCase().replace(/[^a-z0-9']/g, '');
+  const normalizadas = palabras.map(p => norm(p.w));
+  const antes = palabras.length;
+  const reportes = [];
+
+  let i = 0;
+  while (i + 2 * minPalabras <= palabras.length) {
+    const maxN = Math.min(maxVentana, Math.floor((palabras.length - i) / 2));
+    let mejor = 0;
+    for (let n = minPalabras; n <= maxN; n++) {
+      let igual = true;
+      for (let k = 0; k < n; k++) {
+        if (normalizadas[i + k] !== normalizadas[i + n + k]) { igual = false; break; }
+      }
+      if (igual) mejor = n;
+    }
+    if (mejor) {
+      reportes.push({ palabras: mejor, texto: palabras.slice(i, i + mejor).map(p => p.w).join(' ') });
+      palabras.splice(i + mejor, mejor);
+      normalizadas.splice(i + mejor, mejor);
+      // no avanzamos: puede haber una tercera copia (bucles)
+    } else i++;
+  }
+
+  const porSeg = new Map();
+  for (const p of palabras) {
+    if (!porSeg.has(p.seg)) porSeg.set(p.seg, []);
+    porSeg.get(p.seg).push(p.w);
+  }
+  const limpios = [];
+  segs.forEach((s, idx) => {
+    const ws = porSeg.get(idx);
+    if (ws && ws.length) limpios.push({ ini: s.ini, fin: s.fin, text: ' ' + ws.join(' ') });
+  });
+
+  return {
+    segmentos: limpios,
+    texto: limpios.map(s => s.text.trim()).join(' '),
+    quitadas: antes - palabras.length,
+    reportes
+  };
+}
+
+/* ---------- 5. Salidas ---------- */
+function bajar(nombre, contenido) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([contenido], { type: 'text/plain;charset=utf-8' }));
+  a.download = nombre;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+$('copiar').addEventListener('click', async () => {
+  const b = $('copiar');
+  try {
+    await navigator.clipboard.writeText(salidaTexto.textContent);
+    b.textContent = '¡Copiado!';
+  } catch (_) {
+    b.textContent = 'No se pudo copiar';
+  }
+  setTimeout(() => { b.textContent = 'Copiar'; }, 1600);
+});
+
+$('txt').addEventListener('click', () => {
+  if (!salidaTexto.textContent.trim()) return;
+  bajar((nombreArchivo || 'transcripcion') + '.txt', salidaTexto.textContent);
+});
+
+$('srt').addEventListener('click', () => {
+  if (!segmentos.length) return;
+  const hhmmss = (s) => {
+    s = Math.max(0, s);
+    const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), seg = Math.floor(s % 60);
+    const ms = Math.round((s - Math.floor(s)) * 1000);
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' +
+           String(seg).padStart(2, '0') + ',' + String(ms).padStart(3, '0');
+  };
+  const srt = segmentos.map((s, i) => {
+    const fin = (s.fin > s.ini) ? s.fin : s.ini + 2;
+    return (i + 1) + '\n' + hhmmss(s.ini) + ' --> ' + hhmmss(fin) + '\n' + s.text.trim() + '\n';
+  }).join('\n');
+  bajar((nombreArchivo || 'transcripcion') + '.srt', srt);
+});
+
+/* ---------- 6. Avisos de entorno ---------- */
+if (!('gpu' in navigator)) {
+  chkGpu.disabled = true;
+  chkGpu.parentElement.style.opacity = '.45';
+  chkGpu.parentElement.title = 'Este navegador no expone WebGPU';
+}
+</script>
+</body>
+</html>
