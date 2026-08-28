@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Transcribir audio en inglés</title>
+<title>Transcribir audio (inglés o español)</title>
 <style>
   :root{
     --fondo:#0B1220; --panel:#111C2E; --panel2:#0E1727; --linea:#1F2E45;
@@ -69,8 +69,8 @@
 <body>
 <div class="envoltura">
 
-  <h1>Transcribir audio en inglés</h1>
-  <p class="sub">Sueltas el audio y sale el texto. Todo pasa en tu dispositivo: el audio no se sube a ningún servidor.</p>
+  <h1>Transcribir audio</h1>
+  <p class="sub">Sueltas el audio en inglés o español y sale el texto. Detecta el idioma solo. Todo pasa en tu dispositivo: el audio no se sube a ningún servidor.</p>
 
   <div id="zona" tabindex="0" role="button" aria-label="Elegir archivo de audio">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L8 8m4-4l4 4"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
@@ -117,7 +117,10 @@ import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 
-const MODELO = 'Xenova/whisper-base.en';
+// Modelo MULTILINGÜE (sin el sufijo .en): transcribe inglés y español,
+// y detecta el idioma solo. El .en anterior solo sabía inglés y convertía
+// el español en un disparate fonético.
+const MODELO = 'Xenova/whisper-base';
 let motor = null;
 
 self.onmessage = async (e) => {
@@ -139,15 +142,22 @@ self.onmessage = async (e) => {
     } else if (m.tipo === 'bloque') {
       // return_timestamps ACTIVO a propósito: sin él el modelo entra en
       // bucles y repite frases. Los tokens de tiempo lo frenan.
-      const salida = await motor(m.audio, {
-        chunk_length_s: 30,
-        stride_length_s: 5,
-        return_timestamps: true
-      });
+      // El idioma va FORZADO: la detección automática de esta versión de la
+      // librería corta el inicio del audio. Se detecta aparte y se fija aquí.
+      const opciones = { chunk_length_s: 30, stride_length_s: 5, return_timestamps: true };
+      if (m.language) { opciones.language = m.language; opciones.task = 'transcribe'; }
+      const salida = await motor(m.audio, opciones);
       self.postMessage({
         tipo: 'bloque-listo',
         chunks: (salida.chunks || []).map(c => ({ timestamp: c.timestamp, text: c.text }))
       });
+
+    } else if (m.tipo === 'detectar') {
+      // Pasada corta con auto-detección SOLO para saber el idioma. Un fragmento
+      // de ~25 s en un solo trozo no dispara el bug del corte, y con el texto
+      // que devuelve basta para distinguir inglés de español.
+      const salida = await motor(m.audio, { return_timestamps: false });
+      self.postMessage({ tipo: 'idioma-texto', text: salida.text || '' });
     }
   } catch (err) {
     self.postMessage({ tipo: 'error', mensaje: String((err && err.message) || err) });
@@ -275,6 +285,12 @@ async function procesar(archivo) {
     const audio = await aMono16k(await archivo.arrayBuffer());
     const duracion = audio.length / SR;
 
+    // Paso 1: detectar el idioma con una pasada corta (primeros ~25 s).
+    estado('Detectando el idioma…', '', null);
+    const muestra = audio.slice(0, Math.min(audio.length, Math.round(25 * SR)));
+    const det = await pedir({ tipo: 'detectar', audio: muestra }, [muestra.buffer]);
+    const idioma = detectarIdioma(det.text || '');
+
     // Bloques encadenados: cada uno arranca donde terminó el último segmento
     // completo del anterior. Sin solape y sin huecos en las costuras.
     const segmentos = [];
@@ -290,7 +306,7 @@ async function procesar(archivo) {
       }
 
       const trozo = audio.slice(Math.round(pos * SR), Math.round(fin * SR));
-      const res = await pedir({ tipo: 'bloque', audio: trozo }, [trozo.buffer]);
+      const res = await pedir({ tipo: 'bloque', audio: trozo, language: idioma }, [trozo.buffer]);
 
       const segs = (res.chunks || [])
         .filter(c => String(c.text).trim().length)
@@ -350,6 +366,19 @@ async function aMono16k(arrayBuffer) {
   return (await off.startRendering()).getChannelData(0);
 }
 
+/* ---------- Detectar idioma a partir del texto de la pasada corta ----------
+   Solo distinguimos inglés vs español, así que un heurístico simple basta y
+   es fiable: las tildes/eñe/signos ¿¡ son señal fuerte de español; si no hay,
+   se cuentan palabras funcionales de cada idioma. */
+function detectarIdioma(texto) {
+  const t = (texto || '').toLowerCase();
+  if (!t.trim()) return 'english';
+  if (/[áéíóúñ¿¡]/.test(t)) return 'spanish';
+  const es = (t.match(/\b(que|de|la|el|los|las|un|una|y|en|es|por|con|para|se|su|no|más|pero|como|está|muy)\b/g) || []).length;
+  const en = (t.match(/\b(the|and|you|is|are|to|of|in|it|that|this|for|with|was|have|not|but|as|he|she)\b/g) || []).length;
+  return es > en ? 'spanish' : 'english';
+}
+
 /* ---------- Red de seguridad: repeticiones del modelo ----------
    Whisper a veces se queda en bucle. Borra bloques de 5+ palabras que
    aparecen dos veces SEGUIDAS. Coincidencia exacta a propósito: difuso
@@ -393,7 +422,7 @@ $('copiar').addEventListener('click', async () => {
         [0,97,115,109,1,0,0,0,1,5,1,96,0,1,123,3,2,1,0,10,10,1,8,0,65,0,253,15,253,98,11]));
     } catch (_) { return false; }
   })();
-  $('tec').textContent = 'whisper-base.en · WebAssembly · SIMD ' + (simd ? 'sí' : 'no');
+  $('tec').textContent = 'whisper-base multilingüe · WebAssembly · SIMD ' + (simd ? 'sí' : 'no');
 })();
 </script>
 </body>
