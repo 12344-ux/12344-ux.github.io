@@ -3,191 +3,142 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- Página de prueba: no se indexa mientras la tienda está parqueada -->
 <meta name="robots" content="noindex, nofollow">
-<title>Transcriptor de audio en inglés</title>
+<title>Transcribir audio en inglés</title>
 <style>
   :root{
     --fondo:#0B1220; --panel:#111C2E; --panel2:#0E1727; --linea:#1F2E45;
-    --texto:#E9EDF5; --suave:#93A3BC; --acento:#2DD4BF; --ambar:#C9A24B; --rojo:#F87171;
+    --texto:#E9EDF5; --suave:#93A3BC; --acento:#2DD4BF; --rojo:#F87171;
   }
   *{box-sizing:border-box}
   body{
     margin:0; background:var(--fondo); color:var(--texto);
-    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     -webkit-font-smoothing:antialiased;
   }
-  .envoltura{max-width:920px; margin:0 auto; padding:32px 20px 64px}
-  h1{font-size:26px; margin:0 0 6px; letter-spacing:-.02em}
-  .sub{color:var(--suave); margin:0 0 28px; font-size:15px}
-  .tarjeta{background:var(--panel); border:1px solid var(--linea); border-radius:14px; padding:20px; margin-bottom:16px}
-  .etq{display:block; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--suave); margin-bottom:10px; font-weight:600}
+  .envoltura{max-width:760px; margin:0 auto; padding:44px 20px 56px}
+  h1{font-size:27px; margin:0 0 6px; letter-spacing:-.02em}
+  .sub{color:var(--suave); margin:0 0 26px; font-size:15px}
 
-  /* Zona de archivo */
+  /* ---- La zona: el único control de la página ---- */
   #zona{
-    border:2px dashed var(--linea); border-radius:14px; padding:38px 20px; text-align:center;
-    cursor:pointer; transition:border-color .18s, background .18s;
+    border:2px dashed var(--linea); border-radius:16px; padding:52px 22px; text-align:center;
+    cursor:pointer; transition:border-color .18s, background .18s, opacity .18s;
+    background:var(--panel);
   }
-  #zona:hover,#zona.encima{border-color:var(--acento); background:rgba(45,212,191,.06)}
-  #zona svg{width:38px;height:38px;stroke:var(--acento);fill:none;stroke-width:1.6;margin-bottom:10px}
-  #zona b{display:block; font-size:17px; margin-bottom:4px}
-  #zona span{color:var(--suave); font-size:14px}
-  #archInfo{display:none; margin-top:14px; padding:12px 14px; background:var(--panel2); border:1px solid var(--linea); border-radius:10px; font-size:14px}
-  #archInfo .nom{font-weight:600; word-break:break-all}
-  #archInfo .dur{color:var(--acento)}
+  #zona:hover,#zona.encima{border-color:var(--acento); background:rgba(45,212,191,.07)}
+  #zona.ocupada{cursor:default; opacity:.75}
+  #zona.ocupada:hover{border-color:var(--linea); background:var(--panel)}
+  #zona svg{width:40px;height:40px;stroke:var(--acento);fill:none;stroke-width:1.6;margin-bottom:12px}
+  #zonaTitulo{display:block; font-size:18px; font-weight:600; margin-bottom:5px}
+  #zonaPie{color:var(--suave); font-size:14px}
 
-  /* Opciones */
-  .fila{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end}
-  .campo{flex:1; min-width:220px}
-  select,button{font:inherit}
-  select{
-    width:100%; background:var(--panel2); color:var(--texto); border:1px solid var(--linea);
-    border-radius:10px; padding:11px 12px; appearance:none;
-  }
-  .nota{font-size:13px; color:var(--suave); margin-top:8px}
-  .chk{display:flex; align-items:center; gap:9px; font-size:14px; color:var(--suave); margin-top:12px}
-  .chk input{width:16px;height:16px;accent-color:var(--acento)}
+  /* ---- Barra de estado ---- */
+  #estado{margin-top:16px; display:none}
+  .barra{height:6px; background:var(--panel2); border-radius:99px; overflow:hidden; border:1px solid var(--linea)}
+  .barra i{display:block; height:100%; width:0%; background:var(--acento); transition:width .3s}
+  .barra.indef i{width:100%; animation:vaiven 1.15s ease-in-out infinite; transform-origin:left}
+  @keyframes vaiven{0%{transform:scaleX(.08) translateX(0)}50%{transform:scaleX(.5) translateX(120%)}100%{transform:scaleX(.08) translateX(1100%)}}
+  #estadoTexto{font-size:13.5px; color:var(--suave); margin-top:9px; display:flex; justify-content:space-between; gap:12px}
+  #estadoTexto b{color:var(--texto); font-weight:600}
 
-  button.principal{
-    background:var(--acento); color:#06231F; border:0; border-radius:10px; padding:13px 22px;
-    font-weight:700; cursor:pointer; transition:filter .15s;
-  }
-  button.principal:hover:not(:disabled){filter:brightness(1.1)}
-  button.principal:disabled{opacity:.4; cursor:not-allowed}
-  button.fantasma{
-    background:transparent; color:var(--texto); border:1px solid var(--linea);
-    border-radius:10px; padding:9px 16px; cursor:pointer; font-size:14px;
-  }
-  button.fantasma:hover{border-color:var(--acento); color:var(--acento)}
-
-  /* Progreso */
-  #progreso{display:none}
-  .barra{height:8px; background:var(--panel2); border-radius:99px; overflow:hidden; border:1px solid var(--linea)}
-  .barra i{display:block; height:100%; width:0%; background:var(--acento); transition:width .25s}
-  .estado{display:flex; justify-content:space-between; font-size:13px; color:var(--suave); margin-top:9px; gap:12px}
-  .estado b{color:var(--texto); font-weight:600}
-
-  /* Resultado */
-  #resultado{display:none}
-  .cab{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px}
-  .acciones{display:flex; gap:8px; flex-wrap:wrap}
+  /* ---- Resultado ---- */
+  #salida{display:none; margin-top:22px}
   #texto{
-    background:var(--panel2); border:1px solid var(--linea); border-radius:10px; padding:18px;
-    max-height:460px; overflow:auto; white-space:pre-wrap; font-size:15.5px; line-height:1.75;
+    background:var(--panel2); border:1px solid var(--linea); border-radius:12px; padding:20px;
+    white-space:pre-wrap; font-size:16.5px; line-height:1.8; max-height:52vh; overflow:auto;
   }
-  #texto:empty::after{content:"El texto irá apareciendo aquí bloque por bloque…"; color:var(--suave)}
-  .avisos{font-size:13px; color:var(--ambar); margin-top:12px}
-  .err{background:rgba(248,113,113,.1); border:1px solid rgba(248,113,113,.4); color:#FCA5A5;
-       padding:12px 14px; border-radius:10px; font-size:14px; margin-top:14px; display:none}
-  .privacidad{
-    display:flex; gap:10px; align-items:flex-start; font-size:13.5px; color:var(--suave);
-    background:rgba(45,212,191,.06); border:1px solid rgba(45,212,191,.25);
-    border-radius:10px; padding:12px 14px; margin-bottom:16px;
+  .pie{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:12px; flex-wrap:wrap}
+  #copiar{
+    background:var(--acento); color:#06231F; border:0; border-radius:10px; padding:11px 20px;
+    font:inherit; font-weight:700; cursor:pointer;
   }
-  .privacidad svg{width:18px;height:18px;stroke:var(--acento);fill:none;stroke-width:1.8;flex-shrink:0;margin-top:2px}
-  footer{color:var(--suave); font-size:13px; text-align:center; margin-top:28px}
+  #copiar:hover{filter:brightness(1.1)}
+  #meta{font-size:13px; color:var(--suave)}
+
+  #error{
+    display:none; margin-top:16px; background:rgba(248,113,113,.1);
+    border:1px solid rgba(248,113,113,.4); color:#FCA5A5;
+    padding:13px 15px; border-radius:11px; font-size:14px;
+  }
+  footer{margin-top:34px; font-size:12.5px; color:var(--suave); text-align:center; line-height:1.9}
   footer a{color:var(--acento)}
+  footer .tec{opacity:.6; font-size:11.5px}
 </style>
 </head>
 <body>
 <div class="envoltura">
 
-  <h1>Transcriptor de audio en inglés</h1>
-  <p class="sub">Sueltas el archivo, sale el texto. No necesitas micrófono.</p>
+  <h1>Transcribir audio en inglés</h1>
+  <p class="sub">Sueltas el audio y sale el texto. Todo pasa en tu dispositivo: el audio no se sube a ningún servidor.</p>
 
-  <div class="privacidad">
-    <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-    <div><b>Tu audio nunca sale de este dispositivo.</b> El modelo se descarga a tu navegador y transcribe aquí mismo. No hay servidor, no hay cuenta, no hay clave de API, no hay costo por minuto.</div>
+  <div id="zona" tabindex="0" role="button" aria-label="Elegir archivo de audio">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L8 8m4-4l4 4"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+    <span id="zonaTitulo">Arrastra tu audio o haz clic</span>
+    <span id="zonaPie">mp3 · wav · m4a · ogg · mp4</span>
+  </div>
+  <input type="file" id="archivo" accept="audio/*,video/*,.mp3,.wav,.m4a,.ogg,.opus,.mp4,.webm,.flac" hidden>
+
+  <div id="estado">
+    <div class="barra" id="barraCaja"><i id="barra"></i></div>
+    <div id="estadoTexto"><span id="estadoIzq"></span><span id="estadoDer"></span></div>
   </div>
 
-  <div class="tarjeta">
-    <span class="etq">1 · El archivo</span>
-    <div id="zona" tabindex="0" role="button" aria-label="Elegir archivo de audio">
-      <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L8 8m4-4l4 4"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
-      <b>Arrastra tu audio aquí o haz clic</b>
-      <span>mp3 · wav · m4a · ogg · mp4 · webm</span>
-    </div>
-    <input type="file" id="archivo" accept="audio/*,video/*,.mp3,.wav,.m4a,.ogg,.opus,.mp4,.webm,.flac" hidden>
-    <div id="archInfo"></div>
-  </div>
-
-  <div class="tarjeta">
-    <span class="etq">2 · La precisión</span>
-    <div class="fila">
-      <div class="campo">
-        <select id="modelo">
-          <option value="onnx-community/whisper-tiny.en" data-mb="38">Rápido — 38 MB de descarga</option>
-          <option value="onnx-community/whisper-base.en" data-mb="75" selected>Equilibrado — 75 MB (recomendado)</option>
-          <option value="onnx-community/whisper-small.en" data-mb="239">Máxima precisión — 239 MB</option>
-        </select>
-      </div>
-      <button class="principal" id="btn" disabled>Transcribir</button>
-    </div>
-    <p class="nota">Se descarga una sola vez y queda guardado en el navegador. Más grande = mejor con nombres propios, acentos marcados y audio con ruido.</p>
-    <label class="chk"><input type="checkbox" id="gpu"> Usar la tarjeta gráfica (más rápido, requiere Chrome o Edge)</label>
-  </div>
-
-  <div class="tarjeta" id="progreso">
-    <span class="etq" id="faseEtq">Trabajando</span>
-    <div class="barra"><i id="barra"></i></div>
-    <div class="estado">
-      <span id="fase">Preparando…</span>
-      <span id="reloj"></span>
-    </div>
-  </div>
-
-  <div class="tarjeta" id="resultado">
-    <div class="cab">
-      <span class="etq" style="margin:0">3 · El texto</span>
-      <div class="acciones">
-        <button class="fantasma" id="copiar">Copiar</button>
-        <button class="fantasma" id="txt">Descargar .txt</button>
-        <button class="fantasma" id="srt">Descargar subtítulos .srt</button>
-      </div>
-    </div>
+  <div id="salida">
     <div id="texto"></div>
-    <div class="avisos" id="avisos"></div>
+    <div class="pie">
+      <button id="copiar">Copiar el texto</button>
+      <span id="meta"></span>
+    </div>
   </div>
 
-  <div class="err" id="error"></div>
+  <div id="error"></div>
 
   <footer>
-    Funciona con <a href="https://github.com/huggingface/transformers.js" target="_blank" rel="noopener">Transformers.js</a>
-    y el modelo <a href="https://github.com/openai/whisper" target="_blank" rel="noopener">Whisper</a> de OpenAI (licencia MIT).
+    Motor <a href="https://github.com/openai/whisper" target="_blank" rel="noopener">Whisper</a> de OpenAI (MIT)
+    sobre <a href="https://github.com/huggingface/transformers.js" target="_blank" rel="noopener">Transformers.js</a>.
+    <br><span class="tec" id="tec"></span>
   </footer>
 </div>
 
-<!-- ============ Código del trabajador (hilo aparte) ============ -->
+<!-- ===================== Hilo de trabajo ===================== -->
 <script id="fuenteWorker" type="text/plain">
-// Versión FIJADA a propósito: la 4.2.0 rompe Whisper en el navegador
-// ("Missing required scale ... MatMulNBits" al crear la sesión de ONNX).
-// La 3.8.1 está verificada y funciona. No subir sin volver a probar.
-import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
+// ⚠️ VERSIÓN FIJADA A PROPÓSITO — NO CAMBIARLA SIN PROBAR EN NAVEGADOR REAL.
+//  · 4.2.0 rompe Whisper en el navegador ("Missing required scale ...
+//    MatMulNBits" al crear la sesión de ONNX; falla con q8, q4, int8 y fp32).
+//  · 3.8.1 exige WebAssembly SIMD. Sin SIMD muere con
+//    "no available backend found ... SIMD is not supported".
+//  · 2.17.2 usa ONNX Runtime 1.14, que SÍ trae compilación sin SIMD.
+//    Verificada con SIMD y sin SIMD. Es la única que sirve en los dos casos.
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
 
+// Sin esto busca primero una carpeta /models/ local que no existe:
+// 7 peticiones fallidas por modelo antes de ir al repositorio real.
+env.allowLocalModels = false;
+env.useBrowserCache = true;
+
+const MODELO = 'Xenova/whisper-base.en';
 let motor = null;
-let claveActual = null;
 
 self.onmessage = async (e) => {
   const m = e.data;
   try {
-    if (m.tipo === 'cargar') {
-      const clave = m.modelo + '|' + m.device;
-      if (claveActual !== clave) {
-        if (motor) { try { await motor.dispose(); } catch (_) {} motor = null; claveActual = null; }
-        motor = await pipeline('automatic-speech-recognition', m.modelo, {
-          device: m.device,
-          dtype: m.device === 'webgpu' ? 'fp32' : 'q8',
+    if (m.tipo === 'precargar') {
+      if (!motor) {
+        motor = await pipeline('automatic-speech-recognition', MODELO, {
+          quantized: true,
           progress_callback: (info) => {
             if (info.status === 'progress' && info.total) {
               self.postMessage({ tipo: 'descarga', archivo: info.file, cargado: info.loaded, total: info.total });
             }
           }
         });
-        claveActual = clave;
       }
-      self.postMessage({ tipo: 'cargado' });
+      self.postMessage({ tipo: 'listo' });
 
     } else if (m.tipo === 'bloque') {
+      // return_timestamps ACTIVO a propósito: sin él el modelo entra en
+      // bucles y repite frases. Los tokens de tiempo lo frenan.
       const salida = await motor(m.audio, {
         chunk_length_s: 30,
         stride_length_s: 5,
@@ -195,8 +146,7 @@ self.onmessage = async (e) => {
       });
       self.postMessage({
         tipo: 'bloque-listo',
-        chunks: (salida.chunks || []).map(c => ({ timestamp: c.timestamp, text: c.text })),
-        text: salida.text || ''
+        chunks: (salida.chunks || []).map(c => ({ timestamp: c.timestamp, text: c.text }))
       });
     }
   } catch (err) {
@@ -206,342 +156,245 @@ self.onmessage = async (e) => {
 </script>
 
 <script type="module">
-const SR = 16000;      // Whisper solo entiende 16 kHz mono
-const BLOQUE_S = 120;  // tamaño del bloque externo (da progreso y texto en vivo)
+const SR = 16000;
+const BLOQUE_S = 120;
 
 const $ = (id) => document.getElementById(id);
-const zona = $('zona'), entrada = $('archivo'), archInfo = $('archInfo');
-const selModelo = $('modelo'), chkGpu = $('gpu'), btn = $('btn');
-const cajaProg = $('progreso'), barra = $('barra'), fase = $('fase'), reloj = $('reloj'), faseEtq = $('faseEtq');
-const cajaRes = $('resultado'), salidaTexto = $('texto'), avisos = $('avisos'), cajaErr = $('error');
+const zona = $('zona'), entrada = $('archivo');
+const cajaEstado = $('estado'), barra = $('barra'), barraCaja = $('barraCaja');
+const estadoIzq = $('estadoIzq'), estadoDer = $('estadoDer');
+const cajaSalida = $('salida'), salidaTexto = $('texto'), meta = $('meta'), cajaErr = $('error');
 
-let audio = null;        // Float32Array a 16 kHz
-let duracion = 0;
-let nombreArchivo = '';
-let segmentos = [];      // resultado final con marcas de tiempo
-let trabajando = false;
+let worker = null, esperando = null;
+let motorListo = false, motorFallo = null;
+let ocupado = false;
+let pendiente = null;      // archivo elegido antes de que el motor esté listo
+const descargas = {};
 
-/* ---------- utilidades ---------- */
-const mmss = (s) => {
-  s = Math.max(0, Math.round(s));
-  const m = Math.floor(s / 60), r = s % 60;
-  return m + ':' + String(r).padStart(2, '0');
-};
 const mb = (b) => (b / 1048576).toFixed(1) + ' MB';
+const mmss = (s) => Math.floor(s / 60) + ':' + String(Math.round(s % 60)).padStart(2, '0');
 
-function mostrarError(msg) {
+function estado(izq, der, pct) {
+  cajaEstado.style.display = 'block';
+  estadoIzq.textContent = izq;
+  estadoDer.innerHTML = der || '';
+  if (pct == null) { barraCaja.classList.add('indef'); }
+  else { barraCaja.classList.remove('indef'); barra.style.width = Math.min(100, pct) + '%'; }
+}
+function fallar(msg) {
   cajaErr.textContent = msg;
   cajaErr.style.display = 'block';
+  cajaEstado.style.display = 'none';
 }
-function limpiarError() { cajaErr.style.display = 'none'; }
-
-/* ---------- 1. Elegir y decodificar el archivo ---------- */
-zona.addEventListener('click', () => entrada.click());
-zona.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); entrada.click(); } });
-['dragenter', 'dragover'].forEach(ev => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.add('encima'); }));
-['dragleave', 'drop'].forEach(ev => zona.addEventListener(ev, () => zona.classList.remove('encima')));
-zona.addEventListener('drop', (e) => {
-  e.preventDefault();
-  if (e.dataTransfer.files[0]) recibir(e.dataTransfer.files[0]);
-});
-entrada.addEventListener('change', () => { if (entrada.files[0]) recibir(entrada.files[0]); });
-
-async function recibir(archivo) {
-  if (trabajando) return;
-  limpiarError();
-  nombreArchivo = archivo.name.replace(/\.[^.]+$/, '');
-  archInfo.style.display = 'block';
-  archInfo.innerHTML = '<div class="nom">' + archivo.name + '</div><div>Leyendo y convirtiendo…</div>';
-  btn.disabled = true;
-
-  try {
-    const bytes = await archivo.arrayBuffer();
-    audio = await aMono16k(bytes);
-    duracion = audio.length / SR;
-    archInfo.innerHTML = '<div class="nom">' + archivo.name + '</div>' +
-      '<div>' + mb(archivo.size) + ' · duración <span class="dur">' + mmss(duracion) + '</span></div>';
-    btn.disabled = false;
-  } catch (err) {
-    audio = null;
-    archInfo.style.display = 'none';
-    mostrarError('No pude leer ese archivo. Puede estar dañado o usar un formato que el navegador no decodifica. Detalle: ' + err.message);
-  }
+function zonaDice(titulo, pie, ocupadaAhora) {
+  $('zonaTitulo').textContent = titulo;
+  $('zonaPie').textContent = pie;
+  zona.classList.toggle('ocupada', !!ocupadaAhora);
 }
 
-// Decodifica cualquier formato que el navegador soporte y lo pasa a mono 16 kHz
-async function aMono16k(arrayBuffer) {
-  const Ctx = window.AudioContext || window.webkitAudioContext;
-  const tmp = new Ctx();
-  let decodificado;
-  try {
-    decodificado = await tmp.decodeAudioData(arrayBuffer);
-  } finally {
-    tmp.close();
-  }
-  const muestras = Math.max(1, Math.ceil(decodificado.duration * SR));
-  const off = new OfflineAudioContext(1, muestras, SR);
-  const fuente = off.createBufferSource();
-  fuente.buffer = decodificado;
-  fuente.connect(off.destination);
-  fuente.start();
-  const listo = await off.startRendering();
-  return listo.getChannelData(0);
-}
-
-/* ---------- 2. El trabajador ---------- */
-let worker = null;
-let esperando = null;
-
+/* ---------- Hilo de trabajo ---------- */
 function crearWorker() {
-  const fuente = $('fuenteWorker').textContent;
-  const url = URL.createObjectURL(new Blob([fuente], { type: 'text/javascript' }));
+  const url = URL.createObjectURL(new Blob([$('fuenteWorker').textContent], { type: 'text/javascript' }));
   const w = new Worker(url, { type: 'module' });
   w.onmessage = (e) => {
     const m = e.data;
     if (m.tipo === 'descarga') {
       descargas[m.archivo] = { cargado: m.cargado, total: m.total };
-      pintarDescarga();
-    } else if (esperando) {
-      const r = esperando; esperando = null;
-      if (m.tipo === 'error') r.rechazar(new Error(m.mensaje)); else r.resolver(m);
+      let c = 0, t = 0;
+      for (const k in descargas) { c += descargas[k].cargado; t += descargas[k].total; }
+      if (t && !motorListo) {
+        estado('Preparando el motor · solo la primera vez', '<b>' + mb(c) + '</b> de ' + mb(t), c / t * 100);
+      }
+      return;
     }
+    if (esperando) { const r = esperando; esperando = null; m.tipo === 'error' ? r.rechazar(new Error(m.mensaje)) : r.resolver(m); }
   };
-  w.onerror = (e) => {
-    if (esperando) { const r = esperando; esperando = null; r.rechazar(new Error(e.message || 'fallo en el hilo de trabajo')); }
+  w.onerror = (ev) => {
+    if (esperando) { const r = esperando; esperando = null; r.rechazar(new Error(ev.message || 'falló el hilo de trabajo')); }
   };
   return w;
 }
+const pedir = (mensaje, transferibles) => new Promise((resolver, rechazar) => {
+  esperando = { resolver, rechazar };
+  worker.postMessage(mensaje, transferibles || []);
+});
 
-function pedir(mensaje, transferibles) {
-  return new Promise((resolver, rechazar) => {
-    esperando = { resolver, rechazar };
-    worker.postMessage(mensaje, transferibles || []);
-  });
-}
-
-let descargas = {};
-function pintarDescarga() {
-  let cargado = 0, total = 0;
-  for (const k in descargas) { cargado += descargas[k].cargado; total += descargas[k].total; }
-  if (!total) return;
-  const pct = Math.min(100, cargado / total * 100);
-  barra.style.width = pct.toFixed(1) + '%';
-  fase.textContent = 'Descargando el modelo (solo esta vez)';
-  reloj.innerHTML = '<b>' + mb(cargado) + '</b> de ' + mb(total);
-}
-
-/* ---------- 3. Transcribir ---------- */
-btn.addEventListener('click', async () => {
-  if (!audio || trabajando) return;
-  trabajando = true; btn.disabled = true; limpiarError();
-  descargas = {}; segmentos = [];
-  salidaTexto.textContent = ''; avisos.textContent = '';
-  cajaProg.style.display = 'block'; cajaRes.style.display = 'block';
-  barra.style.width = '0%'; faseEtq.textContent = 'Trabajando';
-  fase.textContent = 'Preparando el modelo…'; reloj.textContent = '';
-
-  const modelo = selModelo.value;
-  const arranque = Date.now();
-
+/* ---------- Precarga: empieza al abrir la página ----------
+   Así el motor viene cargando mientras la persona elige el archivo. */
+(async function precargar() {
   try {
-    if (!worker) worker = crearWorker();
+    worker = crearWorker();
+    estado('Preparando el motor · solo la primera vez', '', null);
+    await pedir({ tipo: 'precargar' });
+    motorListo = true;
+    if (pendiente) { const f = pendiente; pendiente = null; procesar(f); }
+    else { cajaEstado.style.display = 'none'; zonaDice('Arrastra tu audio o haz clic', 'Listo para transcribir'); }
+  } catch (err) {
+    motorFallo = err;
+    fallar('No pude preparar el motor de transcripción: ' + err.message);
+  }
+})();
 
-    // Cargar el modelo, con retirada a CPU si la GPU falla
-    let device = chkGpu.checked && 'gpu' in navigator ? 'webgpu' : 'wasm';
-    try {
-      await pedir({ tipo: 'cargar', modelo, device });
-    } catch (err) {
-      if (device === 'webgpu') {
-        avisos.textContent = 'La tarjeta gráfica no pudo con este modelo, seguí con el procesador. ';
-        descargas = {};
-        device = 'wasm';
-        await pedir({ tipo: 'cargar', modelo, device });
-      } else throw err;
-    }
+/* ---------- Elegir archivo ---------- */
+zona.addEventListener('click', () => { if (!ocupado) entrada.click(); });
+zona.addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && !ocupado) { e.preventDefault(); entrada.click(); }
+});
+['dragenter', 'dragover'].forEach(ev => zona.addEventListener(ev, (e) => {
+  e.preventDefault(); if (!ocupado) zona.classList.add('encima');
+}));
+['dragleave', 'drop'].forEach(ev => zona.addEventListener(ev, () => zona.classList.remove('encima')));
+zona.addEventListener('drop', (e) => {
+  e.preventDefault();
+  if (!ocupado && e.dataTransfer.files[0]) recibir(e.dataTransfer.files[0]);
+});
+entrada.addEventListener('change', () => { if (entrada.files[0]) recibir(entrada.files[0]); entrada.value = ''; });
 
-    // --- Bloques encadenados: cada uno arranca donde terminó el segmento
-    //     completo anterior. Sin solapamiento y sin huecos. ---
-    let pos = 0, nBloques = 0;
-    const t0 = Date.now();
+function recibir(archivo) {
+  if (ocupado) return;
+  cajaErr.style.display = 'none';
+  if (motorFallo) { fallar('El motor no está disponible: ' + motorFallo.message); return; }
+  if (!motorListo) {                      // aún descargando: lo dejamos en cola
+    pendiente = archivo;
+    zonaDice(archivo.name, 'En cola · arranca en cuanto el motor esté listo', true);
+    return;
+  }
+  procesar(archivo);
+}
 
+/* ---------- Transcribir ---------- */
+async function procesar(archivo) {
+  ocupado = true;
+  cajaSalida.style.display = 'none';
+  salidaTexto.textContent = '';
+  zonaDice(archivo.name, 'Procesando…', true);
+  estado('Leyendo el audio…', '', null);
+
+  const t0 = Date.now();
+  try {
+    const audio = await aMono16k(await archivo.arrayBuffer());
+    const duracion = audio.length / SR;
+
+    // Bloques encadenados: cada uno arranca donde terminó el último segmento
+    // completo del anterior. Sin solape y sin huecos en las costuras.
+    const segmentos = [];
+    let pos = 0;
     while (pos < duracion - 0.3) {
       const fin = Math.min(duracion, pos + BLOQUE_S);
       const esUltimo = fin >= duracion - 0.05;
-      nBloques++;
 
-      const pct = pos / duracion * 100;
-      barra.style.width = pct.toFixed(1) + '%';
-      fase.textContent = 'Transcribiendo · minuto ' + mmss(pos) + ' de ' + mmss(duracion);
-      const transcurrido = (Date.now() - t0) / 1000;
-      if (pos > 1) {
-        const restante = transcurrido / pos * (duracion - pos);
-        reloj.innerHTML = '<b>' + pct.toFixed(0) + '%</b> · faltan ~' + mmss(restante);
+      if (duracion > BLOQUE_S) {
+        estado('Transcribiendo · ' + mmss(pos) + ' de ' + mmss(duracion), '', pos / duracion * 100);
+      } else {
+        estado('Transcribiendo…', '', null);
       }
 
       const trozo = audio.slice(Math.round(pos * SR), Math.round(fin * SR));
       const res = await pedir({ tipo: 'bloque', audio: trozo }, [trozo.buffer]);
 
-      let segs = (res.chunks || [])
+      const segs = (res.chunks || [])
         .filter(c => String(c.text).trim().length)
         .map(c => {
           const a = (c.timestamp && c.timestamp[0] != null) ? c.timestamp[0] : 0;
-          let b = (c.timestamp && c.timestamp[1] != null) ? c.timestamp[1] : a;
+          const b = (c.timestamp && c.timestamp[1] != null) ? c.timestamp[1] : a;
           return { ini: a + pos, fin: b + pos, text: c.text };
         });
-
       if (!segs.length) { pos = fin; continue; }
 
-      if (esUltimo) {
-        segmentos.push(...segs);
-        pos = fin;
-      } else {
+      if (esUltimo) { segmentos.push(...segs); pos = fin; }
+      else {
         // El último segmento viene cortado a mitad de frase: se descarta y
         // se vuelve a transcribir al inicio del bloque siguiente.
         const guardar = segs.slice(0, -1);
-        let siguiente = guardar.length ? guardar[guardar.length - 1].fin : null;
-        if (siguiente == null || !isFinite(siguiente) || siguiente <= pos + 1) {
-          segmentos.push(...segs);      // bloque raro: lo guardamos completo
-          siguiente = fin;
-        } else {
-          segmentos.push(...guardar);
-        }
-        pos = siguiente;
+        let sig = guardar.length ? guardar[guardar.length - 1].fin : null;
+        if (sig == null || !isFinite(sig) || sig <= pos + 1) { segmentos.push(...segs); sig = fin; }
+        else { segmentos.push(...guardar); }
+        pos = sig;
       }
-
-      salidaTexto.textContent = segmentos.map(s => s.text.trim()).join(' ');
-      salidaTexto.scrollTop = salidaTexto.scrollHeight;
+      if (segmentos.length) {
+        salidaTexto.textContent = segmentos.map(s => s.text.trim()).join(' ');
+        cajaSalida.style.display = 'block';
+      }
     }
 
-    // Red de seguridad: quitar repeticiones del decodificador
-    const textoCrudo = segmentos.map(s => s.text.trim()).join(' ');
     const limpio = limpiarRepeticiones(segmentos);
-    segmentos = limpio.segmentos;
     salidaTexto.textContent = limpio.texto;
-    // Gancho de diagnóstico (útil para auditar qué se borró)
-    window.__diagnostico = { crudo: textoCrudo, limpio: limpio.texto, reportes: limpio.reportes };
+    cajaSalida.style.display = 'block';
 
-    const total = (Date.now() - arranque) / 1000;
-    barra.style.width = '100%';
-    faseEtq.textContent = 'Listo';
-    fase.textContent = 'Terminado · ' + nBloques + ' bloques';
+    const seg = (Date.now() - t0) / 1000;
     const palabras = limpio.texto.split(/\s+/).filter(Boolean).length;
-    reloj.innerHTML = '<b>' + palabras + ' palabras</b> en ' + mmss(total) +
-      ' (' + (duracion / Math.max(1, total)).toFixed(1) + '× tiempo real)';
-
-    const extra = [];
-    if (limpio.quitadas) extra.push('Quité ' + limpio.quitadas + ' palabras repetidas por el modelo.');
-    extra.push('Revisa los nombres propios y las frases en otros idiomas: son el punto débil de estos modelos.');
-    avisos.textContent = (avisos.textContent || '') + extra.join(' ');
+    meta.textContent = palabras + ' palabras · ' + mmss(duracion) + ' de audio en ' + seg.toFixed(0) + 's' +
+      (limpio.quitadas ? ' · quité ' + limpio.quitadas + ' palabras repetidas' : '');
+    cajaEstado.style.display = 'none';
+    zonaDice('Arrastra otro audio o haz clic', 'Listo');
 
   } catch (err) {
-    mostrarError('Se cayó la transcripción: ' + err.message);
-    faseEtq.textContent = 'Falló';
-    fase.textContent = 'Detenido';
+    fallar('No pude transcribir ese archivo: ' + err.message);
+    zonaDice('Arrastra tu audio o haz clic', 'Intenta con otro archivo');
   } finally {
-    trabajando = false;
-    btn.disabled = !audio;
+    ocupado = false;
   }
-});
+}
 
-/* ---------- 4. Limpiador de repeticiones (red de seguridad) ---------- */
-// Whisper a veces se queda en bucle y repite una frase varias veces.
-// Esto borra bloques de 5+ palabras que aparecen dos veces SEGUIDAS.
-// Exige coincidencia exacta a propósito: difuso borraría texto legítimo.
+/* ---------- Decodificar a mono 16 kHz ---------- */
+async function aMono16k(arrayBuffer) {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  const tmp = new Ctx();
+  let dec;
+  try { dec = await tmp.decodeAudioData(arrayBuffer); } finally { tmp.close(); }
+  const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(dec.duration * SR)), SR);
+  const src = off.createBufferSource();
+  src.buffer = dec;
+  src.connect(off.destination);
+  src.start();
+  return (await off.startRendering()).getChannelData(0);
+}
+
+/* ---------- Red de seguridad: repeticiones del modelo ----------
+   Whisper a veces se queda en bucle. Borra bloques de 5+ palabras que
+   aparecen dos veces SEGUIDAS. Coincidencia exacta a propósito: difuso
+   borraría texto legítimo (lo comprobé: en las costuras el modelo repite
+   el contenido con palabras distintas). */
 function limpiarRepeticiones(segs, minPalabras = 5, maxVentana = 60) {
   const palabras = [];
-  segs.forEach((s, i) => {
-    for (const w of String(s.text).trim().split(/\s+/)) if (w) palabras.push({ w, seg: i });
-  });
+  for (const s of segs) for (const w of String(s.text).trim().split(/\s+/)) if (w) palabras.push(w);
   const norm = (s) => s.toLowerCase().replace(/[^a-z0-9']/g, '');
-  const normalizadas = palabras.map(p => norm(p.w));
+  const n = palabras.map(norm);
   const antes = palabras.length;
-  const reportes = [];
 
   let i = 0;
   while (i + 2 * minPalabras <= palabras.length) {
     const maxN = Math.min(maxVentana, Math.floor((palabras.length - i) / 2));
     let mejor = 0;
-    for (let n = minPalabras; n <= maxN; n++) {
+    for (let k = minPalabras; k <= maxN; k++) {
       let igual = true;
-      for (let k = 0; k < n; k++) {
-        if (normalizadas[i + k] !== normalizadas[i + n + k]) { igual = false; break; }
-      }
-      if (igual) mejor = n;
+      for (let j = 0; j < k; j++) if (n[i + j] !== n[i + k + j]) { igual = false; break; }
+      if (igual) mejor = k;
     }
-    if (mejor) {
-      reportes.push({ palabras: mejor, texto: palabras.slice(i, i + mejor).map(p => p.w).join(' ') });
-      palabras.splice(i + mejor, mejor);
-      normalizadas.splice(i + mejor, mejor);
-      // no avanzamos: puede haber una tercera copia (bucles)
-    } else i++;
+    if (mejor) { palabras.splice(i + mejor, mejor); n.splice(i + mejor, mejor); }
+    else i++;
   }
-
-  const porSeg = new Map();
-  for (const p of palabras) {
-    if (!porSeg.has(p.seg)) porSeg.set(p.seg, []);
-    porSeg.get(p.seg).push(p.w);
-  }
-  const limpios = [];
-  segs.forEach((s, idx) => {
-    const ws = porSeg.get(idx);
-    if (ws && ws.length) limpios.push({ ini: s.ini, fin: s.fin, text: ' ' + ws.join(' ') });
-  });
-
-  return {
-    segmentos: limpios,
-    texto: limpios.map(s => s.text.trim()).join(' '),
-    quitadas: antes - palabras.length,
-    reportes
-  };
+  return { texto: palabras.join(' '), quitadas: antes - palabras.length };
 }
 
-/* ---------- 5. Salidas ---------- */
-function bajar(nombre, contenido) {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([contenido], { type: 'text/plain;charset=utf-8' }));
-  a.download = nombre;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-}
-
+/* ---------- Copiar ---------- */
 $('copiar').addEventListener('click', async () => {
   const b = $('copiar');
-  try {
-    await navigator.clipboard.writeText(salidaTexto.textContent);
-    b.textContent = '¡Copiado!';
-  } catch (_) {
-    b.textContent = 'No se pudo copiar';
-  }
-  setTimeout(() => { b.textContent = 'Copiar'; }, 1600);
+  try { await navigator.clipboard.writeText(salidaTexto.textContent); b.textContent = '¡Copiado!'; }
+  catch (_) { b.textContent = 'No se pudo copiar'; }
+  setTimeout(() => { b.textContent = 'Copiar el texto'; }, 1600);
 });
 
-$('txt').addEventListener('click', () => {
-  if (!salidaTexto.textContent.trim()) return;
-  bajar((nombreArchivo || 'transcripcion') + '.txt', salidaTexto.textContent);
-});
-
-$('srt').addEventListener('click', () => {
-  if (!segmentos.length) return;
-  const hhmmss = (s) => {
-    s = Math.max(0, s);
-    const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), seg = Math.floor(s % 60);
-    const ms = Math.round((s - Math.floor(s)) * 1000);
-    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' +
-           String(seg).padStart(2, '0') + ',' + String(ms).padStart(3, '0');
-  };
-  const srt = segmentos.map((s, i) => {
-    const fin = (s.fin > s.ini) ? s.fin : s.ini + 2;
-    return (i + 1) + '\n' + hhmmss(s.ini) + ' --> ' + hhmmss(fin) + '\n' + s.text.trim() + '\n';
-  }).join('\n');
-  bajar((nombreArchivo || 'transcripcion') + '.srt', srt);
-});
-
-/* ---------- 6. Avisos de entorno ---------- */
-if (!('gpu' in navigator)) {
-  chkGpu.disabled = true;
-  chkGpu.parentElement.style.opacity = '.45';
-  chkGpu.parentElement.title = 'Este navegador no expone WebGPU';
-}
+/* ---------- Nota técnica al pie (para diagnosticar sin abrir la consola) ---------- */
+(function () {
+  const simd = (() => {
+    try {
+      return WebAssembly.validate(new Uint8Array(
+        [0,97,115,109,1,0,0,0,1,5,1,96,0,1,123,3,2,1,0,10,10,1,8,0,65,0,253,15,253,98,11]));
+    } catch (_) { return false; }
+  })();
+  $('tec').textContent = 'whisper-base.en · WebAssembly · SIMD ' + (simd ? 'sí' : 'no');
+})();
 </script>
 </body>
 </html>
