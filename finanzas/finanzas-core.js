@@ -162,27 +162,48 @@ export const ICONOS = {
 // HEADER INSTITUCIONAL
 // ------------------------------------------------------------
 
+// Iconos extra para navegacion / perfil (flecha de retroceso, salir).
+ICONOS.flecha = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>';
+ICONOS.salir = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>';
+
 /**
  * Monta el header institucional fijo (azul marino) al inicio de <body>,
  * seguido del encabezado editorial de la pantalla (titulo + kicker).
+ *
+ * Incluye:
+ *  · Navegacion de retroceso (izquierda, junto a la marca) con destino
+ *    EXPLICITO (nunca history.back()): volverHref/volverTexto. Por defecto
+ *    vuelve al home del area (index.html); cada pagina puede sobreescribir.
+ *  · Avatar circular clickeable a la derecha que abre un menu de perfil
+ *    con el correo del usuario y un boton "Cerrar sesion" (mismo signOut
+ *    que usa panel.html). Sin subida de foto (fuera de alcance).
  *
  * @param {object} opts
  * @param {string} opts.titulo   Titulo editorial de la pantalla.
  * @param {string} opts.kicker   Kicker en terracota (mayusculas).
  * @param {string} [opts.lead]   Parrafo introductorio opcional.
- * @param {object} [opts.sesion] Sesion (para la inicial del avatar).
+ * @param {object} [opts.sesion] Sesion (para la inicial del avatar y el correo).
  * @param {string} [opts.buscarHref] href del icono de buscar (default puc.html).
+ * @param {string} [opts.volverHref] destino explicito del boton volver (default index.html).
+ * @param {string} [opts.volverTexto] etiqueta del boton volver (default 'Finanzas').
  */
 export function montarHeader(opts) {
-  const { titulo, kicker, lead, sesion, buscarHref } = opts || {};
+  const { titulo, kicker, lead, sesion, buscarHref, volverHref, volverTexto } = opts || {};
   const email = sesion?.user?.email || '';
   const inicial = (email.trim()[0] || 'F').toUpperCase();
   const hrefBuscar = buscarHref || 'puc.html';
+  const hrefVolver = volverHref || 'index.html';
+  const txtVolver = volverTexto || 'Finanzas';
 
   const header = document.createElement('header');
   header.className = 'fz-header';
   header.innerHTML =
     '<div class="fz-header-left">' +
+      '<a class="fz-volver" href="' + hrefVolver + '" aria-label="Volver a ' + escaparHTML(txtVolver) + '">' +
+        ICONOS.flecha +
+        '<span>' + escaparHTML(txtVolver) + '</span>' +
+      '</a>' +
+      '<span class="fz-sep" aria-hidden="true"></span>' +
       '<img class="fz-logo" src="../logo-mark-terracota.png" alt="Magandhi">' +
       '<span class="fz-word">MAGANDHI</span>' +
       '<span class="fz-sep" aria-hidden="true"></span>' +
@@ -192,7 +213,20 @@ export function montarHeader(opts) {
       '<a class="fz-icon-btn" href="' + hrefBuscar + '" title="Buscar en el catalogo PUC" aria-label="Buscar">' +
         ICONOS.lupa +
       '</a>' +
-      '<span class="fz-avatar" title="' + email + '">' + inicial + '</span>' +
+      '<div class="fz-perfil">' +
+        '<button class="fz-avatar" id="fz-avatar" type="button" ' +
+          'aria-haspopup="menu" aria-expanded="false" aria-controls="fz-perfil-menu" ' +
+          'title="' + escaparHTML(email) + '" aria-label="Menu de perfil">' + escaparHTML(inicial) + '</button>' +
+        '<div class="fz-perfil-menu" id="fz-perfil-menu" role="menu" aria-label="Perfil" hidden>' +
+          '<div class="fz-perfil-info">' +
+            '<span class="fz-perfil-lbl">Sesion iniciada como</span>' +
+            '<span class="fz-perfil-email">' + escaparHTML(email || 'usuario interno') + '</span>' +
+          '</div>' +
+          '<button class="fz-perfil-salir" id="fz-perfil-salir" type="button" role="menuitem">' +
+            ICONOS.salir + '<span>Cerrar sesion</span>' +
+          '</button>' +
+        '</div>' +
+      '</div>' +
     '</div>';
 
   const screenHead = document.createElement('div');
@@ -204,6 +238,74 @@ export function montarHeader(opts) {
 
   document.body.insertBefore(screenHead, document.body.firstChild);
   document.body.insertBefore(header, document.body.firstChild);
+
+  montarMenuPerfil(header);
+  montarSelloImpulse();
+}
+
+/**
+ * Cablea el comportamiento del menu de perfil del avatar: abrir/cerrar,
+ * cerrar al hacer clic afuera o con Escape, accesibilidad (aria-expanded,
+ * foco) y el boton "Cerrar sesion" (mismo patron que panel.html:
+ * supabase.auth.signOut() + redirect al login de la raiz).
+ * @param {HTMLElement} header
+ */
+function montarMenuPerfil(header) {
+  const avatar = header.querySelector('#fz-avatar');
+  const menu = header.querySelector('#fz-perfil-menu');
+  const salir = header.querySelector('#fz-perfil-salir');
+  if (!avatar || !menu) return;
+
+  const abrir = () => {
+    menu.hidden = false;
+    avatar.setAttribute('aria-expanded', 'true');
+    salir?.focus();
+  };
+  const cerrar = (devolverFoco) => {
+    menu.hidden = true;
+    avatar.setAttribute('aria-expanded', 'false');
+    if (devolverFoco) avatar.focus();
+  };
+  const estaAbierto = () => avatar.getAttribute('aria-expanded') === 'true';
+
+  avatar.addEventListener('click', (e) => {
+    e.stopPropagation();
+    estaAbierto() ? cerrar(false) : abrir();
+  });
+
+  // Clic afuera cierra el menu.
+  document.addEventListener('click', (e) => {
+    if (estaAbierto() && !menu.contains(e.target) && e.target !== avatar) cerrar(false);
+  });
+
+  // Escape cierra y devuelve el foco al avatar.
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && estaAbierto()) cerrar(true);
+  });
+
+  salir?.addEventListener('click', async () => {
+    try { await supabase.auth.signOut(); } catch (_) { /* ignorar */ }
+    // finanzas/ vive un nivel bajo la raiz: el login esta en ../index.html.
+    window.location.replace('../index.html');
+  });
+}
+
+// ------------------------------------------------------------
+// SELLO DE PROVEEDOR ("Con tecnologia Impulse")
+// ------------------------------------------------------------
+
+/**
+ * Inserta el sello discreto de proveedor "Con tecnologia Impulse" al final
+ * del <body>. Firma sobria de proveedor: gris tenue, "Impulse" con un peso
+ * ligeramente destacado. Idempotente (no duplica si ya existe). Solo para el
+ * back-office interno (montaguth.institute); nunca la tienda publica.
+ */
+export function montarSelloImpulse() {
+  if (document.querySelector('.fz-sello')) return;
+  const foot = document.createElement('footer');
+  foot.className = 'fz-sello';
+  foot.innerHTML = 'Con tecnología <span class="fz-sello-marca">Impulse</span>';
+  document.body.appendChild(foot);
 }
 
 /**

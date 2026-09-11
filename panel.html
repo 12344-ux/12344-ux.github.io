@@ -136,9 +136,16 @@
   .mg-foot{
     position:relative;z-index:1;
     padding:22px 24px 28px;text-align:center;
+    display:flex;flex-direction:column;align-items:center;gap:5px;
     font-size:11.5px;letter-spacing:.06em;color:var(--gris-cl);
   }
   .mg-foot span{color:var(--rojo)}
+  /* Sello de proveedor "Con tecnologia Impulse": firma sobria, gris tenue,
+     "Impulse" con peso ligeramente destacado. Solo back-office interno. */
+  .mg-sello{
+    font-size:11px;letter-spacing:.05em;color:var(--gris-cl);
+  }
+  .mg-sello b{color:var(--negro);font-weight:600;letter-spacing:.06em}
 </style>
 </head>
 <body>
@@ -183,7 +190,8 @@
 </main>
 
 <footer class="mg-foot">
-  &copy; <span>Magandhi Corporation</span> · Uso interno
+  <div>&copy; <span>Magandhi Corporation</span> · Uso interno</div>
+  <div class="mg-sello">Con tecnología <b>Impulse</b></div>
 </footer>
 
 <script type="module">
