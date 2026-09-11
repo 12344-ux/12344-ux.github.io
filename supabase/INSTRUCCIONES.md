@@ -116,7 +116,8 @@ ORDEN, el contenido completo de cada archivo (cada uno con su propio **Run**):
 4. `supabase/migrations/20250201000300_finanzas_mayor_vista.sql`
    Crea las vistas `movimientos_mayor` y `saldos_cuenta` (Libro Mayor derivado).
 5. `supabase/migrations/20250201000400_finanzas_trazabilidad.sql`
-   Crea `asiento_bitacora` y el trigger que registra crear/editar/anular.
+   Crea `asiento_bitacora` y el trigger que registra crear/anular (la
+   edicion la registra `editar_asiento` como un unico evento, sin duplicar).
 6. `supabase/migrations/20250201000500_finanzas_rls.sql`
    Activa RLS en TODAS las tablas de finanzas con `tiene_modulo('finanzas')`.
 7. `supabase/migrations/20250201000600_finanzas_funciones.sql`

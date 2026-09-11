@@ -39,12 +39,15 @@ create index if not exists idx_asiento_bitacora_cuando on asiento_bitacora (cuan
 -- policies de INSERT esten acotadas; search_path fijo por seguridad.
 --   * INSERT  -> accion 'crear',  detalle_cambio = fila nueva.
 --   * UPDATE con cambio estado activo->anulado -> accion 'anular'.
---   * Otro UPDATE -> accion 'editar', detalle_cambio = fila ANTERIOR (OLD).
--- NOTA: el trigger solo ve la CABECERA (asientos). Las LINEAS anteriores las
--- registra la RPC editar_asiento con un insert 'editar' propio en esta misma
--- tabla (detalle_cambio.lineas) antes de reemplazarlas, para que una edicion
--- de importes tambien deje traza del valor anterior. La tabla sigue siendo
--- append-only (sin UPDATE/DELETE desde el cliente).
+--   * Otro UPDATE (una EDICION) -> NO registra nada: la traza de la edicion
+--     la escribe la RPC editar_asiento con UN SOLO evento 'editar' que ya
+--     incluye la CABECERA anterior (fecha/descripcion) y las LINEAS anteriores
+--     (detalle_cambio.lineas). Si el trigger tambien insertara un 'editar'
+--     por el UPDATE de la cabecera, el timeline mostraria la MISMA correccion
+--     DUPLICADA con el mismo timestamp. Por eso el trigger deja la accion
+--     'editar' en manos de la RPC (fuente unica) y aqui solo cubre
+--     crear/anular. La tabla sigue siendo append-only (sin UPDATE/DELETE
+--     desde el cliente).
 -- ------------------------------------------------------------
 create or replace function registrar_bitacora_asiento()
 returns trigger
@@ -59,12 +62,12 @@ begin
     return new;
 
   elsif (tg_op = 'UPDATE') then
+    -- Solo la anulacion (activo->anulado) deja traza automatica aqui. La
+    -- edicion la registra editar_asiento como un unico evento completo, para
+    -- no duplicar el 'editar' en la bitacora.
     if (old.estado = 'activo' and new.estado = 'anulado') then
       insert into asiento_bitacora (asiento_id, accion, detalle_cambio, actor)
       values (new.id, 'anular', to_jsonb(old), auth.uid());
-    else
-      insert into asiento_bitacora (asiento_id, accion, detalle_cambio, actor)
-      values (new.id, 'editar', to_jsonb(old), auth.uid());
     end if;
     return new;
   end if;
@@ -73,7 +76,7 @@ begin
 end;
 $$;
 
-comment on function registrar_bitacora_asiento() is 'Trigger que alimenta asiento_bitacora en INSERT (crear) y UPDATE (anular si activo->anulado; editar en otro caso), guardando el valor anterior (OLD) o nuevo (INSERT) en detalle_cambio.';
+comment on function registrar_bitacora_asiento() is 'Trigger que alimenta asiento_bitacora en INSERT (crear) y en la ANULACION (UPDATE activo->anulado), guardando el valor anterior (OLD) o nuevo (INSERT) en detalle_cambio. La EDICION no la registra el trigger: la escribe editar_asiento como un unico evento editar (cabecera + lineas anteriores) para no duplicar la traza.';
 
 drop trigger if exists trg_bitacora_asiento on asientos;
 create trigger trg_bitacora_asiento

@@ -245,24 +245,26 @@ begin
     return p_asiento_id;
   end if;
 
-  -- Traza append-only del valor anterior de las lineas cuando cambian. Se
-  -- registra ANTES del delete, con la accion 'editar' y el detalle jsonb.
-  if v_cambio_lin then
-    insert into asiento_bitacora (asiento_id, accion, detalle_cambio, actor)
-    values (
-      p_asiento_id,
-      'editar',
-      jsonb_build_object(
-        'fecha', v_fecha_ant,
-        'descripcion', v_desc_ant,
-        'lineas', v_lineas_ant
-      ),
-      auth.uid()
-    );
-  end if;
+  -- Traza append-only del valor ANTERIOR: UN SOLO evento 'editar' que reune
+  -- la cabecera anterior (fecha/descripcion) y, cuando cambian, las lineas
+  -- anteriores (detalle_cambio.lineas). Se registra ANTES del delete/update,
+  -- de modo que un asiento que no valida nunca llega a dejar traza. El trigger
+  -- de bitacora NO registra ediciones (ver 20250201000400): esta RPC es la
+  -- fuente unica del evento 'editar', asi el timeline no lo muestra duplicado.
+  insert into asiento_bitacora (asiento_id, accion, detalle_cambio, actor)
+  values (
+    p_asiento_id,
+    'editar',
+    jsonb_build_object(
+      'fecha', v_fecha_ant,
+      'descripcion', v_desc_ant,
+      'lineas', v_lineas_ant
+    ),
+    auth.uid()
+  );
 
-  -- Actualiza cabecera (dispara el trigger de bitacora: accion 'editar' con
-  -- el OLD de la cabecera; complementa el snapshot de lineas de arriba).
+  -- Actualiza cabecera. El trigger de bitacora ya NO registra 'editar' por este
+  -- UPDATE (solo cubre crear/anular), de modo que no se duplica el evento.
   update asientos
      set fecha = p_fecha,
          descripcion = p_descripcion,
@@ -291,7 +293,7 @@ begin
 end;
 $$;
 
-comment on function editar_asiento(uuid, date, text, jsonb) is 'Edita un asiento activo: reemplaza cabecera y lineas tras revalidar la regla de oro. Antes de borrar las lineas guarda un snapshot del valor ANTERIOR de las lineas en asiento_bitacora (accion editar, detalle_cambio.lineas), ademas del OLD de la cabecera que registra el trigger: asi nada se borra en silencio. Si no cambia nada (ni cabecera ni lineas) es un no-op y no ensucia la bitacora. No permite editar asientos anulados. FEAT-002 lo llama con supabase.rpc.';
+comment on function editar_asiento(uuid, date, text, jsonb) is 'Edita un asiento activo: reemplaza cabecera y lineas tras revalidar la regla de oro. Registra UN SOLO evento editar en asiento_bitacora con el valor ANTERIOR de cabecera (fecha/descripcion) y lineas (detalle_cambio.lineas) antes de tocar nada, asi nada se borra en silencio y la traza no queda duplicada (el trigger de bitacora ya no registra ediciones, solo crear/anular). Si no cambia nada (ni cabecera ni lineas) es un no-op y no ensucia la bitacora. No permite editar asientos anulados. FEAT-002 lo llama con supabase.rpc.';
 
 -- ------------------------------------------------------------
 -- anular_asiento: marca estado='anulado' (correccion punto medio). El
