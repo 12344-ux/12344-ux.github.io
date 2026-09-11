@@ -214,6 +214,21 @@ sin centavos**. Por ejemplo, $1.200.000 se guarda como `1200000`. Nunca uses
 decimales: las funciones rechazan montos con punto decimal. Esto evita los
 errores de redondeo del punto flotante.
 
+Ademas hay un **tope por linea de 1.000.000.000.000 (un billon de pesos)**:
+cualquier linea con un `debe` o `haber` mayor es rechazada por `fz_validar_lineas`
+(y la interfaz tampoco deja guardar). Es un candado de rango, muy por encima de
+cualquier operacion real de un comercio, que cierra el techo de precision del
+calculo de cuadre en el navegador (JavaScript solo es exacto por debajo de 2^53).
+Si en el futuro necesitaras registrar importes mayores, sube ese tope en los DOS
+lugares: `c_tope_linea` en `20250201000600_finanzas_funciones.sql` y
+`TOPE_MONTO_LINEA` en `finanzas/finanzas-core.js`.
+
+> **Reaplicacion tras esta correccion:** el archivo 7
+> (`20250201000600_finanzas_funciones.sql`) cambio (tope por linea y, en
+> `editar_asiento`, snapshot de las lineas anteriores en la bitacora). Como todas
+> las funciones usan `create or replace`, basta con **volver a ejecutar ese
+> archivo** en el SQL Editor; no hay que tocar los demas ni borrar nada.
+
 ## F5. NOTA · El catalogo PUC quedo PARCIAL (a proposito)
 
 La carga del paso F1.2 **no incluye las ~800 cuentas completas** del Decreto

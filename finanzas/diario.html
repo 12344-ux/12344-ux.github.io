@@ -53,19 +53,13 @@
   import {
     supabase, asegurarAcceso, montarHeader, ICONOS,
     formatearCOP, formatearFecha, formatearMomento,
-    ACCIONES_BITACORA, cargarBitacora
+    ACCIONES_BITACORA, cargarBitacora, escaparHTML
   } from './finanzas-core.js';
 
   const cont = document.getElementById('fz-diario');
   const modalEl = document.getElementById('fz-modal-anular');
   const motivoEl = document.getElementById('fz-motivo');
   let asientoAAnular = null;
-
-  function escaparHTML(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
 
   function asientoHTML(a) {
     const anulado = a.estado === 'anulado';
@@ -134,6 +128,14 @@
           if (prev.descripcion) det.push('Descripcion anterior: ' + escaparHTML(prev.descripcion));
           if (prev.fecha) det.push('Fecha anterior: ' + formatearFecha(prev.fecha));
           if (prev.estado) det.push('Estado anterior: ' + escaparHTML(prev.estado));
+          if (Array.isArray(prev.lineas) && prev.lineas.length) {
+            const detalleLineas = prev.lineas.map((l) => (
+              escaparHTML(l.cuenta_codigo) +
+              (Number(l.debe) > 0 ? ' · Debe ' + formatearCOP(l.debe) : '') +
+              (Number(l.haber) > 0 ? ' · Haber ' + formatearCOP(l.haber) : '')
+            )).join('; ');
+            det.push('Lineas anteriores: ' + detalleLineas);
+          }
           return (
             '<li class="fz-tl-item ' + meta.clase + '">' +
               '<span class="fz-tl-dot"></span>' +

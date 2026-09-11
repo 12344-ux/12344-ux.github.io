@@ -47,6 +47,16 @@ declare
   v_suma_debe   bigint := 0;
   v_suma_haber  bigint := 0;
   v_imputable   boolean;
+  -- TOPE DE MONTO POR LINEA (candado de rango, no negociable):
+  -- el cuadre en el cliente suma con Number, exacto solo bajo 2^53
+  -- (9.007.199.254.740.991). Por encima de ese techo dos importes distintos
+  -- pueden parecer iguales y colar un asiento que no cuadra. Fijamos un tope
+  -- por linea de 1.000.000.000.000 (un billon de pesos COP): muy por encima
+  -- de cualquier operacion real de un comercio y con margen de sobra bajo 2^53
+  -- (aun sumando cientos de lineas al tope, el total sigue siendo exacto). El
+  -- MISMO valor se replica en la UI (TOPE_MONTO_LINEA en finanzas-core.js),
+  -- pero ESTE es el candado autoritativo.
+  c_tope_linea  constant bigint := 1000000000000;
 begin
   if p_lineas is null or jsonb_typeof(p_lineas) <> 'array' then
     raise exception 'Las lineas del asiento deben ser un arreglo JSON.';
@@ -65,6 +75,11 @@ begin
 
     if v_debe < 0 or v_haber < 0 then
       raise exception 'Los montos no pueden ser negativos. Linea %', v_n;
+    end if;
+
+    -- Tope de rango: cierra el techo de precision del cuadre en el cliente.
+    if v_debe > c_tope_linea or v_haber > c_tope_linea then
+      raise exception 'El monto de la linea % supera el tope permitido de % pesos por linea.', v_n, c_tope_linea;
     end if;
 
     -- XOR: exactamente uno positivo (misma regla que el check de la tabla).
@@ -97,7 +112,7 @@ begin
 end;
 $$;
 
-comment on function fz_validar_lineas(jsonb) is 'Valida la regla de oro server-side: montos enteros >=0, cada linea DEBE o HABER exclusivo, cuenta existente e imputable, minimo 2 lineas y cuadre sum(debe)=sum(haber). Lanza excepcion si algo falla. Uso interno de guardar_asiento/editar_asiento.';
+comment on function fz_validar_lineas(jsonb) is 'Valida la regla de oro server-side: montos enteros >=0 y <= 1.000.000.000.000 por linea (tope de rango que cierra el techo de precision 2^53 del cuadre en el cliente), cada linea DEBE o HABER exclusivo, cuenta existente e imputable, minimo 2 lineas y cuadre sum(debe)=sum(haber). Lanza excepcion si algo falla. Uso interno de guardar_asiento/editar_asiento.';
 
 -- ------------------------------------------------------------
 -- guardar_asiento: crea cabecera + lineas en UNA transaccion tras validar.
@@ -158,15 +173,23 @@ security definer
 set search_path = public
 as $$
 declare
-  v_linea  jsonb;
-  v_orden  int := 0;
-  v_estado text;
+  v_linea         jsonb;
+  v_orden         int := 0;
+  v_estado        text;
+  v_fecha_ant     date;
+  v_desc_ant      text;
+  v_lineas_ant    jsonb;
+  v_lineas_nuevas jsonb;
+  v_cambio_cab    boolean;
+  v_cambio_lin    boolean;
 begin
   if not tiene_modulo('finanzas') then
     raise exception 'Acceso denegado: se requiere el modulo finanzas.';
   end if;
 
-  select estado into v_estado from asientos where id = p_asiento_id;
+  select estado, fecha, descripcion
+    into v_estado, v_fecha_ant, v_desc_ant
+    from asientos where id = p_asiento_id;
   if v_estado is null then
     raise exception 'El asiento % no existe.', p_asiento_id;
   end if;
@@ -179,7 +202,67 @@ begin
 
   perform fz_validar_lineas(p_lineas);
 
-  -- Actualiza cabecera (dispara el trigger de bitacora: accion 'editar').
+  -- Snapshot de las lineas ANTERIORES (jsonb) para la bitacora: sin esto una
+  -- edicion de importes no dejaria rastro del valor anterior de las lineas, lo
+  -- que contradice "nada se borra en silencio". Modelo append-only intacto.
+  select coalesce(jsonb_agg(
+           jsonb_build_object(
+             'cuenta_codigo', cuenta_codigo,
+             'detalle', detalle,
+             'debe', debe,
+             'haber', haber,
+             'orden', orden
+           ) order by orden
+         ), '[]'::jsonb)
+    into v_lineas_ant
+    from asiento_lineas
+   where asiento_id = p_asiento_id;
+
+  -- Normaliza las lineas NUEVAS al mismo shape para poder comparar y decidir
+  -- si de verdad cambio algo (evita ensuciar la bitacora con ediciones vacias).
+  v_orden := 0;
+  select coalesce(jsonb_agg(elem order by ord), '[]'::jsonb)
+    into v_lineas_nuevas
+    from (
+      select jsonb_build_object(
+               'cuenta_codigo', ln->>'cuenta_codigo',
+               'detalle', ln->>'detalle',
+               'debe', coalesce((ln->>'debe')::bigint, 0),
+               'haber', coalesce((ln->>'haber')::bigint, 0),
+               'orden', row_number() over ()
+             ) as elem,
+             row_number() over () as ord
+        from jsonb_array_elements(p_lineas) as ln
+    ) t;
+
+  v_cambio_cab := (v_fecha_ant is distinct from p_fecha)
+               or (v_desc_ant  is distinct from p_descripcion);
+  v_cambio_lin := (v_lineas_ant is distinct from v_lineas_nuevas);
+
+  -- Si no cambia NADA (ni cabecera ni lineas), no tocar nada: no dispares el
+  -- trigger ni registres un evento 'editar' sin contenido real.
+  if not v_cambio_cab and not v_cambio_lin then
+    return p_asiento_id;
+  end if;
+
+  -- Traza append-only del valor anterior de las lineas cuando cambian. Se
+  -- registra ANTES del delete, con la accion 'editar' y el detalle jsonb.
+  if v_cambio_lin then
+    insert into asiento_bitacora (asiento_id, accion, detalle_cambio, actor)
+    values (
+      p_asiento_id,
+      'editar',
+      jsonb_build_object(
+        'fecha', v_fecha_ant,
+        'descripcion', v_desc_ant,
+        'lineas', v_lineas_ant
+      ),
+      auth.uid()
+    );
+  end if;
+
+  -- Actualiza cabecera (dispara el trigger de bitacora: accion 'editar' con
+  -- el OLD de la cabecera; complementa el snapshot de lineas de arriba).
   update asientos
      set fecha = p_fecha,
          descripcion = p_descripcion,
@@ -208,7 +291,7 @@ begin
 end;
 $$;
 
-comment on function editar_asiento(uuid, date, text, jsonb) is 'Edita un asiento activo: reemplaza cabecera y lineas tras revalidar la regla de oro. El trigger de bitacora guarda el valor anterior. No permite editar asientos anulados. FEAT-002 lo llama con supabase.rpc.';
+comment on function editar_asiento(uuid, date, text, jsonb) is 'Edita un asiento activo: reemplaza cabecera y lineas tras revalidar la regla de oro. Antes de borrar las lineas guarda un snapshot del valor ANTERIOR de las lineas en asiento_bitacora (accion editar, detalle_cambio.lineas), ademas del OLD de la cabecera que registra el trigger: asi nada se borra en silencio. Si no cambia nada (ni cabecera ni lineas) es un no-op y no ensucia la bitacora. No permite editar asientos anulados. FEAT-002 lo llama con supabase.rpc.';
 
 -- ------------------------------------------------------------
 -- anular_asiento: marca estado='anulado' (correccion punto medio). El

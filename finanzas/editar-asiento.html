@@ -114,7 +114,7 @@
   import {
     supabase, asegurarAcceso, montarHeader, ICONOS,
     formatearCOP, parsearMonto, hoyISO, formatearFecha, formatearMomento,
-    ACCIONES_BITACORA, cargarBitacora
+    ACCIONES_BITACORA, cargarBitacora, escaparHTML, TOPE_MONTO_LINEA
   } from './finanzas-core.js';
 
   // --- Elementos ---
@@ -285,9 +285,15 @@
     const todasValidas = conMonto.length >= 2 && conMonto.every((l) =>
       l.codigo !== '' && (l.debe > 0) !== (l.haber > 0)
     );
-    const cuadra = diff === 0 && totalDebe > 0 && todasValidas;
+    // Tope de rango (espejo del candado server-side): ver TOPE_MONTO_LINEA.
+    const superaTope = conMonto.some((l) => l.debe > TOPE_MONTO_LINEA || l.haber > TOPE_MONTO_LINEA);
+    const cuadra = diff === 0 && totalDebe > 0 && todasValidas && !superaTope;
 
-    if (cuadra) {
+    if (superaTope) {
+      estadoEl.className = 'fz-estado no-cuadra';
+      estadoEl.textContent = 'Monto por linea demasiado alto';
+      guardarBtn.disabled = true;
+    } else if (cuadra) {
       estadoEl.className = 'fz-estado cuadra';
       estadoEl.innerHTML = ICONOS.check + ' Cuadrado';
       guardarBtn.disabled = false;
@@ -319,6 +325,9 @@
     for (const l of lineas) {
       if (!l.codigo) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'Toda linea con monto debe tener una cuenta elegida.'; return; }
       if ((l.debe > 0) === (l.haber > 0)) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'Cada linea debe ser Debe O Haber, no ambos.'; return; }
+    }
+    for (const l of lineas) {
+      if (l.debe > TOPE_MONTO_LINEA || l.haber > TOPE_MONTO_LINEA) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'El monto de una linea supera el tope permitido de ' + formatearCOP(TOPE_MONTO_LINEA) + ' pesos.'; return; }
     }
     let sd = 0, sh = 0;
     for (const l of lineas) { sd += l.debe; sh += l.haber; }
@@ -395,6 +404,14 @@
         if (prev.descripcion) detalles.push('Descripcion anterior: ' + escaparHTML(prev.descripcion));
         if (prev.fecha) detalles.push('Fecha anterior: ' + formatearFecha(prev.fecha));
         if (prev.estado) detalles.push('Estado anterior: ' + escaparHTML(prev.estado));
+        if (Array.isArray(prev.lineas) && prev.lineas.length) {
+          const detalleLineas = prev.lineas.map((l) => (
+            escaparHTML(l.cuenta_codigo) +
+            (Number(l.debe) > 0 ? ' · Debe ' + formatearCOP(l.debe) : '') +
+            (Number(l.haber) > 0 ? ' · Haber ' + formatearCOP(l.haber) : '')
+          )).join('; ');
+          detalles.push('Lineas anteriores: ' + detalleLineas);
+        }
         return (
           '<li class="fz-tl-item ' + meta.clase + '">' +
             '<span class="fz-tl-dot"></span>' +
@@ -412,12 +429,6 @@
     } catch (_) {
       histEl.hidden = true;
     }
-  }
-
-  function escaparHTML(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
   }
 
   // ============================================================

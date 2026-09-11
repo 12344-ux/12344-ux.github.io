@@ -81,4 +81,13 @@ export async function obtenerPerfil() {
 
 // Auto-proteccion: al importar este modulo desde una pagina interna,
 // se exige sesion inmediatamente. Una sola linea deja la pagina cubierta.
+//
+// NOTA (decision consciente): las paginas de finanzas ademas llaman
+// asegurarAcceso(), que reejecuta exigirSesion()->getSession(). Eso hace DOS
+// getSession por carga. Se mantiene a proposito: (1) esta guardia autoejecutada
+// es el contrato "una sola linea protege cualquier pagina interna" (paginas sin
+// modulos, como panel.html, dependen solo de ella); (2) supabase-js cachea la
+// sesion en memoria/almacenamiento, asi que el segundo getSession es local y
+// barato (no es un round-trip de red). El coste es un microsegundo, no un
+// problema de rendimiento; unificarlo acoplaria el guardia al flujo de finanzas.
 exigirSesion();

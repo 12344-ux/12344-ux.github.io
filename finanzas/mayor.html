@@ -44,7 +44,7 @@
 </main>
 
 <script type="module">
-  import { supabase, asegurarAcceso, montarHeader, ICONOS, formatearCOP } from './finanzas-core.js';
+  import { supabase, asegurarAcceso, montarHeader, ICONOS, formatearCOP, formatearFecha, escaparHTML } from './finanzas-core.js';
 
   const input = document.getElementById('fz-q');
   const sug = document.getElementById('fz-sug');
@@ -66,9 +66,9 @@
   function pintarSug(cuentas) {
     if (!cuentas.length) { sug.classList.remove('open'); return; }
     sug.innerHTML = cuentas.map((c) => (
-      '<div class="fz-sug-item" data-codigo="' + c.codigo + '" data-nombre="' + (c.nombre || '').replace(/"/g, '&quot;') + '" data-nat="' + c.naturaleza + '">' +
-        '<span class="fz-badge">' + c.codigo + '</span>' +
-        '<span class="fz-sug-nombre">' + (c.nombre || '') + '</span>' +
+      '<div class="fz-sug-item" data-codigo="' + escaparHTML(c.codigo) + '" data-nombre="' + escaparHTML(c.nombre || '') + '" data-nat="' + escaparHTML(c.naturaleza) + '">' +
+        '<span class="fz-badge">' + escaparHTML(c.codigo) + '</span>' +
+        '<span class="fz-sug-nombre">' + escaparHTML(c.nombre || '') + '</span>' +
       '</div>'
     )).join('');
     sug.classList.add('open');
@@ -99,7 +99,7 @@
     const movs = movRes.data || [];
     if (movRes.error) { detalle.innerHTML = '<div class="fz-empty">No se pudieron cargar los movimientos.</div>'; return; }
     if (!movs.length) {
-      detalle.innerHTML = '<div class="fz-empty">La cuenta <strong>' + codigo + '</strong> aun no tiene movimientos.</div>';
+      detalle.innerHTML = '<div class="fz-empty">La cuenta <strong>' + escaparHTML(codigo) + '</strong> aun no tiene movimientos.</div>';
       return;
     }
 
@@ -111,8 +111,8 @@
       corrido += (nat === 'debito') ? (d - h) : (h - d);
       return (
         '<tr>' +
-          '<td class="fz-asiento-fecha">' + m.fecha + '</td>' +
-          '<td>' + (m.descripcion || '') + '</td>' +
+          '<td class="fz-asiento-fecha">' + formatearFecha(m.fecha) + '</td>' +
+          '<td>' + escaparHTML(m.descripcion || '') + '</td>' +
           '<td class="num debe">' + (d > 0 ? formatearCOP(d) : '') + '</td>' +
           '<td class="num haber">' + (h > 0 ? formatearCOP(h) : '') + '</td>' +
           '<td class="num">' + formatearCOP(corrido) + '</td>' +
@@ -124,7 +124,7 @@
 
     detalle.innerHTML =
       '<h2 class="fz-title" style="font-size:20px;margin:22px 0 4px">' +
-        '<span class="fz-badge" style="font-size:14px">' + codigo + '</span> ' + (nombre || '') +
+        '<span class="fz-badge" style="font-size:14px">' + escaparHTML(codigo) + '</span> ' + escaparHTML(nombre || '') +
       '</h2>' +
       '<table class="fz-tabla">' +
         '<thead><tr><th>Fecha</th><th>Descripcion</th><th class="num">Debe</th><th class="num">Haber</th><th class="num">Saldo</th></tr></thead>' +

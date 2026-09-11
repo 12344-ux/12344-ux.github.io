@@ -40,6 +40,11 @@ create index if not exists idx_asiento_bitacora_cuando on asiento_bitacora (cuan
 --   * INSERT  -> accion 'crear',  detalle_cambio = fila nueva.
 --   * UPDATE con cambio estado activo->anulado -> accion 'anular'.
 --   * Otro UPDATE -> accion 'editar', detalle_cambio = fila ANTERIOR (OLD).
+-- NOTA: el trigger solo ve la CABECERA (asientos). Las LINEAS anteriores las
+-- registra la RPC editar_asiento con un insert 'editar' propio en esta misma
+-- tabla (detalle_cambio.lineas) antes de reemplazarlas, para que una edicion
+-- de importes tambien deje traza del valor anterior. La tabla sigue siendo
+-- append-only (sin UPDATE/DELETE desde el cliente).
 -- ------------------------------------------------------------
 create or replace function registrar_bitacora_asiento()
 returns trigger

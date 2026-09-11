@@ -61,6 +61,35 @@ export function parsearMonto(texto) {
   return Number.isFinite(n) ? n : 0;
 }
 
+/**
+ * TOPE DE MONTO POR LINEA (no negociable, ver 20250201000600_finanzas_funciones.sql).
+ *
+ * El cuadre en JS suma con Number entero. Number es exacto solo por debajo de
+ * 2^53 (Number.MAX_SAFE_INTEGER = 9.007.199.254.740.991). Por encima de ese
+ * techo dos importes distintos pueden parecer iguales y colar un asiento que
+ * en realidad no cuadra. Para que el candado real cubra el rango, fijamos un
+ * tope por linea de 1.000.000.000.000 (un billon de pesos COP), muy por encima
+ * de cualquier operacion real de un comercio como MAGANDHI y con margen de
+ * sobra bajo 2^53 (incluso sumando cientos de lineas al tope, el total sigue
+ * siendo exacto). El MISMO tope se impone server-side en fz_validar_lineas, que
+ * es el candado autoritativo; esta constante es solo la validacion espejo de UX.
+ */
+export const TOPE_MONTO_LINEA = 1000000000000;
+
+/**
+ * Escapa texto para insertarlo de forma segura via innerHTML. Evita XSS
+ * almacenado cuando se pinta contenido que escribio el operador (descripcion,
+ * nombre de cuenta, detalle, etc.). Compartido por diario/mayor/editar-asiento
+ * para no duplicar la funcion en cada pagina.
+ * @param {*} s
+ * @returns {string}
+ */
+export function escaparHTML(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 // ------------------------------------------------------------
 // ACCESO AL MODULO
 // ------------------------------------------------------------
@@ -103,7 +132,7 @@ export async function asegurarAcceso(contenedor) {
       contenedor.innerHTML =
         '<div class="fz-denegado">' +
           '<h2>Acceso restringido</h2>' +
-          '<p>Tu cuenta no tiene habilitado el <strong>Area de Finanzas</strong>. ' +
+          '<p>Tu cuenta no tiene habilitado el <strong>Área de Finanzas</strong>. ' +
           'Solicita el acceso a un administrador.</p>' +
           '<p style="margin-top:14px"><a href="../panel.html">Volver al panel</a></p>' +
         '</div>';
@@ -157,7 +186,7 @@ export function montarHeader(opts) {
       '<img class="fz-logo" src="../logo-mark-terracota.png" alt="Magandhi">' +
       '<span class="fz-word">MAGANDHI</span>' +
       '<span class="fz-sep" aria-hidden="true"></span>' +
-      '<span class="fz-area">Area de Finanzas</span>' +
+      '<span class="fz-area">ÁREA DE FINANZAS</span>' +
     '</div>' +
     '<div class="fz-header-right">' +
       '<a class="fz-icon-btn" href="' + hrefBuscar + '" title="Buscar en el catalogo PUC" aria-label="Buscar">' +

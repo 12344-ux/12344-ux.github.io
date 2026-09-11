@@ -82,7 +82,7 @@
 <script type="module">
   import {
     supabase, asegurarAcceso, montarHeader, ICONOS,
-    formatearCOP, parsearMonto, hoyISO, formatearFecha
+    formatearCOP, parsearMonto, hoyISO, formatearFecha, TOPE_MONTO_LINEA
   } from './finanzas-core.js';
 
   const NIVEL_TXT = { 1: 'Clase', 2: 'Grupo', 3: 'Cuenta', 4: 'Subcuenta' };
@@ -236,9 +236,17 @@
     const todasValidas = conMonto.length >= 2 && conMonto.every((l) =>
       l.codigo !== '' && (l.debe > 0) !== (l.haber > 0)
     );
-    const cuadra = diff === 0 && totalDebe > 0 && todasValidas;
+    // Tope de rango (espejo del candado server-side): ningun monto por linea
+    // puede superar TOPE_MONTO_LINEA; por encima el cuadre con Number pierde
+    // precision. El server revalida, pero deshabilitamos el boton por UX.
+    const superaTope = conMonto.some((l) => l.debe > TOPE_MONTO_LINEA || l.haber > TOPE_MONTO_LINEA);
+    const cuadra = diff === 0 && totalDebe > 0 && todasValidas && !superaTope;
 
-    if (cuadra) {
+    if (superaTope) {
+      estadoEl.className = 'fz-estado no-cuadra';
+      estadoEl.textContent = 'Monto por linea demasiado alto';
+      guardarBtn.disabled = true;
+    } else if (cuadra) {
       estadoEl.className = 'fz-estado cuadra';
       estadoEl.innerHTML = ICONOS.check + ' Cuadrado';
       guardarBtn.disabled = false;
@@ -267,6 +275,9 @@
       if (!l.codigo) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'Toda linea con monto debe tener una cuenta elegida.'; return; }
       if ((l.debe > 0) === (l.haber > 0)) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'Cada linea debe ser Debe O Haber, no ambos.'; return; }
     }
+    for (const l of lineas) {
+      if (l.debe > TOPE_MONTO_LINEA || l.haber > TOPE_MONTO_LINEA) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'El monto de una linea supera el tope permitido de ' + formatearCOP(TOPE_MONTO_LINEA) + ' pesos.'; return; }
+    }
     let sd = 0, sh = 0;
     for (const l of lineas) { sd += l.debe; sh += l.haber; }
     if (sd !== sh || lineas.length < 2) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'El asiento no cuadra.'; return; }
@@ -289,9 +300,16 @@
       if (error) throw error;
 
       // Sube el contador de uso de cada cuenta usada (una vez por cuenta unica).
+      // DECISION: es best-effort y NO debe bloquear el guardado del asiento (ya
+      // guardado arriba); "usos" solo alimenta la priorizacion del buscador
+      // (comodidad de UX, no un dato contable). Por eso no propagamos el error,
+      // pero SI lo dejamos en consola para que un fallo sistematico (RLS/red)
+      // sea diagnosticable en vez de silencioso del todo.
       const codigosUnicos = [...new Set(lineas.map((l) => l.codigo))];
       await Promise.all(codigosUnicos.map((cod) =>
-        supabase.rpc('incrementar_uso_cuenta', { p_codigo: cod }).catch(() => {})
+        supabase.rpc('incrementar_uso_cuenta', { p_codigo: cod })
+          .then(({ error }) => { if (error) console.warn('No se pudo incrementar el uso de la cuenta', cod, error.message); })
+          .catch((e) => console.warn('No se pudo incrementar el uso de la cuenta', cod, e?.message || e))
       ));
 
       msgEl.className = 'fz-msg ok';
