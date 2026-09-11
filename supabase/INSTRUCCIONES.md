@@ -123,6 +123,17 @@ ORDEN, el contenido completo de cada archivo (cada uno con su propio **Run**):
 7. `supabase/migrations/20250201000600_finanzas_funciones.sql`
    Crea las funciones RPC `guardar_asiento`, `editar_asiento`, `anular_asiento`
    e `incrementar_uso_cuenta` (refuerzan la regla de oro server-side).
+8. `supabase/migrations/20250201000700_finanzas_grants.sql`
+   Otorga al rol `authenticated` el GRANT base de tabla (SELECT) que faltaba.
+   POR QUE: con "auto-expose new tables" en OFF (paso 4, correcto por
+   seguridad), las tablas creadas por migraciones nunca recibieron el GRANT de
+   la capa 1, asi que Postgres respondia `permission denied for table perfiles`
+   (403) ANTES de evaluar RLS. Este archivo destraba solo esa capa 1 con el
+   minimo privilegio: SELECT en `perfiles`, `puc_cuentas`, `asientos`,
+   `asiento_lineas`, `asiento_bitacora` y las vistas `movimientos_mayor` /
+   `saldos_cuenta` (lo unico que el cliente lee directo). NO abre
+   INSERT/UPDATE/DELETE (toda escritura va por RPC security definer) ni concede
+   nada a `anon`. La seguridad real sigue siendo RLS + las RPC.
 
 Los archivos son idempotentes (`create ... if not exists`, `on conflict do
 update`, `create or replace`, `drop policy if exists`): si algo falla a mitad,
@@ -184,6 +195,14 @@ Ejecuta estas consultas en el SQL Editor:
    ```sql
    select accion, cuando, detalle_cambio from asiento_bitacora order by cuando desc;
    ```
+
+7. **El GRANT de la capa 1 destrabo el acceso (fin del 403)**: tras aplicar el
+   archivo 8, cierra sesion y vuelve a entrar al sitio (`index.html`), inicia
+   sesion y abre **panel > Finanzas**. El modulo debe leer tu perfil y el
+   catalogo SIN el error `permission denied for table perfiles` (403) que
+   aparecia en la consola del navegador (`auth-guard.js: No se pudo leer el
+   perfil`). Si aun ves el 403, confirma que ejecutaste el archivo 8 completo y
+   que la fila de tu usuario existe en `perfiles` (paso 3).
 
    (Opcional) Para dejar limpio tras las pruebas, puedes anular el asiento de
    prueba con `select anular_asiento('<uuid-devuelto-en-el-paso-4>', 'prueba');`
