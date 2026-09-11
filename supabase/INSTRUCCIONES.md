@@ -141,6 +141,17 @@ ORDEN, el contenido completo de cada archivo (cada uno con su propio **Run**):
    duplicado + existencia del padre (jerarquia) para no crear cuentas
    huerfanas. Como usa `create or replace`, si en el futuro la ajustas basta
    con **volver a ejecutar solo este archivo**, sin tocar los demas.
+10. `supabase/migrations/20250201000900_finanzas_balance_comprobacion.sql`
+    Crea la funcion `balance_comprobacion(fecha_corte date)` (Tramo 2, paso 1:
+    el Balance de comprobacion A FECHA DE CORTE). Se derivan solos, de las
+    MISMAS tablas que el Libro Mayor, el `total_debe`, el `total_haber` y el
+    saldo repartido en `saldo_deudor` / `saldo_acreedor` por cada cuenta
+    imputable con movimiento (solo asientos activos con `fecha <= corte`). Es
+    una FUNCION y no una vista porque necesita el parametro de fecha de corte.
+    Es de solo lectura (`STABLE`), hereda la RLS del modulo (SECURITY INVOKER,
+    igual que las vistas del mayor) y no abre ninguna escritura. Como usa
+    `create or replace`, si en el futuro la ajustas basta con **volver a
+    ejecutar solo este archivo**, sin tocar los demas.
 
 Los archivos son idempotentes (`create ... if not exists`, `on conflict do
 update`, `create or replace`, `drop policy if exists`): si algo falla a mitad,
@@ -321,3 +332,49 @@ los codigos de 6 digitos; todo sigue siendo confirmable por ti.
 > Como la RPC usa `create or replace`, si mas adelante ajustas su logica basta
 > con **volver a ejecutar solo el archivo 9**
 > (`20250201000800_finanzas_agregar_cuenta.sql`), sin tocar los demas.
+
+## F7. Balance de comprobacion a fecha de corte (Tramo 2, paso 1)
+
+El archivo 10 de F1 (`20250201000900_finanzas_balance_comprobacion.sql`) crea
+la funcion `balance_comprobacion(fecha_corte date)`. Es el primer informe del
+Tramo 2: la "foto" del Libro Mayor **hasta una fecha de corte**. Para cada
+cuenta imputable con movimiento devuelve `cuenta_codigo`, `cuenta_nombre`,
+`naturaleza`, `total_debe`, `total_haber`, `saldo_deudor` y `saldo_acreedor`.
+
+Solo cuenta asientos con `estado='activo'` y `fecha <= corte` (los anulados no
+cuentan). Es una FUNCION, no una vista, porque una vista no acepta el parametro
+de fecha de corte. Se deriva de las MISMAS tablas que `saldos_cuenta`
+(asientos, asiento_lineas, puc_cuentas), asi que no reinventa el calculo: el
+saldo por naturaleza se reparte en dos columnas de presentacion (deudor /
+acreedor).
+
+**Como verlo** (foto a hoy; cambia `current_date` por cualquier fecha de corte):
+
+```sql
+select * from balance_comprobacion(current_date) order by cuenta_codigo;
+-- Ejemplo de corte a una fecha concreta:
+-- select * from balance_comprobacion('2025-01-31') order by cuenta_codigo;
+```
+
+**Comprobacion de CUADRE** (la prueba de que el balance esta bien): en un libro
+de partida doble cuadrado, la suma de los debitos iguala la de los creditos y
+la suma de los saldos deudores iguala la de los saldos acreedores. Esta
+consulta debe devolver dos parejas iguales:
+
+```sql
+select
+  sum(total_debe)     as suma_debe,
+  sum(total_haber)    as suma_haber,     -- debe ser igual a suma_debe
+  sum(saldo_deudor)   as suma_deudor,
+  sum(saldo_acreedor) as suma_acreedor   -- debe ser igual a suma_deudor
+from balance_comprobacion(current_date);
+-- Esperado: suma_debe = suma_haber  Y  suma_deudor = suma_acreedor (el balance cuadra).
+```
+
+Si esas parejas no cuadran, el problema NO esta en el balance (cuadra por
+construccion) sino en algun asiento; revisa el Libro Diario. La funcion es de
+solo lectura y no modifica nada.
+
+> Como la funcion usa `create or replace`, si mas adelante ajustas su logica
+> basta con **volver a ejecutar solo el archivo 10**
+> (`20250201000900_finanzas_balance_comprobacion.sql`), sin tocar los demas.
