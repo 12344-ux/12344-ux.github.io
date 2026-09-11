@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Agregar cuenta</title>
+<meta name="description" content="Agregar una cuenta nueva al catalogo PUC · Area de Finanzas de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../favicon.png?v=1">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=1">
+<link rel="stylesheet" href="finanzas.css?v=1">
+
+<!--
+  MAGANDHI · Area de Finanzas · Agregar cuenta al catalogo PUC (SOLO ADMIN).
+  Formulario conectado a la RPC security definer agregar_cuenta_puc: el
+  candado REAL es esa RPC (valida admin + formato + duplicado + padre para no
+  crear cuentas huerfanas). Esta pantalla solo aporta comodidad de UX:
+  sugiere naturaleza/nivel/imputable en vivo y oculta el formulario a
+  no-admin. Una cuenta imputable recien agregada aparece SOLA en el buscador
+  del Nuevo Asiento porque ambos leen la MISMA tabla puc_cuentas.
+-->
+</head>
+<body class="fz-body">
+
+<!-- Guardia reutilizable: sin sesion, redirige al login de la raiz. -->
+<script type="module" src="../auth-guard.js"></script>
+
+<main class="fz-wrap" id="fz-main" hidden>
+  <!-- Aviso solo-admin (comodidad de UX). Se muestra a no-admin en vez del form. -->
+  <div class="fz-denegado" id="fz-solo-admin" hidden>
+    <h2>Solo el administrador</h2>
+    <p>Agregar cuentas al catalogo PUC esta reservado al administrador,
+      para cuidar la integridad del Libro. Si necesitas una cuenta nueva,
+      pidesela a un administrador.</p>
+    <p style="margin-top:14px"><a href="puc.html">Volver al Catalogo PUC</a></p>
+  </div>
+
+  <!-- Formulario (solo visible para admin). -->
+  <form class="fz-panel" id="fz-form" autocomplete="off" hidden>
+    <div class="fz-field-row">
+      <div class="fz-field" style="max-width:240px">
+        <label for="fz-codigo">Codigo PUC</label>
+        <input class="fz-input" id="fz-codigo" type="text" inputmode="numeric"
+               placeholder="Ej. 110510" style="padding-left:14px" required>
+        <span class="fz-cuenta-nivel" id="fz-nivel-hint">Escribe un codigo de 1, 2, 4 o 6 digitos.</span>
+      </div>
+      <div class="fz-field">
+        <label for="fz-nombre">Nombre de la cuenta</label>
+        <input class="fz-input" id="fz-nombre" type="text"
+               placeholder="Ej. Cuentas de ahorro" style="padding-left:14px" required>
+      </div>
+    </div>
+
+    <!-- Ayuda de jerarquia: padre esperado (comodidad; la RPC es autoritativa). -->
+    <div class="fz-padre-hint" id="fz-padre-hint" hidden></div>
+
+    <div class="fz-field-row">
+      <div class="fz-field" style="max-width:240px">
+        <label>Naturaleza sugerida</label>
+        <span class="fz-nat-sugerida" id="fz-nat-sugerida">--</span>
+      </div>
+      <div class="fz-field" style="max-width:280px">
+        <label>Naturaleza (confirma o cambia)</label>
+        <div class="fz-radios" id="fz-nat-radios">
+          <label class="fz-radio"><input type="radio" name="fz-nat" value="debito"> Debito</label>
+          <label class="fz-radio"><input type="radio" name="fz-nat" value="credito"> Credito</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="fz-field">
+      <label class="fz-check">
+        <input type="checkbox" id="fz-imputable">
+        <span>Imputable (cuenta de detalle: se puede usar en un asiento)</span>
+      </label>
+      <span class="fz-cuenta-nivel" id="fz-imp-hint">Normalmente solo las subcuentas de 6 digitos son imputables.</span>
+    </div>
+
+    <div class="fz-acciones">
+      <button class="fz-btn-guardar" id="fz-guardar" type="submit">Agregar cuenta</button>
+      <span class="fz-msg" id="fz-msg"></span>
+    </div>
+  </form>
+</main>
+
+<script type="module">
+  import { supabase, asegurarAcceso, montarHeader, ICONOS, escaparHTML } from './finanzas-core.js';
+
+  const NIVEL_TXT = { 1: 'Clase', 2: 'Grupo', 4: 'Cuenta', 6: 'Subcuenta' };
+
+  const form = document.getElementById('fz-form');
+  const soloAdmin = document.getElementById('fz-solo-admin');
+  const codigoEl = document.getElementById('fz-codigo');
+  const nombreEl = document.getElementById('fz-nombre');
+  const nivelHint = document.getElementById('fz-nivel-hint');
+  const padreHint = document.getElementById('fz-padre-hint');
+  const natSugeridaEl = document.getElementById('fz-nat-sugerida');
+  const natRadios = document.getElementById('fz-nat-radios');
+  const impEl = document.getElementById('fz-imputable');
+  const guardarBtn = document.getElementById('fz-guardar');
+  const msgEl = document.getElementById('fz-msg');
+
+  // Clases de naturaleza debito (1,5,6,7,8) vs credito (2,3,4,9).
+  const CLASES_DEBITO = new Set(['1', '5', '6', '7', '8']);
+
+  // El usuario puede tocar naturaleza/imputable a mano: si lo hace, dejamos de
+  // sobreescribir su eleccion con la sugerencia automatica.
+  let natTocada = false;
+  let impTocada = false;
+
+  // Calcula el codigo del padre esperado segun la longitud (6->4, 4->2, 2->1).
+  function codigoPadre(codigo) {
+    switch (codigo.length) {
+      case 6: return codigo.slice(0, 4);
+      case 4: return codigo.slice(0, 2);
+      case 2: return codigo.slice(0, 1);
+      default: return null; // 1 digito (clase) no tiene padre
+    }
+  }
+
+  let tPadre;
+  async function actualizarSugerencias() {
+    const codigo = codigoEl.value.replace(/[^\d]/g, '');
+    if (codigoEl.value !== codigo) codigoEl.value = codigo; // solo digitos
+
+    // Naturaleza sugerida por la clase (primer digito).
+    const clase = codigo[0] || '';
+    const natSugerida = clase ? (CLASES_DEBITO.has(clase) ? 'debito' : 'credito') : '';
+    natSugeridaEl.textContent = natSugerida || '--';
+    natSugeridaEl.className = 'fz-nat-sugerida' + (natSugerida ? ' ' + natSugerida : '');
+    if (natSugerida && !natTocada) {
+      const r = natRadios.querySelector('input[value="' + natSugerida + '"]');
+      if (r) r.checked = true;
+    }
+
+    // Nivel derivado de la longitud (1=Clase, 2=Grupo, 4=Cuenta, 6=Subcuenta).
+    const len = codigo.length;
+    if (len === 0) {
+      nivelHint.textContent = 'Escribe un codigo de 1, 2, 4 o 6 digitos.';
+      nivelHint.className = 'fz-cuenta-nivel';
+    } else if (NIVEL_TXT[len]) {
+      nivelHint.textContent = 'Nivel: ' + NIVEL_TXT[len] + ' (' + len + ' digitos)';
+      nivelHint.className = 'fz-cuenta-nivel ok';
+    } else {
+      nivelHint.textContent = 'Longitud no valida: usa 1, 2, 4 o 6 digitos.';
+      nivelHint.className = 'fz-cuenta-nivel err';
+    }
+
+    // Imputable sugerido: true solo para 6 digitos (nivel de detalle).
+    if (!impTocada) impEl.checked = (len === 6);
+
+    // Ayuda de padre (opcional): solo para codigos de longitud valida > 1.
+    const padre = NIVEL_TXT[len] && len > 1 ? codigoPadre(codigo) : null;
+    if (!padre) {
+      padreHint.hidden = true;
+      padreHint.textContent = '';
+      return;
+    }
+    clearTimeout(tPadre);
+    tPadre = setTimeout(async () => {
+      // Reconfirmar que el codigo no cambio mientras esperabamos el debounce.
+      if (codigoEl.value.replace(/[^\d]/g, '') !== codigo) return;
+      const { data, error } = await supabase
+        .from('puc_cuentas')
+        .select('codigo, nombre')
+        .eq('codigo', padre)
+        .maybeSingle();
+      if (error) { padreHint.hidden = true; return; }
+      padreHint.hidden = false;
+      if (data) {
+        // Texto de la base pintado via innerHTML: SIEMPRE escaparHTML (anti-XSS).
+        padreHint.className = 'fz-padre-hint ok';
+        padreHint.innerHTML = 'Cuenta padre: <strong>' + escaparHTML(data.codigo) +
+          '</strong> ' + escaparHTML(data.nombre || '');
+      } else {
+        padreHint.className = 'fz-padre-hint err';
+        padreHint.innerHTML = 'Falta la cuenta padre <strong>' + escaparHTML(padre) +
+          '</strong>. Primero debe existir para no crear una cuenta huerfana.';
+      }
+    }, 220);
+  }
+
+  codigoEl.addEventListener('input', actualizarSugerencias);
+  natRadios.addEventListener('change', () => { natTocada = true; });
+  impEl.addEventListener('change', () => { impTocada = true; });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msgEl.textContent = '';
+    msgEl.className = 'fz-msg';
+
+    const p_codigo = codigoEl.value.replace(/[^\d]/g, '');
+    const p_nombre = nombreEl.value.trim();
+    const natElegida = natRadios.querySelector('input[name="fz-nat"]:checked');
+    const p_naturaleza = natElegida ? natElegida.value : '';
+    const p_imputable = impEl.checked;
+
+    // Validacion cliente minima (comodidad; la RPC revalida y es el candado real).
+    if (!p_codigo) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'Escribe el codigo PUC.'; return; }
+    if (!p_nombre) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'El nombre de la cuenta es obligatorio.'; return; }
+    if (!p_naturaleza) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'Confirma la naturaleza (debito o credito).'; return; }
+
+    guardarBtn.disabled = true;
+    guardarBtn.textContent = 'Agregando...';
+    try {
+      const { data, error } = await supabase.rpc('agregar_cuenta_puc', {
+        p_codigo, p_nombre, p_naturaleza, p_imputable
+      });
+      if (error) throw error;
+
+      // La RPC devuelve el codigo insertado. Una cuenta imputable ya aparece
+      // sola en el buscador del Nuevo Asiento (misma tabla puc_cuentas).
+      msgEl.className = 'fz-msg ok';
+      msgEl.textContent = '\u2713 Cuenta ' + (data || p_codigo) +
+        ' agregada. Ya aparece en el buscador del Nuevo Asiento.';
+      // Limpiar el formulario para otra cuenta.
+      form.reset();
+      natTocada = false;
+      impTocada = false;
+      actualizarSugerencias();
+    } catch (err) {
+      // Mensaje de la RPC tal cual (ya es claro y amable en espanol).
+      msgEl.className = 'fz-msg err';
+      msgEl.textContent = err?.message || 'No se pudo agregar la cuenta.';
+    } finally {
+      guardarBtn.disabled = false;
+      guardarBtn.textContent = 'Agregar cuenta';
+    }
+  });
+
+  (async () => {
+    const acceso = await asegurarAcceso(document.body);
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Agregar cuenta',
+      kicker: 'CATALOGO PUC · NUEVA CUENTA',
+      lead: 'Agrega una cuenta al Plan Unico de Cuentas. Se valida la jerarquia para no crear cuentas huerfanas; una cuenta imputable nueva aparece de inmediato en el Nuevo Asiento.',
+      sesion: acceso.sesion,
+      volverHref: 'puc.html',
+      volverTexto: 'Catalogo PUC'
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    // GATE SOLO-ADMIN (comodidad de UX; el candado REAL es la RPC server-side,
+    // que rechaza a cualquiera que no sea admin aunque manipule el DOM).
+    if (acceso.perfil.rol === 'admin') {
+      form.hidden = false;
+      actualizarSugerencias();
+    } else {
+      soloAdmin.hidden = false;
+    }
+
+    document.getElementById('fz-main').hidden = false;
+  })();
+</script>
+
+</body>
+</html>

@@ -134,6 +134,13 @@ ORDEN, el contenido completo de cada archivo (cada uno con su propio **Run**):
    `saldos_cuenta` (lo unico que el cliente lee directo). NO abre
    INSERT/UPDATE/DELETE (toda escritura va por RPC security definer) ni concede
    nada a `anon`. La seguridad real sigue siendo RLS + las RPC.
+9. `supabase/migrations/20250201000800_finanzas_agregar_cuenta.sql`
+   Crea la RPC security definer `agregar_cuenta_puc(codigo, nombre, naturaleza,
+   imputable)`, que es la UNICA via de escritura del catalogo PUC desde el
+   software (la pantalla "Agregar cuenta"). Valida SOLO admin + formato +
+   duplicado + existencia del padre (jerarquia) para no crear cuentas
+   huerfanas. Como usa `create or replace`, si en el futuro la ajustas basta
+   con **volver a ejecutar solo este archivo**, sin tocar los demas.
 
 Los archivos son idempotentes (`create ... if not exists`, `on conflict do
 update`, `create or replace`, `drop policy if exists`): si algo falla a mitad,
@@ -264,3 +271,53 @@ no existe) y luego la subcuenta, con la naturaleza de su clase
 (clases 1,5,6,7,8 -> debito; 2,3,4,9 -> credito; salvo cuentas correctoras) e
 `imputable=true` solo en el nivel de detalle. **Nunca inventes codigos:** usa
 los codigos oficiales del Decreto 2650.
+
+Ahora, ademas de esa plantilla SQL, tienes la opcion mas comoda: **agregar
+cuentas desde el propio software** (ver F6), sin abrir el SQL Editor.
+
+## F6. Agregar cuentas al PUC desde el software (solo admin)
+
+Ya no necesitas tocar SQL para anadir una cuenta nueva: hay una pantalla dentro
+del modulo de Finanzas. **Solo el administrador puede usarla.** Este es un
+doble control: la interfaz oculta la opcion a los no-admin (comodidad), y la
+RPC `agregar_cuenta_puc` (archivo 9 de F1) **rechaza** la operacion en el
+servidor si quien la ejecuta no es admin (ese es el candado real; no depende de
+lo que muestre el navegador).
+
+**Como abrirla:** entra al modulo Finanzas, ve a **Catalogo PUC** y pulsa
+**Agregar cuenta** (el enlace solo aparece si eres admin). Tambien hay una
+tarjeta "Agregar cuenta" en la home del modulo, tambien solo para admin.
+
+**Que valida (cuida la integridad del Libro):** la RPC comprueba el formato del
+codigo (solo digitos, longitud 1/2/4/6), que la naturaleza sea debito o credito,
+que el nombre no este vacio, que la cuenta no exista ya y, sobre todo, **que
+exista la cuenta padre** segun la jerarquia (6->4->2->1). Asi **no se crean
+cuentas huerfanas** que romperian el Libro Mayor. La pantalla ademas sugiere en
+vivo la naturaleza por clase, el nivel por la longitud y marca imputable para
+los codigos de 6 digitos; todo sigue siendo confirmable por ti.
+
+**Prueba manual (agregar y verla en el Nuevo Asiento):**
+
+1. Como admin, abre **Catalogo PUC > Agregar cuenta**.
+2. Agrega una subcuenta imputable de prueba **cuyo padre ya exista**. Por
+   ejemplo `110599` (nombre "Otras cajas de prueba"): su padre es `1105`, que
+   ya esta cargado. Deja la naturaleza sugerida (debito) e imputable marcado.
+   Debe aparecer el mensaje verde "✓ Cuenta 110599 agregada...".
+3. Ve a **Nuevo asiento** y en el buscador de cuenta escribe `110599` (o parte
+   del nombre). **Debe aparecer** en la lista para poder contabilizarla: la
+   pantalla de agregar y la de Nuevo Asiento leen la MISMA tabla `puc_cuentas`,
+   asi que una cuenta imputable nueva aparece de inmediato, sin pasos extra.
+
+**Prueba de rechazo (ver la validacion de jerarquia):**
+
+- Vuelve a **Agregar cuenta** e intenta agregar un codigo cuyo padre NO exista,
+  por ejemplo `9995` (su padre seria el grupo `99`, que no esta cargado). La RPC
+  lo **rechaza** con un mensaje como *"Primero debe existir la cuenta padre 99.
+  No se pueden crear cuentas huerfanas."*. Tambien puedes probar a repetir un
+  codigo existente (ej. `110505`) para ver el mensaje de duplicado. Asi
+  compruebas que el candado server-side protege el Libro aunque la interfaz
+  falle.
+
+> Como la RPC usa `create or replace`, si mas adelante ajustas su logica basta
+> con **volver a ejecutar solo el archivo 9**
+> (`20250201000800_finanzas_agregar_cuenta.sql`), sin tocar los demas.

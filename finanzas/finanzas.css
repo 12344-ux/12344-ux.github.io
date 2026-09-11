@@ -146,6 +146,9 @@ body.fz-body{
 /* ============================================================
    BUSCADOR (input con lupa)
    ============================================================ */
+/* Barra superior del catalogo: buscador + acceso admin a Agregar cuenta */
+.fz-puc-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.fz-puc-top .fz-search{flex:1;min-width:240px}
 .fz-search{position:relative;max-width:520px}
 .fz-search .fz-search-ico{
   position:absolute;left:12px;top:50%;transform:translateY(-50%);
@@ -318,6 +321,49 @@ body.fz-body{
 .fz-msg{font-size:13px}
 .fz-msg.ok{color:var(--fz-salvia)}
 .fz-msg.err{color:var(--fz-debe)}
+
+/* ============================================================
+   AGREGAR CUENTA AL PUC (solo admin)
+   ------------------------------------------------------------
+   Reutiliza fz-panel / fz-field / fz-input / fz-btn-guardar / fz-msg.
+   Aqui solo se anaden: los hints de nivel/padre, el chip de naturaleza
+   sugerida, los radios de naturaleza y el checkbox de imputable.
+   ============================================================ */
+.fz-cuenta-nivel{font-size:12px;color:var(--fz-gris)}
+.fz-cuenta-nivel.ok{color:var(--fz-salvia)}
+.fz-cuenta-nivel.err{color:var(--fz-debe)}
+
+/* Ayuda de jerarquia (padre esperado) */
+.fz-padre-hint{
+  display:flex;align-items:flex-start;gap:8px;
+  font-size:13px;border-radius:10px;padding:10px 14px;margin-bottom:16px;
+}
+.fz-padre-hint.ok{color:var(--fz-marino);background:rgba(16,28,51,.05)}
+.fz-padre-hint.err{color:var(--fz-debe);background:rgba(166,51,46,.08);
+  border:1px solid rgba(166,51,46,.25)}
+
+/* Chip de naturaleza sugerida (misma paleta que fz-nat del catalogo) */
+.fz-nat-sugerida{
+  display:inline-flex;align-items:center;align-self:flex-start;
+  font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:999px;padding:5px 12px;
+  color:var(--fz-gris);background:rgba(16,28,51,.06);
+}
+.fz-nat-sugerida.debito{color:var(--fz-debe);background:rgba(166,51,46,.10)}
+.fz-nat-sugerida.credito{color:var(--fz-haber);background:rgba(27,42,71,.10)}
+
+/* Radios de naturaleza y checkbox imputable */
+.fz-radios{display:flex;gap:10px;flex-wrap:wrap}
+.fz-radio,.fz-check{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:14px;color:var(--fz-carbon);cursor:pointer;
+}
+.fz-radio{
+  border:1px solid var(--fz-linea);border-radius:10px;padding:9px 14px;
+  background:var(--fz-tarjeta);
+}
+.fz-radio input,.fz-check input{accent-color:var(--fz-marino);cursor:pointer}
+.fz-check{margin-bottom:6px}
 
 /* ============================================================
    LIBRO DIARIO

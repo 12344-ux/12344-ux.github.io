@@ -49,6 +49,14 @@
       <h3>Catalogo PUC</h3>
       <p>Explora el Plan Unico de Cuentas con buscador y cuentas mas usadas.</p>
     </a>
+    <!-- Tarjeta solo-admin: agregar cuentas al PUC. Oculta por defecto y
+         revelada solo si perfil.rol === 'admin' (comodidad de UX; el candado
+         real es la RPC agregar_cuenta_puc). -->
+    <a class="fz-card" href="agregar-cuenta.html" id="fz-card-agregar" hidden>
+      <span class="fz-card-ico" data-ico="mas"></span>
+      <h3>Agregar cuenta</h3>
+      <p>Anade una cuenta nueva al catalogo PUC validando la jerarquia. Solo administrador.</p>
+    </a>
   </div>
 </main>
 
@@ -66,6 +74,13 @@
       lead: 'Contabilidad manual respaldada por el PUC colombiano. Todo lo que registras en el diario se enlaza solo al lugar correcto.',
       sesion: acceso.sesion
     });
+
+    // Solo el admin ve la tarjeta de "Agregar cuenta" (comodidad de UX; el
+    // candado real es la RPC server-side).
+    if (acceso.perfil.rol === 'admin') {
+      const cardAgregar = document.getElementById('fz-card-agregar');
+      if (cardAgregar) cardAgregar.hidden = false;
+    }
 
     // Iconos de las tarjetas
     document.querySelectorAll('[data-ico]').forEach((el) => {
