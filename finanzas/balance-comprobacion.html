@@ -374,6 +374,15 @@
   btnExcel.addEventListener('click', descargarExcel);
   inputFecha.addEventListener('keydown', (e) => { if (e.key === 'Enter') generar(); });
 
+  // Si el usuario cambia la fecha de corte sin volver a Generar, las descargas
+  // dejarian de coincidir con el informe visible (exportarian el corte viejo).
+  // Se deshabilitan hasta que se regenere para el nuevo corte.
+  function revisarCoherenciaCorte() {
+    if (inputFecha.value !== estado.fecha) habilitarDescargas(false);
+  }
+  inputFecha.addEventListener('input', revisarCoherenciaCorte);
+  inputFecha.addEventListener('change', revisarCoherenciaCorte);
+
   (async () => {
     const acceso = await asegurarAcceso(document.body);
     if (!acceso) return;
