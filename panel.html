@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Panel interno</title>
+<meta name="description" content="Panel interno de Magandhi Corporation.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="favicon.png?v=1">
+<link rel="apple-touch-icon" href="icono-app-180.png?v=1">
+<meta name="theme-color" content="#A6332E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="marca.css?v=1">
+
+<!--
+  MAGANDHI · PANEL interno protegido (montaguth.institute).
+  · Protegido por auth-guard.js: sin sesion valida, redirige al login.
+    Recordatorio: el redirect es comodidad de UX; la seguridad real
+    esta en RLS sobre los datos (ver supabase-config.js / migraciones).
+  · Cascaron: solo bienvenida y un espacio preparado para modulos
+    futuros. Todavia NO hay modulos funcionales (Pedidos, etc.).
+  · Reutiliza el sistema de marca (marca.css, wordmark, Poppins, terracota).
+  · Prefijo mg- para el CSS especifico de esta pagina.
+-->
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;min-height:100%}
+  body{
+    background:var(--hueso);
+    color:var(--tinta);
+    font-family:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    line-height:1.6;-webkit-font-smoothing:antialiased;
+    min-height:100vh;display:flex;flex-direction:column;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(60% 55% at 50% 0%, rgba(166,51,46,.05) 0%, rgba(166,51,46,0) 70%),
+      radial-gradient(50% 50% at 50% 100%, rgba(17,17,17,.03) 0%, rgba(17,17,17,0) 70%);
+  }
+
+  /* barra superior de marca */
+  .mg-top{
+    position:relative;z-index:1;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:16px 24px;
+    border-bottom:1px solid var(--linea);
+    background:var(--hueso);
+  }
+  .mg-top-brand{display:flex;align-items:center;gap:12px}
+  .mg-top-logo{width:34px;height:34px;display:block}
+  .mg-word{
+    font-weight:600;font-size:18px;letter-spacing:.16em;color:var(--negro);
+    line-height:1;
+  }
+  .mg-word em{font-style:normal;color:var(--rojo)}
+
+  /* boton cerrar sesion: sobrio, contorno terracota */
+  .mg-logout{
+    font-family:inherit;font-size:13px;font-weight:600;letter-spacing:.02em;
+    color:var(--rojo);background:transparent;
+    border:1px solid var(--red-100);border-radius:999px;
+    padding:8px 16px;cursor:pointer;
+    transition:background-color .15s ease, color .15s ease;
+  }
+  .mg-logout:hover{background:var(--rojo);color:#fff;border-color:var(--rojo)}
+
+  .mg-wrap{
+    position:relative;z-index:1;flex:1;
+    width:100%;max-width:760px;margin:0 auto;
+    padding:40px 24px;
+    display:flex;flex-direction:column;gap:26px;
+  }
+
+  /* bienvenida */
+  .mg-hello{display:flex;flex-direction:column;gap:6px}
+  .mg-hello h1{
+    margin:0;font-size:clamp(21px,3vw,26px);font-weight:600;color:var(--negro);
+  }
+  .mg-hello p{margin:0;font-size:14px;color:var(--gris)}
+  .mg-hello strong{color:var(--negro);font-weight:600}
+  /* chip de rol: dorado como detalle minimo */
+  .mg-role{
+    display:inline-flex;align-items:center;
+    font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--acento);border:1px solid var(--acento);
+    border-radius:999px;padding:3px 11px;width:fit-content;
+    background:transparent;
+  }
+  .mg-role:empty{display:none}
+
+  /* filete dorado minimo */
+  .mg-rule{width:44px;height:2px;border-radius:2px;background:var(--acento);opacity:.9}
+
+  /* area placeholder de modulos futuros */
+  .mg-modules{
+    border:1px dashed var(--red-100);border-radius:16px;
+    background:var(--red-50);
+    padding:34px 24px;text-align:center;
+    display:flex;flex-direction:column;align-items:center;gap:10px;
+  }
+  .mg-modules svg{width:26px;height:26px;color:var(--rojo);opacity:.7}
+  .mg-modules h2{
+    margin:0;font-size:15px;font-weight:600;letter-spacing:.02em;color:var(--negro);
+  }
+  .mg-modules p{margin:0;max-width:420px;font-size:13px;color:var(--gris)}
+
+  .mg-foot{
+    position:relative;z-index:1;
+    padding:22px 24px 28px;text-align:center;
+    font-size:11.5px;letter-spacing:.06em;color:var(--gris-cl);
+  }
+  .mg-foot span{color:var(--rojo)}
+</style>
+</head>
+<body>
+
+<!-- Guardia reutilizable: sin sesion valida, redirige a index.html (login). -->
+<script type="module" src="auth-guard.js"></script>
+
+<header class="mg-top">
+  <div class="mg-top-brand">
+    <img class="mg-top-logo" src="logo-mark-terracota.png" alt="Magandhi">
+    <div class="mg-word">M<em>A</em>GANDHI</div>
+  </div>
+  <button class="mg-logout" id="mg-logout" type="button">Cerrar sesion</button>
+</header>
+
+<main class="mg-wrap">
+  <section class="mg-hello">
+    <span class="mg-role" id="mg-role"></span>
+    <h1>Panel interno</h1>
+    <p>Sesion iniciada como <strong id="mg-email">...</strong></p>
+    <div class="mg-rule"></div>
+  </section>
+
+  <section class="mg-modules">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg>
+    <h2>Espacio preparado para modulos futuros</h2>
+    <p>Aqui apareceran las herramientas internas (por ejemplo, Pedidos)
+       a medida que se habiliten. Por ahora este es el cascaron protegido.</p>
+  </section>
+</main>
+
+<footer class="mg-foot">
+  &copy; <span>Magandhi Corporation</span> · Uso interno
+</footer>
+
+<script type="module">
+  import { supabase } from './supabase-config.js';
+  import { exigirSesion, obtenerPerfil } from './auth-guard.js';
+
+  const emailEl = document.getElementById('mg-email');
+  const roleEl  = document.getElementById('mg-role');
+
+  (async () => {
+    const sesion = await exigirSesion();
+    if (!sesion) return; // auth-guard ya redirige al login
+
+    emailEl.textContent = sesion.user?.email ?? 'usuario interno';
+
+    // El rol es un extra: si RLS o la red no lo permiten, el panel sigue.
+    try {
+      const perfil = await obtenerPerfil();
+      if (perfil?.rol) roleEl.textContent = perfil.rol;
+    } catch (_) { /* rol opcional */ }
+  })();
+
+  document.getElementById('mg-logout').addEventListener('click', async () => {
+    try { await supabase.auth.signOut(); } catch (_) { /* ignorar */ }
+    window.location.replace('index.html');
+  });
+</script>
+
+</body>
+</html>
