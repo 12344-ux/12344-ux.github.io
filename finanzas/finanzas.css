@@ -1,0 +1,516 @@
+/* ============================================================
+   MAGANDHI · MODULO FINANZAS · Tokens y estilos de area
+   ------------------------------------------------------------
+   Extiende la paleta base de marca.css (terracota + crema) con los
+   tokens del AREA DE FINANZAS. Se carga DESPUES de marca.css.
+
+   IDENTIDAD DEL AREA (aprobada por el dueno):
+   · Header institucional AZUL MARINO (#101C33), etiqueta 'AREA DE
+     FINANZAS' en azul claro.
+   · CODIGO DE COLOR CONTABLE (no negociable):
+       DEBE  = terracota  #A6332E (reutiliza --rojo de marca.css)
+       HABER = azul marino #1B2A47
+   · Estado 'Cuadrado' en verde salvia.
+   · Densidad de trabajo: mas compacta que la tienda.
+   · Montos SIEMPRE con font-variant-numeric: tabular-nums.
+
+   Prefijo de clase: fz-
+   ============================================================ */
+:root{
+  --fz-marino:#101C33;        /* header institucional */
+  --fz-haber:#1B2A47;         /* HABER (azul marino) */
+  --fz-azul-cl:#8FA3C4;       /* etiqueta 'AREA DE FINANZAS' */
+  --fz-crema:#F7F3EC;         /* fondo de trabajo */
+  --fz-carbon:#2A2622;        /* texto principal */
+  --fz-gris:#8A8578;          /* gris de apoyo */
+  --fz-debe:var(--rojo);      /* DEBE = terracota (reusa marca.css) */
+  --fz-salvia:#5B8A6F;        /* verde salvia: estado 'Cuadrado' */
+  --fz-salvia-bg:#E7F0EA;     /* fondo suave del estado cuadrado */
+  --fz-linea:rgba(16,28,51,.12);
+  --fz-tarjeta:#FFFFFF;
+  --fz-radio:14px;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body.fz-body{
+  background:var(--fz-crema);
+  color:var(--fz-carbon);
+  font-family:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  line-height:1.55;-webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+
+/* Montos: siempre tabular para alinear cifras */
+.fz-num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ============================================================
+   HEADER INSTITUCIONAL FIJO
+   ============================================================ */
+.fz-header{
+  position:sticky;top:0;z-index:50;
+  background:var(--fz-marino);color:#fff;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:12px 24px;
+  box-shadow:0 2px 10px rgba(16,28,51,.18);
+}
+.fz-header-left{display:flex;align-items:center;gap:14px;min-width:0}
+.fz-logo{width:34px;height:34px;display:block;flex:none}
+.fz-word{
+  font-weight:600;font-size:17px;letter-spacing:.22em;color:#fff;line-height:1;
+}
+.fz-sep{
+  width:1px;height:26px;background:rgba(143,163,196,.4);flex:none;
+}
+.fz-area{
+  font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--fz-azul-cl);white-space:nowrap;
+}
+.fz-header-right{display:flex;align-items:center;gap:14px}
+.fz-icon-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:36px;height:36px;border-radius:10px;
+  background:rgba(143,163,196,.14);border:0;color:var(--fz-azul-cl);
+  cursor:pointer;transition:background-color .15s ease;
+  text-decoration:none;
+}
+.fz-icon-btn:hover{background:rgba(143,163,196,.28);color:#fff}
+.fz-icon-btn svg{width:20px;height:20px}
+.fz-avatar{
+  width:36px;height:36px;border-radius:50%;flex:none;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--fz-debe);color:#fff;
+  font-weight:600;font-size:15px;letter-spacing:.02em;
+  text-transform:uppercase;
+}
+
+/* ============================================================
+   ENCABEZADO EDITORIAL DE PANTALLA (bajo el header)
+   ============================================================ */
+.fz-screen-head{
+  max-width:1080px;margin:0 auto;
+  padding:26px 24px 6px;
+}
+.fz-kicker{
+  margin:0 0 6px;
+  font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--fz-debe);
+}
+.fz-title{
+  margin:0;font-size:clamp(22px,3vw,30px);font-weight:600;
+  color:var(--fz-marino);letter-spacing:-.01em;
+}
+.fz-lead{margin:8px 0 0;font-size:14px;color:var(--fz-gris);max-width:60ch}
+
+/* Contenedor general de trabajo */
+.fz-wrap{max-width:1080px;margin:0 auto;padding:18px 24px 60px}
+
+/* Aviso de acceso denegado */
+.fz-denegado{
+  max-width:560px;margin:60px auto;padding:34px 28px;text-align:center;
+  background:var(--fz-tarjeta);border:1px solid var(--fz-linea);
+  border-radius:var(--fz-radio);
+}
+.fz-denegado h2{margin:0 0 8px;color:var(--fz-debe);font-size:18px}
+.fz-denegado p{margin:0;color:var(--fz-gris);font-size:14px}
+.fz-denegado a{color:var(--fz-marino);font-weight:600}
+
+/* ============================================================
+   TARJETAS DE NAVEGACION (home del area)
+   ============================================================ */
+.fz-cards{
+  display:grid;gap:16px;
+  grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+}
+.fz-card{
+  display:flex;flex-direction:column;gap:10px;
+  background:var(--fz-tarjeta);border:1px solid var(--fz-linea);
+  border-radius:var(--fz-radio);padding:20px;
+  text-decoration:none;color:inherit;
+  transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.fz-card:hover{
+  transform:translateY(-2px);
+  box-shadow:0 8px 22px rgba(16,28,51,.10);
+  border-color:var(--fz-azul-cl);
+}
+.fz-card-ico{
+  width:42px;height:42px;border-radius:11px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(16,28,51,.06);color:var(--fz-marino);
+}
+.fz-card-ico svg{width:22px;height:22px}
+.fz-card h3{margin:0;font-size:16px;font-weight:600;color:var(--fz-marino)}
+.fz-card p{margin:0;font-size:13px;color:var(--fz-gris)}
+
+/* ============================================================
+   BUSCADOR (input con lupa)
+   ============================================================ */
+.fz-search{position:relative;max-width:520px}
+.fz-search .fz-search-ico{
+  position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  color:var(--fz-gris);pointer-events:none;
+}
+.fz-search .fz-search-ico svg{width:18px;height:18px;display:block}
+.fz-input{
+  width:100%;font-family:inherit;font-size:14px;color:var(--fz-carbon);
+  background:var(--fz-tarjeta);border:1px solid var(--fz-linea);
+  border-radius:10px;padding:11px 14px 11px 38px;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+.fz-input:focus{
+  outline:0;border-color:var(--fz-marino);
+  box-shadow:0 0 0 3px rgba(16,28,51,.10);
+}
+
+/* ============================================================
+   TARJETAS PUC (catalogo)
+   ============================================================ */
+.fz-puc-list{display:grid;gap:10px;margin-top:18px}
+.fz-puc{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  background:var(--fz-tarjeta);border:1px solid var(--fz-linea);
+  border-radius:var(--fz-radio);padding:12px 16px;
+}
+.fz-badge{
+  font-variant-numeric:tabular-nums;
+  font-size:13px;font-weight:600;letter-spacing:.03em;
+  color:var(--fz-marino);background:rgba(16,28,51,.07);
+  border-radius:999px;padding:5px 12px;flex:none;
+}
+.fz-puc-nombre{flex:1;min-width:180px;font-size:14px;color:var(--fz-carbon)}
+.fz-puc-meta{display:flex;align-items:center;gap:8px;flex:none}
+.fz-nivel{font-size:11px;color:var(--fz-gris);letter-spacing:.04em}
+.fz-nat{
+  font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:999px;padding:3px 10px;
+}
+.fz-nat.debito{color:var(--fz-debe);background:rgba(166,51,46,.10)}
+.fz-nat.credito{color:var(--fz-haber);background:rgba(27,42,71,.10)}
+.fz-puc.no-imputable{opacity:.62}
+.fz-hint{font-size:12px;color:var(--fz-gris);margin:14px 0 4px}
+.fz-empty{color:var(--fz-gris);font-size:14px;padding:24px 4px;text-align:center}
+
+/* ============================================================
+   FORMULARIO NUEVO ASIENTO
+   ============================================================ */
+.fz-panel{
+  background:var(--fz-tarjeta);border:1px solid var(--fz-linea);
+  border-radius:var(--fz-radio);padding:20px;
+}
+.fz-field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.fz-field label{
+  font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--fz-gris);
+}
+.fz-field-row{display:flex;gap:16px;flex-wrap:wrap}
+.fz-field-row .fz-field{flex:1;min-width:200px}
+
+/* grid de lineas */
+.fz-lineas{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.fz-linea-head,.fz-linea{
+  display:grid;
+  grid-template-columns:minmax(210px,2.2fr) minmax(140px,1.4fr) 140px 140px 40px;
+  gap:10px;align-items:center;
+}
+.fz-linea-head{
+  padding:0 2px;
+  font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--fz-gris);
+}
+.fz-linea-head .col-debe{color:var(--fz-debe)}
+.fz-linea-head .col-haber{color:var(--fz-haber)}
+.fz-cell{position:relative}
+.fz-cell input{
+  width:100%;font-family:inherit;font-size:14px;color:var(--fz-carbon);
+  background:var(--fz-tarjeta);border:1px solid var(--fz-linea);
+  border-radius:9px;padding:10px 12px;
+}
+.fz-cell input:focus{outline:0;border-color:var(--fz-marino);
+  box-shadow:0 0 0 3px rgba(16,28,51,.10)}
+/* cuenta con lupa */
+.fz-cell.cuenta input{padding-left:34px}
+.fz-cell.cuenta .fz-search-ico{
+  position:absolute;left:10px;top:50%;transform:translateY(-50%);
+  color:var(--fz-gris);pointer-events:none;
+}
+.fz-cell.cuenta .fz-search-ico svg{width:16px;height:16px;display:block}
+/* montos con codigo de color contable */
+.fz-cell.debe input{
+  border-color:rgba(166,51,46,.45);color:var(--fz-debe);text-align:right;
+  font-variant-numeric:tabular-nums;font-weight:600;
+}
+.fz-cell.debe input:focus{border-color:var(--fz-debe);
+  box-shadow:0 0 0 3px rgba(166,51,46,.12)}
+.fz-cell.haber input{
+  border-color:rgba(27,42,71,.45);color:var(--fz-haber);text-align:right;
+  font-variant-numeric:tabular-nums;font-weight:600;
+}
+.fz-cell.haber input:focus{border-color:var(--fz-haber);
+  box-shadow:0 0 0 3px rgba(27,42,71,.12)}
+.fz-del{
+  width:36px;height:36px;border-radius:9px;border:1px solid var(--fz-linea);
+  background:var(--fz-tarjeta);color:var(--fz-gris);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.fz-del:hover{color:var(--fz-debe);border-color:rgba(166,51,46,.4)}
+.fz-del svg{width:16px;height:16px}
+
+/* autocompletar cuenta (dropdown) */
+.fz-cuenta-sug{
+  position:absolute;z-index:30;left:0;right:0;top:calc(100% + 4px);
+  background:var(--fz-tarjeta);border:1px solid var(--fz-linea);
+  border-radius:10px;box-shadow:0 10px 26px rgba(16,28,51,.16);
+  max-height:260px;overflow:auto;display:none;
+}
+.fz-cuenta-sug.open{display:block}
+.fz-sug-item{
+  display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;
+  border-bottom:1px solid var(--fz-linea);
+}
+.fz-sug-item:last-child{border-bottom:0}
+.fz-sug-item:hover,.fz-sug-item.active{background:rgba(16,28,51,.05)}
+.fz-sug-item .fz-badge{font-size:12px;padding:3px 9px}
+.fz-sug-nombre{font-size:13px;color:var(--fz-carbon)}
+
+.fz-btn-linea{
+  margin-top:14px;
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:inherit;font-size:13px;font-weight:600;
+  color:var(--fz-marino);background:transparent;
+  border:1px dashed var(--fz-azul-cl);border-radius:10px;
+  padding:9px 16px;cursor:pointer;
+}
+.fz-btn-linea:hover{background:rgba(16,28,51,.05)}
+.fz-btn-linea svg{width:16px;height:16px}
+
+/* Totales / cuadre */
+.fz-totales{
+  display:flex;flex-wrap:wrap;align-items:center;gap:20px;
+  margin-top:22px;padding-top:18px;border-top:1px solid var(--fz-linea);
+}
+.fz-total{display:flex;flex-direction:column;gap:2px}
+.fz-total .lbl{
+  font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--fz-gris);
+}
+.fz-total .val{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums}
+.fz-total.debe .val{color:var(--fz-debe)}
+.fz-total.haber .val{color:var(--fz-haber)}
+.fz-total.dif .val{color:var(--fz-carbon)}
+.fz-estado{
+  margin-left:auto;display:inline-flex;align-items:center;gap:8px;
+  font-size:13px;font-weight:600;border-radius:999px;padding:7px 15px;
+}
+.fz-estado.cuadra{color:var(--fz-salvia);background:var(--fz-salvia-bg)}
+.fz-estado.no-cuadra{color:var(--fz-debe);background:rgba(166,51,46,.10)}
+.fz-estado svg{width:16px;height:16px}
+
+.fz-acciones{display:flex;gap:12px;align-items:center;margin-top:22px}
+.fz-btn-guardar{
+  font-family:inherit;font-size:15px;font-weight:600;letter-spacing:.02em;
+  color:#fff;background:var(--fz-debe);
+  border:0;border-radius:11px;padding:13px 26px;cursor:pointer;
+  transition:background-color .15s ease, opacity .15s ease;
+}
+.fz-btn-guardar:hover:not(:disabled){background:var(--rojo-osc)}
+.fz-btn-guardar:disabled{opacity:.45;cursor:not-allowed}
+.fz-msg{font-size:13px}
+.fz-msg.ok{color:var(--fz-salvia)}
+.fz-msg.err{color:var(--fz-debe)}
+
+/* ============================================================
+   LIBRO DIARIO
+   ============================================================ */
+.fz-asiento{
+  background:var(--fz-tarjeta);border:1px solid var(--fz-linea);
+  border-radius:var(--fz-radio);padding:16px 18px;margin-bottom:14px;
+}
+.fz-asiento.anulado{opacity:.72;background:repeating-linear-gradient(
+  -45deg,rgba(166,51,46,.03),rgba(166,51,46,.03) 10px,transparent 10px,transparent 20px)}
+.fz-asiento-top{
+  display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  flex-wrap:wrap;margin-bottom:10px;
+}
+.fz-asiento-fecha{
+  font-variant-numeric:tabular-nums;font-weight:600;color:var(--fz-marino);
+  font-size:14px;
+}
+.fz-asiento-desc{flex:1;min-width:180px;font-size:14px;color:var(--fz-carbon)}
+.fz-tag-anulado{
+  font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--fz-debe);background:rgba(166,51,46,.12);
+  border-radius:999px;padding:3px 10px;
+}
+.fz-tabla{width:100%;border-collapse:collapse}
+.fz-tabla th{
+  text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--fz-gris);
+  padding:6px 8px;border-bottom:1px solid var(--fz-linea);
+}
+.fz-tabla th.num{text-align:right}
+.fz-tabla td{
+  font-size:13.5px;color:var(--fz-carbon);padding:8px;
+  border-bottom:1px solid var(--fz-linea);vertical-align:top;
+}
+.fz-tabla tr:last-child td{border-bottom:0}
+.fz-tabla td.num{text-align:right;font-variant-numeric:tabular-nums}
+.fz-tabla td.debe{color:var(--fz-debe);font-weight:600}
+.fz-tabla td.haber{color:var(--fz-haber);font-weight:600}
+.fz-tabla .cod{font-variant-numeric:tabular-nums;color:var(--fz-marino);font-weight:600}
+.fz-tabla tfoot td{font-weight:600;border-top:2px solid var(--fz-linea)}
+
+/* ============================================================
+   LIBRO MAYOR
+   ============================================================ */
+.fz-mayor-nota{
+  display:flex;align-items:center;gap:10px;
+  font-size:13px;color:var(--fz-gris);
+  background:rgba(16,28,51,.04);border-radius:10px;padding:11px 14px;
+  margin:16px 0;
+}
+.fz-mayor-nota svg{width:18px;height:18px;color:var(--fz-marino);flex:none}
+.fz-saldo-final{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;
+  margin-top:16px;padding:14px 18px;
+  background:var(--fz-marino);color:#fff;border-radius:var(--fz-radio);
+}
+.fz-saldo-final .lbl{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--fz-azul-cl)}
+.fz-saldo-final .val{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;margin-left:auto}
+.fz-saldo-final .nat{font-size:12px;color:var(--fz-azul-cl)}
+
+/* ============================================================
+   ACCIONES POR ASIENTO (Libro Diario) · editar / anular / historial
+   La UI nunca expone borrado fisico: solo editar (RPC) y anular (estado).
+   ============================================================ */
+.fz-asiento-acciones{
+  display:flex;flex-wrap:wrap;gap:8px;
+  margin-top:12px;padding-top:12px;border-top:1px dashed var(--fz-linea);
+}
+.fz-accion{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:inherit;font-size:12.5px;font-weight:600;
+  border-radius:9px;padding:7px 13px;cursor:pointer;text-decoration:none;
+  background:var(--fz-tarjeta);border:1px solid var(--fz-linea);
+  color:var(--fz-marino);transition:background-color .15s ease, border-color .15s ease;
+}
+.fz-accion svg{width:15px;height:15px}
+.fz-accion.editar:hover{background:rgba(16,28,51,.06);border-color:var(--fz-azul-cl)}
+.fz-accion.anular{color:var(--fz-debe)}
+.fz-accion.anular:hover{background:rgba(166,51,46,.08);border-color:rgba(166,51,46,.4)}
+.fz-accion.historial{color:var(--fz-gris)}
+.fz-accion.historial:hover{background:rgba(16,28,51,.04)}
+
+/* ============================================================
+   HISTORIAL / TRAZABILIDAD (bitacora) · timeline sobrio
+   ============================================================ */
+.fz-hist-inline{margin-top:12px;padding-top:12px;border-top:1px solid var(--fz-linea)}
+.fz-hist{
+  background:var(--fz-tarjeta);border:1px solid var(--fz-linea);
+  border-radius:var(--fz-radio);padding:20px;margin-top:20px;
+}
+.fz-hist-title{
+  display:flex;align-items:center;gap:9px;margin:0 0 4px;
+  font-size:16px;font-weight:600;color:var(--fz-marino);
+}
+.fz-hist-title svg{width:18px;height:18px;color:var(--fz-marino)}
+.fz-hist-lead{margin:0 0 14px;font-size:12.5px;color:var(--fz-gris)}
+.fz-timeline{list-style:none;margin:0;padding:0}
+.fz-tl-item{
+  position:relative;display:flex;gap:12px;padding:0 0 16px 4px;
+}
+.fz-tl-item:last-child{padding-bottom:0}
+.fz-tl-dot{
+  position:relative;flex:none;width:12px;height:12px;border-radius:50%;
+  margin-top:4px;background:var(--fz-gris);
+}
+.fz-tl-item::before{
+  content:'';position:absolute;left:9px;top:16px;bottom:0;width:2px;
+  background:var(--fz-linea);
+}
+.fz-tl-item:last-child::before{display:none}
+.fz-tl-item.crear .fz-tl-dot{background:var(--fz-salvia)}
+.fz-tl-item.editar .fz-tl-dot{background:var(--fz-haber)}
+.fz-tl-item.anular .fz-tl-dot{background:var(--fz-debe)}
+.fz-tl-body{flex:1;min-width:0}
+.fz-tl-top{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px}
+.fz-tl-accion{
+  font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+  border-radius:999px;padding:2px 10px;
+}
+.fz-tl-accion.crear{color:var(--fz-salvia);background:var(--fz-salvia-bg)}
+.fz-tl-accion.editar{color:var(--fz-haber);background:rgba(27,42,71,.10)}
+.fz-tl-accion.anular{color:var(--fz-debe);background:rgba(166,51,46,.10)}
+.fz-tl-cuando{font-size:12px;color:var(--fz-gris);font-variant-numeric:tabular-nums}
+.fz-tl-det{margin:6px 0 0;padding-left:16px;font-size:12.5px;color:var(--fz-gris)}
+.fz-tl-det li{margin:2px 0}
+
+/* ============================================================
+   EDITAR ASIENTO · aviso de anulado + botones extra
+   ============================================================ */
+.fz-anulado-aviso{
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:13px;color:var(--fz-debe);
+  background:rgba(166,51,46,.08);border:1px solid rgba(166,51,46,.25);
+  border-radius:10px;padding:11px 14px;margin-bottom:16px;
+}
+.fz-anulado-aviso svg{width:18px;height:18px;flex:none;margin-top:1px}
+.fz-form-anulado .fz-cell input,.fz-form-anulado .fz-input{opacity:.7}
+.fz-btn-anular{
+  font-family:inherit;font-size:14px;font-weight:600;
+  color:var(--fz-debe);background:transparent;
+  border:1px solid rgba(166,51,46,.5);border-radius:11px;
+  padding:12px 22px;cursor:pointer;transition:background-color .15s ease;
+}
+.fz-btn-anular:hover{background:rgba(166,51,46,.08)}
+.fz-btn-volver{
+  font-family:inherit;font-size:14px;font-weight:600;
+  color:var(--fz-gris);text-decoration:none;padding:12px 8px;
+}
+.fz-btn-volver:hover{color:var(--fz-marino)}
+
+/* ============================================================
+   MODAL (confirmacion de anulacion + motivo)
+   ============================================================ */
+.fz-modal{
+  position:fixed;inset:0;z-index:100;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  background:rgba(16,28,51,.45);
+}
+.fz-modal[hidden]{display:none}
+.fz-modal-card{
+  width:100%;max-width:460px;
+  background:var(--fz-tarjeta);border-radius:var(--fz-radio);
+  padding:24px;box-shadow:0 20px 60px rgba(16,28,51,.30);
+}
+.fz-modal-card h3{margin:0 0 8px;font-size:18px;color:var(--fz-debe)}
+.fz-modal-card p{margin:0 0 16px;font-size:13.5px;color:var(--fz-carbon)}
+.fz-modal-lbl{
+  display:block;margin-bottom:6px;
+  font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--fz-gris);
+}
+.fz-modal-txt{
+  width:100%;font-family:inherit;font-size:14px;color:var(--fz-carbon);
+  background:var(--fz-tarjeta);border:1px solid var(--fz-linea);
+  border-radius:10px;padding:10px 12px;resize:vertical;
+}
+.fz-modal-txt:focus{outline:0;border-color:var(--fz-marino);
+  box-shadow:0 0 0 3px rgba(16,28,51,.10)}
+.fz-modal-acciones{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width:720px){
+  .fz-linea-head{display:none}
+  .fz-linea{
+    grid-template-columns:1fr 1fr;grid-auto-rows:auto;
+    border:1px solid var(--fz-linea);border-radius:10px;padding:12px;gap:8px;
+  }
+  .fz-cell.cuenta{grid-column:1 / -1}
+  .fz-cell.detalle{grid-column:1 / -1}
+  .fz-del{grid-column:1 / -1;width:100%}
+  .fz-area{font-size:11px;letter-spacing:.12em}
+  .fz-word{font-size:15px;letter-spacing:.16em}
+}

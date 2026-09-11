@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Editar asiento</title>
+<meta name="description" content="Editar o anular un asiento del Libro Diario · Area de Finanzas de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../favicon.png?v=1">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=1">
+<link rel="stylesheet" href="finanzas.css?v=1">
+
+<!--
+  MAGANDHI · Area de Finanzas · Editar / anular asiento (modelo "punto medio").
+  Reutiliza EXACTAMENTE la logica de cuadre en vivo y el codigo de color de
+  Nuevo asiento (DEBE terracota / HABER azul marino): el boton Guardar queda
+  deshabilitado mientras diferencia != 0. Guarda con la RPC editar_asiento y
+  anula con anular_asiento (estado='anulado', NUNCA borrado fisico). Muestra
+  el historial de correcciones (asiento_bitacora): nada se borra en silencio.
+  El candado real es RLS + validacion server-side.
+-->
+</head>
+<body class="fz-body">
+
+<script type="module" src="../auth-guard.js"></script>
+
+<main class="fz-wrap" id="fz-main" hidden>
+  <div id="fz-cargando" class="fz-empty">Cargando asiento...</div>
+
+  <form class="fz-panel" id="fz-form" autocomplete="off" hidden>
+    <div class="fz-anulado-aviso" id="fz-anulado-aviso" hidden>
+      <span data-ico="info"></span>
+      <span>Este asiento esta <strong>anulado</strong>. No se puede editar; queda solo como registro historico y no afecta el Libro Mayor ni los saldos.</span>
+    </div>
+
+    <div class="fz-field-row">
+      <div class="fz-field" style="max-width:220px">
+        <label for="fz-fecha">Fecha</label>
+        <input class="fz-input" id="fz-fecha" type="date" required style="padding-left:14px">
+      </div>
+      <div class="fz-field">
+        <label for="fz-desc">Descripcion del hecho economico</label>
+        <input class="fz-input" id="fz-desc" type="text" required
+               placeholder="Ej. Venta de contado factura 001" style="padding-left:14px">
+      </div>
+    </div>
+
+    <div class="fz-linea-head">
+      <span>Cuenta PUC</span>
+      <span>Detalle (opcional)</span>
+      <span class="col-debe">Debe</span>
+      <span class="col-haber">Haber</span>
+      <span></span>
+    </div>
+    <div class="fz-lineas" id="fz-lineas"></div>
+
+    <button class="fz-btn-linea" id="fz-add" type="button">
+      <span data-ico="mas"></span> Agregar linea
+    </button>
+
+    <div class="fz-totales">
+      <div class="fz-total debe">
+        <span class="lbl">Total Debe</span>
+        <span class="val" id="fz-td">0</span>
+      </div>
+      <div class="fz-total haber">
+        <span class="lbl">Total Haber</span>
+        <span class="val" id="fz-th">0</span>
+      </div>
+      <div class="fz-total dif">
+        <span class="lbl">Diferencia</span>
+        <span class="val" id="fz-diff">0</span>
+      </div>
+      <span class="fz-estado no-cuadra" id="fz-estado">Sin cuadrar</span>
+    </div>
+
+    <div class="fz-acciones">
+      <button class="fz-btn-guardar" id="fz-guardar" type="submit" disabled>Guardar cambios</button>
+      <button class="fz-btn-anular" id="fz-anular" type="button">Anular asiento</button>
+      <a class="fz-btn-volver" href="diario.html">Volver al diario</a>
+      <span class="fz-msg" id="fz-msg"></span>
+    </div>
+  </form>
+
+  <!-- Historial de correcciones (bitacora) -->
+  <section class="fz-hist" id="fz-hist" hidden>
+    <h2 class="fz-hist-title"><span data-ico="lista"></span> Historial de correcciones</h2>
+    <p class="fz-hist-lead">Toda edicion o anulacion queda registrada aqui automaticamente. Nada se borra en silencio.</p>
+    <ol class="fz-timeline" id="fz-timeline"></ol>
+  </section>
+</main>
+
+<!-- Dialogo de anulacion (confirmacion + motivo) -->
+<div class="fz-modal" id="fz-modal-anular" hidden>
+  <div class="fz-modal-card">
+    <h3>Anular asiento</h3>
+    <p>Anular cambia el estado a <strong>anulado</strong>: el asiento deja de contar para el Libro Mayor y los saldos, pero <strong>no se borra</strong>. Queda en el historial con su valor anterior.</p>
+    <label class="fz-modal-lbl" for="fz-motivo">Motivo (opcional)</label>
+    <textarea class="fz-modal-txt" id="fz-motivo" rows="3" placeholder="Ej. Error en la cuenta; se reemplaza por asiento correcto"></textarea>
+    <div class="fz-modal-acciones">
+      <button class="fz-btn-guardar" type="button" id="fz-modal-cancelar" style="background:transparent;color:var(--fz-gris);border:1px solid var(--fz-linea)">Cancelar</button>
+      <button class="fz-btn-anular" type="button" id="fz-modal-confirmar">Confirmar anulacion</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import {
+    supabase, asegurarAcceso, montarHeader, ICONOS,
+    formatearCOP, parsearMonto, hoyISO, formatearFecha, formatearMomento,
+    ACCIONES_BITACORA, cargarBitacora, escaparHTML, TOPE_MONTO_LINEA
+  } from './finanzas-core.js';
+
+  // --- Elementos ---
+  const cargandoEl = document.getElementById('fz-cargando');
+  const form = document.getElementById('fz-form');
+  const lineasEl = document.getElementById('fz-lineas');
+  const tdEl = document.getElementById('fz-td');
+  const thEl = document.getElementById('fz-th');
+  const diffEl = document.getElementById('fz-diff');
+  const estadoEl = document.getElementById('fz-estado');
+  const guardarBtn = document.getElementById('fz-guardar');
+  const anularBtn = document.getElementById('fz-anular');
+  const msgEl = document.getElementById('fz-msg');
+  const fechaEl = document.getElementById('fz-fecha');
+  const descEl = document.getElementById('fz-desc');
+  const anuladoAvisoEl = document.getElementById('fz-anulado-aviso');
+  const histEl = document.getElementById('fz-hist');
+  const timelineEl = document.getElementById('fz-timeline');
+  const modalEl = document.getElementById('fz-modal-anular');
+  const motivoEl = document.getElementById('fz-motivo');
+
+  // uuid del asiento a editar (viene por querystring ?id=)
+  const asientoId = new URLSearchParams(location.search).get('id');
+  let esAnulado = false;
+
+  // ============================================================
+  //  LINEAS + CUADRE EN VIVO (misma logica que Nuevo asiento)
+  // ============================================================
+  function nuevaLinea(prefill) {
+    const row = document.createElement('div');
+    row.className = 'fz-linea';
+    row.innerHTML =
+      '<div class="fz-cell cuenta">' +
+        '<span class="fz-search-ico">' + ICONOS.lupa + '</span>' +
+        '<input class="fz-cuenta" type="text" placeholder="Buscar cuenta imputable..." autocomplete="off" data-codigo="">' +
+        '<div class="fz-cuenta-sug"></div>' +
+      '</div>' +
+      '<div class="fz-cell detalle">' +
+        '<input class="fz-detalle" type="text" placeholder="Detalle">' +
+      '</div>' +
+      '<div class="fz-cell debe">' +
+        '<input class="fz-debe" type="text" inputmode="numeric" placeholder="0">' +
+      '</div>' +
+      '<div class="fz-cell haber">' +
+        '<input class="fz-haber" type="text" inputmode="numeric" placeholder="0">' +
+      '</div>' +
+      '<button class="fz-del" type="button" title="Eliminar linea">' + ICONOS.equis + '</button>';
+    cablearLinea(row);
+    if (prefill) {
+      const cuentaInput = row.querySelector('.fz-cuenta');
+      cuentaInput.dataset.codigo = prefill.codigo || '';
+      cuentaInput.value = prefill.codigo
+        ? (prefill.codigo + (prefill.nombre ? ' · ' + prefill.nombre : ''))
+        : '';
+      row.querySelector('.fz-detalle').value = prefill.detalle || '';
+      if (prefill.debe > 0) row.querySelector('.fz-debe').value = formatearCOP(prefill.debe);
+      if (prefill.haber > 0) row.querySelector('.fz-haber').value = formatearCOP(prefill.haber);
+    }
+    return row;
+  }
+
+  function cablearLinea(row) {
+    const cuentaInput = row.querySelector('.fz-cuenta');
+    const sug = row.querySelector('.fz-cuenta-sug');
+    const debeInput = row.querySelector('.fz-debe');
+    const haberInput = row.querySelector('.fz-haber');
+    const delBtn = row.querySelector('.fz-del');
+
+    let tSug;
+    async function buscarCuentas(q) {
+      const patron = '%' + q + '%';
+      const { data, error } = await supabase
+        .from('puc_cuentas')
+        .select('codigo, nombre, nivel, naturaleza')
+        .eq('imputable', true)
+        .or('codigo.ilike.' + patron + ',nombre.ilike.' + patron)
+        .order('usos', { ascending: false })
+        .order('codigo', { ascending: true })
+        .limit(12);
+      if (error) return [];
+      return data || [];
+    }
+    async function sugeridasIniciales() {
+      const { data } = await supabase
+        .from('puc_cuentas')
+        .select('codigo, nombre, nivel, naturaleza')
+        .eq('imputable', true)
+        .order('usos', { ascending: false })
+        .order('codigo', { ascending: true })
+        .limit(12);
+      return data || [];
+    }
+    function pintarSug(cuentas) {
+      if (!cuentas.length) { sug.innerHTML = '<div class="fz-sug-item"><span class="fz-sug-nombre">Sin resultados</span></div>'; sug.classList.add('open'); return; }
+      sug.innerHTML = cuentas.map((c) => (
+        '<div class="fz-sug-item" data-codigo="' + c.codigo + '" data-nombre="' + (c.nombre || '').replace(/"/g, '&quot;') + '">' +
+          '<span class="fz-badge">' + c.codigo + '</span>' +
+          '<span class="fz-sug-nombre">' + (c.nombre || '') + '</span>' +
+        '</div>'
+      )).join('');
+      sug.classList.add('open');
+      sug.querySelectorAll('.fz-sug-item[data-codigo]').forEach((it) => {
+        it.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          cuentaInput.value = it.dataset.codigo + ' · ' + it.dataset.nombre;
+          cuentaInput.dataset.codigo = it.dataset.codigo;
+          sug.classList.remove('open');
+        });
+      });
+    }
+    cuentaInput.addEventListener('input', () => {
+      cuentaInput.dataset.codigo = '';
+      clearTimeout(tSug);
+      const q = cuentaInput.value.trim();
+      tSug = setTimeout(async () => {
+        const res = q ? await buscarCuentas(q) : await sugeridasIniciales();
+        pintarSug(res);
+      }, 200);
+    });
+    cuentaInput.addEventListener('focus', async () => {
+      if (!cuentaInput.dataset.codigo) pintarSug(await sugeridasIniciales());
+    });
+    cuentaInput.addEventListener('blur', () => { setTimeout(() => sug.classList.remove('open'), 120); });
+
+    function normalizarMonto(el, otro) {
+      const entero = parsearMonto(el.value);
+      el.value = entero > 0 ? formatearCOP(entero) : '';
+      if (entero > 0 && parsearMonto(otro.value) > 0) { otro.value = ''; }
+      recalcular();
+    }
+    debeInput.addEventListener('input', () => normalizarMonto(debeInput, haberInput));
+    haberInput.addEventListener('input', () => normalizarMonto(haberInput, debeInput));
+
+    delBtn.addEventListener('click', () => {
+      if (lineasEl.querySelectorAll('.fz-linea').length <= 2) {
+        cuentaInput.value = ''; cuentaInput.dataset.codigo = '';
+        row.querySelector('.fz-detalle').value = '';
+        debeInput.value = ''; haberInput.value = '';
+      } else {
+        row.remove();
+      }
+      recalcular();
+    });
+  }
+
+  function leerLineas() {
+    return Array.from(lineasEl.querySelectorAll('.fz-linea')).map((row) => ({
+      codigo: row.querySelector('.fz-cuenta').dataset.codigo || '',
+      detalle: row.querySelector('.fz-detalle').value.trim(),
+      debe: parsearMonto(row.querySelector('.fz-debe').value),
+      haber: parsearMonto(row.querySelector('.fz-haber').value)
+    }));
+  }
+
+  // REGLA DE ORO: cuadre en vivo con ENTEROS (identico a Nuevo asiento).
+  function recalcular() {
+    if (esAnulado) { guardarBtn.disabled = true; return; }
+    const lineas = leerLineas();
+    let totalDebe = 0, totalHaber = 0;
+    for (const l of lineas) { totalDebe += l.debe; totalHaber += l.haber; }
+    const diff = totalDebe - totalHaber; // enteros, sin float
+
+    tdEl.textContent = formatearCOP(totalDebe);
+    thEl.textContent = formatearCOP(totalHaber);
+    diffEl.textContent = formatearCOP(diff);
+
+    const conMonto = lineas.filter((l) => l.debe > 0 || l.haber > 0);
+    const todasValidas = conMonto.length >= 2 && conMonto.every((l) =>
+      l.codigo !== '' && (l.debe > 0) !== (l.haber > 0)
+    );
+    // Tope de rango (espejo del candado server-side): ver TOPE_MONTO_LINEA.
+    const superaTope = conMonto.some((l) => l.debe > TOPE_MONTO_LINEA || l.haber > TOPE_MONTO_LINEA);
+    const cuadra = diff === 0 && totalDebe > 0 && todasValidas && !superaTope;
+
+    if (superaTope) {
+      estadoEl.className = 'fz-estado no-cuadra';
+      estadoEl.textContent = 'Monto por linea demasiado alto';
+      guardarBtn.disabled = true;
+    } else if (cuadra) {
+      estadoEl.className = 'fz-estado cuadra';
+      estadoEl.innerHTML = ICONOS.check + ' Cuadrado';
+      guardarBtn.disabled = false;
+    } else {
+      estadoEl.className = 'fz-estado no-cuadra';
+      estadoEl.textContent = diff === 0 ? 'Completa las cuentas y montos' : 'Sin cuadrar';
+      guardarBtn.disabled = true;
+    }
+  }
+
+  document.getElementById('fz-add').addEventListener('click', () => {
+    if (esAnulado) return;
+    lineasEl.appendChild(nuevaLinea());
+    recalcular();
+  });
+
+  // ============================================================
+  //  GUARDAR EDICION (RPC editar_asiento)
+  // ============================================================
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (esAnulado) return;
+    msgEl.textContent = '';
+    const fecha = fechaEl.value;
+    const descripcion = descEl.value.trim();
+    if (!fecha || !descripcion) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'Fecha y descripcion son obligatorias.'; return; }
+
+    const lineas = leerLineas().filter((l) => l.debe > 0 || l.haber > 0);
+    for (const l of lineas) {
+      if (!l.codigo) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'Toda linea con monto debe tener una cuenta elegida.'; return; }
+      if ((l.debe > 0) === (l.haber > 0)) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'Cada linea debe ser Debe O Haber, no ambos.'; return; }
+    }
+    for (const l of lineas) {
+      if (l.debe > TOPE_MONTO_LINEA || l.haber > TOPE_MONTO_LINEA) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'El monto de una linea supera el tope permitido de ' + formatearCOP(TOPE_MONTO_LINEA) + ' pesos.'; return; }
+    }
+    let sd = 0, sh = 0;
+    for (const l of lineas) { sd += l.debe; sh += l.haber; }
+    if (sd !== sh || lineas.length < 2) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'El asiento no cuadra.'; return; }
+
+    const payload = lineas.map((l) => ({
+      cuenta_codigo: l.codigo,
+      detalle: l.detalle || null,
+      debe: l.debe,   // enteros de pesos
+      haber: l.haber
+    }));
+
+    guardarBtn.disabled = true;
+    guardarBtn.textContent = 'Guardando...';
+    try {
+      const { error } = await supabase.rpc('editar_asiento', {
+        p_asiento_id: asientoId,
+        p_fecha: fecha,
+        p_descripcion: descripcion,
+        p_lineas: payload
+      });
+      if (error) throw error;
+      msgEl.className = 'fz-msg ok';
+      msgEl.textContent = '✓ Cambios guardados. El Libro Mayor y los saldos ya reflejan la edicion.';
+      await pintarHistorial();
+    } catch (err) {
+      msgEl.className = 'fz-msg err';
+      msgEl.textContent = 'No se pudo guardar: ' + (err?.message || 'error desconocido');
+      guardarBtn.disabled = false;
+    } finally {
+      guardarBtn.textContent = 'Guardar cambios';
+    }
+  });
+
+  // ============================================================
+  //  ANULAR (RPC anular_asiento) · confirmacion + motivo
+  // ============================================================
+  anularBtn.addEventListener('click', () => { modalEl.hidden = false; motivoEl.focus(); });
+  document.getElementById('fz-modal-cancelar').addEventListener('click', () => { modalEl.hidden = true; });
+  modalEl.addEventListener('click', (e) => { if (e.target === modalEl) modalEl.hidden = true; });
+
+  document.getElementById('fz-modal-confirmar').addEventListener('click', async () => {
+    const btn = document.getElementById('fz-modal-confirmar');
+    btn.disabled = true; btn.textContent = 'Anulando...';
+    try {
+      const { error } = await supabase.rpc('anular_asiento', {
+        p_asiento_id: asientoId,
+        p_motivo: motivoEl.value.trim() || null
+      });
+      if (error) throw error;
+      modalEl.hidden = true;
+      await cargarAsiento(); // refresca: queda marcado como anulado
+      msgEl.className = 'fz-msg ok';
+      msgEl.textContent = '✓ Asiento anulado. Ya no cuenta para el mayor ni los saldos; queda en el historial.';
+    } catch (err) {
+      msgEl.className = 'fz-msg err';
+      msgEl.textContent = 'No se pudo anular: ' + (err?.message || 'error desconocido');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Confirmar anulacion';
+    }
+  });
+
+  // ============================================================
+  //  HISTORIAL (bitacora)
+  // ============================================================
+  async function pintarHistorial() {
+    try {
+      const eventos = await cargarBitacora(asientoId);
+      if (!eventos.length) { histEl.hidden = true; return; }
+      timelineEl.innerHTML = eventos.map((ev) => {
+        const meta = ACCIONES_BITACORA[ev.accion] || { etiqueta: ev.accion, clase: 'editar' };
+        const prev = ev.detalle_cambio || {};
+        const detalles = [];
+        if (prev.descripcion) detalles.push('Descripcion anterior: ' + escaparHTML(prev.descripcion));
+        if (prev.fecha) detalles.push('Fecha anterior: ' + formatearFecha(prev.fecha));
+        if (prev.estado) detalles.push('Estado anterior: ' + escaparHTML(prev.estado));
+        if (Array.isArray(prev.lineas) && prev.lineas.length) {
+          const detalleLineas = prev.lineas.map((l) => (
+            escaparHTML(l.cuenta_codigo) +
+            (Number(l.debe) > 0 ? ' · Debe ' + formatearCOP(l.debe) : '') +
+            (Number(l.haber) > 0 ? ' · Haber ' + formatearCOP(l.haber) : '')
+          )).join('; ');
+          detalles.push('Lineas anteriores: ' + detalleLineas);
+        }
+        return (
+          '<li class="fz-tl-item ' + meta.clase + '">' +
+            '<span class="fz-tl-dot"></span>' +
+            '<div class="fz-tl-body">' +
+              '<div class="fz-tl-top">' +
+                '<span class="fz-tl-accion ' + meta.clase + '">' + meta.etiqueta + '</span>' +
+                '<span class="fz-tl-cuando">' + formatearMomento(ev.cuando) + '</span>' +
+              '</div>' +
+              (detalles.length ? '<ul class="fz-tl-det"><li>' + detalles.join('</li><li>') + '</li></ul>' : '') +
+            '</div>' +
+          '</li>'
+        );
+      }).join('');
+      histEl.hidden = false;
+    } catch (_) {
+      histEl.hidden = true;
+    }
+  }
+
+  // ============================================================
+  //  CARGA DEL ASIENTO
+  // ============================================================
+  async function cargarAsiento() {
+    const { data, error } = await supabase
+      .from('asientos')
+      .select('id, fecha, descripcion, estado, asiento_lineas(cuenta_codigo, detalle, debe, haber, orden, puc_cuentas(nombre))')
+      .eq('id', asientoId)
+      .maybeSingle();
+
+    if (error || !data) {
+      cargandoEl.textContent = 'No se pudo cargar el asiento solicitado.';
+      cargandoEl.hidden = false;
+      form.hidden = true;
+      return;
+    }
+
+    esAnulado = data.estado === 'anulado';
+    fechaEl.value = String(data.fecha).slice(0, 10);
+    descEl.value = data.descripcion || '';
+
+    // Reconstruye las lineas ordenadas.
+    const lineas = (data.asiento_lineas || []).slice().sort((x, y) => (x.orden || 0) - (y.orden || 0));
+    lineasEl.innerHTML = '';
+    if (lineas.length) {
+      lineas.forEach((l) => lineasEl.appendChild(nuevaLinea({
+        codigo: l.cuenta_codigo,
+        nombre: (l.puc_cuentas || {}).nombre || '',
+        detalle: l.detalle || '',
+        debe: Number(l.debe) || 0,
+        haber: Number(l.haber) || 0
+      })));
+    } else {
+      lineasEl.appendChild(nuevaLinea());
+      lineasEl.appendChild(nuevaLinea());
+    }
+
+    // Modo anulado: solo lectura, sin editar ni anular otra vez.
+    if (esAnulado) {
+      anuladoAvisoEl.hidden = false;
+      form.classList.add('fz-form-anulado');
+      form.querySelectorAll('input, textarea').forEach((el) => { el.disabled = true; });
+      document.getElementById('fz-add').disabled = true;
+      lineasEl.querySelectorAll('.fz-del').forEach((b) => { b.disabled = true; });
+      guardarBtn.disabled = true;
+      guardarBtn.hidden = true;
+      anularBtn.hidden = true;
+    } else {
+      anuladoAvisoEl.hidden = true;
+      form.classList.remove('fz-form-anulado');
+      guardarBtn.hidden = false;
+      anularBtn.hidden = false;
+    }
+
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    cargandoEl.hidden = true;
+    form.hidden = false;
+    recalcular();
+    await pintarHistorial();
+  }
+
+  // ============================================================
+  //  ARRANQUE
+  // ============================================================
+  (async () => {
+    const acceso = await asegurarAcceso(document.body);
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Editar asiento',
+      kicker: 'CORRECCION CON TRAZABILIDAD',
+      lead: 'Edita o anula un asiento del Libro Diario. Todo cambio queda en el historial: nada se borra en silencio. La edicion solo se guarda si el asiento sigue cuadrado.',
+      sesion: acceso.sesion
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    document.getElementById('fz-main').hidden = false;
+
+    if (!asientoId) {
+      cargandoEl.innerHTML = 'No se indico ningun asiento. Vuelve al <a href="diario.html">Libro Diario</a> y elige uno.';
+      return;
+    }
+    await cargarAsiento();
+  })();
+</script>
+
+</body>
+</html>

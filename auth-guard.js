@@ -21,7 +21,15 @@
 
 import { supabase } from './supabase-config.js';
 
-const RUTA_LOGIN = 'index.html';
+// Ruta al login resuelta SIEMPRE respecto a la raiz del sitio, no relativa
+// a la pagina actual. Asi funciona igual desde la raiz (panel.html) que
+// desde subcarpetas (finanzas/*.html): sin este calculo, un 'index.html'
+// relativo desde finanzas/ apuntaria a finanzas/index.html (loop).
+//
+// Este modulo se sirve siempre desde la raiz del sitio (../auth-guard.js
+// desde finanzas/, ./auth-guard.js desde la raiz), por lo que la carpeta
+// que lo contiene ES la raiz del sitio. La derivamos de import.meta.url.
+const RUTA_LOGIN = new URL('index.html', import.meta.url).href;
 
 /**
  * Devuelve la sesion actual o null.
@@ -73,4 +81,13 @@ export async function obtenerPerfil() {
 
 // Auto-proteccion: al importar este modulo desde una pagina interna,
 // se exige sesion inmediatamente. Una sola linea deja la pagina cubierta.
+//
+// NOTA (decision consciente): las paginas de finanzas ademas llaman
+// asegurarAcceso(), que reejecuta exigirSesion()->getSession(). Eso hace DOS
+// getSession por carga. Se mantiene a proposito: (1) esta guardia autoejecutada
+// es el contrato "una sola linea protege cualquier pagina interna" (paginas sin
+// modulos, como panel.html, dependen solo de ella); (2) supabase-js cachea la
+// sesion en memoria/almacenamiento, asi que el segundo getSession es local y
+// barato (no es un round-trip de red). El coste es un microsegundo, no un
+// problema de rendimiento; unificarlo acoplaria el guardia al flujo de finanzas.
 exigirSesion();

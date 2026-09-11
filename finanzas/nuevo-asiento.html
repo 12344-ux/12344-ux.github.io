@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Nuevo asiento</title>
+<meta name="description" content="Nuevo asiento del Libro Diario · Area de Finanzas de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../favicon.png?v=1">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=1">
+<link rel="stylesheet" href="finanzas.css?v=1">
+
+<!--
+  MAGANDHI · Area de Finanzas · Nuevo asiento (Libro Diario).
+  REGLA DE ORO (partida doble): el cuadre se calcula EN VIVO con ENTEROS
+  de pesos. El boton Guardar queda deshabilitado mientras diferencia != 0;
+  al cuadrar aparece '✓ Cuadrado' en verde salvia. Se guarda con la RPC
+  guardar_asiento y luego se incrementa el uso de cada cuenta usada.
+  El candado real es RLS + validacion server-side.
+-->
+</head>
+<body class="fz-body">
+
+<script type="module" src="../auth-guard.js"></script>
+
+<main class="fz-wrap" id="fz-main" hidden>
+  <form class="fz-panel" id="fz-form" autocomplete="off">
+    <div class="fz-field-row">
+      <div class="fz-field" style="max-width:220px">
+        <label for="fz-fecha">Fecha</label>
+        <input class="fz-input" id="fz-fecha" type="date" required style="padding-left:14px">
+      </div>
+      <div class="fz-field">
+        <label for="fz-desc">Descripcion del hecho economico</label>
+        <input class="fz-input" id="fz-desc" type="text" required
+               placeholder="Ej. Venta de contado factura 001" style="padding-left:14px">
+      </div>
+    </div>
+
+    <div class="fz-linea-head">
+      <span>Cuenta PUC</span>
+      <span>Detalle (opcional)</span>
+      <span class="col-debe">Debe</span>
+      <span class="col-haber">Haber</span>
+      <span></span>
+    </div>
+    <div class="fz-lineas" id="fz-lineas"></div>
+
+    <button class="fz-btn-linea" id="fz-add" type="button">
+      <span data-ico="mas"></span> Agregar linea
+    </button>
+
+    <div class="fz-totales">
+      <div class="fz-total debe">
+        <span class="lbl">Total Debe</span>
+        <span class="val" id="fz-td">0</span>
+      </div>
+      <div class="fz-total haber">
+        <span class="lbl">Total Haber</span>
+        <span class="val" id="fz-th">0</span>
+      </div>
+      <div class="fz-total dif">
+        <span class="lbl">Diferencia</span>
+        <span class="val" id="fz-diff">0</span>
+      </div>
+      <span class="fz-estado no-cuadra" id="fz-estado">Sin cuadrar</span>
+    </div>
+
+    <div class="fz-acciones">
+      <button class="fz-btn-guardar" id="fz-guardar" type="submit" disabled>Guardar asiento</button>
+      <span class="fz-msg" id="fz-msg"></span>
+    </div>
+  </form>
+</main>
+
+<script type="module">
+  import {
+    supabase, asegurarAcceso, montarHeader, ICONOS,
+    formatearCOP, parsearMonto, hoyISO, formatearFecha, TOPE_MONTO_LINEA
+  } from './finanzas-core.js';
+
+  const NIVEL_TXT = { 1: 'Clase', 2: 'Grupo', 3: 'Cuenta', 4: 'Subcuenta' };
+
+  const lineasEl = document.getElementById('fz-lineas');
+  const tdEl = document.getElementById('fz-td');
+  const thEl = document.getElementById('fz-th');
+  const diffEl = document.getElementById('fz-diff');
+  const estadoEl = document.getElementById('fz-estado');
+  const guardarBtn = document.getElementById('fz-guardar');
+  const msgEl = document.getElementById('fz-msg');
+  const form = document.getElementById('fz-form');
+  const fechaEl = document.getElementById('fz-fecha');
+
+  // Plantilla de una linea. Guarda el codigo elegido en un data-attr.
+  function nuevaLinea() {
+    const row = document.createElement('div');
+    row.className = 'fz-linea';
+    row.innerHTML =
+      '<div class="fz-cell cuenta">' +
+        '<span class="fz-search-ico">' + ICONOS.lupa + '</span>' +
+        '<input class="fz-cuenta" type="text" placeholder="Buscar cuenta imputable..." autocomplete="off" data-codigo="">' +
+        '<div class="fz-cuenta-sug"></div>' +
+      '</div>' +
+      '<div class="fz-cell detalle">' +
+        '<input class="fz-detalle" type="text" placeholder="Detalle">' +
+      '</div>' +
+      '<div class="fz-cell debe">' +
+        '<input class="fz-debe" type="text" inputmode="numeric" placeholder="0">' +
+      '</div>' +
+      '<div class="fz-cell haber">' +
+        '<input class="fz-haber" type="text" inputmode="numeric" placeholder="0">' +
+      '</div>' +
+      '<button class="fz-del" type="button" title="Eliminar linea">' + ICONOS.equis + '</button>';
+    cablearLinea(row);
+    return row;
+  }
+
+  function cablearLinea(row) {
+    const cuentaInput = row.querySelector('.fz-cuenta');
+    const sug = row.querySelector('.fz-cuenta-sug');
+    const debeInput = row.querySelector('.fz-debe');
+    const haberInput = row.querySelector('.fz-haber');
+    const delBtn = row.querySelector('.fz-del');
+
+    // --- Buscador de cuenta (solo imputables) ---
+    let tSug;
+    async function buscarCuentas(q) {
+      const patron = '%' + q + '%';
+      const { data, error } = await supabase
+        .from('puc_cuentas')
+        .select('codigo, nombre, nivel, naturaleza')
+        .eq('imputable', true)
+        .or('codigo.ilike.' + patron + ',nombre.ilike.' + patron)
+        .order('usos', { ascending: false })
+        .order('codigo', { ascending: true })
+        .limit(12);
+      if (error) return [];
+      return data || [];
+    }
+    async function sugeridasIniciales() {
+      const { data } = await supabase
+        .from('puc_cuentas')
+        .select('codigo, nombre, nivel, naturaleza')
+        .eq('imputable', true)
+        .order('usos', { ascending: false })
+        .order('codigo', { ascending: true })
+        .limit(12);
+      return data || [];
+    }
+    function pintarSug(cuentas) {
+      if (!cuentas.length) { sug.innerHTML = '<div class="fz-sug-item"><span class="fz-sug-nombre">Sin resultados</span></div>'; sug.classList.add('open'); return; }
+      sug.innerHTML = cuentas.map((c) => (
+        '<div class="fz-sug-item" data-codigo="' + c.codigo + '" data-nombre="' + (c.nombre || '').replace(/"/g, '&quot;') + '">' +
+          '<span class="fz-badge">' + c.codigo + '</span>' +
+          '<span class="fz-sug-nombre">' + (c.nombre || '') + '</span>' +
+        '</div>'
+      )).join('');
+      sug.classList.add('open');
+      sug.querySelectorAll('.fz-sug-item[data-codigo]').forEach((it) => {
+        it.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          cuentaInput.value = it.dataset.codigo + ' · ' + it.dataset.nombre;
+          cuentaInput.dataset.codigo = it.dataset.codigo;
+          sug.classList.remove('open');
+        });
+      });
+    }
+    cuentaInput.addEventListener('input', () => {
+      cuentaInput.dataset.codigo = ''; // texto cambio: exige reelegir de la lista
+      clearTimeout(tSug);
+      const q = cuentaInput.value.trim();
+      tSug = setTimeout(async () => {
+        const res = q ? await buscarCuentas(q) : await sugeridasIniciales();
+        pintarSug(res);
+      }, 200);
+    });
+    cuentaInput.addEventListener('focus', async () => {
+      if (!cuentaInput.dataset.codigo) pintarSug(await sugeridasIniciales());
+    });
+    cuentaInput.addEventListener('blur', () => { setTimeout(() => sug.classList.remove('open'), 120); });
+
+    // --- Montos: mutuamente excluyentes, formateo en vivo con enteros ---
+    function normalizarMonto(el, otro) {
+      const entero = parsearMonto(el.value);
+      el.value = entero > 0 ? formatearCOP(entero) : '';
+      if (entero > 0 && parsearMonto(otro.value) > 0) {
+        otro.value = ''; // una linea es DEBE o HABER, no ambos
+      }
+      recalcular();
+    }
+    debeInput.addEventListener('input', () => normalizarMonto(debeInput, haberInput));
+    haberInput.addEventListener('input', () => normalizarMonto(haberInput, debeInput));
+
+    delBtn.addEventListener('click', () => {
+      if (lineasEl.querySelectorAll('.fz-linea').length <= 2) {
+        // conservar minimo 2 lineas: limpiar en vez de eliminar
+        cuentaInput.value = ''; cuentaInput.dataset.codigo = '';
+        row.querySelector('.fz-detalle').value = '';
+        debeInput.value = ''; haberInput.value = '';
+      } else {
+        row.remove();
+      }
+      recalcular();
+    });
+  }
+
+  // --- Lectura del formulario como enteros ---
+  function leerLineas() {
+    return Array.from(lineasEl.querySelectorAll('.fz-linea')).map((row) => ({
+      codigo: row.querySelector('.fz-cuenta').dataset.codigo || '',
+      detalle: row.querySelector('.fz-detalle').value.trim(),
+      debe: parsearMonto(row.querySelector('.fz-debe').value),
+      haber: parsearMonto(row.querySelector('.fz-haber').value)
+    }));
+  }
+
+  // --- REGLA DE ORO: cuadre en vivo con ENTEROS ---
+  function recalcular() {
+    const lineas = leerLineas();
+    let totalDebe = 0, totalHaber = 0;
+    for (const l of lineas) { totalDebe += l.debe; totalHaber += l.haber; }
+    const diff = totalDebe - totalHaber; // enteros, sin float
+
+    tdEl.textContent = formatearCOP(totalDebe);
+    thEl.textContent = formatearCOP(totalHaber);
+    diffEl.textContent = formatearCOP(diff);
+
+    // Lineas con contenido real: cuenta elegida + exactamente un monto > 0.
+    const conMonto = lineas.filter((l) => l.debe > 0 || l.haber > 0);
+    const todasValidas = conMonto.length >= 2 && conMonto.every((l) =>
+      l.codigo !== '' && (l.debe > 0) !== (l.haber > 0)
+    );
+    // Tope de rango (espejo del candado server-side): ningun monto por linea
+    // puede superar TOPE_MONTO_LINEA; por encima el cuadre con Number pierde
+    // precision. El server revalida, pero deshabilitamos el boton por UX.
+    const superaTope = conMonto.some((l) => l.debe > TOPE_MONTO_LINEA || l.haber > TOPE_MONTO_LINEA);
+    const cuadra = diff === 0 && totalDebe > 0 && todasValidas && !superaTope;
+
+    if (superaTope) {
+      estadoEl.className = 'fz-estado no-cuadra';
+      estadoEl.textContent = 'Monto por linea demasiado alto';
+      guardarBtn.disabled = true;
+    } else if (cuadra) {
+      estadoEl.className = 'fz-estado cuadra';
+      estadoEl.innerHTML = ICONOS.check + ' Cuadrado';
+      guardarBtn.disabled = false;
+    } else {
+      estadoEl.className = 'fz-estado no-cuadra';
+      estadoEl.textContent = diff === 0 ? 'Completa las cuentas y montos' : 'Sin cuadrar';
+      guardarBtn.disabled = true;
+    }
+  }
+
+  document.getElementById('fz-add').addEventListener('click', () => {
+    lineasEl.appendChild(nuevaLinea());
+  });
+
+  // --- Guardar: RPC guardar_asiento + incrementar_uso_cuenta por cuenta ---
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msgEl.textContent = '';
+    const fecha = fechaEl.value;
+    const descripcion = document.getElementById('fz-desc').value.trim();
+    if (!fecha || !descripcion) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'Fecha y descripcion son obligatorias.'; return; }
+
+    const lineas = leerLineas().filter((l) => l.debe > 0 || l.haber > 0);
+    // Validacion cliente (comodidad de UX; el servidor revalida):
+    for (const l of lineas) {
+      if (!l.codigo) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'Toda linea con monto debe tener una cuenta elegida.'; return; }
+      if ((l.debe > 0) === (l.haber > 0)) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'Cada linea debe ser Debe O Haber, no ambos.'; return; }
+    }
+    for (const l of lineas) {
+      if (l.debe > TOPE_MONTO_LINEA || l.haber > TOPE_MONTO_LINEA) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'El monto de una linea supera el tope permitido de ' + formatearCOP(TOPE_MONTO_LINEA) + ' pesos.'; return; }
+    }
+    let sd = 0, sh = 0;
+    for (const l of lineas) { sd += l.debe; sh += l.haber; }
+    if (sd !== sh || lineas.length < 2) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'El asiento no cuadra.'; return; }
+
+    const payload = lineas.map((l) => ({
+      cuenta_codigo: l.codigo,
+      detalle: l.detalle || null,
+      debe: l.debe,   // enteros de pesos
+      haber: l.haber
+    }));
+
+    guardarBtn.disabled = true;
+    guardarBtn.textContent = 'Guardando...';
+    try {
+      const { data: asientoId, error } = await supabase.rpc('guardar_asiento', {
+        p_fecha: fecha,
+        p_descripcion: descripcion,
+        p_lineas: payload
+      });
+      if (error) throw error;
+
+      // Sube el contador de uso de cada cuenta usada (una vez por cuenta unica).
+      // DECISION: es best-effort y NO debe bloquear el guardado del asiento (ya
+      // guardado arriba); "usos" solo alimenta la priorizacion del buscador
+      // (comodidad de UX, no un dato contable). Por eso no propagamos el error,
+      // pero SI lo dejamos en consola para que un fallo sistematico (RLS/red)
+      // sea diagnosticable en vez de silencioso del todo.
+      const codigosUnicos = [...new Set(lineas.map((l) => l.codigo))];
+      await Promise.all(codigosUnicos.map((cod) =>
+        supabase.rpc('incrementar_uso_cuenta', { p_codigo: cod })
+          .then(({ error }) => { if (error) console.warn('No se pudo incrementar el uso de la cuenta', cod, error.message); })
+          .catch((e) => console.warn('No se pudo incrementar el uso de la cuenta', cod, e?.message || e))
+      ));
+
+      msgEl.className = 'fz-msg ok';
+      msgEl.textContent = '✓ Asiento guardado. Ya aparece en el Libro Diario y en el Mayor.';
+      // Reiniciar el formulario para otro asiento.
+      document.getElementById('fz-desc').value = '';
+      lineasEl.innerHTML = '';
+      lineasEl.appendChild(nuevaLinea());
+      lineasEl.appendChild(nuevaLinea());
+      recalcular();
+    } catch (err) {
+      msgEl.className = 'fz-msg err';
+      msgEl.textContent = 'No se pudo guardar: ' + (err?.message || 'error desconocido');
+      guardarBtn.disabled = false;
+    } finally {
+      guardarBtn.textContent = 'Guardar asiento';
+    }
+  });
+
+  (async () => {
+    const acceso = await asegurarAcceso(document.body);
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Nuevo asiento',
+      kicker: 'LIBRO DIARIO · ' + formatearFecha(hoyISO()),
+      lead: 'Registra el hecho economico repartiendo los montos entre Debe (terracota) y Haber (azul). El asiento solo se guarda si cuadra.',
+      sesion: acceso.sesion
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    fechaEl.value = hoyISO();
+    // Dos lineas iniciales (partida doble minima).
+    lineasEl.appendChild(nuevaLinea());
+    lineasEl.appendChild(nuevaLinea());
+    recalcular();
+
+    document.getElementById('fz-main').hidden = false;
+  })();
+</script>
+
+</body>
+</html>

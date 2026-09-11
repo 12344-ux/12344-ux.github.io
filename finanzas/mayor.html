@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Libro Mayor</title>
+<meta name="description" content="Libro Mayor · Area de Finanzas de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../favicon.png?v=1">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=1">
+<link rel="stylesheet" href="finanzas.css?v=1">
+
+<!--
+  MAGANDHI · Area de Finanzas · Libro Mayor (solo lectura, derivado).
+  El mayor se DERIVA del diario: movimientos desde la vista movimientos_mayor
+  y el saldo final desde saldos_cuenta. El dueno NO escribe el mayor.
+  El candado real es RLS server-side.
+-->
+</head>
+<body class="fz-body">
+
+<script type="module" src="../auth-guard.js"></script>
+
+<main class="fz-wrap" id="fz-main" hidden>
+  <div class="fz-mayor-nota">
+    <span data-ico="info"></span>
+    <span>El Libro Mayor se deriva automaticamente del Libro Diario. Elige una cuenta para ver sus movimientos y su saldo.</span>
+  </div>
+
+  <div class="fz-search">
+    <span class="fz-search-ico" data-ico="lupa"></span>
+    <input class="fz-input" id="fz-q" type="search" autocomplete="off"
+           placeholder="Buscar cuenta por codigo o nombre...">
+    <div class="fz-cuenta-sug" id="fz-sug"></div>
+  </div>
+
+  <div id="fz-detalle"></div>
+</main>
+
+<script type="module">
+  import { supabase, asegurarAcceso, montarHeader, ICONOS, formatearCOP, formatearFecha, escaparHTML } from './finanzas-core.js';
+
+  const input = document.getElementById('fz-q');
+  const sug = document.getElementById('fz-sug');
+  const detalle = document.getElementById('fz-detalle');
+
+  async function buscarCuentas(q) {
+    const patron = '%' + q + '%';
+    const { data } = await supabase
+      .from('puc_cuentas')
+      .select('codigo, nombre, naturaleza')
+      .eq('imputable', true)
+      .or('codigo.ilike.' + patron + ',nombre.ilike.' + patron)
+      .order('usos', { ascending: false })
+      .order('codigo', { ascending: true })
+      .limit(12);
+    return data || [];
+  }
+
+  function pintarSug(cuentas) {
+    if (!cuentas.length) { sug.classList.remove('open'); return; }
+    sug.innerHTML = cuentas.map((c) => (
+      '<div class="fz-sug-item" data-codigo="' + escaparHTML(c.codigo) + '" data-nombre="' + escaparHTML(c.nombre || '') + '" data-nat="' + escaparHTML(c.naturaleza) + '">' +
+        '<span class="fz-badge">' + escaparHTML(c.codigo) + '</span>' +
+        '<span class="fz-sug-nombre">' + escaparHTML(c.nombre || '') + '</span>' +
+      '</div>'
+    )).join('');
+    sug.classList.add('open');
+    sug.querySelectorAll('.fz-sug-item').forEach((it) => {
+      it.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        input.value = it.dataset.codigo + ' · ' + it.dataset.nombre;
+        sug.classList.remove('open');
+        mostrarCuenta(it.dataset.codigo, it.dataset.nombre, it.dataset.nat);
+      });
+    });
+  }
+
+  async function mostrarCuenta(codigo, nombre, naturaleza) {
+    detalle.innerHTML = '<div class="fz-empty">Cargando...</div>';
+
+    const [movRes, saldoRes] = await Promise.all([
+      supabase.from('movimientos_mayor')
+        .select('fecha, descripcion, debe, haber')
+        .eq('cuenta_codigo', codigo)
+        .order('fecha', { ascending: true }),
+      supabase.from('saldos_cuenta')
+        .select('total_debe, total_haber, saldo, naturaleza')
+        .eq('cuenta_codigo', codigo)
+        .maybeSingle()
+    ]);
+
+    const movs = movRes.data || [];
+    if (movRes.error) { detalle.innerHTML = '<div class="fz-empty">No se pudieron cargar los movimientos.</div>'; return; }
+    if (!movs.length) {
+      detalle.innerHTML = '<div class="fz-empty">La cuenta <strong>' + escaparHTML(codigo) + '</strong> aun no tiene movimientos.</div>';
+      return;
+    }
+
+    // Saldo acumulado corrido segun la naturaleza de la cuenta (enteros).
+    const nat = (saldoRes.data && saldoRes.data.naturaleza) || naturaleza || 'debito';
+    let corrido = 0;
+    const filas = movs.map((m) => {
+      const d = Number(m.debe) || 0, h = Number(m.haber) || 0;
+      corrido += (nat === 'debito') ? (d - h) : (h - d);
+      return (
+        '<tr>' +
+          '<td class="fz-asiento-fecha">' + formatearFecha(m.fecha) + '</td>' +
+          '<td>' + escaparHTML(m.descripcion || '') + '</td>' +
+          '<td class="num debe">' + (d > 0 ? formatearCOP(d) : '') + '</td>' +
+          '<td class="num haber">' + (h > 0 ? formatearCOP(h) : '') + '</td>' +
+          '<td class="num">' + formatearCOP(corrido) + '</td>' +
+        '</tr>'
+      );
+    }).join('');
+
+    const s = saldoRes.data || { total_debe: 0, total_haber: 0, saldo: corrido };
+
+    detalle.innerHTML =
+      '<h2 class="fz-title" style="font-size:20px;margin:22px 0 4px">' +
+        '<span class="fz-badge" style="font-size:14px">' + escaparHTML(codigo) + '</span> ' + escaparHTML(nombre || '') +
+      '</h2>' +
+      '<table class="fz-tabla">' +
+        '<thead><tr><th>Fecha</th><th>Descripcion</th><th class="num">Debe</th><th class="num">Haber</th><th class="num">Saldo</th></tr></thead>' +
+        '<tbody>' + filas + '</tbody>' +
+        '<tfoot><tr><td colspan="2">Totales</td>' +
+          '<td class="num debe">' + formatearCOP(s.total_debe) + '</td>' +
+          '<td class="num haber">' + formatearCOP(s.total_haber) + '</td>' +
+          '<td class="num">' + formatearCOP(s.saldo) + '</td></tr></tfoot>' +
+      '</table>' +
+      '<div class="fz-saldo-final">' +
+        '<span class="lbl">Saldo final</span>' +
+        '<span class="nat">naturaleza ' + nat + '</span>' +
+        '<span class="val">' + formatearCOP(s.saldo) + '</span>' +
+      '</div>';
+  }
+
+  let t;
+  input.addEventListener('input', () => {
+    clearTimeout(t);
+    const q = input.value.trim();
+    if (!q) { sug.classList.remove('open'); return; }
+    t = setTimeout(async () => { pintarSug(await buscarCuentas(q)); }, 200);
+  });
+  input.addEventListener('blur', () => { setTimeout(() => sug.classList.remove('open'), 120); });
+
+  (async () => {
+    const acceso = await asegurarAcceso(document.body);
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Libro Mayor',
+      kicker: 'SALDOS POR CUENTA',
+      lead: 'Movimientos y saldo de cada cuenta, derivados del diario. Elige una cuenta para verlos.',
+      sesion: acceso.sesion
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    document.getElementById('fz-main').hidden = false;
+  })();
+</script>
+
+</body>
+</html>
