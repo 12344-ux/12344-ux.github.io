@@ -648,6 +648,53 @@ body.fz-body{
 .fz-bc-corte .val{font-size:16px;font-weight:600;color:var(--fz-marino)}
 
 /* ============================================================
+   ESTADO DE RESULTADOS (por periodo)
+   ------------------------------------------------------------
+   Reutiliza fz-bc-controles / fz-bc-fecha / fz-bc-descargas /
+   fz-btn-descarga / fz-bc-cabecera / fz-tabla / fz-empty / fz-mayor-nota.
+   Aqui solo se anaden: los titulos y subtotales de seccion, la fila de
+   resultado intermedio (Utilidad Bruta) y el banner final de resultado
+   (fz-er-resultado) con sus modificadores .utilidad / .perdida. El banner
+   NO usa los colores debe (terracota) / haber (azul) porque esos ya
+   significan debito / credito; el resultado del ejercicio tiene su propia
+   semantica: verde salvia para utilidad, azul marino serio para perdida.
+   ============================================================ */
+.fz-er-tabla .fz-er-titulo td{
+  font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--fz-marino);background:rgba(16,28,51,.05);
+  padding-top:12px;padding-bottom:8px;border-bottom:1px solid var(--fz-linea);
+}
+.fz-er-tabla .fz-er-vacia td{
+  font-size:13px;color:var(--fz-gris);font-style:italic;
+}
+.fz-er-tabla .fz-er-subtotal td{
+  font-weight:600;color:var(--fz-carbon);
+  border-top:1px solid var(--fz-linea);border-bottom:2px solid var(--fz-linea);
+}
+.fz-er-tabla .fz-er-subtotal td.num{font-variant-numeric:tabular-nums}
+.fz-er-tabla .fz-er-intermedio td{
+  font-weight:600;color:var(--fz-marino);background:rgba(16,28,51,.04);
+  border-bottom:2px solid var(--fz-linea);
+}
+.fz-er-tabla .fz-er-intermedio td.num{font-variant-numeric:tabular-nums}
+.fz-er-resultado{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;
+  margin-top:18px;padding:16px 20px;border-radius:var(--fz-radio);
+}
+.fz-er-resultado .lbl{
+  font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;
+}
+.fz-er-resultado .val{
+  font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;margin-left:auto;
+}
+/* Utilidad: verde salvia (positivo, buen resultado). */
+.fz-er-resultado.utilidad{background:var(--fz-salvia);color:#fff}
+.fz-er-resultado.utilidad .lbl{color:var(--fz-salvia-bg)}
+/* Perdida: azul marino serio (no rojo debe/haber), senal sobria de alerta. */
+.fz-er-resultado.perdida{background:var(--fz-marino);color:#fff}
+.fz-er-resultado.perdida .lbl{color:var(--fz-azul-cl)}
+
+/* ============================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width:720px){
@@ -673,4 +720,9 @@ body.fz-body{
      descargas ocupan todo el ancho para ser faciles de tocar. */
   .fz-bc-descargas{margin-left:0;width:100%}
   .fz-btn-descarga{flex:1}
+  /* Estado de resultados: los dos campos de fecha (Desde / Hasta) ocupan
+     todo el ancho y se apilan comodos en pantallas estrechas. */
+  .fz-bc-fecha{width:100%}
+  .fz-bc-fecha .fz-input{max-width:none}
+  .fz-er-resultado .val{margin-left:0;width:100%}
 }

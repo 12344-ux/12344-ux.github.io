@@ -169,6 +169,11 @@ export const ICONOS = {
 ICONOS.flecha = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>';
 ICONOS.salir = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>';
 
+// Icono de tendencia (linea ascendente): marca el Estado de resultados
+// (informe POR PERIODO, ingresos menos costos y gastos = utilidad/perdida).
+// Se distingue de 'informe' (balance de comprobacion) y 'balanza' (mayor).
+ICONOS.tendencia = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/><path d="M19 8h-3M19 8v3"/></svg>';
+
 /**
  * Monta el header institucional fijo (azul marino) al inicio de <body>,
  * seguido del encabezado editorial de la pantalla (titulo + kicker).

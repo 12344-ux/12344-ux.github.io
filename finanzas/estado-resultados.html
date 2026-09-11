@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Estado de resultados</title>
+<meta name="description" content="Estado de resultados por periodo · Area de Finanzas de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../marca-areas/finanzas.png?v=4">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=1">
+<link rel="stylesheet" href="finanzas.css?v=3">
+
+<!--
+  MAGANDHI · Area de Finanzas · Estado de resultados (POR PERIODO).
+  Solo lectura, derivado del diario. Consume la funcion SQL
+  estado_resultados(p_inicio, p_fin) via supabase.rpc (ver
+  supabase/migrations/20250201001000_finanzas_estado_resultados.sql):
+  para cada cuenta imputable de resultado (clases 4/5/6/7) con movimiento
+  ENTRE dos fechas devuelve clase, cuenta_codigo, cuenta_nombre, naturaleza,
+  total_debe, total_haber y monto_periodo (enteros de pesos). Con esas filas la
+  pantalla arma el estado clasificado: Ingresos, (menos) Costo de ventas =
+  Utilidad Bruta, (menos) Gastos operacionales = Utilidad/Perdida del ejercicio.
+  El dueno NO escribe este informe; el candado real es RLS server-side
+  (tiene_modulo('finanzas')). La utilidad calculada es exacta (enteros) porque
+  luego alimentara el patrimonio del Balance General (paso 2b).
+
+  EXPORTACION A PDF: se usan librerias por CDN con VERSION FIJADA para que el
+  informe sea reproducible:
+    · jsPDF 2.5.1
+      https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js
+    · jspdf-autotable 3.8.2
+      https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js
+  Se cargan como <script> clasicos (no modulos): exponen window.jspdf.jsPDF y
+  registran el plugin autoTable. Los defer garantizan que esten listos antes
+  de que el usuario pulse "Descargar PDF".
+
+  EXPORTACION A EXCEL: se genera un CSV con BOM UTF-8 ('\ufeff') y separador
+  ';' (no ','), que es lo que Excel en configuracion regional de Colombia/
+  Espana espera para abrir el archivo en columnas limpias. Se prefiere CSV
+  sobre .xlsx porque no requiere una libreria pesada adicional y mantiene los
+  montos como ENTEROS de pesos puros (1200000, sin separadores ni simbolo)
+  para que Excel los trate como numero y el dueno pueda seguir trabajando las
+  cifras.
+-->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body class="fz-body">
+
+<!-- Guardia reutilizable: sin sesion, redirige al login de la raiz. -->
+<script type="module" src="../auth-guard.js"></script>
+
+<main class="fz-wrap" id="fz-main" hidden>
+  <div class="fz-mayor-nota">
+    <span data-ico="info"></span>
+    <span>El estado de resultados se deriva automaticamente del Libro Diario. Es la pelicula del ejercicio entre dos fechas: ingresos menos costos y gastos = utilidad o perdida del periodo. Elige el periodo y genera el informe; luego puedes descargarlo en PDF o Excel.</span>
+  </div>
+
+  <div class="fz-bc-controles">
+    <label class="fz-bc-fecha">
+      <span>Desde</span>
+      <input class="fz-input" id="fz-inicio" type="date">
+    </label>
+    <label class="fz-bc-fecha">
+      <span>Hasta</span>
+      <input class="fz-input" id="fz-fin" type="date">
+    </label>
+    <button class="fz-btn-guardar" id="fz-generar" type="button">Generar</button>
+    <div class="fz-bc-descargas">
+      <button class="fz-btn-descarga" id="fz-pdf" type="button" disabled>
+        <span data-ico="informe"></span><span>Descargar PDF</span>
+      </button>
+      <button class="fz-btn-descarga" id="fz-excel" type="button" disabled>
+        <span data-ico="lista"></span><span>Descargar Excel</span>
+      </button>
+    </div>
+  </div>
+
+  <p class="fz-msg err" id="fz-error" hidden></p>
+
+  <div id="fz-resultado"></div>
+</main>
+
+<script type="module">
+  import {
+    supabase, asegurarAcceso, montarHeader, ICONOS,
+    formatearCOP, formatearFecha, formatearMomento, escaparHTML,
+    hoyISO, descargarArchivo
+  } from './finanzas-core.js';
+
+  const inputInicio = document.getElementById('fz-inicio');
+  const inputFin = document.getElementById('fz-fin');
+  const btnGenerar = document.getElementById('fz-generar');
+  const btnPDF = document.getElementById('fz-pdf');
+  const btnExcel = document.getElementById('fz-excel');
+  const cajaError = document.getElementById('fz-error');
+  const resultado = document.getElementById('fz-resultado');
+
+  // Estado del modulo: ultimo informe generado (para las exportaciones).
+  // filas = cuentas de resultado del periodo; resumen = subtotales enteros;
+  // inicio/fin = periodo del informe visible.
+  let estado = { filas: [], resumen: null, inicio: '', fin: '' };
+
+  // Nombre base del archivo de exportacion, coherente entre PDF y CSV.
+  function nombreBase() {
+    return 'estado-resultados-' + (estado.inicio || hoyISO()) + '_' + (estado.fin || hoyISO());
+  }
+
+  function mostrarError(texto) {
+    cajaError.textContent = texto;
+    cajaError.hidden = false;
+  }
+  function limpiarError() {
+    cajaError.hidden = true;
+    cajaError.textContent = '';
+  }
+
+  function habilitarDescargas(activo) {
+    btnPDF.disabled = !activo;
+    btnExcel.disabled = !activo;
+  }
+
+  // Entero de pesos (nunca float): trunca por si el driver devolviera string.
+  function entero(x) {
+    return Math.trunc(Number(x) || 0);
+  }
+
+  // Suma monto_periodo (entero) de las filas de una o varias clases.
+  function sumarClases(filas, clases) {
+    return filas.reduce((acc, f) => {
+      return clases.includes(String(f.clase)) ? acc + entero(f.monto_periodo) : acc;
+    }, 0);
+  }
+
+  async function generar() {
+    const inicio = inputInicio.value;
+    const fin = inputFin.value;
+    if (!inicio || !fin) { mostrarError('Elige la fecha inicial y la final del periodo.'); return; }
+    // Validacion de UX; el backend igual acota el rango en el filtro de la query.
+    if (inicio > fin) { mostrarError('La fecha inicial no puede ser posterior a la final.'); return; }
+
+    limpiarError();
+    habilitarDescargas(false);
+    btnGenerar.disabled = true;
+    resultado.innerHTML = '<div class="fz-empty">Generando informe...</div>';
+
+    const { data, error } = await supabase.rpc('estado_resultados', { p_inicio: inicio, p_fin: fin });
+
+    btnGenerar.disabled = false;
+
+    if (error) {
+      resultado.innerHTML = '';
+      mostrarError('No se pudo generar el estado de resultados: ' + (error.message || 'error desconocido') + '.');
+      estado = { filas: [], resumen: null, inicio: '', fin: '' };
+      return;
+    }
+
+    const filas = data || [];
+
+    // Subtotales enteros. Ingresos = clase 4; Costo de ventas = clases 6 + 7;
+    // Gastos operacionales = clase 5. La utilidad reutiliza esos mismos montos:
+    //   utilidadEjercicio = Ingresos - Costos - Gastos.
+    const totalIngresos = sumarClases(filas, ['4']);
+    const totalCosto = sumarClases(filas, ['6', '7']);
+    const utilidadBruta = totalIngresos - totalCosto;
+    const totalGastos = sumarClases(filas, ['5']);
+    const utilidadEjercicio = utilidadBruta - totalGastos;
+
+    const resumen = { totalIngresos, totalCosto, utilidadBruta, totalGastos, utilidadEjercicio };
+    estado = { filas, resumen, inicio, fin };
+
+    pintar(filas, resumen, inicio, fin);
+    habilitarDescargas(filas.length > 0);
+  }
+
+  // Filas de una clase (o clases), en orden de codigo.
+  function filasDeClase(filas, clases) {
+    return filas.filter((f) => clases.includes(String(f.clase)));
+  }
+
+  // Construye el bloque HTML de una seccion (titulo + lineas + subtotal).
+  function seccionHTML(titulo, filas, subtotal, opts) {
+    const menos = opts && opts.menos;
+    const lineas = filas.map((f) => {
+      const m = entero(f.monto_periodo);
+      return (
+        '<tr>' +
+          '<td class="cod">' + escaparHTML(f.cuenta_codigo) + '</td>' +
+          '<td>' + escaparHTML(f.cuenta_nombre || '') + '</td>' +
+          '<td class="num">' + formatearCOP(m) + '</td>' +
+        '</tr>'
+      );
+    }).join('');
+
+    return (
+      '<tbody class="fz-er-seccion">' +
+        '<tr class="fz-er-titulo">' +
+          '<td colspan="3">' + (menos ? '(menos) ' : '') + escaparHTML(titulo) + '</td>' +
+        '</tr>' +
+        (lineas || '<tr class="fz-er-vacia"><td colspan="3">Sin movimiento en el periodo</td></tr>') +
+        '<tr class="fz-er-subtotal">' +
+          '<td colspan="2">' + escaparHTML(titulo) + '</td>' +
+          '<td class="num">' + formatearCOP(subtotal) + '</td>' +
+        '</tr>' +
+      '</tbody>'
+    );
+  }
+
+  // Fila destacada de un resultado intermedio (Utilidad Bruta).
+  function intermedioHTML(etiqueta, valor) {
+    return (
+      '<tbody>' +
+        '<tr class="fz-er-intermedio">' +
+          '<td colspan="2">' + escaparHTML(etiqueta) + '</td>' +
+          '<td class="num">' + formatearCOP(valor) + '</td>' +
+        '</tr>' +
+      '</tbody>'
+    );
+  }
+
+  function pintar(filas, resumen, inicio, fin) {
+    if (!filas.length) {
+      resultado.innerHTML =
+        '<div class="fz-empty">No hay movimientos de resultado en el periodo ' +
+        '<strong>del ' + escaparHTML(formatearFecha(inicio)) + ' al ' + escaparHTML(formatearFecha(fin)) + '</strong>. ' +
+        'Registra asientos en el diario o cambia el periodo.</div>';
+      return;
+    }
+
+    const ingresos = filasDeClase(filas, ['4']);
+    const costos = filasDeClase(filas, ['6', '7']);
+    const gastos = filasDeClase(filas, ['5']);
+
+    const esUtilidad = resumen.utilidadEjercicio >= 0;
+    const etiquetaFinal = esUtilidad ? 'Utilidad del ejercicio' : 'Perdida del ejercicio';
+    const claseFinal = esUtilidad ? 'utilidad' : 'perdida';
+
+    const tabla =
+      '<table class="fz-tabla fz-er-tabla">' +
+        '<thead><tr>' +
+          '<th>Codigo PUC</th><th>Concepto</th><th class="num">Valor</th>' +
+        '</tr></thead>' +
+        seccionHTML('Ingresos', ingresos, resumen.totalIngresos) +
+        seccionHTML('Costo de ventas', costos, resumen.totalCosto, { menos: true }) +
+        intermedioHTML('Utilidad Bruta', resumen.utilidadBruta) +
+        seccionHTML('Gastos operacionales', gastos, resumen.totalGastos, { menos: true }) +
+      '</table>';
+
+    resultado.innerHTML =
+      '<div class="fz-bc-cabecera">' +
+        '<div class="fz-bc-corte">' +
+          '<span class="lbl">Periodo</span>' +
+          '<span class="val">Del ' + escaparHTML(formatearFecha(inicio)) + ' al ' + escaparHTML(formatearFecha(fin)) + '</span>' +
+        '</div>' +
+      '</div>' +
+      tabla +
+      '<div class="fz-er-resultado ' + claseFinal + '">' +
+        '<span class="lbl">' + escaparHTML(etiquetaFinal) + '</span>' +
+        '<span class="val">' + formatearCOP(resumen.utilidadEjercicio) + '</span>' +
+      '</div>';
+  }
+
+  // ----------------------------------------------------------
+  // EXPORTACION A PDF (jsPDF 2.5.1 + jspdf-autotable 3.8.2, ver <head>)
+  // ----------------------------------------------------------
+
+  // Carga el logo de marca como dataURL para incrustarlo en el PDF. Si falla
+  // (red, 404), resuelve null y el PDF sale sin logo (degradacion elegante).
+  function cargarLogoDataURL() {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          resolve({ dataURL: canvas.toDataURL('image/png'), w: img.naturalWidth, h: img.naturalHeight });
+        } catch (_) {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = '../logo-mark-terracota.png';
+    });
+  }
+
+  // Construye el cuerpo del PDF: lineas por seccion, subtotales, intermedios y
+  // la fila final destacada de Utilidad/Perdida del ejercicio.
+  function cuerpoPDF(filas, resumen) {
+    const cuerpo = [];
+    const seccion = (titulo, subfilas, subtotal, menos) => {
+      cuerpo.push([{ content: (menos ? '(menos) ' : '') + titulo, colSpan: 2, styles: { fontStyle: 'bold', fillColor: [231, 240, 234], textColor: [16, 28, 51] } }, '']);
+      if (!subfilas.length) {
+        cuerpo.push([{ content: 'Sin movimiento en el periodo', colSpan: 2, styles: { textColor: [138, 133, 120], fontStyle: 'italic' } }, '']);
+      }
+      for (const f of subfilas) {
+        cuerpo.push([String(f.cuenta_codigo || '') + '  ' + String(f.cuenta_nombre || ''), '', formatearCOP(entero(f.monto_periodo))]);
+      }
+      cuerpo.push([{ content: titulo, colSpan: 2, styles: { fontStyle: 'bold' } }, '', { content: formatearCOP(subtotal), styles: { fontStyle: 'bold' } }]);
+    };
+
+    seccion('Ingresos', filas.filter((f) => String(f.clase) === '4'), resumen.totalIngresos, false);
+    seccion('Costo de ventas', filas.filter((f) => ['6', '7'].includes(String(f.clase))), resumen.totalCosto, true);
+    cuerpo.push([{ content: 'Utilidad Bruta', colSpan: 2, styles: { fontStyle: 'bold', textColor: [16, 28, 51] } }, '', { content: formatearCOP(resumen.utilidadBruta), styles: { fontStyle: 'bold', textColor: [16, 28, 51] } }]);
+    seccion('Gastos operacionales', filas.filter((f) => String(f.clase) === '5'), resumen.totalGastos, true);
+    return cuerpo;
+  }
+
+  async function descargarPDF() {
+    if (!estado.filas.length) return;
+    const jspdfNS = window.jspdf;
+    if (!jspdfNS || !jspdfNS.jsPDF) {
+      mostrarError('No se pudo cargar el generador de PDF. Revisa tu conexion e intenta de nuevo.');
+      return;
+    }
+    limpiarError();
+
+    const { jsPDF } = jspdfNS;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+    const anchoPag = doc.internal.pageSize.getWidth();
+    const margen = 40;
+
+    // Encabezado de marca.
+    const logo = await cargarLogoDataURL();
+    const yTexto = 48;
+    if (logo) {
+      const alto = 34;
+      const ancho = logo.w && logo.h ? alto * (logo.w / logo.h) : alto;
+      try { doc.addImage(logo.dataURL, 'PNG', margen, 34, ancho, alto); } catch (_) { /* sin logo */ }
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(16, 28, 51); // azul marino
+    doc.text('MAGANDHI', logo ? margen + 44 : margen, yTexto);
+
+    doc.setFontSize(13);
+    doc.setTextColor(42, 38, 34);
+    doc.text('Estado de resultados', logo ? margen + 44 : margen, yTexto + 18);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(120, 120, 120);
+    doc.text('Periodo: del ' + formatearFecha(estado.inicio) + ' al ' + formatearFecha(estado.fin), anchoPag - margen, yTexto - 8, { align: 'right' });
+    doc.text('Generado: ' + formatearMomento(new Date().toISOString()), anchoPag - margen, yTexto + 6, { align: 'right' });
+
+    const r = estado.resumen;
+    const esUtilidad = r.utilidadEjercicio >= 0;
+    const etiquetaFinal = esUtilidad ? 'Utilidad del ejercicio' : 'Perdida del ejercicio';
+    // Verde salvia para utilidad; azul marino serio para perdida (no rojo
+    // debe/haber: el resultado del ejercicio tiene su propia semantica).
+    const colorFinal = esUtilidad ? [91, 138, 111] : [16, 28, 51];
+
+    doc.autoTable({
+      head: [['Concepto', '', 'Valor']],
+      body: cuerpoPDF(estado.filas, r),
+      foot: [[{ content: etiquetaFinal, colSpan: 2 }, '', formatearCOP(r.utilidadEjercicio)]],
+      startY: yTexto + 24,
+      margin: { left: margen, right: margen },
+      styles: { font: 'helvetica', fontSize: 9, cellPadding: 4, textColor: [42, 38, 34] },
+      headStyles: { fillColor: [16, 28, 51], textColor: [255, 255, 255], halign: 'left', fontStyle: 'bold' },
+      footStyles: { fillColor: colorFinal, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 11 },
+      columnStyles: {
+        0: { halign: 'left' },
+        1: { halign: 'left', cellWidth: 1 },
+        2: { halign: 'right' }
+      },
+      didParseCell: (hook) => {
+        // La columna de valor siempre a la derecha, tambien en head/foot.
+        if (hook.column.index === 2) hook.cell.styles.halign = 'right';
+      }
+    });
+
+    doc.save(nombreBase() + '.pdf');
+  }
+
+  // ----------------------------------------------------------
+  // EXPORTACION A EXCEL (CSV con BOM UTF-8 + separador ';', ver <head>)
+  // ----------------------------------------------------------
+
+  // Escapa un campo CSV: si contiene ';', comilla o salto de linea, se envuelve
+  // en comillas dobles y se duplican las comillas internas (regla RFC 4180).
+  function campoCSV(valor) {
+    const s = String(valor == null ? '' : valor);
+    if (/[";\n\r]/.test(s)) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  }
+
+  function descargarExcel() {
+    if (!estado.filas.length) return;
+    limpiarError();
+
+    const SEP = ';';
+    const r = estado.resumen;
+    const lineas = [];
+    lineas.push(['Clase', 'Codigo', 'Concepto', 'Valor'].map(campoCSV).join(SEP));
+
+    // Emite una seccion: titulo, lineas de cuenta y fila de subtotal.
+    const seccion = (titulo, subfilas, subtotal) => {
+      lineas.push([campoCSV(titulo), '', '', ''].join(SEP));
+      for (const f of subfilas) {
+        lineas.push([
+          campoCSV(f.clase || ''),
+          campoCSV(f.cuenta_codigo || ''),
+          campoCSV(f.cuenta_nombre || ''),
+          // Monto como ENTERO de pesos puro (sin separadores ni simbolo).
+          entero(f.monto_periodo)
+        ].join(SEP));
+      }
+      lineas.push([campoCSV('Subtotal ' + titulo), '', '', subtotal].join(SEP));
+    };
+
+    seccion('Ingresos', estado.filas.filter((f) => String(f.clase) === '4'), r.totalIngresos);
+    seccion('Costo de ventas', estado.filas.filter((f) => ['6', '7'].includes(String(f.clase))), r.totalCosto);
+    lineas.push([campoCSV('Utilidad Bruta'), '', '', r.utilidadBruta].join(SEP));
+    seccion('Gastos operacionales', estado.filas.filter((f) => String(f.clase) === '5'), r.totalGastos);
+
+    const etiquetaFinal = r.utilidadEjercicio >= 0 ? 'Utilidad del ejercicio' : 'Perdida del ejercicio';
+    lineas.push([campoCSV(etiquetaFinal), '', '', r.utilidadEjercicio].join(SEP));
+
+    // BOM UTF-8 para que Excel en espanol respete los acentos y abra en columnas.
+    const contenido = '\ufeff' + lineas.join('\r\n');
+    const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8;' });
+    descargarArchivo(nombreBase() + '.csv', blob);
+  }
+
+  btnGenerar.addEventListener('click', generar);
+  btnPDF.addEventListener('click', descargarPDF);
+  btnExcel.addEventListener('click', descargarExcel);
+  inputInicio.addEventListener('keydown', (e) => { if (e.key === 'Enter') generar(); });
+  inputFin.addEventListener('keydown', (e) => { if (e.key === 'Enter') generar(); });
+
+  // Si el usuario cambia cualquiera de las fechas sin volver a Generar, las
+  // descargas dejarian de coincidir con el informe visible (exportarian el
+  // periodo viejo). Se deshabilitan hasta que se regenere para el nuevo periodo.
+  function revisarCoherenciaPeriodo() {
+    if (inputInicio.value !== estado.inicio || inputFin.value !== estado.fin) habilitarDescargas(false);
+  }
+  inputInicio.addEventListener('input', revisarCoherenciaPeriodo);
+  inputInicio.addEventListener('change', revisarCoherenciaPeriodo);
+  inputFin.addEventListener('input', revisarCoherenciaPeriodo);
+  inputFin.addEventListener('change', revisarCoherenciaPeriodo);
+
+  (async () => {
+    const acceso = await asegurarAcceso(document.body);
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Estado de resultados',
+      kicker: 'CONTABILIDAD · POR PERIODO',
+      lead: 'Ingresos menos costos y gastos del periodo que elijas = utilidad o perdida del ejercicio, derivado del diario. Verlo en pantalla y, si sirve, descargarlo en PDF o Excel.',
+      sesion: acceso.sesion,
+      volverHref: 'index.html',
+      volverTexto: 'Finanzas'
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    // Defaults: primer dia del ano corriente hasta hoy. Es lo mas util para un
+    // estado de resultados acumulado del ejercicio (ano en curso a la fecha).
+    const hoy = hoyISO();
+    inputInicio.value = hoy.slice(0, 4) + '-01-01';
+    inputFin.value = hoy;
+
+    document.getElementById('fz-main').hidden = false;
+  })();
+</script>
+
+</body>
+</html>
