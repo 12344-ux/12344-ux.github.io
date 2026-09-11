@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Balance de comprobacion</title>
+<meta name="description" content="Balance de comprobacion a fecha de corte · Area de Finanzas de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../marca-areas/finanzas.png?v=3">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=1">
+<link rel="stylesheet" href="finanzas.css?v=2">
+
+<!--
+  MAGANDHI · Area de Finanzas · Balance de comprobacion (a FECHA DE CORTE).
+  Solo lectura, derivado del diario. Consume la funcion SQL
+  balance_comprobacion(p_fecha_corte) via supabase.rpc (ver
+  supabase/migrations/20250201000900_finanzas_balance_comprobacion.sql):
+  para cada cuenta imputable con movimiento hasta la fecha de corte devuelve
+  cuenta_codigo, cuenta_nombre, naturaleza, total_debe, total_haber,
+  saldo_deudor, saldo_acreedor (enteros de pesos). El dueno NO escribe este
+  informe; el candado real es RLS server-side (tiene_modulo('finanzas')).
+
+  EXPORTACION A PDF: se usan librerias por CDN con VERSION FIJADA para que el
+  informe sea reproducible:
+    · jsPDF 2.5.1
+      https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js
+    · jspdf-autotable 3.8.2
+      https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js
+  Se cargan como <script> clasicos (no modulos): exponen window.jspdf.jsPDF y
+  registran el plugin autoTable. Los defer garantizan que esten listos antes
+  de que el usuario pulse "Descargar PDF".
+
+  EXPORTACION A EXCEL: se genera un CSV con BOM UTF-8 ('\ufeff') y separador
+  ';' (no ','), que es lo que Excel en configuracion regional de Colombia/
+  Espana espera para abrir el archivo en columnas limpias sin pasar por el
+  asistente de importacion. Se prefiere CSV sobre .xlsx porque no requiere una
+  libreria pesada adicional, mantiene los montos como ENTEROS de pesos puros
+  (1200000, sin separadores de miles ni simbolo) para que Excel los trate como
+  numero y el dueno pueda seguir trabajando las cifras.
+-->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body class="fz-body">
+
+<!-- Guardia reutilizable: sin sesion, redirige al login de la raiz. -->
+<script type="module" src="../auth-guard.js"></script>
+
+<main class="fz-wrap" id="fz-main" hidden>
+  <div class="fz-mayor-nota">
+    <span data-ico="info"></span>
+    <span>El balance de comprobacion se deriva automaticamente del Libro Diario. Elige una fecha de corte y genera el informe para verlo en pantalla; luego puedes descargarlo en PDF o Excel.</span>
+  </div>
+
+  <div class="fz-bc-controles">
+    <label class="fz-bc-fecha">
+      <span>Fecha de corte</span>
+      <input class="fz-input" id="fz-fecha" type="date">
+    </label>
+    <button class="fz-btn-guardar" id="fz-generar" type="button">Generar</button>
+    <div class="fz-bc-descargas">
+      <button class="fz-btn-descarga" id="fz-pdf" type="button" disabled>
+        <span data-ico="informe"></span><span>Descargar PDF</span>
+      </button>
+      <button class="fz-btn-descarga" id="fz-excel" type="button" disabled>
+        <span data-ico="lista"></span><span>Descargar Excel</span>
+      </button>
+    </div>
+  </div>
+
+  <p class="fz-msg err" id="fz-error" hidden></p>
+
+  <div id="fz-resultado"></div>
+</main>
+
+<script type="module">
+  import {
+    supabase, asegurarAcceso, montarHeader, ICONOS,
+    formatearCOP, formatearFecha, formatearMomento, escaparHTML,
+    hoyISO, descargarArchivo
+  } from './finanzas-core.js';
+
+  const inputFecha = document.getElementById('fz-fecha');
+  const btnGenerar = document.getElementById('fz-generar');
+  const btnPDF = document.getElementById('fz-pdf');
+  const btnExcel = document.getElementById('fz-excel');
+  const cajaError = document.getElementById('fz-error');
+  const resultado = document.getElementById('fz-resultado');
+
+  // Estado del modulo: ultimo informe generado (para las exportaciones).
+  // filas = arreglo de cuentas; totales = enteros sumados en JS; fecha = corte.
+  let estado = { filas: [], totales: null, fecha: '' };
+
+  // Nombre base del archivo de exportacion, coherente entre PDF y CSV.
+  function nombreBase() {
+    return 'balance-comprobacion-' + (estado.fecha || hoyISO());
+  }
+
+  function mostrarError(texto) {
+    cajaError.textContent = texto;
+    cajaError.hidden = false;
+  }
+  function limpiarError() {
+    cajaError.hidden = true;
+    cajaError.textContent = '';
+  }
+
+  function habilitarDescargas(activo) {
+    btnPDF.disabled = !activo;
+    btnExcel.disabled = !activo;
+  }
+
+  // Suma de una columna como ENTEROS de pesos (nunca float): reduce con
+  // Math.trunc por si el driver devolviera un string/numerico.
+  function sumarEntero(filas, campo) {
+    return filas.reduce((acc, f) => acc + Math.trunc(Number(f[campo]) || 0), 0);
+  }
+
+  async function generar() {
+    const fecha = inputFecha.value;
+    if (!fecha) { mostrarError('Elige una fecha de corte.'); return; }
+
+    limpiarError();
+    habilitarDescargas(false);
+    btnGenerar.disabled = true;
+    resultado.innerHTML = '<div class="fz-empty">Generando informe...</div>';
+
+    const { data, error } = await supabase.rpc('balance_comprobacion', { p_fecha_corte: fecha });
+
+    btnGenerar.disabled = false;
+
+    if (error) {
+      resultado.innerHTML = '';
+      mostrarError('No se pudo generar el balance: ' + (error.message || 'error desconocido') + '.');
+      estado = { filas: [], totales: null, fecha: '' };
+      return;
+    }
+
+    const filas = data || [];
+    const totales = {
+      total_debe: sumarEntero(filas, 'total_debe'),
+      total_haber: sumarEntero(filas, 'total_haber'),
+      saldo_deudor: sumarEntero(filas, 'saldo_deudor'),
+      saldo_acreedor: sumarEntero(filas, 'saldo_acreedor')
+    };
+    estado = { filas, totales, fecha };
+
+    pintar(filas, totales, fecha);
+    habilitarDescargas(filas.length > 0);
+  }
+
+  function pintar(filas, totales, fecha) {
+    if (!filas.length) {
+      resultado.innerHTML =
+        '<div class="fz-empty">No hay movimientos hasta la fecha de corte ' +
+        '<strong>' + escaparHTML(formatearFecha(fecha)) + '</strong>. ' +
+        'Registra asientos en el diario o elige otra fecha.</div>';
+      return;
+    }
+
+    // Cuadre (senal, NO bloqueante): en un libro correcto ambos deben cuadrar.
+    const cuadraSaldos = totales.saldo_deudor === totales.saldo_acreedor;
+    const cuadraMovs = totales.total_debe === totales.total_haber;
+    const cuadra = cuadraSaldos && cuadraMovs;
+
+    const cuerpo = filas.map((f) => {
+      const td = Math.trunc(Number(f.total_debe) || 0);
+      const th = Math.trunc(Number(f.total_haber) || 0);
+      const sd = Math.trunc(Number(f.saldo_deudor) || 0);
+      const sa = Math.trunc(Number(f.saldo_acreedor) || 0);
+      return (
+        '<tr>' +
+          '<td class="cod">' + escaparHTML(f.cuenta_codigo) + '</td>' +
+          '<td>' + escaparHTML(f.cuenta_nombre || '') + '</td>' +
+          '<td class="num debe">' + (td ? formatearCOP(td) : '') + '</td>' +
+          '<td class="num haber">' + (th ? formatearCOP(th) : '') + '</td>' +
+          '<td class="num debe">' + (sd ? formatearCOP(sd) : '') + '</td>' +
+          '<td class="num haber">' + (sa ? formatearCOP(sa) : '') + '</td>' +
+        '</tr>'
+      );
+    }).join('');
+
+    const badge = cuadra
+      ? '<span class="fz-estado cuadra">' + ICONOS.check + 'Cuadra</span>'
+      : '<span class="fz-estado no-cuadra">' + ICONOS.equis + 'No cuadra</span>';
+
+    resultado.innerHTML =
+      '<div class="fz-bc-cabecera">' +
+        '<div class="fz-bc-corte">' +
+          '<span class="lbl">A fecha de corte</span>' +
+          '<span class="val">' + escaparHTML(formatearFecha(fecha)) + '</span>' +
+        '</div>' +
+        badge +
+      '</div>' +
+      '<table class="fz-tabla fz-bc-tabla">' +
+        '<thead><tr>' +
+          '<th>Codigo PUC</th><th>Nombre</th>' +
+          '<th class="num">Total Debe</th><th class="num">Total Haber</th>' +
+          '<th class="num">Saldo Deudor</th><th class="num">Saldo Acreedor</th>' +
+        '</tr></thead>' +
+        '<tbody>' + cuerpo + '</tbody>' +
+        '<tfoot><tr>' +
+          '<td colspan="2">TOTALES</td>' +
+          '<td class="num debe">' + formatearCOP(totales.total_debe) + '</td>' +
+          '<td class="num haber">' + formatearCOP(totales.total_haber) + '</td>' +
+          '<td class="num debe">' + formatearCOP(totales.saldo_deudor) + '</td>' +
+          '<td class="num haber">' + formatearCOP(totales.saldo_acreedor) + '</td>' +
+        '</tr></tfoot>' +
+      '</table>';
+  }
+
+  // ----------------------------------------------------------
+  // EXPORTACION A PDF (jsPDF 2.5.1 + jspdf-autotable 3.8.2, ver <head>)
+  // ----------------------------------------------------------
+
+  // Carga el logo de marca como dataURL para incrustarlo en el PDF. Si falla
+  // (red, 404), resuelve null y el PDF sale sin logo (degradacion elegante).
+  function cargarLogoDataURL() {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          resolve({ dataURL: canvas.toDataURL('image/png'), w: img.naturalWidth, h: img.naturalHeight });
+        } catch (_) {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = '../logo-mark-terracota.png';
+    });
+  }
+
+  async function descargarPDF() {
+    if (!estado.filas.length) return;
+    const jspdfNS = window.jspdf;
+    if (!jspdfNS || !jspdfNS.jsPDF) {
+      mostrarError('No se pudo cargar el generador de PDF. Revisa tu conexion e intenta de nuevo.');
+      return;
+    }
+    limpiarError();
+
+    const { jsPDF } = jspdfNS;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+    const anchoPag = doc.internal.pageSize.getWidth();
+    const margen = 40;
+
+    // Encabezado de marca.
+    const logo = await cargarLogoDataURL();
+    let yTexto = 48;
+    if (logo) {
+      const alto = 34;
+      const ancho = logo.w && logo.h ? alto * (logo.w / logo.h) : alto;
+      try { doc.addImage(logo.dataURL, 'PNG', margen, 34, ancho, alto); } catch (_) { /* sin logo */ }
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(16, 28, 51); // azul marino
+    doc.text('MAGANDHI', logo ? margen + 44 : margen, yTexto);
+
+    doc.setFontSize(13);
+    doc.setTextColor(42, 38, 34);
+    doc.text('Balance de comprobacion', logo ? margen + 44 : margen, yTexto + 18);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(120, 120, 120);
+    doc.text('A fecha de corte: ' + formatearFecha(estado.fecha), anchoPag - margen, yTexto - 8, { align: 'right' });
+    doc.text('Generado: ' + formatearMomento(new Date().toISOString()), anchoPag - margen, yTexto + 6, { align: 'right' });
+
+    // Cuerpo de la tabla + fila de totales.
+    const cuerpo = estado.filas.map((f) => ([
+      String(f.cuenta_codigo || ''),
+      String(f.cuenta_nombre || ''),
+      formatearCOP(Math.trunc(Number(f.total_debe) || 0)),
+      formatearCOP(Math.trunc(Number(f.total_haber) || 0)),
+      formatearCOP(Math.trunc(Number(f.saldo_deudor) || 0)),
+      formatearCOP(Math.trunc(Number(f.saldo_acreedor) || 0))
+    ]));
+
+    const t = estado.totales;
+    const filaTotales = [
+      'TOTALES', '',
+      formatearCOP(t.total_debe), formatearCOP(t.total_haber),
+      formatearCOP(t.saldo_deudor), formatearCOP(t.saldo_acreedor)
+    ];
+
+    doc.autoTable({
+      head: [['Codigo PUC', 'Nombre', 'Total Debe', 'Total Haber', 'Saldo Deudor', 'Saldo Acreedor']],
+      body: cuerpo,
+      foot: [filaTotales],
+      startY: yTexto + 24,
+      margin: { left: margen, right: margen },
+      styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 4, textColor: [42, 38, 34] },
+      headStyles: { fillColor: [16, 28, 51], textColor: [255, 255, 255], halign: 'left', fontStyle: 'bold' },
+      footStyles: { fillColor: [231, 240, 234], textColor: [16, 28, 51], fontStyle: 'bold' },
+      columnStyles: {
+        0: { halign: 'left' },
+        1: { halign: 'left' },
+        2: { halign: 'right' },
+        3: { halign: 'right' },
+        4: { halign: 'right' },
+        5: { halign: 'right' }
+      },
+      didParseCell: (hook) => {
+        // Alinear a la derecha las columnas numericas tambien en head/foot.
+        if (hook.column.index >= 2) hook.cell.styles.halign = 'right';
+      }
+    });
+
+    doc.save(nombreBase() + '.pdf');
+  }
+
+  // ----------------------------------------------------------
+  // EXPORTACION A EXCEL (CSV con BOM UTF-8 + separador ';', ver <head>)
+  // ----------------------------------------------------------
+
+  // Escapa un campo CSV: si contiene ';', comilla o salto de linea, se envuelve
+  // en comillas dobles y se duplican las comillas internas (regla RFC 4180).
+  function campoCSV(valor) {
+    const s = String(valor == null ? '' : valor);
+    if (/[";\n\r]/.test(s)) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  }
+
+  function descargarExcel() {
+    if (!estado.filas.length) return;
+    limpiarError();
+
+    const SEP = ';';
+    const lineas = [];
+    lineas.push(['Codigo', 'Nombre', 'Total Debe', 'Total Haber', 'Saldo Deudor', 'Saldo Acreedor'].map(campoCSV).join(SEP));
+
+    for (const f of estado.filas) {
+      lineas.push([
+        campoCSV(f.cuenta_codigo || ''),
+        campoCSV(f.cuenta_nombre || ''),
+        // Montos como ENTEROS de pesos puros (sin separadores ni simbolo).
+        Math.trunc(Number(f.total_debe) || 0),
+        Math.trunc(Number(f.total_haber) || 0),
+        Math.trunc(Number(f.saldo_deudor) || 0),
+        Math.trunc(Number(f.saldo_acreedor) || 0)
+      ].join(SEP));
+    }
+
+    const t = estado.totales;
+    lineas.push([
+      campoCSV('TOTALES'), '',
+      t.total_debe, t.total_haber, t.saldo_deudor, t.saldo_acreedor
+    ].join(SEP));
+
+    // BOM UTF-8 para que Excel en espanol respete los acentos y abra en columnas.
+    const contenido = '\ufeff' + lineas.join('\r\n');
+    const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8;' });
+    descargarArchivo(nombreBase() + '.csv', blob);
+  }
+
+  btnGenerar.addEventListener('click', generar);
+  btnPDF.addEventListener('click', descargarPDF);
+  btnExcel.addEventListener('click', descargarExcel);
+  inputFecha.addEventListener('keydown', (e) => { if (e.key === 'Enter') generar(); });
+
+  (async () => {
+    const acceso = await asegurarAcceso(document.body);
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Balance de comprobacion',
+      kicker: 'CONTABILIDAD · A FECHA DE CORTE',
+      lead: 'Saldos de todas las cuentas con movimiento hasta la fecha que elijas, derivados del diario. Verlo en pantalla y, si sirve, descargarlo en PDF o Excel.',
+      sesion: acceso.sesion,
+      volverHref: 'index.html',
+      volverTexto: 'Finanzas'
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    inputFecha.value = hoyISO();
+
+    document.getElementById('fz-main').hidden = false;
+  })();
+</script>
+
+</body>
+</html>

@@ -155,7 +155,10 @@ export const ICONOS = {
   lista: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
   balanza: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 7h10M7 21h10"/><path d="M7 7 4 14a3 3 0 0 0 6 0L7 7ZM17 7l-3 7a3 3 0 0 0 6 0l-3-7Z"/></svg>',
   nuevo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 12v6M9 15h6"/></svg>',
-  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>'
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
+  // Icono de informe/documento con lineas: distingue el Balance de comprobacion
+  // (a fecha de corte) del Libro Mayor, que ya usa 'balanza'.
+  informe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8M8 9h2"/></svg>'
 };
 
 // ------------------------------------------------------------
@@ -379,4 +382,28 @@ export async function cargarBitacora(asientoId) {
     .order('cuando', { ascending: false });
   if (error) throw error;
   return data || [];
+}
+
+// ------------------------------------------------------------
+// DESCARGA DE ARCHIVOS (helper compartido para exportaciones)
+// ------------------------------------------------------------
+
+/**
+ * Dispara la descarga de un Blob con un nombre de archivo dado, usando el
+ * patron estandar de navegador: URL.createObjectURL + un <a download>
+ * sintetico + revoke del objeto URL. Compartido por las exportaciones
+ * (CSV/PDF) del area para no duplicar la fontaneria de descarga.
+ * @param {string} nombre nombre de archivo sugerido (p.ej. 'balance.csv')
+ * @param {Blob} blob contenido a descargar
+ */
+export function descargarArchivo(nombre, blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nombre;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Libera el objeto URL tras un tick para no cancelar la descarga.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }

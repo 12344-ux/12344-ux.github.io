@@ -609,6 +609,45 @@ body.fz-body{
 .fz-modal-acciones{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
 
 /* ============================================================
+   BALANCE DE COMPROBACION (a fecha de corte)
+   ------------------------------------------------------------
+   Reutiliza fz-tabla, fz-estado, fz-btn-guardar, fz-input, fz-empty,
+   fz-msg y fz-mayor-nota. Aqui solo se anaden la barra de controles
+   (fecha de corte + Generar + descargas) y la cabecera del informe.
+   ============================================================ */
+.fz-bc-controles{
+  display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px;
+  margin:16px 0 8px;
+}
+.fz-bc-fecha{display:flex;flex-direction:column;gap:6px}
+.fz-bc-fecha span{
+  font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--fz-gris);
+}
+.fz-bc-fecha .fz-input{max-width:220px}
+.fz-bc-descargas{display:flex;gap:10px;margin-left:auto}
+.fz-btn-descarga{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:inherit;font-size:13.5px;font-weight:600;
+  color:var(--fz-marino);background:var(--fz-tarjeta);
+  border:1px solid var(--fz-linea);border-radius:11px;padding:11px 18px;
+  cursor:pointer;transition:background-color .15s ease, border-color .15s ease, opacity .15s ease;
+}
+.fz-btn-descarga svg{width:16px;height:16px}
+.fz-btn-descarga:hover:not(:disabled){background:rgba(16,28,51,.05);border-color:var(--fz-azul-cl)}
+.fz-btn-descarga:disabled{opacity:.45;cursor:not-allowed}
+.fz-bc-cabecera{
+  display:flex;flex-wrap:wrap;align-items:center;gap:12px;
+  margin:20px 0 12px;
+}
+.fz-bc-corte{display:flex;flex-direction:column;gap:2px}
+.fz-bc-corte .lbl{
+  font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--fz-gris);
+}
+.fz-bc-corte .val{font-size:16px;font-weight:600;color:var(--fz-marino)}
+
+/* ============================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width:720px){
@@ -630,4 +669,8 @@ body.fz-body{
   .fz-volver{padding:7px 10px}
   .fz-volver span{display:none}
   .fz-perfil-menu{min-width:210px}
+  /* Balance de comprobacion: en movil los controles se apilan y las
+     descargas ocupan todo el ancho para ser faciles de tocar. */
+  .fz-bc-descargas{margin-left:0;width:100%}
+  .fz-btn-descarga{flex:1}
 }
