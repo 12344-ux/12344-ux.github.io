@@ -4,34 +4,27 @@ Esta carpeta guarda los íconos/logos que distinguen cada área interna de
 montaguth.institute (control interno), conservando la identidad de marca
 de MAGANDHI pero con una variación cromática por área.
 
-## Favicons oficiales (SVG transparentes)
+## Favicons oficiales (en uso)
 
-Los favicon oficiales del back-office ahora son **archivos SVG con fondo
-transparente**, dibujados desde código (no imágenes con fondo blanco). Todos
-comparten el mismo símbolo de MAGANDHI (el domo/templo) y solo cambia el color
-del trazo por área:
+- `control-interno.png` → ícono GENERAL (login / panel de montaguth.institute).
+  Domo MAGANDHI + escudo, en **azul marino**. PNG con **fondo transparente**.
+- `finanzas.png` → ícono del Área de Finanzas.
+  Domo MAGANDHI + moneda ($) y gráfico ascendente, en **verde**. PNG con
+  **fondo transparente**.
 
-- `control-interno.svg` → trazo **azul marino** `#1B2A47` (ícono GENERAL:
-  login / entrada a montaguth.institute). Usado en `index.html` y `panel.html`.
-- `finanzas.svg`        → trazo **verde** `#1F7A4D` (Área de Finanzas). Usado en
-  todas las páginas de `finanzas/`.
+Ambos los diseñó el dueño y se exportaron con fondo transparente (removebg /
+Firefly). Se referencian con `?v=N` (cache-bust) en el `<link rel="icon">` de
+cada página.
 
-Se enlazan así (con `type="image/svg+xml"` y cache-bust `?v=N`):
+## Sistema por áreas (a futuro)
 
-```html
-<link rel="icon" type="image/svg+xml" href="marca-areas/control-interno.svg?v=2">
-```
+Cada área nueva del back-office (ej. pedidos, inventario) tendrá su propio
+ícono con **color representativo**, conservando la base del domo MAGANDHI.
+Esto es SOLO para el back-office interno (montaguth.institute), nunca para la
+tienda pública magandhi.com.
 
-Cada **área futura** tendrá su propio color reutilizando el mismo domo: copia
-uno de los SVG, cámbiale solo el atributo `stroke` y guárdalo como
-`nombre-area.svg` (ej. `pedidos.svg`, `inventario.svg`).
+## Cómo actualizar un favicon
 
-## PNG antiguos
-
-Los `control-interno.png` y `finanzas.png` (fondo blanco) se **conservan** en el
-repo por si sirven para un logo grande, pero **ya no se usan como favicon**
-porque su fondo blanco los hacía casi indistinguibles en la pestaña.
-
-## Sube aquí tus archivos
-
-Desde GitHub: **Add file → Upload files**, arrastra y **Commit**.
+Sube el PNG (idealmente cuadrado, fondo transparente) con el nombre del área
+y sube el `?v=N` del `<link rel="icon">` en las páginas correspondientes para
+forzar que el navegador tome la versión nueva.
