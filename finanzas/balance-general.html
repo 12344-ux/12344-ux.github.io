@@ -252,7 +252,11 @@
   }
 
   function pintar() {
-    const { activo, pasivo, patrimonio, resultado, totales, fecha } = estado;
+    // OJO: NO desestructurar `resultado` aqui: el estado guarda el MONTO (numero)
+    // del resultado del ejercicio y hay una `const resultado` a nivel de modulo
+    // que es el elemento #fz-resultado. Se renombra el monto a `resultadoMonto`
+    // para que los `resultado.innerHTML = ...` de abajo escriban en el ELEMENTO.
+    const { activo, pasivo, patrimonio, resultado: resultadoMonto, totales, fecha } = estado;
 
     if (!hayDatosEstado()) {
       resultado.innerHTML =
@@ -270,7 +274,7 @@
       : '<span class="fz-estado no-cuadra">' + ICONOS.equis + 'No cuadra</span>';
 
     // Linea del resultado del ejercicio dentro de PATRIMONIO.
-    const esUtilidad = resultado >= 0;
+    const esUtilidad = resultadoMonto >= 0;
     const etiquetaResultado = esUtilidad ? 'Utilidad del ejercicio' : 'Perdida del ejercicio';
     const claseResultado = esUtilidad ? 'utilidad' : 'perdida';
     const anioFiscal = String(fecha).slice(0, 4);
@@ -280,7 +284,7 @@
           '<span class="lbl">' + escaparHTML(etiquetaResultado) + '</span>' +
           '<span class="sub"> (1 ene ' + escaparHTML(anioFiscal) + ' al corte)</span>' +
         '</td>' +
-        '<td class="num">' + formatearCOP(resultado) + '</td>' +
+        '<td class="num">' + formatearCOP(resultadoMonto) + '</td>' +
       '</tr>';
 
     const bloqueActivo =
