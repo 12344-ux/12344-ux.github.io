@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Magandhi · Operaciones Internas</title>
-<meta name="description" content="Panel de Operaciones Internas de Magandhi Corporation.">
+<title>Magandhi · Acceso interno</title>
+<meta name="description" content="Acceso al back-office interno de Magandhi Corporation.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" type="image/png" href="favicon.png?v=1">
 <link rel="apple-touch-icon" href="icono-app-180.png?v=1">
@@ -16,12 +16,14 @@
 <link rel="stylesheet" href="marca.css?v=1">
 
 <!--
-  MAGANDHI · portada de OPERACIONES INTERNAS (back-office, montaguth.institute).
-  · Landing estática, sin login ni backend (fases futuras).
-  · Sistema de marca en marca.css (fuente única de la paleta terracota).
+  MAGANDHI · pantalla de LOGIN del back-office interno (montaguth.institute).
+  · Reutiliza el sistema de marca (marca.css, wordmark, Poppins, terracota).
+  · Autenticacion con Supabase Auth (email + contrasena).
   · Sobrio, institucional, boutique. El dorado (--acento) solo en detalles
-    mínimos, nunca como marco grande junto al terracota.
-  · Prefijo mg- para el CSS específico de esta página.
+    minimos, nunca como marco grande junto al terracota.
+  · Prefijo mg- para el CSS especifico de esta pagina.
+  · SEGURIDAD: la publishable key es publica (protegida por RLS). La
+    seguridad real esta en los datos, no en el HTML. Ver supabase-config.js.
 -->
 <style>
   *{box-sizing:border-box}
@@ -49,32 +51,24 @@
   }
 
   .mg-panel{
-    width:100%;max-width:520px;text-align:center;
-    display:flex;flex-direction:column;align-items:center;gap:26px;
+    width:100%;max-width:420px;text-align:center;
+    display:flex;flex-direction:column;align-items:center;gap:24px;
   }
 
   /* marca */
-  .mg-logo{width:96px;height:96px;display:block}
+  .mg-logo{width:84px;height:84px;display:block}
   .mg-brand{display:flex;flex-direction:column;align-items:center;gap:10px}
   /* wordmark MAGANDHI: negro con la A central en terracota (estilo de marca) */
   .mg-word{
-    font-weight:600;font-size:30px;letter-spacing:.18em;color:var(--negro);
+    font-weight:600;font-size:28px;letter-spacing:.18em;color:var(--negro);
     line-height:1;text-indent:.18em;
   }
   .mg-word em{font-style:normal;color:var(--rojo)}
-  /* filete dorado mínimo, solo un detalle fino (no marco grande) */
+  /* filete dorado minimo, solo un detalle fino (no marco grande) */
   .mg-rule{
     width:44px;height:2px;border-radius:2px;
     background:var(--acento);opacity:.9;
   }
-
-  /* slogan / rol del dominio */
-  .mg-slogan{
-    max-width:400px;margin:0;
-    font-size:clamp(15px,2.4vw,17px);color:var(--gris);font-weight:400;
-  }
-  .mg-slogan strong{color:var(--negro);font-weight:600}
-  .mg-slogan em{font-style:normal;color:var(--rojo);font-weight:600}
 
   /* etiqueta de contexto (interno) */
   .mg-tag{
@@ -85,6 +79,52 @@
     border-radius:999px;padding:7px 15px;
   }
   .mg-tag svg{width:13px;height:13px}
+
+  /* tarjeta de formulario */
+  .mg-card{
+    width:100%;
+    background:var(--tarjeta);
+    border:1px solid var(--linea);
+    border-radius:16px;
+    padding:26px 24px;
+    display:flex;flex-direction:column;gap:16px;
+    text-align:left;
+  }
+  .mg-field{display:flex;flex-direction:column;gap:6px}
+  .mg-label{
+    font-size:12px;font-weight:600;letter-spacing:.04em;
+    color:var(--gris);
+  }
+  .mg-input{
+    font-family:inherit;font-size:15px;color:var(--tinta);
+    background:var(--hueso);
+    border:1px solid var(--linea);border-radius:10px;
+    padding:11px 13px;width:100%;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .mg-input:focus{
+    outline:none;
+    border-color:var(--rojo);
+    box-shadow:0 0 0 3px rgba(166,51,46,.12);
+  }
+
+  /* boton principal terracota */
+  .mg-btn{
+    font-family:inherit;font-size:15px;font-weight:600;letter-spacing:.03em;
+    color:#fff;background:var(--rojo);
+    border:none;border-radius:10px;
+    padding:12px 16px;width:100%;cursor:pointer;
+    transition:background-color .15s ease;
+  }
+  .mg-btn:hover{background:var(--rojo-osc)}
+  .mg-btn:disabled{opacity:.6;cursor:default}
+
+  /* mensaje de error sobrio */
+  .mg-msg{
+    min-height:0;margin:0;
+    font-size:13px;color:var(--rojo);
+  }
+  .mg-msg:empty{display:none}
 
   /* pie institucional */
   .mg-foot{
@@ -107,18 +147,68 @@
 
     <span class="mg-tag">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      Acceso interno
+      Solo personal interno
     </span>
 
-    <p class="mg-slogan">
-      <em>Operaciones Internas</em> · <strong>Magandhi Corporation</strong>
-    </p>
+    <form class="mg-card" id="mg-login" autocomplete="on">
+      <div class="mg-field">
+        <label class="mg-label" for="mg-email">Correo</label>
+        <input class="mg-input" id="mg-email" name="email" type="email"
+               autocomplete="username" required>
+      </div>
+      <div class="mg-field">
+        <label class="mg-label" for="mg-pass">Contrasena</label>
+        <input class="mg-input" id="mg-pass" name="password" type="password"
+               autocomplete="current-password" required>
+      </div>
+      <button class="mg-btn" id="mg-submit" type="submit">Acceder</button>
+      <p class="mg-msg" id="mg-msg" role="alert" aria-live="polite"></p>
+    </form>
   </div>
 </main>
 
 <footer class="mg-foot">
   &copy; <span>Magandhi Corporation</span> · Uso interno
 </footer>
+
+<script type="module">
+  import { supabase } from './supabase-config.js';
+
+  const form   = document.getElementById('mg-login');
+  const submit = document.getElementById('mg-submit');
+  const msg    = document.getElementById('mg-msg');
+
+  // Si ya hay sesion valida al cargar, entrar directo al panel.
+  (async () => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) window.location.replace('panel.html');
+    } catch (_) { /* sin conexion: se queda en el login */ }
+  })();
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg.textContent = '';
+    submit.disabled = true;
+
+    const email    = form.email.value.trim();
+    const password = form.password.value;
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        // Mensaje sobrio e institucional: no filtramos detalles tecnicos.
+        msg.textContent = 'No pudimos verificar el acceso. Revisa tus datos e intentalo de nuevo.';
+        submit.disabled = false;
+        return;
+      }
+      window.location.replace('panel.html');
+    } catch (_) {
+      msg.textContent = 'No pudimos conectar en este momento. Intentalo de nuevo mas tarde.';
+      submit.disabled = false;
+    }
+  });
+</script>
 
 </body>
 </html>
