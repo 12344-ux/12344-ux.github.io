@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke="#1F7A4D" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Cupula exterior: domo de base ancha, lados que se curvan hacia afuera en las esquinas -->
+  <path d="M12 88 C12 44 30 26 50 26 C70 26 88 44 88 88"/>
+  <!-- Arco central apuntado (ojival) coronando el centro -->
+  <path d="M34 60 C34 34 42 20 50 14 C58 20 66 34 66 60"/>
+  <!-- Arcos interiores a los lados del arco central -->
+  <path d="M20 88 C20 58 27 44 34 44"/>
+  <path d="M80 88 C80 58 73 44 66 44"/>
+  <!-- Puerta/entrada en arco centrada abajo -->
+  <path d="M42 88 L42 74 C42 66 58 66 58 74 L58 88"/>
+  <!-- Remates / pinaculos laterales tipo perilla a media altura -->
+  <path d="M30 54 l0 8"/>
+  <path d="M70 54 l0 8"/>
+</svg>
