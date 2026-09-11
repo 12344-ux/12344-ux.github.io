@@ -86,3 +86,146 @@ Datos del proyecto:
 
    Con eso, ese usuario solo tendra acceso al modulo `pedidos`; tu, como
    `admin`, seguiras teniendo acceso a todo.
+
+---
+
+# Modulo Finanzas · Contabilidad de partida doble (PUC)
+
+Esta seccion aplica el cimiento de datos del PRIMER software interno: el
+modulo de Finanzas / Contabilidad basada en el PUC colombiano (Decreto 2650).
+Es contabilidad MANUAL con partida doble: tu (o el trabajador de finanzas)
+registras los asientos en el Libro Diario y el sistema valida el cuadre,
+lleva la trazabilidad y deriva solo el Libro Mayor y los saldos.
+
+**Requisito previo:** la migracion de perfiles y roles
+(`20250101000000_crear_perfiles_y_roles.sql`) YA debe estar aplicada, porque
+todas las tablas de finanzas se protegen con la funcion `tiene_modulo('finanzas')`
+que se creo alli.
+
+## F1. Orden EXACTO de ejecucion en el SQL Editor
+
+Abre el **SQL Editor** (igual que en el paso 1 de arriba) y ejecuta, EN ESTE
+ORDEN, el contenido completo de cada archivo (cada uno con su propio **Run**):
+
+1. `supabase/migrations/20250201000000_finanzas_catalogo_puc.sql`
+   Crea la tabla `puc_cuentas` (catalogo PUC de 4 niveles) y sus indices.
+2. `supabase/migrations/20250201000100_finanzas_carga_puc.sql`
+   Carga los datos del PUC (clases, grupos y cuentas/subcuentas de comercio).
+3. `supabase/migrations/20250201000200_finanzas_asientos.sql`
+   Crea `asientos` y `asiento_lineas` (montos en bigint, pesos enteros).
+4. `supabase/migrations/20250201000300_finanzas_mayor_vista.sql`
+   Crea las vistas `movimientos_mayor` y `saldos_cuenta` (Libro Mayor derivado).
+5. `supabase/migrations/20250201000400_finanzas_trazabilidad.sql`
+   Crea `asiento_bitacora` y el trigger que registra crear/editar/anular.
+6. `supabase/migrations/20250201000500_finanzas_rls.sql`
+   Activa RLS en TODAS las tablas de finanzas con `tiene_modulo('finanzas')`.
+7. `supabase/migrations/20250201000600_finanzas_funciones.sql`
+   Crea las funciones RPC `guardar_asiento`, `editar_asiento`, `anular_asiento`
+   e `incrementar_uso_cuenta` (refuerzan la regla de oro server-side).
+
+Los archivos son idempotentes (`create ... if not exists`, `on conflict do
+update`, `create or replace`, `drop policy if exists`): si algo falla a mitad,
+puedes re-ejecutar sin duplicar nada.
+
+## F2. Como verificar que quedo bien
+
+Ejecuta estas consultas en el SQL Editor:
+
+1. **Catalogo cargado** (debe devolver un numero > 0, alrededor de 130 filas
+   con esta carga; ver nota de "catalogo parcial" abajo):
+
+   ```sql
+   select count(*) from puc_cuentas;
+   select count(*) from puc_cuentas where imputable = true; -- cuentas de detalle
+   ```
+
+2. **Acceso por modulo** (estando logueado como admin devuelve `true`):
+
+   ```sql
+   select tiene_modulo('finanzas');
+   ```
+
+3. **Un asiento descuadrado es RECHAZADO** (esto DEBE dar error, es la prueba
+   de que la regla de oro funciona server-side):
+
+   ```sql
+   select guardar_asiento(
+     current_date,
+     'PRUEBA descuadrada (debe fallar)',
+     '[{"cuenta_codigo":"110505","debe":100000,"haber":0},
+       {"cuenta_codigo":"413505","debe":0,"haber":90000}]'::jsonb
+   );
+   -- Esperado: ERROR "El asiento no cuadra: total DEBE (100000) distinto de total HABER (90000)."
+   ```
+
+4. **Un asiento CUADRADO se guarda** (venta de contado con IVA, ejemplo):
+
+   ```sql
+   select guardar_asiento(
+     current_date,
+     'Venta de mercancia de contado',
+     '[{"cuenta_codigo":"110505","detalle":"Efectivo","debe":119000,"haber":0},
+       {"cuenta_codigo":"413505","detalle":"Venta","debe":0,"haber":100000},
+       {"cuenta_codigo":"240805","detalle":"IVA 19%","debe":0,"haber":19000}]'::jsonb
+   );
+   -- Esperado: devuelve el uuid del asiento creado.
+   ```
+
+5. **Los saldos se derivan solos** (tras el paso 4 debe devolver filas):
+
+   ```sql
+   select * from saldos_cuenta order by cuenta_codigo;
+   select * from movimientos_mayor order by fecha;
+   ```
+
+6. **La bitacora registro la creacion** (debe haber una fila con accion 'crear'):
+
+   ```sql
+   select accion, cuando, detalle_cambio from asiento_bitacora order by cuando desc;
+   ```
+
+   (Opcional) Para dejar limpio tras las pruebas, puedes anular el asiento de
+   prueba con `select anular_asiento('<uuid-devuelto-en-el-paso-4>', 'prueba');`
+   No lo borres: el modelo no permite borrado fisico, solo anulacion trazable.
+
+## F3. Como DAR ACCESO al modulo finanzas a un usuario
+
+El acceso al modulo se controla con la lista `modulos` de la tabla `perfiles`
+(el `admin` ya tiene todo). Para que una persona (por ejemplo, el trabajador
+del area de finanzas) pueda entrar SOLO a finanzas:
+
+1. Crea su usuario en **Authentication > Users** (o pidele que se registre).
+2. Copia su UID y ejecuta en el SQL Editor:
+
+   ```sql
+   insert into perfiles (id, rol, modulos)
+   values ('<UID-del-usuario-de-finanzas>', 'finanzas', '{finanzas}')
+     on conflict (id) do update
+       set rol = excluded.rol, modulos = excluded.modulos;
+   ```
+
+   Ese usuario solo vera el modulo de finanzas; no vera pedidos ni ningun otro.
+   Si quisieras darle finanzas ADEMAS de otro modulo, usa `'{finanzas,pedidos}'`.
+
+## F4. Montos en pesos enteros (importante)
+
+Todos los montos (`debe`, `haber`) son `bigint`: **pesos colombianos enteros,
+sin centavos**. Por ejemplo, $1.200.000 se guarda como `1200000`. Nunca uses
+decimales: las funciones rechazan montos con punto decimal. Esto evita los
+errores de redondeo del punto flotante.
+
+## F5. NOTA · El catalogo PUC quedo PARCIAL (a proposito)
+
+La carga del paso F1.2 **no incluye las ~800 cuentas completas** del Decreto
+2650. Incluye las 9 clases, los grupos y las cuentas/subcuentas que un comercio
+como MAGANDHI usa de verdad (caja, bancos, clientes, mercancias, IVA,
+retenciones, proveedores, patrimonio, ingresos por venta, gastos de
+administracion y de ventas, costo de ventas, etc.). Con eso ya puedes operar.
+
+Para anadir cualquier otra cuenta oficial del PUC mas adelante, usa la
+**PLANTILLA DE INSERT** que esta comentada al final del archivo
+`20250201000100_finanzas_carga_puc.sql`: inserta primero la cuenta padre (si
+no existe) y luego la subcuenta, con la naturaleza de su clase
+(clases 1,5,6,7,8 -> debito; 2,3,4,9 -> credito; salvo cuentas correctoras) e
+`imputable=true` solo en el nivel de detalle. **Nunca inventes codigos:** usa
+los codigos oficiales del Decreto 2650.
