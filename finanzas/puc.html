@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Catalogo PUC</title>
+<meta name="description" content="Catalogo PUC del area de Finanzas de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../favicon.png?v=1">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=1">
+<link rel="stylesheet" href="finanzas.css?v=1">
+
+<!--
+  MAGANDHI · Area de Finanzas · Catalogo PUC.
+  Buscador ilike por codigo o nombre sobre puc_cuentas. Sin busqueda,
+  prioriza las cuentas IMPUTABLES mas usadas (order by usos desc).
+  Solo lectura (el candado real es RLS server-side).
+-->
+</head>
+<body class="fz-body">
+
+<script type="module" src="../auth-guard.js"></script>
+
+<main class="fz-wrap" id="fz-main" hidden>
+  <div class="fz-search">
+    <span class="fz-search-ico" data-ico="lupa"></span>
+    <input class="fz-input" id="fz-q" type="search" autocomplete="off"
+           placeholder="Buscar por codigo (ej. 1105) o nombre (ej. caja)...">
+  </div>
+  <p class="fz-hint" id="fz-hint">Cuentas imputables mas usadas</p>
+  <div class="fz-puc-list" id="fz-list"></div>
+</main>
+
+<script type="module">
+  import { supabase, asegurarAcceso, montarHeader, ICONOS } from './finanzas-core.js';
+
+  const main = document.getElementById('fz-main');
+  const input = document.getElementById('fz-q');
+  const hint = document.getElementById('fz-hint');
+  const list = document.getElementById('fz-list');
+
+  const NIVEL_TXT = { 1: 'Clase', 2: 'Grupo', 3: 'Cuenta', 4: 'Subcuenta' };
+
+  function pintar(cuentas) {
+    if (!cuentas || cuentas.length === 0) {
+      list.innerHTML = '<div class="fz-empty">No se encontraron cuentas.</div>';
+      return;
+    }
+    list.innerHTML = cuentas.map((c) => (
+      '<div class="fz-puc' + (c.imputable ? '' : ' no-imputable') + '">' +
+        '<span class="fz-badge">' + c.codigo + '</span>' +
+        '<span class="fz-puc-nombre">' + (c.nombre || '') + '</span>' +
+        '<span class="fz-puc-meta">' +
+          '<span class="fz-nivel">' + (NIVEL_TXT[c.nivel] || 'Nivel ' + c.nivel) + '</span>' +
+          '<span class="fz-nat ' + c.naturaleza + '">' + c.naturaleza + '</span>' +
+        '</span>' +
+      '</div>'
+    )).join('');
+  }
+
+  async function cargarSugeridas() {
+    hint.textContent = 'Cuentas imputables mas usadas';
+    const { data, error } = await supabase
+      .from('puc_cuentas')
+      .select('codigo, nombre, nivel, naturaleza, imputable, usos')
+      .eq('imputable', true)
+      .order('usos', { ascending: false })
+      .order('codigo', { ascending: true })
+      .limit(40);
+    if (error) { list.innerHTML = '<div class="fz-empty">No se pudo cargar el catalogo.</div>'; return; }
+    pintar(data);
+  }
+
+  async function buscar(q) {
+    hint.textContent = 'Resultados para "' + q + '"';
+    const patron = '%' + q + '%';
+    const { data, error } = await supabase
+      .from('puc_cuentas')
+      .select('codigo, nombre, nivel, naturaleza, imputable, usos')
+      .or('codigo.ilike.' + patron + ',nombre.ilike.' + patron)
+      .order('imputable', { ascending: false })
+      .order('usos', { ascending: false })
+      .order('codigo', { ascending: true })
+      .limit(60);
+    if (error) { list.innerHTML = '<div class="fz-empty">No se pudo buscar.</div>'; return; }
+    pintar(data);
+  }
+
+  let t;
+  input.addEventListener('input', () => {
+    clearTimeout(t);
+    const q = input.value.trim();
+    t = setTimeout(() => { q ? buscar(q) : cargarSugeridas(); }, 220);
+  });
+
+  (async () => {
+    const acceso = await asegurarAcceso(document.body);
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Catalogo PUC',
+      kicker: 'PLAN UNICO DE CUENTAS · DECRETO 2650',
+      lead: 'Busca por codigo o nombre. Sin busqueda se muestran arriba las cuentas de detalle que mas usas.',
+      sesion: acceso.sesion
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    main.hidden = false;
+    await cargarSugeridas();
+  })();
+</script>
+
+</body>
+</html>

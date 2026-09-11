@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Libro Diario</title>
+<meta name="description" content="Libro Diario · Area de Finanzas de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../favicon.png?v=1">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=1">
+<link rel="stylesheet" href="finanzas.css?v=1">
+
+<!--
+  MAGANDHI · Area de Finanzas · Libro Diario (solo lectura).
+  Historial cronologico de asientos + lineas (fecha desc). Marca los
+  asientos anulados. El candado real es RLS server-side.
+-->
+</head>
+<body class="fz-body">
+
+<script type="module" src="../auth-guard.js"></script>
+
+<main class="fz-wrap" id="fz-main" hidden>
+  <div id="fz-diario"></div>
+</main>
+
+<script type="module">
+  import { supabase, asegurarAcceso, montarHeader, ICONOS, formatearCOP, formatearFecha } from './finanzas-core.js';
+
+  const cont = document.getElementById('fz-diario');
+
+  function asientoHTML(a) {
+    const anulado = a.estado === 'anulado';
+    const lineas = (a.asiento_lineas || []).slice().sort((x, y) => (x.orden || 0) - (y.orden || 0));
+    let sd = 0, sh = 0;
+    const filas = lineas.map((l) => {
+      sd += Number(l.debe) || 0; sh += Number(l.haber) || 0;
+      const cta = l.puc_cuentas || {};
+      return (
+        '<tr>' +
+          '<td><span class="cod">' + l.cuenta_codigo + '</span> ' + (cta.nombre || '') + '</td>' +
+          '<td>' + (l.detalle || '') + '</td>' +
+          '<td class="num debe">' + (l.debe > 0 ? formatearCOP(l.debe) : '') + '</td>' +
+          '<td class="num haber">' + (l.haber > 0 ? formatearCOP(l.haber) : '') + '</td>' +
+        '</tr>'
+      );
+    }).join('');
+
+    return (
+      '<article class="fz-asiento' + (anulado ? ' anulado' : '') + '">' +
+        '<div class="fz-asiento-top">' +
+          '<span class="fz-asiento-fecha">' + formatearFecha(a.fecha) + '</span>' +
+          '<span class="fz-asiento-desc">' + (a.descripcion || '') + '</span>' +
+          (anulado ? '<span class="fz-tag-anulado">Anulado</span>' : '') +
+        '</div>' +
+        '<table class="fz-tabla">' +
+          '<thead><tr><th>Cuenta</th><th>Detalle</th><th class="num">Debe</th><th class="num">Haber</th></tr></thead>' +
+          '<tbody>' + filas + '</tbody>' +
+          '<tfoot><tr><td colspan="2">Totales</td>' +
+            '<td class="num debe">' + formatearCOP(sd) + '</td>' +
+            '<td class="num haber">' + formatearCOP(sh) + '</td></tr></tfoot>' +
+        '</table>' +
+      '</article>'
+    );
+  }
+
+  async function cargar() {
+    const { data, error } = await supabase
+      .from('asientos')
+      .select('id, fecha, descripcion, estado, creado, asiento_lineas(cuenta_codigo, detalle, debe, haber, orden, puc_cuentas(nombre))')
+      .order('fecha', { ascending: false })
+      .order('creado', { ascending: false })
+      .limit(200);
+    if (error) { cont.innerHTML = '<div class="fz-empty">No se pudo cargar el diario.</div>'; return; }
+    if (!data || !data.length) { cont.innerHTML = '<div class="fz-empty">Aun no hay asientos registrados. Crea el primero en <a href="nuevo-asiento.html">Nuevo asiento</a>.</div>'; return; }
+    cont.innerHTML = data.map(asientoHTML).join('');
+  }
+
+  (async () => {
+    const acceso = await asegurarAcceso(document.body);
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Libro Diario',
+      kicker: 'HISTORIAL CRONOLOGICO',
+      lead: 'Todos los asientos en orden cronologico. Los asientos anulados quedan marcados; nada se borra en silencio.',
+      sesion: acceso.sesion
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    document.getElementById('fz-main').hidden = false;
+    await cargar();
+  })();
+</script>
+
+</body>
+</html>

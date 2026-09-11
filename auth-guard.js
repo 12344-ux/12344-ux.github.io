@@ -21,7 +21,15 @@
 
 import { supabase } from './supabase-config.js';
 
-const RUTA_LOGIN = 'index.html';
+// Ruta al login resuelta SIEMPRE respecto a la raiz del sitio, no relativa
+// a la pagina actual. Asi funciona igual desde la raiz (panel.html) que
+// desde subcarpetas (finanzas/*.html): sin este calculo, un 'index.html'
+// relativo desde finanzas/ apuntaria a finanzas/index.html (loop).
+//
+// Este modulo se sirve siempre desde la raiz del sitio (../auth-guard.js
+// desde finanzas/, ./auth-guard.js desde la raiz), por lo que la carpeta
+// que lo contiene ES la raiz del sitio. La derivamos de import.meta.url.
+const RUTA_LOGIN = new URL('index.html', import.meta.url).href;
 
 /**
  * Devuelve la sesion actual o null.

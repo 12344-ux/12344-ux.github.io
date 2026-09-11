@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Area de Finanzas</title>
+<meta name="description" content="Area de Finanzas de Magandhi Corporation.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../favicon.png?v=1">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=1">
+<link rel="stylesheet" href="finanzas.css?v=1">
+
+<!--
+  MAGANDHI · Area de Finanzas · HOME del modulo.
+  Protegida por auth-guard.js (via finanzas-core). El candado real es RLS.
+  Tarjetas de navegacion: Nuevo asiento, Libro Diario, Libro Mayor, Catalogo PUC.
+-->
+</head>
+<body class="fz-body">
+
+<!-- Guardia reutilizable: sin sesion, redirige al login de la raiz. -->
+<script type="module" src="../auth-guard.js"></script>
+
+<main class="fz-wrap" id="fz-main" hidden>
+  <div class="fz-cards">
+    <a class="fz-card" href="nuevo-asiento.html">
+      <span class="fz-card-ico" data-ico="nuevo"></span>
+      <h3>Nuevo asiento</h3>
+      <p>Registra un movimiento en el Libro Diario con validacion de cuadre en vivo.</p>
+    </a>
+    <a class="fz-card" href="diario.html">
+      <span class="fz-card-ico" data-ico="libro"></span>
+      <h3>Libro Diario</h3>
+      <p>Historial cronologico de todos los asientos registrados.</p>
+    </a>
+    <a class="fz-card" href="mayor.html">
+      <span class="fz-card-ico" data-ico="balanza"></span>
+      <h3>Libro Mayor</h3>
+      <p>Movimientos y saldo por cuenta, derivados automaticamente del diario.</p>
+    </a>
+    <a class="fz-card" href="puc.html">
+      <span class="fz-card-ico" data-ico="lista"></span>
+      <h3>Catalogo PUC</h3>
+      <p>Explora el Plan Unico de Cuentas con buscador y cuentas mas usadas.</p>
+    </a>
+  </div>
+</main>
+
+<script type="module">
+  import { asegurarAcceso, montarHeader, ICONOS } from './finanzas-core.js';
+
+  (async () => {
+    const main = document.getElementById('fz-main');
+    const acceso = await asegurarAcceso(document.body);
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Area de Finanzas',
+      kicker: 'CONTABILIDAD · PARTIDA DOBLE',
+      lead: 'Contabilidad manual respaldada por el PUC colombiano. Todo lo que registras en el diario se enlaza solo al lugar correcto.',
+      sesion: acceso.sesion
+    });
+
+    // Iconos de las tarjetas
+    document.querySelectorAll('[data-ico]').forEach((el) => {
+      el.innerHTML = ICONOS[el.dataset.ico] || '';
+    });
+
+    main.hidden = false;
+  })();
+</script>
+
+</body>
+</html>
