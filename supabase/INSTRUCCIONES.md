@@ -165,6 +165,23 @@ ORDEN, el contenido completo de cada archivo (cada uno con su propio **Run**):
     montos en `bigint` (pesos enteros) y es idempotente (`create or replace`).
     Como usa `create or replace`, si en el futuro la ajustas basta con **volver
     a ejecutar solo este archivo**, sin tocar los demas.
+12. `supabase/migrations/20250201001100_finanzas_balance_general.sql`
+    Crea la funcion `balance_general(p_fecha_corte date)` (Tramo 2, paso 2b:
+    el Balance General o Estado de Situacion Financiera A FECHA DE CORTE). Es
+    la "foto" de lo que la empresa tiene y debe: devuelve, por cada cuenta
+    imputable con movimiento (asientos activos con `fecha <= corte`), la
+    `seccion` (`activo` clase 1, `pasivo` clase 2, `patrimonio` clase 3),
+    `cuenta_codigo`, `cuenta_nombre`, `naturaleza` y `monto` en el lado natural
+    de la clase (activo = debe-haber; pasivo y patrimonio = haber-debe). Ademas
+    agrega UNA sola fila `seccion='resultado'` (Resultado del ejercicio),
+    calculada con el MISMO criterio del Estado de resultados (paso 2a) para el
+    periodo 1-ene-del-ano-del-corte .. corte, para que cuadre
+    `ACTIVO = PASIVO + PATRIMONIO + RESULTADO`. Llama internamente a
+    `estado_resultados`, asi que **el archivo 11 debe estar aplicado antes**.
+    Es de solo lectura (`STABLE`), hereda la RLS del modulo (SECURITY INVOKER),
+    montos en `bigint` (pesos enteros) y es idempotente (`create or replace`).
+    Como usa `create or replace`, si en el futuro la ajustas basta con **volver
+    a ejecutar solo este archivo**, sin tocar los demas.
 
 Los archivos son idempotentes (`create ... if not exists`, `on conflict do
 update`, `create or replace`, `drop policy if exists`): si algo falla a mitad,
@@ -466,3 +483,109 @@ La funcion es de solo lectura y no modifica nada.
 > Como la funcion usa `create or replace`, si mas adelante ajustas su logica
 > basta con **volver a ejecutar solo el archivo 11**
 > (`20250201001000_finanzas_estado_resultados.sql`), sin tocar los demas.
+
+## F9. Balance General a fecha de corte (Tramo 2, paso 2b)
+
+El archivo 12 de F1 (`20250201001100_finanzas_balance_general.sql`) crea la
+funcion `balance_general(p_fecha_corte date)`. Es el tercer informe del Tramo 2:
+la "foto" de lo que la empresa TIENE y DEBE **hasta una fecha de corte**,
+organizada en el gran cuadre contable `ACTIVO = PASIVO + PATRIMONIO`.
+
+Por cada cuenta imputable con movimiento (asientos con `estado='activo'` y
+`fecha <= corte`) devuelve `seccion`, `cuenta_codigo`, `cuenta_nombre`,
+`naturaleza` y `monto`, presentando cada clase en su lado natural en positivo:
+
+- ACTIVO (clase 1, natural debito): `monto = sum(debe) - sum(haber)`.
+- PASIVO (clase 2, natural credito): `monto = sum(haber) - sum(debe)`.
+- PATRIMONIO (clase 3, natural credito): `monto = sum(haber) - sum(debe)`.
+
+Ademas agrega **una sola fila** con `seccion='resultado'` y `cuenta_nombre =
+'Resultado del ejercicio'`. Ese resultado NO esta guardado en ninguna cuenta de
+patrimonio (clase 3) porque este software aun no hace el asiento de CIERRE
+ANUAL; por eso se calcula aparte, con EXACTAMENTE el mismo criterio del Estado
+de resultados (paso 2a), para el periodo que va del **1 de enero del ano del
+corte** hasta la fecha de corte (ano fiscal = ano calendario, ambas fechas
+inclusive). Los meses sin movimiento suman cero: el inicio siempre es el 1-ene
+del ano del corte, nunca se "detecta la primera operacion". La funcion llama por
+dentro a `estado_resultados(1-ene-ano, corte)` para que ese numero coincida al
+peso con el informe 2a:
+
+```
+resultado = Ingresos(clase 4) - Costos(clase 6 + clase 7) - Gastos(clase 5)
+```
+
+**Como verlo** (foto a hoy; cambia `current_date` por cualquier fecha de corte):
+
+```sql
+select * from balance_general(current_date) order by seccion, cuenta_codigo;
+-- Ejemplo de corte a una fecha concreta:
+-- select * from balance_general('2025-01-31') order by seccion, cuenta_codigo;
+```
+
+**Comprobacion de CUADRE** (la prueba de que el balance esta bien): en un libro
+de partida doble cuadrado, el activo iguala al pasivo mas el patrimonio mas el
+resultado del ejercicio. Esta consulta agrega `monto` por seccion y debe
+devolver `activo = pasivo + patrimonio + resultado` (es decir, `diferencia = 0`):
+
+```sql
+with b as (
+  select seccion, sum(monto) as monto
+  from balance_general(current_date)
+  group by seccion
+)
+select
+  coalesce(sum(monto) filter (where seccion = 'activo'), 0)      as activo,
+  coalesce(sum(monto) filter (where seccion = 'pasivo'), 0)      as pasivo,
+  coalesce(sum(monto) filter (where seccion = 'patrimonio'), 0)  as patrimonio,
+  coalesce(sum(monto) filter (where seccion = 'resultado'), 0)   as resultado,
+  coalesce(sum(monto) filter (where seccion = 'activo'), 0)
+    - coalesce(sum(monto) filter (where seccion = 'pasivo'), 0)
+    - coalesce(sum(monto) filter (where seccion = 'patrimonio'), 0)
+    - coalesce(sum(monto) filter (where seccion = 'resultado'), 0) as diferencia
+from b;
+-- Esperado: diferencia = 0  (activo = pasivo + patrimonio + resultado, el balance cuadra).
+```
+
+**Comprobacion de que el resultado coincide con el Estado de resultados (2a)**:
+la fila `resultado` del balance debe ser identica a la utilidad que arroja
+`estado_resultados` para el mismo periodo (1-ene-del-ano-del-corte .. corte).
+Esta consulta debe devolver las dos columnas iguales (`iguales = true`):
+
+```sql
+with er as (
+  select left(cuenta_codigo, 1) as clase, sum(monto_periodo) as monto
+  from estado_resultados(
+         make_date(extract(year from current_date)::int, 1, 1),
+         current_date
+       )
+  group by left(cuenta_codigo, 1)
+)
+select
+  (select monto from balance_general(current_date) where seccion = 'resultado') as resultado_balance,
+  coalesce(sum(monto) filter (where clase = '4'), 0)
+    - coalesce(sum(monto) filter (where clase in ('6','7')), 0)
+    - coalesce(sum(monto) filter (where clase = '5'), 0)                          as utilidad_estado_resultados,
+  (select monto from balance_general(current_date) where seccion = 'resultado')
+    = (coalesce(sum(monto) filter (where clase = '4'), 0)
+        - coalesce(sum(monto) filter (where clase in ('6','7')), 0)
+        - coalesce(sum(monto) filter (where clase = '5'), 0))                     as iguales
+from er;
+-- Esperado: resultado_balance = utilidad_estado_resultados  (iguales = true).
+```
+
+> **CAVEAT HONESTO (cierre anual no implementado):** el cuadre
+> `ACTIVO = PASIVO + PATRIMONIO + RESULTADO` asume que TODO el movimiento de las
+> cuentas de resultado (clases 4/5/6/7) del libro pertenece al ano del corte.
+> Como este software AUN NO hace el asiento de cierre anual (el que salda las
+> clases 4/5/6/7 contra el patrimonio al terminar cada ano), si existieran
+> movimientos de resultado de un ANO ANTERIOR al del corte y sin cerrar, la
+> ecuacion simple podria no cuadrar exactamente (ese resultado viejo no estaria
+> ni en el patrimonio clase 3 ni dentro del periodo 1-ene-ano..corte que aqui se
+> calcula). Para el uso actual de MAGANDHI (empieza este ano, sin ejercicios
+> anteriores) cuadra perfecto. El cierre anual queda como funcion futura; el
+> informe NO aplica ningun ajuste, esta es solo una nota honesta.
+
+> Como la funcion usa `create or replace`, si mas adelante ajustas su logica
+> basta con **volver a ejecutar solo el archivo 12**
+> (`20250201001100_finanzas_balance_general.sql`), sin tocar los demas. Recuerda
+> que necesita que el archivo 11 (`estado_resultados`) ya este aplicado.
