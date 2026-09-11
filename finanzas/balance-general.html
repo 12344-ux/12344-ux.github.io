@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Balance general</title>
+<meta name="description" content="Balance general (estado de situacion financiera) a fecha de corte · Area de Finanzas de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../marca-areas/finanzas.png?v=4">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=1">
+<link rel="stylesheet" href="finanzas.css?v=4">
+
+<!--
+  MAGANDHI · Area de Finanzas · Balance general / Estado de situacion
+  financiera (FOTO a FECHA DE CORTE). Solo lectura, derivado del diario.
+  Consume la funcion SQL balance_general(p_fecha_corte) via supabase.rpc
+  (ver supabase/migrations/20250201001100_finanzas_balance_general.sql):
+  para la fecha de corte devuelve, en filas con una columna 'seccion'
+  ('activo' | 'pasivo' | 'patrimonio' | 'resultado'), las cuentas
+  imputables de balance (clases 1/2/3) con su saldo acumulado hasta el
+  corte y UNA fila sintetica de resultado:
+    · seccion 'activo'      -> monto = debe - haber (clase 1).
+    · seccion 'pasivo'      -> monto = haber - debe (clase 2).
+    · seccion 'patrimonio'  -> monto = haber - debe (clase 3).
+    · seccion 'resultado'   -> UNA sola fila (cuenta_nombre='Resultado del
+      ejercicio', cuenta_codigo='' y naturaleza='' como centinelas); monto =
+      utilidad(+)/perdida(-) del ejercicio para [1-ene-{anio del corte} .. corte],
+      calculado con el MISMO criterio que estado_resultados, por lo que
+      coincide al peso con ese informe. Siempre viene presente (aunque sea 0).
+
+  DERIVACION DEL RESULTADO DEL EJERCICIO: el ano fiscal es el ano calendario,
+  asi que el resultado se toma automaticamente desde el 1 de enero del ano de
+  la fecha de corte hasta el corte. Los periodos sin operaciones simplemente
+  suman cero (no se "detecta la primera operacion"). Ese resultado alimenta el
+  patrimonio para que cuadre la ecuacion contable:
+      ACTIVO = PASIVO + PATRIMONIO + RESULTADO DEL EJERCICIO
+  En pantalla el patrimonio se muestra INCLUYENDO el resultado (Total
+  Patrimonio = suma de cuentas de patrimonio + resultado), y el indicador de
+  cuadre compara Total Activo contra Total Pasivo + Total Patrimonio (que ya
+  incluye el resultado). Todo el aritmetico se hace con ENTEROS de pesos
+  (Math.trunc), NUNCA con punto flotante. El dueno NO escribe este informe;
+  el candado real es RLS server-side (tiene_modulo('finanzas')).
+
+  EXPORTACION A PDF: se usan librerias por CDN con VERSION FIJADA para que el
+  informe sea reproducible:
+    · jsPDF 2.5.1
+      https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js
+    · jspdf-autotable 3.8.2
+      https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js
+  Se cargan como <script> clasicos (no modulos): exponen window.jspdf.jsPDF y
+  registran el plugin autoTable. Los defer garantizan que esten listos antes
+  de que el usuario pulse "Descargar PDF".
+
+  EXPORTACION A EXCEL: se genera un CSV con BOM UTF-8 ('\ufeff') y separador
+  ';' (no ','), que es lo que Excel en configuracion regional de Colombia/
+  Espana espera para abrir el archivo en columnas limpias. Se prefiere CSV
+  sobre .xlsx porque no requiere una libreria pesada adicional y mantiene los
+  montos como ENTEROS de pesos puros (1200000, sin separadores ni simbolo)
+  para que Excel los trate como numero y el dueno pueda seguir trabajando las
+  cifras.
+-->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body class="fz-body">
+
+<!-- Guardia reutilizable: sin sesion, redirige al login de la raiz. -->
+<script type="module" src="../auth-guard.js"></script>
+
+<main class="fz-wrap" id="fz-main" hidden>
+  <div class="fz-mayor-nota">
+    <span data-ico="info"></span>
+    <span>El balance general es la foto a una fecha de corte: <strong>Activo = Pasivo + Patrimonio + Resultado del ejercicio</strong>. El resultado del ejercicio se toma automaticamente del 1 de enero del ano de la fecha de corte hasta el corte. Elige la fecha y genera el informe para verlo en pantalla; luego puedes descargarlo en PDF o Excel.</span>
+  </div>
+
+  <div class="fz-bc-controles">
+    <label class="fz-bc-fecha">
+      <span>Fecha de corte</span>
+      <input class="fz-input" id="fz-fecha" type="date">
+    </label>
+    <button class="fz-btn-guardar" id="fz-generar" type="button">Generar</button>
+    <div class="fz-bc-descargas">
+      <button class="fz-btn-descarga" id="fz-pdf" type="button" disabled>
+        <span data-ico="informe"></span><span>Descargar PDF</span>
+      </button>
+      <button class="fz-btn-descarga" id="fz-excel" type="button" disabled>
+        <span data-ico="lista"></span><span>Descargar Excel</span>
+      </button>
+    </div>
+  </div>
+
+  <p class="fz-bg-aclaracion" id="fz-aclaracion"></p>
+
+  <p class="fz-msg err" id="fz-error" hidden></p>
+
+  <div id="fz-resultado"></div>
+</main>
+
+<script type="module">
+  import {
+    supabase, asegurarAcceso, montarHeader, ICONOS,
+    formatearCOP, formatearFecha, formatearMomento, escaparHTML,
+    hoyISO, descargarArchivo
+  } from './finanzas-core.js';
+
+  const inputFecha = document.getElementById('fz-fecha');
+  const btnGenerar = document.getElementById('fz-generar');
+  const btnPDF = document.getElementById('fz-pdf');
+  const btnExcel = document.getElementById('fz-excel');
+  const cajaError = document.getElementById('fz-error');
+  const aclaracion = document.getElementById('fz-aclaracion');
+  const resultado = document.getElementById('fz-resultado');
+
+  // Estado del modulo: ultimo informe generado (para las exportaciones).
+  // activo/pasivo/patrimonio = arreglos de cuentas; resultado = entero
+  // (utilidad + / perdida -); totales = enteros sumados en JS; fecha = corte.
+  let estado = { activo: [], pasivo: [], patrimonio: [], resultado: 0, totales: null, fecha: '' };
+
+  // Nombre base del archivo de exportacion, coherente entre PDF y CSV.
+  function nombreBase() {
+    return 'balance-general-' + (estado.fecha || hoyISO());
+  }
+
+  function mostrarError(texto) {
+    cajaError.textContent = texto;
+    cajaError.hidden = false;
+  }
+  function limpiarError() {
+    cajaError.hidden = true;
+    cajaError.textContent = '';
+  }
+
+  function habilitarDescargas(activo) {
+    btnPDF.disabled = !activo;
+    btnExcel.disabled = !activo;
+  }
+
+  // Entero de pesos (nunca float): trunca por si el driver devolviera string.
+  function entero(x) {
+    return Math.trunc(Number(x) || 0);
+  }
+
+  // Suma monto (entero) de un arreglo de filas de una seccion.
+  function sumarMonto(filas) {
+    return filas.reduce((acc, f) => acc + entero(f.monto), 0);
+  }
+
+  // Predicado UNICO de "hay algo que mostrar/exportar": la funcion SQL SIEMPRE
+  // devuelve al menos la fila sintetica de resultado (aunque su monto sea 0),
+  // asi que NO se puede usar filas.length para decidir. Hay datos reales solo
+  // si alguna clase de balance tiene cuentas o el resultado del ejercicio no es
+  // cero. Es el mismo criterio que usa pintar() para el estado vacio, por eso
+  // las descargas quedan habilitadas exactamente cuando la pantalla muestra
+  // datos (y deshabilitadas cuando muestra "No hay saldos...").
+  function hayDatosEstado() {
+    return Boolean(
+      estado.activo.length ||
+      estado.pasivo.length ||
+      estado.patrimonio.length ||
+      estado.resultado !== 0
+    );
+  }
+
+  // Texto de la aclaracion del periodo del resultado del ejercicio, en base a
+  // la fecha de corte elegida: del 1 de enero de {ano} al {corte}.
+  function textoAclaracion(fecha) {
+    if (!fecha) return '';
+    const anio = String(fecha).slice(0, 4);
+    return 'Resultado del ejercicio: del 1 de enero de ' + anio + ' al ' + formatearFecha(fecha) + '.';
+  }
+  function actualizarAclaracion() {
+    aclaracion.textContent = textoAclaracion(inputFecha.value);
+  }
+
+  async function generar() {
+    const fecha = inputFecha.value;
+    if (!fecha) { mostrarError('Elige una fecha de corte.'); return; }
+
+    limpiarError();
+    habilitarDescargas(false);
+    btnGenerar.disabled = true;
+    resultado.innerHTML = '<div class="fz-empty">Generando informe...</div>';
+
+    const { data, error } = await supabase.rpc('balance_general', { p_fecha_corte: fecha });
+
+    btnGenerar.disabled = false;
+
+    if (error) {
+      resultado.innerHTML = '';
+      mostrarError('No se pudo generar el balance general: ' + (error.message || 'error desconocido') + '.');
+      estado = { activo: [], pasivo: [], patrimonio: [], resultado: 0, totales: null, fecha: '' };
+      return;
+    }
+
+    const filas = data || [];
+    const activo = filas.filter((f) => f.seccion === 'activo');
+    const pasivo = filas.filter((f) => f.seccion === 'pasivo');
+    const patrimonio = filas.filter((f) => f.seccion === 'patrimonio');
+    // La fila de resultado siempre viene (aunque monto=0). Si por lo que sea
+    // no llegara, resultado queda en 0 y el cuadre lo detecta.
+    const filaResultado = filas.find((f) => f.seccion === 'resultado');
+    const resultadoMonto = filaResultado ? entero(filaResultado.monto) : 0;
+
+    // Totales enteros. El Total Patrimonio INCLUYE el resultado del ejercicio,
+    // por eso el cuadre compara Total Activo === Total Pasivo + Total Patrimonio.
+    const totalActivo = sumarMonto(activo);
+    const totalPasivo = sumarMonto(pasivo);
+    const totalPatrimonio = sumarMonto(patrimonio) + resultadoMonto;
+
+    const totales = { totalActivo, totalPasivo, totalPatrimonio };
+    estado = { activo, pasivo, patrimonio, resultado: resultadoMonto, totales, fecha };
+
+    pintar();
+    // OJO: NO usar filas.length (la fila de resultado viene siempre, aunque sea
+    // 0). Las descargas se habilitan con el MISMO predicado que pintar() usa
+    // para el estado vacio, de modo que sobre un libro vacio (solo la fila de
+    // resultado en 0) los botones quedan deshabilitados y no se exporta un
+    // balance vacio.
+    habilitarDescargas(hayDatosEstado());
+  }
+
+  // Filas de cuenta de una seccion (codigo + nombre + monto).
+  function filasCuentaHTML(filas) {
+    if (!filas.length) {
+      return '<tr class="fz-bg-vacia"><td colspan="3">Sin cuentas con saldo a la fecha</td></tr>';
+    }
+    return filas.map((f) => {
+      const m = entero(f.monto);
+      return (
+        '<tr>' +
+          '<td class="cod">' + escaparHTML(f.cuenta_codigo || '') + '</td>' +
+          '<td>' + escaparHTML(f.cuenta_nombre || '') + '</td>' +
+          '<td class="num">' + formatearCOP(m) + '</td>' +
+        '</tr>'
+      );
+    }).join('');
+  }
+
+  function subtotalHTML(etiqueta, valor) {
+    return (
+      '<tr class="fz-bg-subtotal">' +
+        '<td colspan="2">' + escaparHTML(etiqueta) + '</td>' +
+        '<td class="num">' + formatearCOP(valor) + '</td>' +
+      '</tr>'
+    );
+  }
+
+  function pintar() {
+    // OJO: NO desestructurar `resultado` aqui: el estado guarda el MONTO (numero)
+    // del resultado del ejercicio y hay una `const resultado` a nivel de modulo
+    // que es el elemento #fz-resultado. Se renombra el monto a `resultadoMonto`
+    // para que los `resultado.innerHTML = ...` de abajo escriban en el ELEMENTO.
+    const { activo, pasivo, patrimonio, resultado: resultadoMonto, totales, fecha } = estado;
+
+    if (!hayDatosEstado()) {
+      resultado.innerHTML =
+        '<div class="fz-empty">No hay saldos de balance a la fecha de corte ' +
+        '<strong>' + escaparHTML(formatearFecha(fecha)) + '</strong>. ' +
+        'Registra asientos en el diario o elige otra fecha.</div>';
+      return;
+    }
+
+    // Cuadre: en un libro cuadrado (restringido al ano en curso) el Activo debe
+    // igualar Pasivo + Patrimonio (con el resultado ya dentro del patrimonio).
+    const cuadra = totales.totalActivo === totales.totalPasivo + totales.totalPatrimonio;
+    const badge = cuadra
+      ? '<span class="fz-estado cuadra">' + ICONOS.check + 'Cuadra</span>'
+      : '<span class="fz-estado no-cuadra">' + ICONOS.equis + 'No cuadra</span>';
+
+    // Linea del resultado del ejercicio dentro de PATRIMONIO.
+    const esUtilidad = resultadoMonto >= 0;
+    const etiquetaResultado = esUtilidad ? 'Utilidad del ejercicio' : 'Perdida del ejercicio';
+    const claseResultado = esUtilidad ? 'utilidad' : 'perdida';
+    const anioFiscal = String(fecha).slice(0, 4);
+    const filaResultado =
+      '<tr class="fz-bg-resultado ' + claseResultado + '">' +
+        '<td colspan="2">' +
+          '<span class="lbl">' + escaparHTML(etiquetaResultado) + '</span>' +
+          '<span class="sub"> (1 ene ' + escaparHTML(anioFiscal) + ' al corte)</span>' +
+        '</td>' +
+        '<td class="num">' + formatearCOP(resultadoMonto) + '</td>' +
+      '</tr>';
+
+    const bloqueActivo =
+      '<div class="fz-bg-bloque">' +
+        '<h3 class="fz-bg-bloque-titulo">Activo</h3>' +
+        '<table class="fz-tabla fz-bg-tabla">' +
+          '<thead><tr>' +
+            '<th>Codigo PUC</th><th>Cuenta</th><th class="num">Valor</th>' +
+          '</tr></thead>' +
+          '<tbody>' +
+            filasCuentaHTML(activo) +
+            subtotalHTML('Total Activo', totales.totalActivo) +
+          '</tbody>' +
+        '</table>' +
+      '</div>';
+
+    const bloquePasivoPatrimonio =
+      '<div class="fz-bg-bloque">' +
+        '<h3 class="fz-bg-bloque-titulo">Pasivo + Patrimonio</h3>' +
+        '<table class="fz-tabla fz-bg-tabla">' +
+          '<thead><tr>' +
+            '<th>Codigo PUC</th><th>Cuenta</th><th class="num">Valor</th>' +
+          '</tr></thead>' +
+          '<tbody>' +
+            filasCuentaHTML(pasivo) +
+            subtotalHTML('Total Pasivo', totales.totalPasivo) +
+          '</tbody>' +
+          '<tbody>' +
+            filasCuentaHTML(patrimonio) +
+            filaResultado +
+            subtotalHTML('Total Patrimonio', totales.totalPatrimonio) +
+          '</tbody>' +
+        '</table>' +
+      '</div>';
+
+    resultado.innerHTML =
+      '<div class="fz-bc-cabecera">' +
+        '<div class="fz-bc-corte">' +
+          '<span class="lbl">A fecha de corte</span>' +
+          '<span class="val">' + escaparHTML(formatearFecha(fecha)) + '</span>' +
+        '</div>' +
+        badge +
+      '</div>' +
+      '<div class="fz-bg-bloques">' + bloqueActivo + bloquePasivoPatrimonio + '</div>';
+  }
+
+  // ----------------------------------------------------------
+  // EXPORTACION A PDF (jsPDF 2.5.1 + jspdf-autotable 3.8.2, ver <head>)
+  // ----------------------------------------------------------
+
+  // Carga el logo de marca como dataURL para incrustarlo en el PDF. Si falla
+  // (red, 404), resuelve null y el PDF sale sin logo (degradacion elegante).
+  function cargarLogoDataURL() {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          resolve({ dataURL: canvas.toDataURL('image/png'), w: img.naturalWidth, h: img.naturalHeight });
+        } catch (_) {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = '../logo-mark-terracota.png';
+    });
+  }
+
+  // Construye el cuerpo del PDF: bloque ACTIVO (cuentas + Total Activo), luego
+  // bloque PASIVO + PATRIMONIO (cuentas de pasivo + Total Pasivo; cuentas de
+  // patrimonio + Resultado del ejercicio + Total Patrimonio).
+  function cuerpoPDF() {
+    const cuerpo = [];
+    const tituloSeccion = (texto) => {
+      cuerpo.push([{ content: texto, colSpan: 2, styles: { fontStyle: 'bold', fillColor: [231, 240, 234], textColor: [16, 28, 51] } }, '']);
+    };
+    const lineasCuenta = (filas) => {
+      if (!filas.length) {
+        cuerpo.push([{ content: 'Sin cuentas con saldo a la fecha', colSpan: 2, styles: { textColor: [138, 133, 120], fontStyle: 'italic' } }, '']);
+        return;
+      }
+      for (const f of filas) {
+        cuerpo.push([String(f.cuenta_codigo || ''), String(f.cuenta_nombre || ''), formatearCOP(entero(f.monto))]);
+      }
+    };
+    const subtotal = (etiqueta, valor) => {
+      cuerpo.push([{ content: etiqueta, colSpan: 2, styles: { fontStyle: 'bold', textColor: [16, 28, 51] } }, { content: formatearCOP(valor), styles: { fontStyle: 'bold', textColor: [16, 28, 51] } }]);
+    };
+
+    tituloSeccion('ACTIVO');
+    lineasCuenta(estado.activo);
+    subtotal('Total Activo', estado.totales.totalActivo);
+
+    tituloSeccion('PASIVO');
+    lineasCuenta(estado.pasivo);
+    subtotal('Total Pasivo', estado.totales.totalPasivo);
+
+    tituloSeccion('PATRIMONIO');
+    lineasCuenta(estado.patrimonio);
+    const esUtilidad = estado.resultado >= 0;
+    const etiquetaResultado = esUtilidad ? 'Utilidad del ejercicio' : 'Perdida del ejercicio';
+    const colorResultado = esUtilidad ? [91, 138, 111] : [16, 28, 51];
+    cuerpo.push([{ content: etiquetaResultado, colSpan: 2, styles: { fontStyle: 'bold', textColor: colorResultado } }, { content: formatearCOP(estado.resultado), styles: { fontStyle: 'bold', textColor: colorResultado } }]);
+    subtotal('Total Patrimonio', estado.totales.totalPatrimonio);
+
+    return cuerpo;
+  }
+
+  async function descargarPDF() {
+    // Guarda defensiva: sin informe generado o sobre un libro vacio (solo la
+    // fila de resultado en 0) no se exporta nada, en linea con el boton
+    // deshabilitado y con el estado vacio que muestra pintar().
+    if (!estado.totales || !hayDatosEstado()) return;
+    const jspdfNS = window.jspdf;
+    if (!jspdfNS || !jspdfNS.jsPDF) {
+      mostrarError('No se pudo cargar el generador de PDF. Revisa tu conexion e intenta de nuevo.');
+      return;
+    }
+    limpiarError();
+
+    const { jsPDF } = jspdfNS;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+    const anchoPag = doc.internal.pageSize.getWidth();
+    const margen = 40;
+
+    // Encabezado de marca.
+    const logo = await cargarLogoDataURL();
+    const yTexto = 48;
+    if (logo) {
+      const alto = 34;
+      const ancho = logo.w && logo.h ? alto * (logo.w / logo.h) : alto;
+      try { doc.addImage(logo.dataURL, 'PNG', margen, 34, ancho, alto); } catch (_) { /* sin logo */ }
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(16, 28, 51); // azul marino
+    doc.text('MAGANDHI', logo ? margen + 44 : margen, yTexto);
+
+    doc.setFontSize(13);
+    doc.setTextColor(42, 38, 34);
+    doc.text('Balance general', logo ? margen + 44 : margen, yTexto + 18);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(120, 120, 120);
+    doc.text('A fecha de corte: ' + formatearFecha(estado.fecha), anchoPag - margen, yTexto - 8, { align: 'right' });
+    doc.text('Generado: ' + formatearMomento(new Date().toISOString()), anchoPag - margen, yTexto + 6, { align: 'right' });
+
+    const t = estado.totales;
+    const cuadra = t.totalActivo === t.totalPasivo + t.totalPatrimonio;
+    const filaCuadre = [
+      { content: 'Total Activo vs Total Pasivo + Patrimonio', colSpan: 2 },
+      (cuadra ? 'Cuadra' : 'No cuadra') + ': ' + formatearCOP(t.totalActivo) + ' / ' + formatearCOP(t.totalPasivo + t.totalPatrimonio)
+    ];
+
+    doc.autoTable({
+      head: [['Codigo PUC', 'Cuenta', 'Valor']],
+      body: cuerpoPDF(),
+      foot: [filaCuadre],
+      startY: yTexto + 24,
+      margin: { left: margen, right: margen },
+      styles: { font: 'helvetica', fontSize: 9, cellPadding: 4, textColor: [42, 38, 34] },
+      headStyles: { fillColor: [16, 28, 51], textColor: [255, 255, 255], halign: 'left', fontStyle: 'bold' },
+      footStyles: { fillColor: cuadra ? [231, 240, 234] : [244, 222, 220], textColor: [16, 28, 51], fontStyle: 'bold' },
+      columnStyles: {
+        0: { halign: 'left' },
+        1: { halign: 'left' },
+        2: { halign: 'right' }
+      },
+      didParseCell: (hook) => {
+        // La columna de valor siempre a la derecha, tambien en head/foot.
+        if (hook.column.index === 2) hook.cell.styles.halign = 'right';
+      }
+    });
+
+    doc.save(nombreBase() + '.pdf');
+  }
+
+  // ----------------------------------------------------------
+  // EXPORTACION A EXCEL (CSV con BOM UTF-8 + separador ';', ver <head>)
+  // ----------------------------------------------------------
+
+  // Escapa un campo CSV: si contiene ';', comilla o salto de linea, se envuelve
+  // en comillas dobles y se duplican las comillas internas (regla RFC 4180).
+  function campoCSV(valor) {
+    const s = String(valor == null ? '' : valor);
+    if (/[";\n\r]/.test(s)) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  }
+
+  function descargarExcel() {
+    // Guarda defensiva: igual que descargarPDF, no se exporta un balance vacio.
+    if (!estado.totales || !hayDatosEstado()) return;
+    limpiarError();
+
+    const SEP = ';';
+    const t = estado.totales;
+    const lineas = [];
+    lineas.push(['Seccion', 'Codigo', 'Cuenta', 'Valor'].map(campoCSV).join(SEP));
+
+    // Emite las cuentas de una seccion con su etiqueta y luego un subtotal.
+    const seccion = (etiqueta, filas, subtotalEtiqueta, subtotalValor) => {
+      for (const f of filas) {
+        lineas.push([
+          campoCSV(etiqueta),
+          campoCSV(f.cuenta_codigo || ''),
+          campoCSV(f.cuenta_nombre || ''),
+          // Monto como ENTERO de pesos puro (sin separadores ni simbolo).
+          entero(f.monto)
+        ].join(SEP));
+      }
+      lineas.push([campoCSV(subtotalEtiqueta), '', '', subtotalValor].join(SEP));
+    };
+
+    seccion('Activo', estado.activo, 'Total Activo', t.totalActivo);
+    seccion('Pasivo', estado.pasivo, 'Total Pasivo', t.totalPasivo);
+
+    // Patrimonio: cuentas + fila de resultado del ejercicio + Total Patrimonio.
+    for (const f of estado.patrimonio) {
+      lineas.push([
+        campoCSV('Patrimonio'),
+        campoCSV(f.cuenta_codigo || ''),
+        campoCSV(f.cuenta_nombre || ''),
+        entero(f.monto)
+      ].join(SEP));
+    }
+    const etiquetaResultado = estado.resultado >= 0 ? 'Utilidad del ejercicio' : 'Perdida del ejercicio';
+    lineas.push([campoCSV('Patrimonio'), '', campoCSV(etiquetaResultado), estado.resultado].join(SEP));
+    lineas.push([campoCSV('Total Patrimonio'), '', '', t.totalPatrimonio].join(SEP));
+
+    // Resumen de cuadre: Activo vs Pasivo + Patrimonio (con resultado dentro).
+    const cuadra = t.totalActivo === t.totalPasivo + t.totalPatrimonio;
+    lineas.push([campoCSV(cuadra ? 'Cuadra' : 'No cuadra'), '', campoCSV('Activo vs Pasivo + Patrimonio'), t.totalActivo - (t.totalPasivo + t.totalPatrimonio)].join(SEP));
+
+    // BOM UTF-8 para que Excel en espanol respete los acentos y abra en columnas.
+    const contenido = '\ufeff' + lineas.join('\r\n');
+    const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8;' });
+    descargarArchivo(nombreBase() + '.csv', blob);
+  }
+
+  btnGenerar.addEventListener('click', generar);
+  btnPDF.addEventListener('click', descargarPDF);
+  btnExcel.addEventListener('click', descargarExcel);
+  inputFecha.addEventListener('keydown', (e) => { if (e.key === 'Enter') generar(); });
+
+  // Si el usuario cambia la fecha de corte sin volver a Generar, las descargas
+  // dejarian de coincidir con el informe visible (exportarian el corte viejo).
+  // Se deshabilitan hasta que se regenere; ademas se actualiza la aclaracion
+  // del periodo del resultado del ejercicio segun la nueva fecha.
+  function revisarCoherenciaCorte() {
+    actualizarAclaracion();
+    if (inputFecha.value !== estado.fecha) habilitarDescargas(false);
+  }
+  inputFecha.addEventListener('input', revisarCoherenciaCorte);
+  inputFecha.addEventListener('change', revisarCoherenciaCorte);
+
+  (async () => {
+    const acceso = await asegurarAcceso(document.body);
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Balance general',
+      kicker: 'CONTABILIDAD · A FECHA DE CORTE',
+      lead: 'La foto del negocio a la fecha que elijas: Activo = Pasivo + Patrimonio, con el resultado del ejercicio alimentando el patrimonio. Verlo en pantalla y, si sirve, descargarlo en PDF o Excel.',
+      sesion: acceso.sesion,
+      volverHref: 'index.html',
+      volverTexto: 'Finanzas'
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    inputFecha.value = hoyISO();
+    actualizarAclaracion();
+
+    document.getElementById('fz-main').hidden = false;
+  })();
+</script>
+
+</body>
+</html>
