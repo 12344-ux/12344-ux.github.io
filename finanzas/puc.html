@@ -28,10 +28,18 @@
 <script type="module" src="../auth-guard.js"></script>
 
 <main class="fz-wrap" id="fz-main" hidden>
-  <div class="fz-search">
-    <span class="fz-search-ico" data-ico="lupa"></span>
-    <input class="fz-input" id="fz-q" type="search" autocomplete="off"
-           placeholder="Buscar por codigo (ej. 1105) o nombre (ej. caja)...">
+  <div class="fz-puc-top">
+    <div class="fz-search">
+      <span class="fz-search-ico" data-ico="lupa"></span>
+      <input class="fz-input" id="fz-q" type="search" autocomplete="off"
+             placeholder="Buscar por codigo (ej. 1105) o nombre (ej. caja)...">
+    </div>
+    <!-- Acceso solo-admin a Agregar cuenta (comodidad de UX; el candado real
+         es la RPC agregar_cuenta_puc, que rechaza a no-admin). Oculto por
+         defecto y revelado solo si perfil.rol === 'admin'. -->
+    <a class="fz-accion editar" id="fz-agregar" href="agregar-cuenta.html" hidden>
+      <span data-ico="mas"></span> Agregar cuenta
+    </a>
   </div>
   <p class="fz-hint" id="fz-hint">Cuentas imputables mas usadas</p>
   <div class="fz-puc-list" id="fz-list"></div>
@@ -44,6 +52,7 @@
   const input = document.getElementById('fz-q');
   const hint = document.getElementById('fz-hint');
   const list = document.getElementById('fz-list');
+  const agregarBtn = document.getElementById('fz-agregar');
 
   const NIVEL_TXT = { 1: 'Clase', 2: 'Grupo', 3: 'Cuenta', 4: 'Subcuenta' };
 
@@ -110,6 +119,10 @@
       sesion: acceso.sesion
     });
     document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    // Solo el admin ve el acceso a "Agregar cuenta" (comodidad de UX; el
+    // candado real es la RPC server-side, no ocultar el enlace).
+    if (acceso.perfil.rol === 'admin') agregarBtn.hidden = false;
 
     main.hidden = false;
     await cargarSugeridas();
