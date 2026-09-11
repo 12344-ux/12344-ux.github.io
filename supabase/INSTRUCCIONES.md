@@ -152,6 +152,19 @@ ORDEN, el contenido completo de cada archivo (cada uno con su propio **Run**):
     igual que las vistas del mayor) y no abre ninguna escritura. Como usa
     `create or replace`, si en el futuro la ajustas basta con **volver a
     ejecutar solo este archivo**, sin tocar los demas.
+11. `supabase/migrations/20250201001000_finanzas_estado_resultados.sql`
+    Crea la funcion `estado_resultados(p_inicio date, p_fin date)` (Tramo 2,
+    paso 2a: el Estado de resultados POR PERIODO). Es la "pelicula" del
+    ejercicio entre dos fechas (no la foto acumulada del balance de
+    comprobacion): toma el movimiento de las cuentas de resultado (clases
+    4/5/6/7) entre `p_inicio` y `p_fin` (ambas inclusive) y devuelve, por cada
+    cuenta imputable con movimiento, `clase`, `cuenta_codigo`, `cuenta_nombre`,
+    `naturaleza`, `total_debe`, `total_haber` y `monto_periodo`. Con eso el
+    frontend arma el estado clasificado y la utilidad o perdida del ejercicio.
+    Es de solo lectura (`STABLE`), hereda la RLS del modulo (SECURITY INVOKER),
+    montos en `bigint` (pesos enteros) y es idempotente (`create or replace`).
+    Como usa `create or replace`, si en el futuro la ajustas basta con **volver
+    a ejecutar solo este archivo**, sin tocar los demas.
 
 Los archivos son idempotentes (`create ... if not exists`, `on conflict do
 update`, `create or replace`, `drop policy if exists`): si algo falla a mitad,
@@ -378,3 +391,78 @@ solo lectura y no modifica nada.
 > Como la funcion usa `create or replace`, si mas adelante ajustas su logica
 > basta con **volver a ejecutar solo el archivo 10**
 > (`20250201000900_finanzas_balance_comprobacion.sql`), sin tocar los demas.
+
+## F8. Estado de resultados por periodo (Tramo 2, paso 2a)
+
+El archivo 11 de F1 (`20250201001000_finanzas_estado_resultados.sql`) crea la
+funcion `estado_resultados(p_inicio date, p_fin date)`. Es el segundo informe
+del Tramo 2 y, a diferencia del balance de comprobacion, es la "pelicula" del
+ejercicio **entre dos fechas** (no una foto acumulada a una fecha de corte).
+
+Toma solo el movimiento de las cuentas de RESULTADO (clases 4, 5, 6 y 7) de los
+asientos con `estado='activo'` y `fecha` entre `p_inicio` y `p_fin` (ambas
+inclusive). Se excluyen a proposito las clases de balance (1 activo, 2 pasivo y
+3 patrimonio), que no forman parte del estado de resultados. Por cada cuenta
+imputable con movimiento devuelve `clase` (el primer digito del codigo),
+`cuenta_codigo`, `cuenta_nombre`, `naturaleza`, `total_debe`, `total_haber` y
+`monto_periodo`.
+
+Cada clase se presenta en su **lado natural** en positivo, tomando solo el
+movimiento del periodo:
+
+- Ingresos (clase 4, natural credito): `monto_periodo = sum(haber) - sum(debe)`.
+- Gastos (clase 5, natural debito): `monto_periodo = sum(debe) - sum(haber)`.
+- Costo de ventas (clase 6, natural debito): `sum(debe) - sum(haber)`.
+- Costos de produccion (clase 7, natural debito): `sum(debe) - sum(haber)`.
+
+Con esos montos, la **utilidad (o perdida) del ejercicio** es:
+
+```
+utilidad = Ingresos(clase 4) - Costos(clase 6 + clase 7) - Gastos(clase 5)
+```
+
+Si el resultado es positivo hay utilidad; si es negativo, perdida. Como la
+utilidad reutiliza exactamente los mismos montos enteros del informe, es exacta
+(no hay redondeos). Esto importa porque esa **utilidad del ejercicio alimentara
+despues el patrimonio del Balance General (paso 2b)**: cualquier diferencia de
+un peso se arrastraria al balance.
+
+**Como verlo** (ejemplo del ano corriente hasta hoy; cambia `p_inicio` por
+cualquier fecha):
+
+```sql
+select * from estado_resultados('2025-01-01', current_date) order by cuenta_codigo;
+```
+
+**Comprobacion de la UTILIDAD** (agrega `monto_periodo` por clase usando el
+primer digito del codigo y confirma que utilidad = ingresos - costos - gastos):
+
+```sql
+with r as (
+  select left(cuenta_codigo, 1) as clase, sum(monto_periodo) as monto
+  from estado_resultados('2025-01-01', current_date)
+  group by left(cuenta_codigo, 1)
+)
+select
+  coalesce(sum(monto) filter (where clase = '4'), 0)                as ingresos,
+  coalesce(sum(monto) filter (where clase in ('6','7')), 0)         as costos,
+  coalesce(sum(monto) filter (where clase = '5'), 0)                as gastos,
+  coalesce(sum(monto) filter (where clase = '4'), 0)
+    - coalesce(sum(monto) filter (where clase in ('6','7')), 0)
+    - coalesce(sum(monto) filter (where clase = '5'), 0)            as utilidad_ejercicio
+from r;
+-- Esperado: utilidad_ejercicio = ingresos - costos - gastos.
+```
+
+Ejemplo concreto: si en el periodo se registra una venta con un ingreso (clase
+4) de 100000 al haber, un costo de ventas (clase 6) de 20000 al debe y un gasto
+(clase 5) de 30000 al debe, el informe presenta ingresos=100000, costos=20000,
+gastos=30000 y `utilidad_ejercicio = 100000 - 20000 - 30000 = 50000` (utilidad).
+Con la venta de contado del ejemplo F2 (ingreso 413505 de 100000, sin costos ni
+gastos) la utilidad del periodo seria 100000.
+
+La funcion es de solo lectura y no modifica nada.
+
+> Como la funcion usa `create or replace`, si mas adelante ajustas su logica
+> basta con **volver a ejecutar solo el archivo 11**
+> (`20250201001000_finanzas_estado_resultados.sql`), sin tocar los demas.
