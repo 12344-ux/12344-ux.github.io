@@ -695,6 +695,58 @@ body.fz-body{
 .fz-er-resultado.perdida .lbl{color:var(--fz-azul-cl)}
 
 /* ============================================================
+   BALANCE GENERAL (foto a fecha de corte)
+   ------------------------------------------------------------
+   Reutiliza fz-bc-controles / fz-bc-fecha / fz-bc-descargas /
+   fz-btn-descarga / fz-bc-cabecera / fz-estado / fz-tabla / fz-empty /
+   fz-mayor-nota. Aqui solo se anaden: la aclaracion del periodo del
+   resultado del ejercicio (fz-bg-aclaracion), el layout de DOS bloques
+   (ACTIVO | PASIVO + PATRIMONIO) en fz-bg-bloques, el titulo de cada
+   bloque (fz-bg-bloque-titulo), las filas de subtotal (Total Activo /
+   Total Pasivo / Total Patrimonio) y la linea destacada del Resultado
+   del ejercicio dentro de patrimonio. Esta linea NO usa los colores
+   debe (terracota) / haber (azul) porque esos ya significan debito /
+   credito: sigue la semantica del estado de resultados (verde salvia
+   para utilidad, azul marino serio para perdida), igual que fz-er-*.
+   ============================================================ */
+.fz-bg-aclaracion{
+  font-size:12.5px;color:var(--fz-gris);margin:2px 0 0;
+}
+.fz-bg-bloques{
+  display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;
+  margin-top:4px;
+}
+.fz-bg-bloque{
+  background:var(--fz-tarjeta);border:1px solid var(--fz-linea);
+  border-radius:var(--fz-radio);padding:16px 18px;
+}
+.fz-bg-bloque-titulo{
+  margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--fz-marino);
+}
+.fz-bg-tabla td{color:var(--fz-carbon)}
+.fz-bg-tabla .fz-bg-subtotal td{
+  font-weight:600;color:var(--fz-marino);
+  border-top:1px solid var(--fz-linea);border-bottom:2px solid var(--fz-marino);
+}
+.fz-bg-tabla .fz-bg-subtotal td.num{font-variant-numeric:tabular-nums}
+.fz-bg-tabla .fz-bg-vacia td{
+  font-size:13px;color:var(--fz-gris);font-style:italic;
+}
+/* Resultado del ejercicio dentro de PATRIMONIO: fondo tenue, semantica
+   propia por signo (salvia = utilidad, azul marino = perdida). */
+.fz-bg-tabla .fz-bg-resultado td{
+  font-weight:600;font-variant-numeric:tabular-nums;
+  background:rgba(91,138,111,.10);border-bottom:1px solid var(--fz-linea);
+}
+.fz-bg-tabla .fz-bg-resultado.utilidad td{color:var(--fz-salvia)}
+.fz-bg-tabla .fz-bg-resultado.utilidad td .lbl{color:var(--fz-salvia)}
+.fz-bg-tabla .fz-bg-resultado.perdida td{
+  color:var(--fz-marino);background:rgba(16,28,51,.06);
+}
+.fz-bg-tabla .fz-bg-resultado .sub{font-size:11px;font-weight:500;color:var(--fz-gris)}
+
+/* ============================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width:720px){
@@ -725,4 +777,7 @@ body.fz-body{
   .fz-bc-fecha{width:100%}
   .fz-bc-fecha .fz-input{max-width:none}
   .fz-er-resultado .val{margin-left:0;width:100%}
+  /* Balance general: los dos bloques (Activo | Pasivo + Patrimonio) se
+     apilan en una sola columna en pantallas estrechas. */
+  .fz-bg-bloques{grid-template-columns:1fr}
 }

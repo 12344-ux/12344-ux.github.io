@@ -174,6 +174,12 @@ ICONOS.salir = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 // Se distingue de 'informe' (balance de comprobacion) y 'balanza' (mayor).
 ICONOS.tendencia = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/><path d="M19 8h-3M19 8v3"/></svg>';
 
+// Icono de columnas/edificio (fachada clasica con frontispicio): marca el
+// Balance general (FOTO a fecha de corte, Activo = Pasivo + Patrimonio +
+// Resultado del ejercicio). Se distingue de 'balanza' (mayor), 'informe'
+// (balance de comprobacion) y 'tendencia' (estado de resultados).
+ICONOS.edificio = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M4 9h16"/><path d="m12 3 8 4H4l8-4Z"/><path d="M6 9v10M10 9v10M14 9v10M18 9v10"/></svg>';
+
 /**
  * Monta el header institucional fijo (azul marino) al inicio de <body>,
  * seguido del encabezado editorial de la pantalla (titulo + kicker).
