@@ -39,6 +39,7 @@ body.fz-body{
   font-family:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   line-height:1.55;-webkit-font-smoothing:antialiased;
   min-height:100vh;
+  display:flex;flex-direction:column;
 }
 
 /* Montos: siempre tabular para alinear cifras */
@@ -55,6 +56,17 @@ body.fz-body{
   box-shadow:0 2px 10px rgba(16,28,51,.18);
 }
 .fz-header-left{display:flex;align-items:center;gap:14px;min-width:0}
+/* Boton "volver" (navegacion de retroceso con destino explicito) */
+.fz-volver{
+  display:inline-flex;align-items:center;gap:6px;flex:none;
+  font-family:inherit;font-size:13px;font-weight:600;letter-spacing:.02em;
+  color:var(--fz-azul-cl);text-decoration:none;
+  background:rgba(143,163,196,.14);border-radius:999px;
+  padding:7px 14px 7px 10px;
+  transition:background-color .15s ease, color .15s ease;
+}
+.fz-volver:hover{background:rgba(143,163,196,.28);color:#fff}
+.fz-volver svg{width:18px;height:18px;flex:none}
 .fz-logo{width:34px;height:34px;display:block;flex:none}
 .fz-word{
   font-weight:600;font-size:17px;letter-spacing:.22em;color:#fff;line-height:1;
@@ -82,7 +94,58 @@ body.fz-body{
   background:var(--fz-debe);color:#fff;
   font-weight:600;font-size:15px;letter-spacing:.02em;
   text-transform:uppercase;
+  border:0;font-family:inherit;cursor:pointer;padding:0;
+  transition:box-shadow .15s ease, transform .1s ease;
 }
+.fz-avatar:hover{box-shadow:0 0 0 3px rgba(143,163,196,.35)}
+.fz-avatar:focus-visible{outline:0;box-shadow:0 0 0 3px rgba(143,163,196,.55)}
+.fz-avatar[aria-expanded="true"]{box-shadow:0 0 0 3px rgba(143,163,196,.55)}
+
+/* ============================================================
+   MENU DE PERFIL (dropdown bajo el avatar)
+   ============================================================ */
+.fz-perfil{position:relative;display:flex;align-items:center}
+.fz-perfil-menu{
+  position:absolute;top:calc(100% + 10px);right:0;z-index:60;
+  min-width:230px;
+  background:var(--fz-tarjeta);color:var(--fz-carbon);
+  border:1px solid var(--fz-linea);border-radius:12px;
+  box-shadow:0 14px 40px rgba(16,28,51,.24);
+  padding:6px;
+}
+.fz-perfil-menu[hidden]{display:none}
+.fz-perfil-info{
+  display:flex;flex-direction:column;gap:2px;
+  padding:10px 12px 12px;border-bottom:1px solid var(--fz-linea);
+}
+.fz-perfil-lbl{
+  font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--fz-gris);
+}
+.fz-perfil-email{font-size:13.5px;color:var(--fz-carbon);word-break:break-all}
+.fz-perfil-salir{
+  display:flex;align-items:center;gap:9px;width:100%;
+  margin-top:4px;
+  font-family:inherit;font-size:13.5px;font-weight:600;text-align:left;
+  color:var(--fz-debe);background:transparent;border:0;border-radius:9px;
+  padding:10px 12px;cursor:pointer;
+  transition:background-color .15s ease;
+}
+.fz-perfil-salir:hover{background:rgba(166,51,46,.08)}
+.fz-perfil-salir:focus-visible{outline:0;background:rgba(166,51,46,.12)}
+.fz-perfil-salir svg{width:17px;height:17px;flex:none}
+
+/* ============================================================
+   SELLO DE PROVEEDOR ("Con tecnologia Impulse")
+   Firma sobria: gris tenue, "Impulse" con peso ligeramente destacado.
+   Solo back-office interno; nunca la tienda publica.
+   ============================================================ */
+.fz-sello{
+  margin-top:auto;
+  padding:26px 24px 30px;text-align:center;
+  font-size:11.5px;letter-spacing:.05em;color:var(--fz-gris);
+}
+.fz-sello-marca{color:var(--fz-marino);font-weight:600;letter-spacing:.06em}
 
 /* ============================================================
    ENCABEZADO EDITORIAL DE PANTALLA (bajo el header)
@@ -513,4 +576,12 @@ body.fz-body{
   .fz-del{grid-column:1 / -1;width:100%}
   .fz-area{font-size:11px;letter-spacing:.12em}
   .fz-word{font-size:15px;letter-spacing:.16em}
+  /* En pantallas estrechas el header prioriza volver + marca + perfil:
+     se ocultan el separador extra y el rotulo del boton volver deja
+     solo la flecha para no saturar. */
+  .fz-header{gap:10px}
+  .fz-header-left{gap:10px}
+  .fz-volver{padding:7px 10px}
+  .fz-volver span{display:none}
+  .fz-perfil-menu{min-width:210px}
 }
