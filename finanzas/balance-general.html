@@ -151,6 +151,22 @@
     return filas.reduce((acc, f) => acc + entero(f.monto), 0);
   }
 
+  // Predicado UNICO de "hay algo que mostrar/exportar": la funcion SQL SIEMPRE
+  // devuelve al menos la fila sintetica de resultado (aunque su monto sea 0),
+  // asi que NO se puede usar filas.length para decidir. Hay datos reales solo
+  // si alguna clase de balance tiene cuentas o el resultado del ejercicio no es
+  // cero. Es el mismo criterio que usa pintar() para el estado vacio, por eso
+  // las descargas quedan habilitadas exactamente cuando la pantalla muestra
+  // datos (y deshabilitadas cuando muestra "No hay saldos...").
+  function hayDatosEstado() {
+    return Boolean(
+      estado.activo.length ||
+      estado.pasivo.length ||
+      estado.patrimonio.length ||
+      estado.resultado !== 0
+    );
+  }
+
   // Texto de la aclaracion del periodo del resultado del ejercicio, en base a
   // la fecha de corte elegida: del 1 de enero de {ano} al {corte}.
   function textoAclaracion(fecha) {
@@ -201,7 +217,12 @@
     estado = { activo, pasivo, patrimonio, resultado: resultadoMonto, totales, fecha };
 
     pintar();
-    habilitarDescargas(filas.length > 0);
+    // OJO: NO usar filas.length (la fila de resultado viene siempre, aunque sea
+    // 0). Las descargas se habilitan con el MISMO predicado que pintar() usa
+    // para el estado vacio, de modo que sobre un libro vacio (solo la fila de
+    // resultado en 0) los botones quedan deshabilitados y no se exporta un
+    // balance vacio.
+    habilitarDescargas(hayDatosEstado());
   }
 
   // Filas de cuenta de una seccion (codigo + nombre + monto).
@@ -232,9 +253,8 @@
 
   function pintar() {
     const { activo, pasivo, patrimonio, resultado, totales, fecha } = estado;
-    const hayDatos = activo.length || pasivo.length || patrimonio.length || resultado !== 0;
 
-    if (!hayDatos) {
+    if (!hayDatosEstado()) {
       resultado.innerHTML =
         '<div class="fz-empty">No hay saldos de balance a la fecha de corte ' +
         '<strong>' + escaparHTML(formatearFecha(fecha)) + '</strong>. ' +
@@ -375,7 +395,10 @@
   }
 
   async function descargarPDF() {
-    if (!estado.totales) return;
+    // Guarda defensiva: sin informe generado o sobre un libro vacio (solo la
+    // fila de resultado en 0) no se exporta nada, en linea con el boton
+    // deshabilitado y con el estado vacio que muestra pintar().
+    if (!estado.totales || !hayDatosEstado()) return;
     const jspdfNS = window.jspdf;
     if (!jspdfNS || !jspdfNS.jsPDF) {
       mostrarError('No se pudo cargar el generador de PDF. Revisa tu conexion e intenta de nuevo.');
@@ -457,7 +480,8 @@
   }
 
   function descargarExcel() {
-    if (!estado.totales) return;
+    // Guarda defensiva: igual que descargarPDF, no se exporta un balance vacio.
+    if (!estado.totales || !hayDatosEstado()) return;
     limpiarError();
 
     const SEP = ';';

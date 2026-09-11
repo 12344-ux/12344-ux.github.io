@@ -21,6 +21,15 @@
 -- primer digito del codigo con left(c.codigo, 1) (puc_cuentas NO tiene columna
 -- `clase`, igual criterio que el resto del modulo).
 --
+-- CLASES 8 Y 9 (CUENTAS DE ORDEN) FUERA DE ALCANCE A PROPOSITO: el termino de
+-- balance filtra clases 1/2/3 y el termino de resultado cubre 4/5/6/7, de modo
+-- que las clases 8 (deudoras de orden) y 9 (acreedoras de orden) quedan EXCLUIDAS
+-- deliberadamente del Balance General. Son cuentas de MEMORANDO/orden: se
+-- registran por-contra (en pares que se netean a cero dentro de su clase) y NO
+-- forman parte del Activo/Pasivo/Patrimonio ni del resultado del ejercicio, por
+-- lo que no afectan el cuadre ACTIVO = PASIVO + PATRIMONIO + RESULTADO. El alcance
+-- 1/2/3 + 4/5/6/7 es intencional, no una omision.
+--
 -- RESULTADO DEL EJERCICIO (por que va en el Balance): el resultado del periodo
 -- (utilidad o perdida) forma parte del PATRIMONIO. En este software NO se ha
 -- implementado todavia el asiento de CIERRE ANUAL que traslada el resultado a
