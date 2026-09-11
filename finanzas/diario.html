@@ -17,9 +17,14 @@
 <link rel="stylesheet" href="finanzas.css?v=1">
 
 <!--
-  MAGANDHI · Area de Finanzas · Libro Diario (solo lectura).
+  MAGANDHI · Area de Finanzas · Libro Diario.
   Historial cronologico de asientos + lineas (fecha desc). Marca los
-  asientos anulados. El candado real es RLS server-side.
+  asientos anulados. Por cada asiento ACTIVO ofrece Editar y Anular
+  (modelo "punto medio"): editar abre finanzas/editar-asiento.html y
+  anular llama la RPC anular_asiento (estado='anulado', NUNCA borrado
+  fisico). Cualquier asiento permite ver su historial de correcciones
+  (asiento_bitacora). Los anulados NO cuentan para el Mayor ni los saldos
+  (las vistas filtran estado='activo'). El candado real es RLS server-side.
 -->
 </head>
 <body class="fz-body">
@@ -30,10 +35,37 @@
   <div id="fz-diario"></div>
 </main>
 
+<!-- Dialogo de anulacion (confirmacion + motivo) -->
+<div class="fz-modal" id="fz-modal-anular" hidden>
+  <div class="fz-modal-card">
+    <h3>Anular asiento</h3>
+    <p>Anular cambia el estado a <strong>anulado</strong>: el asiento deja de contar para el Libro Mayor y los saldos, pero <strong>no se borra</strong>. Queda en el historial con su valor anterior.</p>
+    <label class="fz-modal-lbl" for="fz-motivo">Motivo (opcional)</label>
+    <textarea class="fz-modal-txt" id="fz-motivo" rows="3" placeholder="Ej. Error en la cuenta; se reemplaza por asiento correcto"></textarea>
+    <div class="fz-modal-acciones">
+      <button class="fz-btn-guardar" type="button" id="fz-modal-cancelar" style="background:transparent;color:var(--fz-gris);border:1px solid var(--fz-linea)">Cancelar</button>
+      <button class="fz-btn-anular" type="button" id="fz-modal-confirmar">Confirmar anulacion</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
-  import { supabase, asegurarAcceso, montarHeader, ICONOS, formatearCOP, formatearFecha } from './finanzas-core.js';
+  import {
+    supabase, asegurarAcceso, montarHeader, ICONOS,
+    formatearCOP, formatearFecha, formatearMomento,
+    ACCIONES_BITACORA, cargarBitacora
+  } from './finanzas-core.js';
 
   const cont = document.getElementById('fz-diario');
+  const modalEl = document.getElementById('fz-modal-anular');
+  const motivoEl = document.getElementById('fz-motivo');
+  let asientoAAnular = null;
+
+  function escaparHTML(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
 
   function asientoHTML(a) {
     const anulado = a.estado === 'anulado';
@@ -44,19 +76,30 @@
       const cta = l.puc_cuentas || {};
       return (
         '<tr>' +
-          '<td><span class="cod">' + l.cuenta_codigo + '</span> ' + (cta.nombre || '') + '</td>' +
-          '<td>' + (l.detalle || '') + '</td>' +
+          '<td><span class="cod">' + l.cuenta_codigo + '</span> ' + escaparHTML(cta.nombre || '') + '</td>' +
+          '<td>' + escaparHTML(l.detalle || '') + '</td>' +
           '<td class="num debe">' + (l.debe > 0 ? formatearCOP(l.debe) : '') + '</td>' +
           '<td class="num haber">' + (l.haber > 0 ? formatearCOP(l.haber) : '') + '</td>' +
         '</tr>'
       );
     }).join('');
 
+    // Acciones: Editar y Anular SOLO para activos; historial para todos.
+    // La UI nunca expone borrado fisico: solo editar (RPC) y anular (estado).
+    const acciones =
+      '<div class="fz-asiento-acciones">' +
+        (anulado ? '' :
+          '<a class="fz-accion editar" href="editar-asiento.html?id=' + a.id + '">' + ICONOS.nuevo + ' Editar</a>' +
+          '<button class="fz-accion anular" type="button" data-anular="' + a.id + '">' + ICONOS.equis + ' Anular</button>'
+        ) +
+        '<button class="fz-accion historial" type="button" data-hist="' + a.id + '">' + ICONOS.lista + ' Historial</button>' +
+      '</div>';
+
     return (
-      '<article class="fz-asiento' + (anulado ? ' anulado' : '') + '">' +
+      '<article class="fz-asiento' + (anulado ? ' anulado' : '') + '" data-id="' + a.id + '">' +
         '<div class="fz-asiento-top">' +
           '<span class="fz-asiento-fecha">' + formatearFecha(a.fecha) + '</span>' +
-          '<span class="fz-asiento-desc">' + (a.descripcion || '') + '</span>' +
+          '<span class="fz-asiento-desc">' + escaparHTML(a.descripcion || '') + '</span>' +
           (anulado ? '<span class="fz-tag-anulado">Anulado</span>' : '') +
         '</div>' +
         '<table class="fz-tabla">' +
@@ -66,9 +109,82 @@
             '<td class="num debe">' + formatearCOP(sd) + '</td>' +
             '<td class="num haber">' + formatearCOP(sh) + '</td></tr></tfoot>' +
         '</table>' +
+        acciones +
+        '<div class="fz-hist-inline" id="fz-hist-' + a.id + '" hidden></div>' +
       '</article>'
     );
   }
+
+  // --- Historial de un asiento (bitacora), desplegable inline ---
+  async function toggleHistorial(id) {
+    const box = document.getElementById('fz-hist-' + id);
+    if (!box) return;
+    if (!box.hidden) { box.hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML = '<p class="fz-hist-lead">Cargando historial...</p>';
+    try {
+      const eventos = await cargarBitacora(id);
+      if (!eventos.length) { box.innerHTML = '<p class="fz-hist-lead">Sin registros de correccion.</p>'; return; }
+      box.innerHTML =
+        '<ol class="fz-timeline">' +
+        eventos.map((ev) => {
+          const meta = ACCIONES_BITACORA[ev.accion] || { etiqueta: ev.accion, clase: 'editar' };
+          const prev = ev.detalle_cambio || {};
+          const det = [];
+          if (prev.descripcion) det.push('Descripcion anterior: ' + escaparHTML(prev.descripcion));
+          if (prev.fecha) det.push('Fecha anterior: ' + formatearFecha(prev.fecha));
+          if (prev.estado) det.push('Estado anterior: ' + escaparHTML(prev.estado));
+          return (
+            '<li class="fz-tl-item ' + meta.clase + '">' +
+              '<span class="fz-tl-dot"></span>' +
+              '<div class="fz-tl-body">' +
+                '<div class="fz-tl-top">' +
+                  '<span class="fz-tl-accion ' + meta.clase + '">' + meta.etiqueta + '</span>' +
+                  '<span class="fz-tl-cuando">' + formatearMomento(ev.cuando) + '</span>' +
+                '</div>' +
+                (det.length ? '<ul class="fz-tl-det"><li>' + det.join('</li><li>') + '</li></ul>' : '') +
+              '</div>' +
+            '</li>'
+          );
+        }).join('') +
+        '</ol>';
+    } catch (_) {
+      box.innerHTML = '<p class="fz-hist-lead">No se pudo cargar el historial.</p>';
+    }
+  }
+
+  // --- Anular: confirmacion + motivo, luego RPC anular_asiento ---
+  function abrirModalAnular(id) { asientoAAnular = id; motivoEl.value = ''; modalEl.hidden = false; motivoEl.focus(); }
+  document.getElementById('fz-modal-cancelar').addEventListener('click', () => { modalEl.hidden = true; asientoAAnular = null; });
+  modalEl.addEventListener('click', (e) => { if (e.target === modalEl) { modalEl.hidden = true; asientoAAnular = null; } });
+
+  document.getElementById('fz-modal-confirmar').addEventListener('click', async () => {
+    if (!asientoAAnular) return;
+    const btn = document.getElementById('fz-modal-confirmar');
+    btn.disabled = true; btn.textContent = 'Anulando...';
+    try {
+      const { error } = await supabase.rpc('anular_asiento', {
+        p_asiento_id: asientoAAnular,
+        p_motivo: motivoEl.value.trim() || null
+      });
+      if (error) throw error;
+      modalEl.hidden = true;
+      asientoAAnular = null;
+      await cargar(); // refresca: el asiento queda marcado y sale del mayor/saldos
+    } catch (err) {
+      alert('No se pudo anular: ' + (err?.message || 'error desconocido'));
+    } finally {
+      btn.disabled = false; btn.textContent = 'Confirmar anulacion';
+    }
+  });
+
+  // Delegacion de eventos para las acciones de cada asiento.
+  cont.addEventListener('click', (e) => {
+    const anularBtn = e.target.closest('[data-anular]');
+    if (anularBtn) { abrirModalAnular(anularBtn.dataset.anular); return; }
+    const histBtn = e.target.closest('[data-hist]');
+    if (histBtn) { toggleHistorial(histBtn.dataset.hist); return; }
+  });
 
   async function cargar() {
     const { data, error } = await supabase
@@ -80,6 +196,7 @@
     if (error) { cont.innerHTML = '<div class="fz-empty">No se pudo cargar el diario.</div>'; return; }
     if (!data || !data.length) { cont.innerHTML = '<div class="fz-empty">Aun no hay asientos registrados. Crea el primero en <a href="nuevo-asiento.html">Nuevo asiento</a>.</div>'; return; }
     cont.innerHTML = data.map(asientoHTML).join('');
+    cont.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
   }
 
   (async () => {
@@ -89,7 +206,7 @@
     montarHeader({
       titulo: 'Libro Diario',
       kicker: 'HISTORIAL CRONOLOGICO',
-      lead: 'Todos los asientos en orden cronologico. Los asientos anulados quedan marcados; nada se borra en silencio.',
+      lead: 'Todos los asientos en orden cronologico. Los asientos anulados quedan marcados y dejan de contar para el Mayor y los saldos; nada se borra en silencio.',
       sesion: acceso.sesion
     });
     document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });

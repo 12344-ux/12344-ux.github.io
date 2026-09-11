@@ -201,3 +201,51 @@ export function formatearFecha(iso) {
   const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
   return `${String(d).padStart(2, '0')} ${meses[m - 1]} ${y}`;
 }
+
+/**
+ * Formatea un timestamptz (ISO con hora, p.ej. de asiento_bitacora.cuando) a
+ * un texto legible en espanol corto con hora local: "05 feb 2025, 14:03".
+ * @param {string} iso
+ * @returns {string}
+ */
+export function formatearMomento(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return String(iso);
+  const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${String(d.getDate()).padStart(2, '0')} ${meses[d.getMonth()]} ${d.getFullYear()}, ${hh}:${mm}`;
+}
+
+// ------------------------------------------------------------
+// TRAZABILIDAD (bitacora de correcciones · modelo punto medio)
+// ------------------------------------------------------------
+
+/**
+ * Metadatos de presentacion para cada accion de la bitacora
+ * (crear | editar | anular): etiqueta legible y clase de color.
+ * La UI nunca expone borrado fisico; solo estas tres acciones existen.
+ */
+export const ACCIONES_BITACORA = {
+  crear:  { etiqueta: 'Creado',  clase: 'crear' },
+  editar: { etiqueta: 'Editado', clase: 'editar' },
+  anular: { etiqueta: 'Anulado', clase: 'anular' }
+};
+
+/**
+ * Lee el historial de correcciones de un asiento desde asiento_bitacora,
+ * ordenado cronologicamente (mas reciente primero). Solo lectura; nada se
+ * borra en silencio (el trigger server-side alimenta esta tabla).
+ * @param {string} asientoId uuid del asiento
+ * @returns {Promise<Array<{accion:string, cuando:string, actor:string, detalle_cambio:object}>>}
+ */
+export async function cargarBitacora(asientoId) {
+  const { data, error } = await supabase
+    .from('asiento_bitacora')
+    .select('accion, cuando, actor, detalle_cambio')
+    .eq('asiento_id', asientoId)
+    .order('cuando', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}

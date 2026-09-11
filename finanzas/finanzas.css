@@ -380,6 +380,126 @@ body.fz-body{
 .fz-saldo-final .nat{font-size:12px;color:var(--fz-azul-cl)}
 
 /* ============================================================
+   ACCIONES POR ASIENTO (Libro Diario) · editar / anular / historial
+   La UI nunca expone borrado fisico: solo editar (RPC) y anular (estado).
+   ============================================================ */
+.fz-asiento-acciones{
+  display:flex;flex-wrap:wrap;gap:8px;
+  margin-top:12px;padding-top:12px;border-top:1px dashed var(--fz-linea);
+}
+.fz-accion{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:inherit;font-size:12.5px;font-weight:600;
+  border-radius:9px;padding:7px 13px;cursor:pointer;text-decoration:none;
+  background:var(--fz-tarjeta);border:1px solid var(--fz-linea);
+  color:var(--fz-marino);transition:background-color .15s ease, border-color .15s ease;
+}
+.fz-accion svg{width:15px;height:15px}
+.fz-accion.editar:hover{background:rgba(16,28,51,.06);border-color:var(--fz-azul-cl)}
+.fz-accion.anular{color:var(--fz-debe)}
+.fz-accion.anular:hover{background:rgba(166,51,46,.08);border-color:rgba(166,51,46,.4)}
+.fz-accion.historial{color:var(--fz-gris)}
+.fz-accion.historial:hover{background:rgba(16,28,51,.04)}
+
+/* ============================================================
+   HISTORIAL / TRAZABILIDAD (bitacora) · timeline sobrio
+   ============================================================ */
+.fz-hist-inline{margin-top:12px;padding-top:12px;border-top:1px solid var(--fz-linea)}
+.fz-hist{
+  background:var(--fz-tarjeta);border:1px solid var(--fz-linea);
+  border-radius:var(--fz-radio);padding:20px;margin-top:20px;
+}
+.fz-hist-title{
+  display:flex;align-items:center;gap:9px;margin:0 0 4px;
+  font-size:16px;font-weight:600;color:var(--fz-marino);
+}
+.fz-hist-title svg{width:18px;height:18px;color:var(--fz-marino)}
+.fz-hist-lead{margin:0 0 14px;font-size:12.5px;color:var(--fz-gris)}
+.fz-timeline{list-style:none;margin:0;padding:0}
+.fz-tl-item{
+  position:relative;display:flex;gap:12px;padding:0 0 16px 4px;
+}
+.fz-tl-item:last-child{padding-bottom:0}
+.fz-tl-dot{
+  position:relative;flex:none;width:12px;height:12px;border-radius:50%;
+  margin-top:4px;background:var(--fz-gris);
+}
+.fz-tl-item::before{
+  content:'';position:absolute;left:9px;top:16px;bottom:0;width:2px;
+  background:var(--fz-linea);
+}
+.fz-tl-item:last-child::before{display:none}
+.fz-tl-item.crear .fz-tl-dot{background:var(--fz-salvia)}
+.fz-tl-item.editar .fz-tl-dot{background:var(--fz-haber)}
+.fz-tl-item.anular .fz-tl-dot{background:var(--fz-debe)}
+.fz-tl-body{flex:1;min-width:0}
+.fz-tl-top{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px}
+.fz-tl-accion{
+  font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+  border-radius:999px;padding:2px 10px;
+}
+.fz-tl-accion.crear{color:var(--fz-salvia);background:var(--fz-salvia-bg)}
+.fz-tl-accion.editar{color:var(--fz-haber);background:rgba(27,42,71,.10)}
+.fz-tl-accion.anular{color:var(--fz-debe);background:rgba(166,51,46,.10)}
+.fz-tl-cuando{font-size:12px;color:var(--fz-gris);font-variant-numeric:tabular-nums}
+.fz-tl-det{margin:6px 0 0;padding-left:16px;font-size:12.5px;color:var(--fz-gris)}
+.fz-tl-det li{margin:2px 0}
+
+/* ============================================================
+   EDITAR ASIENTO · aviso de anulado + botones extra
+   ============================================================ */
+.fz-anulado-aviso{
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:13px;color:var(--fz-debe);
+  background:rgba(166,51,46,.08);border:1px solid rgba(166,51,46,.25);
+  border-radius:10px;padding:11px 14px;margin-bottom:16px;
+}
+.fz-anulado-aviso svg{width:18px;height:18px;flex:none;margin-top:1px}
+.fz-form-anulado .fz-cell input,.fz-form-anulado .fz-input{opacity:.7}
+.fz-btn-anular{
+  font-family:inherit;font-size:14px;font-weight:600;
+  color:var(--fz-debe);background:transparent;
+  border:1px solid rgba(166,51,46,.5);border-radius:11px;
+  padding:12px 22px;cursor:pointer;transition:background-color .15s ease;
+}
+.fz-btn-anular:hover{background:rgba(166,51,46,.08)}
+.fz-btn-volver{
+  font-family:inherit;font-size:14px;font-weight:600;
+  color:var(--fz-gris);text-decoration:none;padding:12px 8px;
+}
+.fz-btn-volver:hover{color:var(--fz-marino)}
+
+/* ============================================================
+   MODAL (confirmacion de anulacion + motivo)
+   ============================================================ */
+.fz-modal{
+  position:fixed;inset:0;z-index:100;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  background:rgba(16,28,51,.45);
+}
+.fz-modal[hidden]{display:none}
+.fz-modal-card{
+  width:100%;max-width:460px;
+  background:var(--fz-tarjeta);border-radius:var(--fz-radio);
+  padding:24px;box-shadow:0 20px 60px rgba(16,28,51,.30);
+}
+.fz-modal-card h3{margin:0 0 8px;font-size:18px;color:var(--fz-debe)}
+.fz-modal-card p{margin:0 0 16px;font-size:13.5px;color:var(--fz-carbon)}
+.fz-modal-lbl{
+  display:block;margin-bottom:6px;
+  font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--fz-gris);
+}
+.fz-modal-txt{
+  width:100%;font-family:inherit;font-size:14px;color:var(--fz-carbon);
+  background:var(--fz-tarjeta);border:1px solid var(--fz-linea);
+  border-radius:10px;padding:10px 12px;resize:vertical;
+}
+.fz-modal-txt:focus{outline:0;border-color:var(--fz-marino);
+  box-shadow:0 0 0 3px rgba(16,28,51,.10)}
+.fz-modal-acciones{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+
+/* ============================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width:720px){
