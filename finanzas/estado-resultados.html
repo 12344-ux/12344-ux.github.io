@@ -305,12 +305,12 @@
       for (const f of subfilas) {
         cuerpo.push([String(f.cuenta_codigo || '') + '  ' + String(f.cuenta_nombre || ''), '', formatearCOP(entero(f.monto_periodo))]);
       }
-      cuerpo.push([{ content: titulo, colSpan: 2, styles: { fontStyle: 'bold' } }, '', { content: formatearCOP(subtotal), styles: { fontStyle: 'bold' } }]);
+      cuerpo.push([{ content: titulo, colSpan: 2, styles: { fontStyle: 'bold' } }, { content: formatearCOP(subtotal), styles: { fontStyle: 'bold' } }]);
     };
 
     seccion('Ingresos', filas.filter((f) => String(f.clase) === '4'), resumen.totalIngresos, false);
     seccion('Costo de ventas', filas.filter((f) => ['6', '7'].includes(String(f.clase))), resumen.totalCosto, true);
-    cuerpo.push([{ content: 'Utilidad Bruta', colSpan: 2, styles: { fontStyle: 'bold', textColor: [16, 28, 51] } }, '', { content: formatearCOP(resumen.utilidadBruta), styles: { fontStyle: 'bold', textColor: [16, 28, 51] } }]);
+    cuerpo.push([{ content: 'Utilidad Bruta', colSpan: 2, styles: { fontStyle: 'bold', textColor: [16, 28, 51] } }, { content: formatearCOP(resumen.utilidadBruta), styles: { fontStyle: 'bold', textColor: [16, 28, 51] } }]);
     seccion('Gastos operacionales', filas.filter((f) => String(f.clase) === '5'), resumen.totalGastos, true);
     return cuerpo;
   }
@@ -363,7 +363,7 @@
     doc.autoTable({
       head: [['Concepto', '', 'Valor']],
       body: cuerpoPDF(estado.filas, r),
-      foot: [[{ content: etiquetaFinal, colSpan: 2 }, '', formatearCOP(r.utilidadEjercicio)]],
+      foot: [[{ content: etiquetaFinal, colSpan: 2 }, formatearCOP(r.utilidadEjercicio)]],
       startY: yTexto + 24,
       margin: { left: margen, right: margen },
       styles: { font: 'helvetica', fontSize: 9, cellPadding: 4, textColor: [42, 38, 34] },
