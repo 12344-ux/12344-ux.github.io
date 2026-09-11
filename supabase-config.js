@@ -16,7 +16,7 @@
 //    el dashboard de Supabase.
 // ============================================================
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 export const SUPABASE_URL = 'https://bxlzipwxyxdtffnuizbz.supabase.co';
 

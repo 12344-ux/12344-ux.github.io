@@ -68,11 +68,14 @@ create policy "perfiles_lectura_propia" on perfiles
 -- UID del dueno (michaelmagandhi@outlook.com): 89e5028d-8c17-4deb-89c3-59acbd0ee2f2
 --
 -- Nota: 'admin' implica todos los modulos por regla de negocio (ver el
--- patron de verificacion arriba); la lista de modulos que se guarda aqui
--- es solo documental/explicita. A medida que aparezcan modulos nuevos, el
--- admin los tiene todos sin necesidad de editar esta fila.
+-- patron de verificacion arriba), asi que la lista "modulos" del admin es
+-- irrelevante: el acceso total lo da rol='admin' via tiene_modulo(). Por
+-- eso se deja vacia ('{}', que es el default) en lugar de listar modulos
+-- concretos; asi la fila no confunde cuando el dueno la use como plantilla
+-- para delegar. A medida que aparezcan modulos nuevos, el admin los tiene
+-- todos sin necesidad de editar esta fila.
 insert into perfiles (id, rol, modulos)
-values ('89e5028d-8c17-4deb-89c3-59acbd0ee2f2', 'admin', '{pedidos}')
+values ('89e5028d-8c17-4deb-89c3-59acbd0ee2f2', 'admin', '{}')
   on conflict (id) do update
     set rol = excluded.rol,
         modulos = excluded.modulos;
