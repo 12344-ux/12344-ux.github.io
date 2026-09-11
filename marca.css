@@ -1,0 +1,48 @@
+/* ============================================================
+   MAGANDHI · TOKENS DE MARCA (fuente única de la paleta)
+   ------------------------------------------------------------
+   Este archivo define los colores del sistema. Todas las páginas
+   lo enlazan. Cambiar un tono aquí = cambiarlo en toda la tienda.
+
+   PALETA EN PRUEBA: "terracota" — rojo desaturado + fondo crema.
+   (Evolución de la paleta del manual #D32F2F hacia un tono más
+   cálido/boutique. Si no convence, se revierte editando solo este archivo.)
+   ============================================================ */
+:root{
+  /* ---- Rojo de marca (escala) ---- */
+  --red-900:#5C1F1C;   /* texto sobre fondos claros, hover de botón oscuro */
+  --red-700:#7A2A26;   /* estados hover/active de botones */
+  --red-600:#98332D;   /* bordes o iconos secundarios */
+  --red-500:#A6332E;   /* ROJO PRINCIPAL de marca */
+  --red-400:#BF5450;   /* acentos suaves, links, precio secundario */
+  --red-100:#F4E2E0;   /* fondos de sección muy sutiles, badges */
+  --red-50:#FBF1F0;    /* fondo de tarjeta/hover muy leve */
+
+  /* ---- Neutros ---- */
+  --black-900:#111111; /* texto principal, footer */
+  --cream-50:#FAF6F1;  /* FONDO GENERAL (reemplaza blanco puro) */
+  --cream-100:#F2ECE4; /* fondo de tarjetas sobre el fondo general */
+  --gray-500:#6B6660;  /* texto secundario, descripciones */
+
+  /* ---- Acento por producto (se sobreescribe por producto) ---- */
+  --acento:#C9962E;        /* dorado del GRISI Gold */
+  --acento-cl:#E7C56B;
+  --acento-sombra:rgba(201,150,46,.18);
+
+  /* ============================================================
+     ALIAS semánticos: los nombres que usa el CSS de las páginas
+     apuntan a los tokens de arriba. Así el código de cada página
+     no necesita conocer los hex, solo el rol.
+     ============================================================ */
+  --rojo:var(--red-500);
+  --rojo-osc:var(--red-700);   /* hover: MÁS OSCURO (sólido, no clickbait) */
+  --rojo-prof:var(--red-900);
+  --negro:var(--black-900);
+  --tinta:#1C1C1C;
+  --blanco:var(--cream-50);    /* "blanco" de la marca = crema */
+  --tarjeta:var(--cream-100);  /* tarjetas sobre el fondo general */
+  --hueso:var(--cream-50);
+  --gris:var(--gray-500);
+  --gris-cl:#9A938B;
+  --linea:rgba(17,17,17,.10);
+}
