@@ -231,10 +231,13 @@
       if (!id) throw new Error('No se recibió el identificador del producto.');
 
       // (3) Subir la imagen OPTIMIZADA a Storage con la SESION del usuario
-      //     (nunca service_role). Ruta derivada del id/sku del producto.
+      //     (nunca service_role). La ruta (key) es SOLO '<id>.jpg': el bucket
+      //     ya se llama 'productos', asi que anteponer 'productos/' generaria
+      //     una carpeta anidada redundante (productos/productos/...). La misma
+      //     key se guarda en imagen_path y la lee getPublicUrl -> consistentes.
       let imagenPath = null;
       if (blobOptimizado) {
-        imagenPath = 'productos/' + id + '.jpg';
+        imagenPath = id + '.jpg';
         const { error: eUp } = await supabase.storage
           .from(BUCKET_PRODUCTOS)
           .upload(imagenPath, blobOptimizado, {

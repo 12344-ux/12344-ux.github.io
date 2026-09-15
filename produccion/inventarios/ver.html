@@ -144,12 +144,22 @@
     });
   }
 
+  // Limpia el termino de busqueda antes de meterlo en un filtro .or() de
+  // PostgREST. En esa gramatica la coma separa condiciones y los parentesis
+  // agrupan; un termino crudo con , ( ) podria alterar el filtro. Corre bajo
+  // la propia RLS SELECT del usuario (impacto bajo), pero se sanea igual:
+  // quitamos los caracteres significativos del filtro y el comodin %.
+  function limpiarTermino(q) {
+    return String(q).replace(/[,()%*\\]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
   // Une stock_actual (existencias) con la ficha de productos por product_id.
   async function cargar(q) {
     // 1) Existencias por producto desde la vista derivada del libro.
     let stockQ = supabase.from('stock_actual').select('product_id, sku, nombre, existencias');
-    if (q) {
-      const patron = '%' + q + '%';
+    const termino = limpiarTermino(q);
+    if (termino) {
+      const patron = '%' + termino + '%';
       stockQ = stockQ.or('sku.ilike.' + patron + ',nombre.ilike.' + patron);
     }
     const { data: stock, error: e1 } = await stockQ.order('nombre', { ascending: true }).limit(300);
