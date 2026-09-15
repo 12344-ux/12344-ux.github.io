@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Movimientos</title>
+<meta name="description" content="Movimientos · Área de Producción de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/produccion.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=1">
+<link rel="stylesheet" href="../produccion.css?v=1">
+
+<!--
+  MAGANDHI · Area de Produccion · Inventarios · MOVIMIENTOS (vista global).
+  VENTANA DE SOLO LECTURA al libro movimientos_inventario: la bitacora
+  completa de entradas y salidas de TODOS los productos juntos, en un solo
+  timeline, filtrable por producto y por periodo (y por tipo). Hermana visual
+  de ver.html, que muestra el mismo libro producto por producto dentro de la
+  ficha; esta pantalla lo muestra entero.
+
+  META (respetada): Movimientos es SOLO LECTURA del libro de Inventario. NO
+  toca contabilidad, NO calcula costos, NO comparte con otras areas, NO
+  registra nada (eso se hace desde ver.html). Es una ventana al dato que ya
+  existe. El candado real es RLS server-side (tiene_acceso_inventario() +
+  GRANT SELECT a authenticated); la UI es comodidad.
+-->
+<style>
+  /* Barra de filtros (hereda pr-field; sin color nuevo). */
+  .pr-filtros{margin:0 0 6px}
+  .pr-filtros .pr-field-row{align-items:flex-end}
+  .pr-filtros .pr-field{margin-bottom:0}
+  /* Nombre del producto en cada item del timeline global (identifica de
+     que producto es el movimiento; ver.html no lo necesita porque el modal
+     ya es de un solo producto). Usa tokens del area, sin color nuevo. */
+  .pr-tl-prod{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+  .pr-tl-prod-nombre{font-size:13px;font-weight:600;color:var(--pr-marino);line-height:1.35}
+  .pr-tl-prod-sku{font-size:11.5px;color:var(--pr-gris);font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body class="pr-body">
+
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="pr-wrap" id="pr-main" hidden>
+  <form class="pr-filtros" id="pr-filtros" autocomplete="off">
+    <div class="pr-field-row">
+      <div class="pr-field">
+        <label for="pr-f-producto">Producto</label>
+        <select id="pr-f-producto">
+          <option value="">Todos los productos</option>
+        </select>
+      </div>
+      <div class="pr-field">
+        <label for="pr-f-tipo">Tipo</label>
+        <select id="pr-f-tipo">
+          <option value="">Todos los tipos</option>
+          <option value="entrada">Entrada</option>
+          <option value="salida">Salida</option>
+          <option value="ajuste_entrada">Ajuste (+)</option>
+          <option value="ajuste_salida">Ajuste (−)</option>
+        </select>
+      </div>
+      <div class="pr-field">
+        <label for="pr-f-desde">Desde</label>
+        <input id="pr-f-desde" type="date">
+      </div>
+      <div class="pr-field">
+        <label for="pr-f-hasta">Hasta</label>
+        <input id="pr-f-hasta" type="date">
+      </div>
+    </div>
+  </form>
+  <p class="pr-hint" id="pr-hint">Bitácora completa del inventario, lo más reciente primero.</p>
+  <div id="pr-lista"><p class="pr-empty">Cargando movimientos...</p></div>
+</main>
+
+<script type="module">
+  import {
+    supabase, asegurarAcceso, montarHeader, ICONOS,
+    escaparHTML, formatearFecha
+  } from '../inventario-core.js';
+
+  const main = document.getElementById('pr-main');
+  const selProducto = document.getElementById('pr-f-producto');
+  const selTipo = document.getElementById('pr-f-tipo');
+  const inpDesde = document.getElementById('pr-f-desde');
+  const inpHasta = document.getElementById('pr-f-hasta');
+  const hint = document.getElementById('pr-hint');
+  const lista = document.getElementById('pr-lista');
+
+  // Etiquetas legibles de cada tipo de movimiento (mismo mapa que ver.html).
+  const TIPO_TXT = {
+    entrada: 'Entrada',
+    salida: 'Salida',
+    ajuste_entrada: 'Ajuste (+)',
+    ajuste_salida: 'Ajuste (−)'
+  };
+  // Tipos que SUMAN al stock (signo +); el resto resta (signo −).
+  const SUMA = new Set(['entrada', 'ajuste_entrada']);
+
+  // Cache de productos por id (para mostrar sku + nombre junto a cada
+  // movimiento sin re-consultar). Se llena una vez al arrancar.
+  let productosPorId = new Map();
+
+  // ----------------------------------------------------------
+  // PRODUCTOS (para el select y para etiquetar cada movimiento)
+  // ----------------------------------------------------------
+  // Se lee la vista stock_actual (product_id, sku, nombre) igual que ver.html;
+  // trae todos los productos con existencias derivadas del libro. Se mapea en
+  // memoria por product_id para cruzar contra cada movimiento.
+  async function cargarProductos() {
+    const { data, error } = await supabase
+      .from('stock_actual')
+      .select('product_id, sku, nombre')
+      .order('nombre', { ascending: true })
+      .limit(1000);
+    if (error || !data) return;
+    productosPorId = new Map(data.map((p) => [p.product_id, p]));
+    // Poblar el select conservando la opcion "Todos los productos".
+    const opciones = data.map((p) =>
+      '<option value="' + escaparHTML(p.product_id) + '">' +
+        escaparHTML((p.sku ? p.sku + ' · ' : '') + (p.nombre || 'Sin nombre')) +
+      '</option>'
+    ).join('');
+    selProducto.insertAdjacentHTML('beforeend', opciones);
+  }
+
+  // ----------------------------------------------------------
+  // MOVIMIENTOS (el libro, vista global de solo lectura)
+  // ----------------------------------------------------------
+  async function cargar() {
+    lista.innerHTML = '<p class="pr-empty">Cargando movimientos...</p>';
+
+    let q = supabase
+      .from('movimientos_inventario')
+      .select('id, product_id, tipo, cantidad, motivo, referencia, fecha, creado');
+
+    const productId = selProducto.value;
+    const tipo = selTipo.value;
+    const desde = inpDesde.value;
+    const hasta = inpHasta.value;
+
+    if (productId) q = q.eq('product_id', productId);
+    if (tipo) q = q.eq('tipo', tipo);
+    if (desde) q = q.gte('fecha', desde);
+    if (hasta) q = q.lte('fecha', hasta);
+
+    // Orden por fecha descendente (lo mas reciente primero), desempatando por
+    // el momento real de registro.
+    const { data, error } = await q
+      .order('fecha', { ascending: false })
+      .order('creado', { ascending: false })
+      .limit(500);
+
+    if (error) {
+      lista.innerHTML = '<p class="pr-empty">No se pudieron cargar los movimientos.</p>';
+      return;
+    }
+    pintar(data || []);
+  }
+
+  function pintar(movs) {
+    if (!movs || movs.length === 0) {
+      // Estado vacio honesto y sobrio: distingue "aun no hay nada" de "el
+      // filtro no arroja resultados", sin bloquear.
+      const hayFiltro = selProducto.value || selTipo.value || inpDesde.value || inpHasta.value;
+      if (hayFiltro) {
+        lista.innerHTML =
+          '<div class="pr-aviso-vacio">' + ICONOS.info +
+            '<span>Ningún movimiento coincide con los filtros. Ajusta el producto, ' +
+            'el tipo o el periodo para ver más.</span>' +
+          '</div>';
+      } else {
+        lista.innerHTML =
+          '<div class="pr-aviso-vacio">' + ICONOS.info +
+            '<span>Aún no hay movimientos registrados. Cuando registres entradas o ' +
+            'salidas desde <strong>Ver inventario</strong>, aparecerán aquí.</span>' +
+          '</div>';
+      }
+      return;
+    }
+
+    lista.innerHTML = '<ul class="pr-timeline">' + movs.map((m) => {
+      const signo = SUMA.has(m.tipo) ? '+' : '−';
+      const prod = productosPorId.get(m.product_id);
+      const nombre = prod ? (prod.nombre || 'Sin nombre') : 'Producto no encontrado';
+      const sku = prod && prod.sku ? prod.sku : '';
+      const det = [];
+      if (m.motivo) det.push(escaparHTML(m.motivo));
+      if (m.referencia) det.push('Ref.: ' + escaparHTML(m.referencia));
+      return (
+        '<li class="pr-tl-item ' + m.tipo + '">' +
+          '<span class="pr-tl-dot"></span>' +
+          '<div class="pr-tl-body">' +
+            '<div class="pr-tl-top">' +
+              '<span class="pr-tl-prod">' +
+                '<span class="pr-tl-prod-nombre">' + escaparHTML(nombre) + '</span>' +
+                (sku ? '<span class="pr-tl-prod-sku">' + escaparHTML(sku) + '</span>' : '') +
+              '</span>' +
+              '<span class="pr-tl-tipo ' + m.tipo + '">' + (TIPO_TXT[m.tipo] || m.tipo) + '</span>' +
+              '<span class="pr-tl-cant ' + m.tipo + '">' + signo + (Number(m.cantidad) || 0) + '</span>' +
+              '<span class="pr-tl-cuando">' + escaparHTML(formatearFecha(m.fecha)) + '</span>' +
+            '</div>' +
+            (det.length ? '<p class="pr-tl-det">' + det.join(' · ') + '</p>' : '') +
+          '</div>' +
+        '</li>'
+      );
+    }).join('') + '</ul>';
+  }
+
+  // Recalcula el texto de ayuda segun los filtros activos.
+  function actualizarHint() {
+    const partes = [];
+    if (selProducto.value) {
+      const p = productosPorId.get(selProducto.value);
+      if (p) partes.push((p.sku ? p.sku + ' · ' : '') + (p.nombre || ''));
+    }
+    if (selTipo.value) partes.push(TIPO_TXT[selTipo.value] || selTipo.value);
+    if (inpDesde.value || inpHasta.value) {
+      const d = inpDesde.value ? formatearFecha(inpDesde.value) : '…';
+      const h = inpHasta.value ? formatearFecha(inpHasta.value) : '…';
+      partes.push(d + ' a ' + h);
+    }
+    hint.textContent = partes.length
+      ? 'Filtrando: ' + partes.join(' · ') + '.'
+      : 'Bitácora completa del inventario, lo más reciente primero.';
+  }
+
+  // Cualquier cambio de filtro recarga la lista.
+  [selProducto, selTipo, inpDesde, inpHasta].forEach((el) => {
+    el.addEventListener('change', () => { actualizarHint(); cargar(); });
+  });
+  // Evitar recarga de pagina si el usuario presiona Enter en el formulario.
+  document.getElementById('pr-filtros').addEventListener('submit', (e) => e.preventDefault());
+
+  // ----------------------------------------------------------
+  // ARRANQUE
+  // ----------------------------------------------------------
+  (async () => {
+    const acceso = await asegurarAcceso(document.body, '../index.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Movimientos',
+      kicker: 'INVENTARIOS · BITÁCORA',
+      lead: 'La bitácora completa de entradas y salidas de todo el inventario, en un solo lugar. Filtra por producto, tipo o periodo. Es una vista de solo lectura del libro; los movimientos se registran desde la ficha de cada producto.',
+      sesion: acceso.sesion,
+      areaLabel: 'INVENTARIOS',
+      volverHref: 'index.html',
+      volverTexto: 'Inventarios'
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    main.hidden = false;
+    await cargarProductos();
+    await cargar();
+  })();
+</script>
+
+</body>
+</html>
