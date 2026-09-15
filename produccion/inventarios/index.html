@@ -18,9 +18,9 @@
 
 <!--
   MAGANDHI · Area de Produccion · Inventarios · HOME de la sub-area.
-  Dos funciones: Ver inventario (vitrina + detalle + movimientos) y Agregar a
-  inventario (alta con imagen optimizada; SKU/ID autogenerados). Se deja un
-  hueco visual para herramientas futuras (Movimientos, Alertas de stock bajo).
+  Tres funciones activas: Ver inventario (vitrina + detalle + movimientos),
+  Agregar a inventario (alta con imagen optimizada; SKU/ID autogenerados) y
+  Movimientos (bitácora global del libro, filtrable).
   El candado real es RLS server-side (tiene_modulo('inventario')).
 -->
 </head>
@@ -46,14 +46,6 @@
       <h3>Movimientos</h3>
       <p>Bitácora completa de entradas y salidas del libro, filtrable por producto y periodo.</p>
     </a>
-
-    <!-- Hueco preparado para una herramienta futura de la sub-area. -->
-    <div class="pr-card pr-card-futuro">
-      <span class="pr-card-ico" data-ico="alerta"></span>
-      <span class="pr-badge-pronto">Próximamente</span>
-      <h3>Alertas de stock bajo</h3>
-      <p>Aviso cuando las existencias caen por debajo del mínimo definido para cada producto.</p>
-    </div>
   </div>
 </main>
 
