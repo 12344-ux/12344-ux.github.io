@@ -1,11 +1,117 @@
 # PLANO MAESTRO · Módulo Inventario (ecosistema Impulse · piloto MAGANDHI)
 
-> **Estado: PROPUESTA PARA APROBACIÓN.** Nada de este plano se implementa
-> hasta que el dueño lo apruebe. No hay una sola tabla creada, ni una página
-> escrita, ni una migración definitiva. Este documento es el diseño revisable.
+> **Estado: APROBADO POR EL DUEÑO — EN CONSTRUCCIÓN.** El dueño revisó el plano
+> y dio luz verde. Este documento es la memoria fiel de las decisiones tomadas.
 >
 > Tono: socio honesto. Donde hay una decisión con costo o un riesgo, lo digo
 > sin humo. Donde algo es "para después", lo marco para no caer en gold-plating.
+
+---
+
+## ⭐ DECISIONES FINALES DEL DUEÑO (sesión de aprobación)
+
+Estas son las decisiones que cierran las preguntas abiertas de la §7 y ajustan
+el alcance. Prevalecen sobre cualquier texto anterior del documento.
+
+### Arquitectura del panel: ÁREAS jerárquicas (cambio importante)
+
+El panel de admin deja de tener "módulos planos" y pasa a tener **3 grandes
+áreas**, cada una un contenedor de **sub-áreas** (que a su vez tienen secciones):
+
+```
+PANEL ADMIN
+├── FINANZAS    (área — ya existe, se queda igual)
+│      └── Contabilidad PUC (asientos, diario, mayor, informes)
+├── MARKETING   (área NUEVA — contenedor)
+│      └── Marketing Project  (sub-área)
+│             ├── Proyección de la demanda  ← se construye HOY
+│             ├── Análisis de oportunidades de mercado   (futuro)
+│             ├── Análisis clúster                        (futuro)
+│             ├── Elasticidad de la demanda               (futuro)
+│             └── "Cosas que podría estar ignorando"      (futuro)
+│      └── (futuras herramientas de marketing)
+└── PRODUCCIÓN  (área NUEVA — contenedor)
+       └── Inventarios  (sub-área)  ← se construye HOY
+              ├── Ver inventario
+              └── Agregar a inventario
+       └── (futuras sub-áreas de producción)
+```
+
+- **Marketing** y **Producción** son **carpetas de área** (como Finanzas), no
+  herramientas planas. Clic en el área → aparecen sus sub-áreas → clic en la
+  sub-área → aparecen sus secciones.
+- Rutas: `produccion/index.html` → `produccion/inventarios/{index,ver,agregar}.html`;
+  `marketing/index.html` → `marketing/marketing-project/{index, proyeccion-demanda}.html`.
+- **Roles jerárquicos:** `modulos[]` debe permitir dar acceso a un **área
+  completa** (ej. `produccion`) o a una **sub-área** (ej. `inventarios`). Se deja
+  diseñado para delegar por área o por sub-área sin rehacer permisos.
+
+### Alcance de HOY (las dos áreas funcionando y conectadas)
+
+1. **Panel reorganizado** en las 3 áreas.
+2. **PRODUCCIÓN → Inventarios** completo de punta a punta: Agregar (con
+   **cantidad inicial** + descripción + **imagen auto-optimizada**), Ver (con
+   fotos, stock derivado del libro), y el **libro de movimientos** guardando
+   historia **completa, sin límite de tiempo, para siempre**.
+3. **MARKETING → Marketing Project → Proyección de la demanda:** motor real con
+   los **3 métodos** (promedio móvil, suavización exponencial, regresión lineal),
+   **leyendo datos reales del libro de Inventario** desde el día uno. El dueño
+   elige **periodo-base** (cuánto historial mira) y **horizonte** (cuántos días/
+   semanas/meses proyecta). Resultado en 3 capas: número grande / gráfico
+   (sólido = real, punteado = proyección) / tabla de detalle.
+
+### Decisiones puntuales cerradas
+
+- **SKU:** `MAG-<CAT>-0001` (con categoría). CONFIRMADO.
+- **Color de área:** Inventario/Producción **hereda el azul marino** del
+  back-office y se diferencia por **layout/jerarquía**. **Sin color nuevo.**
+  (El verde ya es de Finanzas.) CONFIRMADO.
+- **Imágenes en el inventario interno: SÍ**, con **optimización automática al
+  subir** (redimensionar + comprimir antes de guardar; ~100–300 KB por foto).
+  Razón del dueño: "así sabemos qué producto es realmente". La misma foto servirá
+  luego a la tienda pública.
+- **Lotes / vencimiento:** para después. CONFIRMADO (fuera del piloto).
+- **Tabla `clientes`: NO se crea todavía.** Decisión del dueño: tiene pensado un
+  software de Clientes más completo; crear una tabla a medias ahora arriesga
+  chocar con ese diseño. Se deja `customer_id` en el libro como **"enchufe
+  apagado"** (columna preparada, SIN FK todavía), que se conectará cuando exista
+  el software de Clientes, sin tocar Inventario. (Esto **revierte** la §1.5 y la
+  pregunta 4 de la §7: no hay tabla `clientes` en fase 1.)
+- **Vitrina pública `hay_stock`:** **aún no.** Por ahora todo se queda a nivel
+  interno; la superficie pública de la tienda (§2.4) NO se construye en esta
+  vuelta. (El contrato de datos queda diseñado para el futuro.)
+- **Cruce proyección ↔ stock** ("te faltarían ~220, considera reponer"): **NO en
+  esta versión.** El dueño prefiere ver el número proyectado puro y **decidir la
+  reposición manualmente** (aún no le da confianza plena a la proyección con poco
+  historial). Se activa en una vuelta futura.
+- **Aviso de datos insuficientes:** NO un aviso paternalista ni bloqueo. Igual
+  que el Balance General: si no hay datos, un aviso **sobrio** de "aún no hay
+  información" y ya. El software **nunca se limita ni se bloquea**.
+
+### La relación Contabilidad ↔ Inventario ↔ Marketing (la "cita a ciegas")
+
+Concepto aprobado por el dueño (bajo acoplamiento):
+
+- **Inventario y Contabilidad NO se hablan directamente.** Cada uno hace su
+  trabajo y **ambos depositan información en el punto común** (los datos reales)
+  de donde **Marketing** los lee. Inventario confía en que lo registrado saliendo
+  es lo vendido; Contabilidad confía en que lo registrado es la venta real.
+- **Por qué así:** una venta real toca varias cuentas (Ingreso por ventas, Caja/
+  Banco, Costo de ventas, salida de Inventario). Calcular el **costo de venta**
+  requiere criterio contable → es **trabajo humano legítimo** (el dueño planea
+  delegarlo a una persona). Acoplar Inventario→Contabilidad automáticamente
+  contaminaría los libros ante cualquier error. Desacoplados, un error de un lado
+  no envenena el otro (más robusto).
+- **Reparto de la venta (hoy):** bajar inventario = automático (cuando haya
+  checkout) / manual en el piloto; **ingreso de inventario = manual**; **costo de
+  venta + registro contable = manual** (humano con criterio).
+- **Ficha FUTURA "Ventas / Orquestador":** el módulo que, al concretarse una
+  venta, orquestará a los demás (baja inventario, calcula costo, arma el paquete
+  contable). Requiere pasarela/banco + Pedidos + Clientes, que hoy no existen. Se
+  documenta como gema futura, NO se construye ahora.
+- **Dato que se deja listo hoy en silencio:** cada movimiento guarda
+  `costo_unitario_mov` y el producto guarda `precio_venta`, para que el día del
+  orquestador el costo esté disponible sin rehacer nada.
 
 ---
 
