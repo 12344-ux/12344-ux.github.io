@@ -613,9 +613,12 @@ ningun enganche automatico Inventario -> Finanzas.
 
 **Requisito previo:** la migracion de perfiles y roles
 (`20250101000000_crear_perfiles_y_roles.sql`) YA debe estar aplicada, porque
-todas las tablas de este modulo se protegen con la funcion
-`tiene_modulo('inventario')` (y el puente de Marketing usa
-`tiene_modulo('marketing')`) que se creo alli.
+todas las tablas de este modulo se protegen con la funcion central
+`tiene_modulo(text)` que se creo alli. Sobre ella, este modulo crea dos
+envoltorios de acceso que aceptan varias claves equivalentes (ver la
+**convencion de claves** en I4): `tiene_acceso_inventario()` (creada en el
+archivo 4) y `tiene_acceso_marketing()` (creada en el archivo 7, el puente de
+Marketing).
 
 ## I1. Orden EXACTO de ejecucion en el SQL Editor
 
@@ -636,13 +639,16 @@ ORDEN, el contenido completo de cada archivo (cada uno con su propio **Run**):
    entrada/ajuste_entrada suman, salida/ajuste_salida restan). SECURITY
    INVOKER: hereda la RLS de sus tablas base.
 4. `supabase/migrations/20250301000300_inventario_rls.sql`
-   Activa RLS en TODAS las tablas del modulo con `tiene_modulo('inventario')`.
-   Solo policies de SELECT; sin INSERT/UPDATE/DELETE (toda escritura va por
-   RPC) y sin DELETE en ninguna tabla.
+   Crea la funcion de acceso del modulo `tiene_acceso_inventario()` (envuelve
+   `tiene_modulo` y acepta las claves equivalentes `inventario`/`produccion`/
+   `inventarios`) y activa RLS en TODAS las tablas del modulo usandola. Solo
+   policies de SELECT; sin INSERT/UPDATE/DELETE (toda escritura va por RPC) y
+   sin DELETE en ninguna tabla.
 5. `supabase/migrations/20250301000400_inventario_funciones.sql`
    Crea las RPC security definer `inv_crear_producto`,
    `inv_registrar_movimiento` e `inv_editar_producto` (la UNICA via de
-   escritura; cada una valida `tiene_modulo('inventario')` al entrar).
+   escritura; cada una valida `tiene_acceso_inventario()` al entrar). **Corre
+   DESPUES del archivo 4**, que es donde se define esa funcion.
 6. `supabase/migrations/20250301000500_inventario_grants.sql`
    Otorga al rol `authenticated` el GRANT base de tabla (SELECT) que faltaba
    por tener "auto-expose new tables" en OFF. POR QUE: igual que en Finanzas
@@ -653,11 +659,13 @@ ORDEN, el contenido completo de cada archivo (cada uno con su propio **Run**):
    INSERT/UPDATE/DELETE (toda escritura va por RPC) ni concede nada a `anon`.
 7. `supabase/migrations/20250301000600_inventario_marketing_lectura.sql`
    **Ejecutalo DESPUES de los anteriores.** Es el puente de LECTURA
-   Inventario -> Marketing: anade policies SELECT extra en `productos` y
-   `movimientos_inventario` que ADEMAS permiten leer cuando
-   `tiene_modulo('marketing')`, para que un usuario SOLO de marketing pueda
-   alimentar la Proyeccion de la demanda sin darle el modulo de inventario.
-   Estrictamente de lectura: no toca INSERT/UPDATE/DELETE.
+   Inventario -> Marketing: crea la funcion `tiene_acceso_marketing()`
+   (envuelve `tiene_modulo` y acepta las claves equivalentes `marketing`/
+   `marketing-project`) y anade policies SELECT extra en `productos` y
+   `movimientos_inventario` que ADEMAS permiten leer cuando esa funcion es
+   verdadera, para que un usuario SOLO de marketing pueda alimentar la
+   Proyeccion de la demanda sin darle el modulo de inventario. Estrictamente de
+   lectura: no toca INSERT/UPDATE/DELETE.
 
 Los archivos son idempotentes (`create ... if not exists`, `on conflict do
 nothing`, `create or replace`, `drop policy if exists`): si algo falla a mitad,
@@ -667,11 +675,17 @@ puedes re-ejecutar sin duplicar nada.
 
 Ejecuta estas consultas en el SQL Editor:
 
-1. **Acceso por modulo** (estando logueado como admin devuelve `true`):
+1. **Acceso al modulo** (estando logueado como admin ambas devuelven `true`):
 
    ```sql
-   select tiene_modulo('inventario');
+   select tiene_modulo('inventario');      -- clave canonica del dato
+   select tiene_acceso_inventario();       -- acepta inventario/produccion/inventarios
+   select tiene_acceso_marketing();         -- acepta marketing/marketing-project
    ```
+
+   El `admin` ve todo, asi que las tres dan `true`. Para un no-admin, el
+   candado real es `tiene_acceso_inventario()` / `tiene_acceso_marketing()`
+   (ver la **convencion de claves** en I4), no `tiene_modulo` a secas.
 
 2. **Crear un producto** (la RPC genera el `product_id` uuid y el SKU
    server-side; el dueno NO los escribe). La firma completa lleva 13 parametros
@@ -770,17 +784,25 @@ UNA sola vez en el dashboard (el agente no tiene acceso a Storage):
    restringida). En **Storage > Policies** (sobre `storage.objects`) crea:
 
    ```sql
-   -- INSERT: subir una imagen nueva solo si tiene_modulo('inventario').
+   -- INSERT: subir una imagen nueva solo si tiene_acceso_inventario().
    create policy "productos_img_insert" on storage.objects
      for insert to authenticated
-     with check (bucket_id = 'productos' and tiene_modulo('inventario'));
+     with check (bucket_id = 'productos' and tiene_acceso_inventario());
 
-   -- UPDATE: reemplazar una imagen existente solo si tiene_modulo('inventario').
+   -- UPDATE: reemplazar una imagen existente solo si tiene_acceso_inventario().
    create policy "productos_img_update" on storage.objects
      for update to authenticated
-     using (bucket_id = 'productos' and tiene_modulo('inventario'))
-     with check (bucket_id = 'productos' and tiene_modulo('inventario'));
+     using (bucket_id = 'productos' and tiene_acceso_inventario())
+     with check (bucket_id = 'productos' and tiene_acceso_inventario());
    ```
+
+   > Usa `tiene_acceso_inventario()` (no `tiene_modulo('inventario')` a secas)
+   > para que la MISMA clave que abre la sub-area Inventarios en el panel
+   > (`produccion` / `inventarios` / `inventario`) tambien habilite la subida de
+   > imagen. Asi el trabajador de bodega con `'{produccion}'` puede subir fotos
+   > sin recibir 403. **Crea estas policies DESPUES de aplicar el archivo 4 de
+   > I1** (`20250301000300_inventario_rls.sql`), que es donde se define esa
+   > funcion.
 
    La lectura publica ya la habilita el que el bucket sea **Public**; no hace
    falta una policy de SELECT para leer. NO crees policy de DELETE (append-only:
@@ -791,11 +813,14 @@ Reglas de oro del Storage (no negociables):
 - Las subidas usan **la sesion del usuario autenticado** (llave publishable,
   rol `authenticated`), **NUNCA** `service_role`. La `service_role` no va en el
   repo ni en el navegador jamas (ver paso 5 de seguridad, arriba).
-- La base de datos guarda `productos.imagen_path` como una **ruta**, no una URL
-  completa. El frontend sube al bucket `productos` en la ruta
-  `productos/<product_id>.jpg` y guarda ese mismo `imagen_path`; luego arma la
-  URL publica en el cliente con `getPublicUrl(path)`. Asi, si algun dia cambia
-  el dominio de Storage, las rutas guardadas no se rompen.
+- La base de datos guarda `productos.imagen_path` como una **key** dentro del
+  bucket, no una URL completa. El frontend sube al bucket `productos` con la key
+  `<product_id>.jpg` (sin prefijo `productos/`: el bucket ya se llama asi, y
+  anteponerlo crearia una carpeta anidada redundante `productos/productos/...`)
+  y guarda esa misma key en `imagen_path`; luego arma la URL publica en el
+  cliente con `getPublicUrl(path)` sobre el bucket `productos`. Subida y lectura
+  usan la MISMA key, y si algun dia cambia el dominio de Storage las keys
+  guardadas no se rompen.
 - El cliente **optimiza la imagen antes de subirla**: la redimensiona, la
   comprime y la reencoda a JPEG en el navegador (para que no ocupe tanto
   espacio) antes de mandarla al bucket. La foto original no se sube tal cual.
@@ -810,6 +835,37 @@ de la tabla `perfiles`, con la misma convencion que Finanzas (el `admin` ve todo
 
 Claves de area: `finanzas`, `marketing`, `produccion`.
 Claves de sub-area: `inventarios`, `marketing-project`.
+
+### Convencion de claves (una sola historia: panel, cores y DATOS)
+
+Esta es la regla clave para que el SEGUNDO usuario (un no-admin) funcione de
+punta a punta y no vea la UI "viva" pero los datos "muertos" (403). Hay tres
+capas que deben hablar el MISMO idioma:
+
+- **Panel** (`panel.html`) y **cores** (`inventario-core.js`,
+  `marketing-core.js`): deciden que carpeta se VE con las claves de area/
+  sub-area (`produccion`/`inventarios`, `marketing`/`marketing-project`).
+- **Datos** (RLS, RPC, policies de Storage y puente de Marketing): el candado
+  REAL. Para que coincida con lo que ve la UI, NO exige una unica clave literal:
+  usa dos funciones envoltorio que aceptan cualquiera de las claves equivalentes
+  del area:
+  - `tiene_acceso_inventario()` → `true` si el perfil tiene **`inventario`**
+    (clave canonica del dato) **o** **`produccion`** (area) **o** **`inventarios`**
+    (sub-area), o si es `admin`.
+  - `tiene_acceso_marketing()` → `true` si el perfil tiene **`marketing`** (area)
+    **o** **`marketing-project`** (sub-area), o si es `admin`.
+
+Consecuencia practica: **quien ve la carpeta, puede operar sus datos.** Dar
+`'{produccion}'` a un trabajador de bodega le abre Inventarios en el panel Y le
+permite leer/registrar movimientos y subir imagenes, sin 403. Puedes usar
+indistintamente `'{produccion}'`, `'{inventarios}'` o `'{inventario}'`: las tres
+son equivalentes para Inventario (recomendado: la clave del area, `'{produccion}'`,
+por ser la mas legible). Igual para Marketing con `'{marketing}'` o
+`'{marketing-project}'`.
+
+> Clonable: un area nueva copia este patron: define su(s) clave(s) en el panel/
+> core y una funcion `tiene_acceso_<area>()` que las envuelva, y usala en RLS/
+> RPC/Storage. Un solo lugar decide el vocabulario del area.
 
 Para dar acceso a una persona (igual que en F3):
 
@@ -837,11 +893,16 @@ values ('<UID-del-analista>', 'marketing', '{marketing}')
 
 El analista necesita LEER el libro de inventario para proyectar la demanda. Con
 el archivo 7 de I1 aplicado (`20250301000600_inventario_marketing_lectura.sql`),
-`tiene_modulo('marketing')` ya puede hacer SELECT sobre `productos` y
-`movimientos_inventario`, asi que `'{marketing}'` basta. **Si NO aplicaste ese
-archivo**, dale en cambio `'{marketing,inventarios}'` para que pueda leer el
-libro. Puedes combinar modulos como en Finanzas (`'{finanzas,marketing}'`,
-etc.); el `admin` no necesita nada de esto porque ve todo.
+`tiene_acceso_marketing()` ya puede hacer SELECT sobre `productos` y
+`movimientos_inventario`, asi que `'{marketing}'` basta y NO hay que darle
+tambien acceso al modulo de inventario. **Si NO aplicaste ese archivo 7**, el
+analista solo con `'{marketing}'` recibiria 403 al leer el libro; en ese caso,
+dale ademas una clave de inventario para que la RLS de inventario lo deje leer,
+p.ej. `'{marketing,produccion}'` (`produccion` es una de las claves que acepta
+`tiene_acceso_inventario()`). **Lo recomendado es aplicar el archivo 7** para
+que baste `'{marketing}'`. Puedes combinar modulos como en Finanzas
+(`'{finanzas,marketing}'`, etc.); el `admin` no necesita nada de esto porque ve
+todo.
 
 ## I5. Que NO se construye en esta vuelta (nota honesta)
 
