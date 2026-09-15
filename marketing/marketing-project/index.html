@@ -18,11 +18,14 @@
 
 <!--
   MAGANDHI · Area de Marketing · Sub-area MARKETING PROJECT (carpeta de
-  categorias de analisis). Hoy contiene "Proyeccion de la demanda"; el plano
-  aprobado prevee mas categorias (oportunidades de mercado, analisis cluster,
-  elasticidad, "cosas que podria estar ignorando"). Se dejan como huecos
-  sobrios para que el dueno vea que el modulo esta preparado para crecer, sin
-  prometer funciones que aun no existen.
+  categorias de analisis). Hoy contiene "Proyeccion de la demanda" (activa) y
+  deja como huecos sobrios "Analisis cluster" y "Elasticidad" (proximamente).
+  Se retiraron "Oportunidades de mercado" y "Cosas que podria estar ignorando"
+  porque miran hacia afuera (mercado/competencia) y exigirian datos externos
+  que Impulse no posee; la filosofia del ecosistema es analizar SOLO los datos
+  PROPIOS de la organizacion, nunca datos inventados o traidos de fuera. Los
+  huecos que quedan se nutren de datos propios, sin prometer funciones que aun
+  no existen.
   Nota de profundidad: esta pagina vive DOS niveles bajo la raiz
   (marketing/marketing-project/), por eso importa el core como
   '../marketing-core.js' y las rutas de marca suben '../../'. El core resuelve
@@ -44,14 +47,14 @@
       <p>Proyecta cuánto se venderá de un producto a partir del histórico real del inventario, con tres métodos elegibles.</p>
     </a>
 
-    <!-- Huecos preparados (categorias nombradas en el plano aprobado). No son
-         enlaces: comunican el rumbo sin prometer funciones aun inexistentes. -->
-    <div class="mk-card proxima" aria-hidden="true">
-      <span class="mk-card-ico" data-ico="brujula"></span>
-      <h3>Oportunidades de mercado</h3>
-      <p>Dónde hay demanda que aún no estamos capturando.</p>
-      <span class="mk-chip-proxima">Próximamente</span>
-    </div>
+    <!-- Huecos preparados. No son enlaces: comunican el rumbo sin prometer
+         funciones aun inexistentes. Se conservan SOLO categorias que se nutren
+         de DATOS PROPIOS de la organizacion (ventas, precios, inventario,
+         clientes), fiel a la filosofia de Impulse. Se retiraron "Oportunidades
+         de mercado" y "Cosas que podria estar ignorando": miran hacia AFUERA
+         (mercado, competencia) y exigirian datos externos que Impulse no posee;
+         mantenerlas invitaria a inventar datos, algo que Impulse no hace.
+         Elasticidad y Analisis cluster SI se fundan en datos propios. -->
     <div class="mk-card proxima" aria-hidden="true">
       <span class="mk-card-ico" data-ico="cluster"></span>
       <h3>Análisis clúster</h3>
@@ -62,12 +65,6 @@
       <span class="mk-card-ico" data-ico="etiqueta"></span>
       <h3>Elasticidad</h3>
       <p>Cómo cambia la cantidad vendida ante cambios de precio.</p>
-      <span class="mk-chip-proxima">Próximamente</span>
-    </div>
-    <div class="mk-card proxima" aria-hidden="true">
-      <span class="mk-card-ico" data-ico="info"></span>
-      <h3>Cosas que podría estar ignorando</h3>
-      <p>Señales del negocio que pasan desapercibidas y conviene revisar.</p>
       <span class="mk-chip-proxima">Próximamente</span>
     </div>
   </div>

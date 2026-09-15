@@ -23,6 +23,15 @@ debe quedar **impecable y "clonable"** (no amarrado solo a MAGANDHI). Regla:
 "Con tecnología Impulse" va en el pie de las zonas internas (login/panel/finanzas),
 nunca en la tienda pública.
 
+> **Regla de identidad (regla de oro):** Impulse analiza y gestiona los **DATOS
+> PROPIOS** de la organización; **NO** hace análisis que dependan de datos
+> externos (mercado, competencia, tendencias) que la plataforma no posee. Todo
+> análisis se funda en lo que la organización sabe de sí misma (ventas, precios,
+> inventario, clientes), nunca en datos inventados o traídos de fuera. Por eso se
+> descartaron "Oportunidades de mercado" y "Cosas que podria estar ignorando" de
+> Marketing Project; se conservan Proyección de demanda, Análisis clúster y
+> Elasticidad porque se nutren de datos propios.
+
 ## Infraestructura (todo en producción, mergeado a main)
 
 ### Supabase
