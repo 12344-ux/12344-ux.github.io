@@ -218,6 +218,8 @@ body.mk-body{
   align-items:end;
 }
 .mk-control{display:flex;flex-direction:column;gap:6px;min-width:0}
+.mk-control[hidden]{display:none}   /* respeta hidden: Ventana solo en promedio movil, Alfa solo en suavizacion */
+.mk-ayuda{font-size:11.5px;line-height:1.4;color:var(--mk-gris);margin-top:2px}
 .mk-control > span{
   font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
   color:var(--mk-gris);
