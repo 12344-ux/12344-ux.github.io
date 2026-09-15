@@ -39,11 +39,12 @@
       contra un ejemplo a mano, asi cualquiera verifica la correccion.
 
   PERMISO DE LECTURA (RLS) — nota para INSTRUCCIONES / FEAT-005:
-    El libro (movimientos_inventario) y productos tienen RLS
-    tiene_modulo('inventario'). Un usuario SOLO de marketing quedaria
-    bloqueado. Opcion elegida (la mejor UX, la mas simple correcta): ANADIR una
-    politica SELECT extra que tambien permita leer movimientos_inventario y
-    productos cuando tiene_modulo('marketing'). Va en una migracion nueva
+    El libro (movimientos_inventario) y productos tienen RLS de inventario. Un
+    usuario SOLO de marketing quedaria bloqueado. Opcion elegida (la mejor UX,
+    la mas simple correcta): ANADIR una politica SELECT extra que tambien
+    permita leer movimientos_inventario y productos cuando el usuario tiene
+    acceso al Area de Marketing (tiene_acceso_marketing(): clave de area
+    'marketing' o de sub-area 'marketing-project'). Va en una migracion nueva
     idempotente y SOLO de lectura:
       supabase/migrations/20250301000600_inventario_marketing_lectura.sql
     (SELECT unicamente; ninguna escritura; el alta/edicion del libro sigue
@@ -53,9 +54,12 @@
     lectura. El dueno aplica esa migracion cuando corra el runbook.
 
   ALCANCE (lo que el dueno pidio explicitamente):
-    · Elige: producto, metodo, periodo-base (cuanto historial mira),
-      horizonte (cuantos dias/semanas/meses proyecta) y granularidad del
-      periodo (dia/semana/mes).
+    · Elige: producto, metodo, granularidad del periodo (dia/semana/mes),
+      periodo-base (cuanto historial mira) y horizonte (cuantos periodos
+      proyecta hacia adelante). La UNIDAD del horizonte NO es un control
+      aparte: DERIVA de la granularidad, de modo que el historico y la
+      proyeccion viven en la misma escala de tiempo y las etiquetas del numero
+      grande, el grafico y la tabla nunca rotulan una escala por otra.
     · Resultado en 3 CAPAS: (1) numero grande arriba, (2) grafico temporal
       (linea SOLIDA = ventas reales pasadas, PUNTEADA = proyeccion futura),
       (3) tabla de detalle por periodo (real vs proyectado).
@@ -75,7 +79,7 @@
 
   <div class="mk-nota">
     <span data-ico="info"></span>
-    <span>La proyección lee el <strong>histórico real de ventas</strong> del inventario (salidas del libro) del producto que elijas y lo agrupa por periodo. Elige método, periodo-base y horizonte, y pulsa Proyectar. El número es una estimación estadística para orientar tu decisión: la reposición la decides tú.</span>
+    <span>La proyección lee el <strong>histórico real de ventas</strong> del inventario (salidas del libro) del producto que elijas y lo agrupa por periodo. Elige método, granularidad (día/semana/mes), periodo-base y horizonte, y pulsa Proyectar. El horizonte se proyecta en la <strong>misma escala</strong> que la granularidad: si agrupas por mes, el horizonte cuenta meses. El número es una estimación estadística para orientar tu decisión: la reposición la decides tú.</span>
   </div>
 
   <!-- PANEL DE CONTROLES (el layout distintivo del area) -->
@@ -125,14 +129,14 @@
       </label>
 
       <label class="mk-control">
-        <span>Horizonte</span>
+        <span>Horizonte (hacia adelante)</span>
         <span class="mk-horizonte-fila">
           <input class="mk-input" id="mk-horizonte" type="number" min="1" step="1" value="3">
-          <select class="mk-select" id="mk-horizonte-unidad">
-            <option value="dia">días</option>
-            <option value="semana">semanas</option>
-            <option value="mes" selected>meses</option>
-          </select>
+          <!-- La unidad del horizonte NO es un control aparte: se DERIVA de la
+               granularidad para que el histgrico y la proyeccion vivan en la
+               MISMA escala de tiempo. Asi el numero grande, el grafico y la
+               tabla no pueden rotular demanda mensual como diaria. -->
+          <span class="mk-horizonte-unidad" id="mk-horizonte-unidad-lbl">meses</span>
         </span>
       </label>
     </div>
@@ -167,7 +171,7 @@
   const ctrlAlpha = document.getElementById('mk-ctrl-alpha');
   const inAlpha = document.getElementById('mk-alpha');
   const inHorizonte = document.getElementById('mk-horizonte');
-  const selHorizonteUnidad = document.getElementById('mk-horizonte-unidad');
+  const lblHorizonteUnidad = document.getElementById('mk-horizonte-unidad-lbl');
   const btnProyectar = document.getElementById('mk-proyectar');
   const cajaError = document.getElementById('mk-error');
   const resultado = document.getElementById('mk-resultado');
@@ -190,6 +194,14 @@
     ctrlAlpha.hidden = (m !== 'suavizacion');
   }
   selMetodo.addEventListener('change', sincronizarControlesMetodo);
+
+  // La unidad del horizonte SIGUE a la granularidad: proyectamos `horizonte`
+  // periodos hacia adelante en la MISMA escala en que se agrupo el historico.
+  // Un solo concepto de "periodo" -> el rotulo nunca miente sobre la escala.
+  function sincronizarUnidadHorizonte() {
+    lblHorizonteUnidad.textContent = UNIDAD_PERIODO_PL[selGran.value] || 'periodos';
+  }
+  selGran.addEventListener('change', sincronizarUnidadHorizonte);
 
   // ----------------------------------------------------------
   // CARGA DEL DROPDOWN DE PRODUCTOS (tabla productos, bajo RLS)
@@ -429,7 +441,11 @@
     const granularidad = selGran.value;
     const base = Math.trunc(Number(selBase.value) || 0);       // 0 = todo
     const horizonte = Math.max(1, Math.trunc(Number(inHorizonte.value) || 1));
-    const horizonteUnidad = selHorizonteUnidad.value;
+    // La unidad del horizonte NO es independiente: es la MISMA que la
+    // granularidad. La matematica proyecta `horizonte` valores en la escala de
+    // la serie (la del bucket), asi que rotularlos con esa misma unidad es lo
+    // unico coherente. Un solo concepto de "periodo".
+    const horizonteUnidad = granularidad;
 
     btnProyectar.disabled = true;
     resultado.innerHTML = '<div class="mk-empty">Leyendo el histórico de ventas…</div>';
@@ -490,6 +506,7 @@
     document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
 
     sincronizarControlesMetodo();
+    sincronizarUnidadHorizonte();
     await cargarProductos();
 
     document.getElementById('mk-main').hidden = false;
