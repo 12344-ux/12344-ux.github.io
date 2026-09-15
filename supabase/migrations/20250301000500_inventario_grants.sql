@@ -11,7 +11,7 @@
 --   Capa 1 · GRANT de tabla: ¿el rol puede tocar el objeto en absoluto?
 --   Capa 2 · RLS (policies):  ¿que FILAS de ese objeto puede ver/escribir?
 --
--- Las policies RLS del modulo ya estan bien definidas (tiene_modulo('inventario'),
+-- Las policies RLS del modulo ya estan bien definidas (tiene_acceso_inventario(),
 -- ver 20250301000300_inventario_rls.sql), pero sin el GRANT de la capa 1
 -- Postgres rechaza con "permission denied for ..." ANTES de evaluar RLS. Por
 -- eso el frontend (llave publishable, rol `authenticated`) recibiria 403 al
@@ -45,7 +45,7 @@
 -- ------------------------------------------------------------
 -- productos · lo leen "Ver inventario" / "Agregar a inventario" (.select de la
 -- ficha). La escritura (crear/editar) va SIEMPRE por RPC security definer ->
--- sin INSERT/UPDATE/DELETE aqui. RLS: productos_select_modulo (tiene_modulo).
+-- sin INSERT/UPDATE/DELETE aqui. RLS: productos_select_modulo (tiene_acceso_inventario).
 -- ------------------------------------------------------------
 grant select on table productos to authenticated;
 
@@ -53,14 +53,14 @@ grant select on table productos to authenticated;
 -- movimientos_inventario · lo lee "Ver inventario" (historial del libro por
 -- producto) y lo leera Marketing (salidas por periodo). Append-only: se
 -- escribe por inv_registrar_movimiento (security definer) -> solo SELECT.
--- RLS: movimientos_inventario_select_modulo (tiene_modulo).
+-- RLS: movimientos_inventario_select_modulo (tiene_acceso_inventario).
 -- ------------------------------------------------------------
 grant select on table movimientos_inventario to authenticated;
 
 -- ------------------------------------------------------------
 -- inventario_config · lo lee el frontend para mostrar el prefijo del SKU si
 -- hiciera falta. La siembra el dueno con service_role -> solo SELECT.
--- RLS: inventario_config_select_modulo (tiene_modulo).
+-- RLS: inventario_config_select_modulo (tiene_acceso_inventario).
 -- ------------------------------------------------------------
 grant select on table inventario_config to authenticated;
 

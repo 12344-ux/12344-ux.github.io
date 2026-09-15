@@ -7,8 +7,12 @@
 --
 -- Todas son:
 --   - security definer con set search_path = public fijo.
---   - Validan tiene_modulo('inventario') al entrar, de modo que el candado de
---     acceso se respeta aunque la funcion salte RLS por ser definer.
+--   - Validan tiene_acceso_inventario() al entrar, de modo que el candado de
+--     acceso se respeta aunque la funcion salte RLS por ser definer. Esa
+--     funcion (definida en 20250301000300_inventario_rls.sql) acepta las tres
+--     claves equivalentes del modulo (inventario / produccion / inventarios),
+--     asi el candado de escritura habla la MISMA convencion que el panel, los
+--     cores y la RLS.
 --
 -- FIRMAS EXACTAS (para el frontend, FEAT-003/004):
 --   inv_crear_producto(p_nombre text, p_descripcion text, p_marca text,
@@ -68,7 +72,7 @@ declare
   v_consecutivo text;
   v_sku         text;
 begin
-  if not tiene_modulo('inventario') then
+  if not tiene_acceso_inventario() then
     raise exception 'Acceso denegado: se requiere el modulo inventario.';
   end if;
   if p_nombre is null or length(trim(p_nombre)) = 0 then
@@ -128,7 +132,7 @@ begin
 end;
 $$;
 
-comment on function inv_crear_producto(text, text, text, text, text, text, bigint, bigint, integer, text, text, text, integer) is 'Alta de un producto. Genera el SKU server-side como <prefijo (inventario_config)>-<CAT (categoria en mayusculas, sin acentos, 3-4 chars; se omite si no hay categoria)>-<consecutivo 4 digitos via inventario_sku_seq>. Inserta el producto y, si p_cantidad_inicial > 0, registra la entrada inicial en el libro. Devuelve jsonb {id, sku}. El SKU es inmutable. Exige tiene_modulo(inventario).';
+comment on function inv_crear_producto(text, text, text, text, text, text, bigint, bigint, integer, text, text, text, integer) is 'Alta de un producto. Genera el SKU server-side como <prefijo (inventario_config)>-<CAT (categoria en mayusculas, sin acentos, 3-4 chars; se omite si no hay categoria)>-<consecutivo 4 digitos via inventario_sku_seq>. Inserta el producto y, si p_cantidad_inicial > 0, registra la entrada inicial en el libro. Devuelve jsonb {id, sku}. El SKU es inmutable. Exige tiene_acceso_inventario() (claves inventario/produccion/inventarios).';
 
 -- ------------------------------------------------------------
 -- inv_registrar_movimiento: escribe una fila en el libro (append-only).
@@ -159,7 +163,7 @@ declare
   v_activo      boolean;
   v_existencias integer;
 begin
-  if not tiene_modulo('inventario') then
+  if not tiene_acceso_inventario() then
     raise exception 'Acceso denegado: se requiere el modulo inventario.';
   end if;
 
@@ -204,7 +208,7 @@ begin
 end;
 $$;
 
-comment on function inv_registrar_movimiento(uuid, text, integer, text, text, bigint, date) is 'Escribe una fila en el libro de movimientos (append-only). Valida modulo, producto existente y activo, cantidad > 0 y tipo permitido. Una salida que dejaria el stock negativo NO se bloquea (PLANO §2.3): se registra y se devuelve el stock resultante para que la UI alerte. Devuelve jsonb {id, existencias}. Exige tiene_modulo(inventario).';
+comment on function inv_registrar_movimiento(uuid, text, integer, text, text, bigint, date) is 'Escribe una fila en el libro de movimientos (append-only). Valida modulo, producto existente y activo, cantidad > 0 y tipo permitido. Una salida que dejaria el stock negativo NO se bloquea (PLANO §2.3): se registra y se devuelve el stock resultante para que la UI alerte. Devuelve jsonb {id, existencias}. Exige tiene_acceso_inventario() (claves inventario/produccion/inventarios).';
 
 -- ------------------------------------------------------------
 -- inv_editar_producto: edita SOLO la ficha del producto.
@@ -237,7 +241,7 @@ as $$
 declare
   v_existe uuid;
 begin
-  if not tiene_modulo('inventario') then
+  if not tiene_acceso_inventario() then
     raise exception 'Acceso denegado: se requiere el modulo inventario.';
   end if;
   if p_nombre is null or length(trim(p_nombre)) = 0 then
@@ -274,4 +278,4 @@ begin
 end;
 $$;
 
-comment on function inv_editar_producto(uuid, text, text, text, text, text, text, bigint, bigint, integer, text, text, text, boolean, boolean) is 'Edita SOLO la ficha del producto (nombre, descripcion, marca, categoria, unidad_medida, contenido, costo_unitario, precio_venta, stock_minimo, proveedor, ubicacion, imagen_path, activo, publicado) y marca actualizado=now(). NUNCA toca el sku (inmutable) ni las existencias (solo se mueven por el libro). Exige tiene_modulo(inventario). Devuelve el id.';
+comment on function inv_editar_producto(uuid, text, text, text, text, text, text, bigint, bigint, integer, text, text, text, boolean, boolean) is 'Edita SOLO la ficha del producto (nombre, descripcion, marca, categoria, unidad_medida, contenido, costo_unitario, precio_venta, stock_minimo, proveedor, ubicacion, imagen_path, activo, publicado) y marca actualizado=now(). NUNCA toca el sku (inmutable) ni las existencias (solo se mueven por el libro). Exige tiene_acceso_inventario() (claves inventario/produccion/inventarios). Devuelve el id.';
