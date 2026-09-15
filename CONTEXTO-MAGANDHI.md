@@ -93,12 +93,123 @@ Contabilidad de partida doble, PUC colombiano (Decreto 2650). Todo en `finanzas/
   2027). Hoy no hace falta (MAGANDHI arranca este año; documentado en el Balance
   General por qué cuadra). NO gold-plating (presupuestos, flujo de caja, multimoneda).
 
+## Arquitectura del panel: ÁREAS jerárquicas (desde esta jornada)
+
+El panel dejó de tener "módulos planos" y pasó a **3 grandes ÁREAS**, cada una un
+contenedor de sub-áreas (que a su vez tienen secciones). Cada área es una carpeta:
+
+```
+PANEL ADMIN (panel.html)
+├── FINANZAS    (finanzas/)      → Contabilidad PUC (v1 terminado)
+├── MARKETING   (marketing/)     → Marketing Project (marketing/marketing-project/)
+└── PRODUCCIÓN  (produccion/)    → Inventarios (produccion/inventarios/)
+```
+
+- **Marketing** y **Producción** son carpetas de área (como Finanzas): clic en el
+  área → sus sub-áreas → clic en la sub-área → sus secciones. Preparado para crecer.
+- **Roles jerárquicos:** `modulos[]` en `perfiles` admite dar acceso por ÁREA
+  (`produccion`, `marketing`) o por sub-área. Admin ve todo. Candado real = RLS.
+  Helpers SQL nuevos: `tiene_acceso_inventario()` y `tiene_acceso_marketing()`
+  (envuelven `tiene_modulo` y aceptan las claves equivalentes de área/sub-área).
+
+## SOFTWARE 2 — Módulo Inventario (área PRODUCCIÓN)  ✅ v1 EN PRODUCCIÓN
+
+Segundo software del ecosistema. En `produccion/inventarios/`. Es la COLUMNA
+VERTEBRAL de datos: el `product_id` conecta todo el ecosistema.
+
+- **Modelo (mismo espíritu que Finanzas: el libro se escribe, el stock se deriva):**
+  - `productos`: `id` UUID (= product_id, autogenerado) + `sku` legible autogenerado
+    server-side, formato `MAG-<CAT>-0001`, **inmutable** tras el alta (prefijo desde
+    `inventario_config` para ser clonable a otras organizaciones). Campos de comercio
+    (nombre, descripcion, marca, categoria, unidad_medida, contenido, costo_unitario
+    bigint, precio_venta bigint, stock_minimo, proveedor, ubicacion, imagen_path,
+    activo, publicado, timestamps).
+  - `movimientos_inventario`: **EL LIBRO append-only**. tipos entrada/salida/
+    ajuste_entrada/ajuste_salida; `cantidad` integer > 0 (el signo lo da el tipo);
+    `customer_id` uuid **SIN FK todavía = "enchufe apagado"** (se conectará con el
+    futuro software de Clientes, sin tocar Inventario); `costo_unitario_mov` bigint.
+    Guarda historia **completa, sin límite de tiempo, para siempre**.
+  - `stock_actual`: VISTA derivada (SECURITY INVOKER). Existencias = suma del libro
+    según tipo. Nunca un dato guardado; imposible desincronizar.
+- **Pantallas:** Ver inventario (vitrina con foto + stock + timeline por producto +
+  registrar movimiento), Agregar a inventario (alta con **cantidad inicial** +
+  **imagen auto-optimizada en el navegador** ~≤1200px JPEG 0.8 antes de subir),
+  Movimientos (bitácora GLOBAL del libro, filtrable por producto/tipo/periodo).
+- **Seguridad:** RLS vía `tiene_acceso_inventario()`, escritura solo por RPC
+  security-definer (`inv_crear_producto`, `inv_registrar_movimiento`,
+  `inv_editar_producto`), GRANT SELECT a authenticated. Venta sin stock: se permite y
+  se **alerta** (existencias negativas visibles), no se bloquea (piloto = venta manual).
+- **Imágenes:** Supabase Storage bucket `productos` (público lectura / escritura
+  restringida por policy con `tiene_acceso_inventario()`). En BD se guarda
+  `imagen_path`, no URL. Subida con sesión del usuario, nunca service_role.
+- **Migraciones:** `supabase/migrations/20250301000000..000600` (7). El dueño las
+  aplica a mano; el bucket lo crea a mano. Todo documentado en INSTRUCCIONES.md.
+
+## SOFTWARE 3 — Marketing Project (área MARKETING)  ✅ 3 categorías EN PRODUCCIÓN
+
+En `marketing/marketing-project/`. Laboratorio de análisis SOBRE DEMANDA que lee el
+libro de Inventario (salidas = ventas reales). Categorías:
+
+- **Proyección de la demanda** (activa): 3 métodos — promedio móvil, suavización
+  exponencial (recurrencia S_t = α·x_t + (1−α)·S_{t−1}, reconstruida desde ventas
+  reales, NO guarda pronósticos pasados), regresión lineal por mínimos cuadrados.
+  Controles: producto, método, granularidad (día/semana/mes), rango **desde/hasta**
+  (reemplazó al ambiguo "últimos N periodos"), horizonte. Resultado en 3 capas
+  (número grande, gráfico SVG sólido=real/punteado=proyección, tabla).
+- **Medidas de Tendencia Central** (activa): media, mediana, moda de las ventas por
+  periodo. Casos límite honestos (sin moda / multimodal / serie vacía / 1 periodo).
+- **Ranking de productos por periodo** (activa): comparativo de TODOS los productos en
+  un rango; dos métricas (unidades e **ingreso ESTIMADO** con precio_venta actual),
+  orden elegible + toggle más↔menos vendido. **Conexión futura marcada en el código**:
+  cuando exista Ventas, el ingreso usará el precio real de cada venta.
+- **Análisis clúster** y **Elasticidad**: PRÓXIMAMENTE (se nutren de datos propios).
+
+### ⭐ DOS REGLAS DE IDENTIDAD DE IMPULSE (definidas por el dueño esta jornada, permanentes)
+1. **Impulse solo analiza DATOS PROPIOS de la organización** (ventas, precios,
+   inventario, clientes). NUNCA datos externos (mercado, competencia, tendencias) ni
+   inventados. Por eso se descartaron "Oportunidades de mercado" y "Cosas que podría
+   estar ignorando": miraban afuera.
+2. **Impulse ENTREGA el dato medido; NO lo interpreta.** La lectura/el porqué es
+   responsabilidad del DIRECTOR humano (el dueño contrata gente capacitada). Cero
+   frases de opinión en las herramientas. La máquina mide con precisión; el humano
+   decide.
+
+### La "cita a ciegas" (bajo acoplamiento — decisión de arquitectura del dueño)
+Inventario y Contabilidad NO se hablan entre sí. Cada uno hace su trabajo y ambos
+depositan su dato donde Marketing lo lee. Contabilidad sigue MANUAL y desconectada de
+Inventario (un error de un lado no envenena el otro). El reparto de una venta:
+inventario baja (auto cuando haya checkout / manual en piloto), ingreso de inventario
+y registro contable = manuales (humano con criterio).
+
 ## Próximos pasos posibles (decidir con el dueño)
 
-- **Módulos del back-office:** PEDIDOS (venta en magandhi.com → aparece en el panel;
-  idea original del dueño), INVENTARIO, CLIENTES.
+- **Software de VENTAS (el orquestador):** cuando se concrete una venta, baja stock,
+  calcula costo y arma el paquete contable. Requiere pasarela/checkout + Pedidos +
+  Clientes. Aquí irá la **gráfica en tiempo real** del negocio (idea del dueño) y aquí
+  se conecta el "ingreso real" del Ranking. NO existe aún.
+- **Software de CLIENTES:** el dueño lo quiere más completo que una tabla; conectará el
+  `customer_id` (enchufe apagado) del libro.
+- **Marketing:** activar Análisis clúster y Elasticidad cuando haya datos.
 - **Tienda pública magandhi.com:** falta la PÁGINA DE PRODUCTO REAL (el hero lleva a
-  404); diseño v1 ya aprobado.
+  404); diseño v1 ya aprobado. La superficie de lectura pública (`catalogo_publico`)
+  quedó diseñada en el plano pero NO construida (el dueño la pausó: "todo interno por
+  ahora").
+
+## WOMPI — pendiente abierto (retomar el dueño)
+Pasarela de pagos para MAGANDHI. Es la MISMA cuenta que usaba el proyecto muerto
+"Stramont". Titular: Michell Stiven Rios Dominguez, CC 1033102484 (registrado como
+**persona natural con cédula, sin RUT** — vía válida; cuenta YA aprobada y activa).
+Correo registrado: contacto@montaguth.institute. PROBLEMA: los pagos salen a nombre
+de "montaguth institute", confunde al cliente; debe decir **MAGANDHI** (el cliente ve
+"PAGO WOMPI + NOMBRE COMERCIO"). El nombre del comercio SÍ es modificable pero NO por
+autoservicio (el dashboard solo ofrece 4 procedimientos, ninguno es el nombre) →
+según doc oficial de Wompi se pide por **solicitud a soporte** (chat del dashboard).
+Posible que pidan RUT para el cambio aunque se haya registrado con cédula (a
+confirmar con soporte). NO borrar/recrear la cuenta (perdería aprobación + llaves de
+integración). Postura del dueño sobre formalización (Cámara de Comercio/RUT): no
+hacerla A MEDIAS ni sobre-formalizar antes de validar ventas, pero sí tener el piso
+mínimo cuando entre dinero real. El dueño gestionará Wompi con soporte
+"mañana" (respecto a esta jornada).
 
 ## Flujo de trabajo Git
 - Rama nueva + PR por cada cambio. NUNCA push directo a main. El dueño mergea rápido.
@@ -107,5 +218,13 @@ Contabilidad de partida doble, PUC colombiano (Decreto 2650). Todo en `finanzas/
   `supabase/INSTRUCCIONES.md`, con orden exacto y queries de verificación).
 
 ---
-_Última actualización: cierre de la jornada en que se terminó el módulo Finanzas v1
-(PRs #153–#165, todos mergeados)._
+_Última actualización: jornada en que se construyeron el módulo **Inventario**
+(área Producción) y **Marketing Project** (Proyección de demanda, Medidas de
+Tendencia Central, Ranking de productos), se reorganizó el panel en 3 áreas
+jerárquicas, y se definieron las dos reglas de identidad de Impulse (solo datos
+propios / no interpreta). PRs #167–#181 mergeados (171 y 172 reemplazados por el
+#173 combinado). Pendiente abierto: cambio de nombre en Wompi (a soporte) y la
+formalización, que el dueño gestiona a su ritmo. Antes de tocar SQL, leer
+`supabase/INSTRUCCIONES.md`; antes de tocar diseño, recordar que la interfaz y la
+coherencia de marca son FUNDAMENTALES (nivel Finanzas, sin color nuevo, sello
+Impulse)._
