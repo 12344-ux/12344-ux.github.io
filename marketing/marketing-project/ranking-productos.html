@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Ranking de productos por periodo</title>
+<meta name="description" content="Qué se vendió y cuánto en un periodo, comparando todos los productos por unidades o ingreso estimado · Marketing Project de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/marketing.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=1">
+<link rel="stylesheet" href="../marketing.css?v=1">
+
+<!--
+  MAGANDHI · Marketing Project · RANKING DE PRODUCTOS POR PERIODO.
+  ============================================================================
+  QUE HACE: a diferencia de Proyeccion de la demanda y Medidas de Tendencia
+  Central (que analizan UN producto en el tiempo), esta pantalla es un
+  COMPARATIVO ENTRE TODOS los productos. En un rango de fechas, suma las
+  SALIDAS del libro (tipo='salida') de cada producto y arma una tabla-ranking:
+  un renglon por producto que se movio, con UNIDADES vendidas e INGRESO
+  ESTIMADO. NO parte el tiempo en dia/semana/mes: usa el rango completo
+  desde/hasta como una sola ventana y suma dentro de ella.
+
+  Hermana visual y tecnica de las otras dos categorias: reutiliza el MISMO core
+  (marketing-core.js), el MISMO enfoque de lectura del libro (bajo RLS) y el
+  MISMO patron de arranque (guardia, header azul marino, sello Impulse). No
+  cambia esquema ni SQL: solo LEE.
+
+  IDENTIDAD DE IMPULSE (regla estricta del dueno): Impulse ENTREGA el dato
+  medido (que se vendio y cuanto), NO lo interpreta ni opina. NADA de "este
+  producto es tu estrella" o "deberias dejar de comprar X". La lectura del
+  porque (temporada, campana, etc.) la hace el director humano. Por eso esta
+  pantalla muestra SOLO la tabla, los totales y el contexto factual.
+
+  HONESTIDAD DEL DATO DE DINERO (pedido explicito del dueno): el ingreso es
+  ESTIMADO porque se calcula con el precio_venta ACTUAL del producto, no con el
+  precio real de cada venta (que no existe hasta que se construya el software de
+  Ventas). Por eso la columna se rotula "Ingreso estimado" y hay una nota sobria
+  de transparencia. Ver la CONEXION FUTURA marcada en el codigo, en el punto
+  exacto donde se calcula el ingreso.
+
+  CASOS LIMITE (con honestidad, sin bloquear):
+    · Sin ventas en el rango -> estado vacio sobrio (estilo Balance General).
+    · Productos sin ventas en el rango -> NO aparecen (un ranking es de lo que
+      se movio).
+  ============================================================================
+-->
+</head>
+<body class="mk-body">
+
+<!-- Guardia reutilizable: sin sesion, redirige al login de la raiz. -->
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="mk-wrap" id="mk-main" hidden>
+
+  <!-- PANEL DE CONTROLES (mismo layout distintivo del area) -->
+  <div class="mk-panel">
+    <div class="mk-controles">
+      <!-- Rango de analisis Desde/Hasta: mismo patron .gte/.lte sobre 'fecha'
+           que Proyeccion y Tendencia Central. Ambos opcionales: vacios = todo
+           el historico. El recorte del historial vive en la consulta. A
+           diferencia de las otras categorias, aqui el rango es la UNICA ventana
+           (no hay granularidad): se suma todo lo del rango de una vez. -->
+      <label class="mk-control">
+        <span>Analizar desde</span>
+        <input class="mk-input" id="mk-desde" type="date">
+      </label>
+
+      <label class="mk-control">
+        <span>hasta</span>
+        <input class="mk-input" id="mk-hasta" type="date">
+      </label>
+
+      <!-- Orden del ranking: por que metrica (Unidades / Ingreso estimado) y en
+           que sentido (mas vendido = descendente / menos vendido = ascendente).
+           Ambas metricas SIEMPRE se muestran; el orden solo cambia el sort. -->
+      <label class="mk-control">
+        <span>Ordenar por</span>
+        <select class="mk-select" id="mk-ordenar">
+          <option value="unidades" selected>Unidades vendidas</option>
+          <option value="ingreso">Ingreso estimado</option>
+        </select>
+      </label>
+
+      <label class="mk-control">
+        <span>Sentido</span>
+        <select class="mk-select" id="mk-sentido">
+          <option value="desc" selected>Más vendido primero</option>
+          <option value="asc">Menos vendido primero</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="mk-acciones">
+      <button class="mk-btn" id="mk-generar" type="button">
+        <span data-ico="lista"></span><span>Generar ranking</span>
+      </button>
+      <p class="mk-msg err" id="mk-error" hidden></p>
+    </div>
+  </div>
+
+  <!-- Zona de resultados (tabla-ranking + totales) o aviso sobrio -->
+  <div id="mk-resultado"></div>
+
+</main>
+
+<script type="module">
+  import {
+    supabase, asegurarAcceso, montarHeader, ICONOS,
+    escaparHTML, formatearNumero, formatearFecha
+  } from '../marketing-core.js';
+
+  const inDesde = document.getElementById('mk-desde');
+  const inHasta = document.getElementById('mk-hasta');
+  const selOrdenar = document.getElementById('mk-ordenar');
+  const selSentido = document.getElementById('mk-sentido');
+  const btnGenerar = document.getElementById('mk-generar');
+  const cajaError = document.getElementById('mk-error');
+  const resultado = document.getElementById('mk-resultado');
+
+  function mostrarError(t) { cajaError.textContent = t; cajaError.hidden = false; }
+  function limpiarError() { cajaError.hidden = true; cajaError.textContent = ''; }
+
+  // Formateo de pesos COP con simbolo $ y puntos de miles (1200000 -> "$1.200.000").
+  // NO se importa formatearCOP de finanzas-core: eso acoplaria dos areas. Se
+  // define aqui, local y pequeno, reutilizando formatearNumero del propio core
+  // de Marketing (mismo estandar de miles del back-office). Los montos son
+  // enteros de pesos (precio_venta es bigint), sin centavos.
+  function formatearPesos(entero) {
+    return '$' + formatearNumero(Math.trunc(Number(entero) || 0));
+  }
+
+  // ----------------------------------------------------------
+  // LECTURA DE SALIDAS DEL LIBRO — mismo enfoque que leerSalidas de las otras
+  // categorias, pero SIN filtrar por product_id y TRAYENDO product_id en el
+  // select: aqui comparamos TODOS los productos, no analizamos uno.
+  // ----------------------------------------------------------
+  async function leerSalidas(desde, hasta) {
+    let q = supabase
+      .from('movimientos_inventario')
+      .select('product_id, cantidad, fecha')
+      .eq('tipo', 'salida');         // SOLO ventas/salidas: es lo que se movio
+    if (desde) q = q.gte('fecha', desde);
+    if (hasta) q = q.lte('fecha', hasta);
+    const { data, error } = await q;
+    if (error) throw error;
+    return (data || []).map((m) => ({
+      product_id: m.product_id,
+      cantidad: Math.trunc(Number(m.cantidad) || 0)
+    }));
+  }
+
+  // ----------------------------------------------------------
+  // LECTURA DE PRODUCTOS — para nombre/sku/precio. Se mapea por id. precio_venta
+  // es bigint en pesos enteros; unidad_medida solo para el contexto del dato.
+  // ----------------------------------------------------------
+  async function leerProductos() {
+    const { data, error } = await supabase
+      .from('productos')
+      .select('id, sku, nombre, precio_venta, unidad_medida');
+    if (error) throw error;
+    const mapa = new Map();
+    for (const p of (data || [])) mapa.set(p.id, p);
+    return mapa;
+  }
+
+  // ----------------------------------------------------------
+  // AGREGACION EN MEMORIA — por cada product_id, suma unidades vendidas en el
+  // rango; ingreso estimado = unidades * precio_venta actual del producto.
+  //
+  // Verificacion a mano (ejemplo pequeno):
+  //   salidas = [
+  //     { product_id: 'A', cantidad: 3 },
+  //     { product_id: 'B', cantidad: 5 },
+  //     { product_id: 'A', cantidad: 2 },
+  //   ]
+  //   productos: A -> precio_venta 1000 ; B -> precio_venta 2000
+  //   Agregado:
+  //     A: unidades = 3 + 2 = 5 ; ingreso = 5 * 1000 = 5.000
+  //     B: unidades = 5         ; ingreso = 5 * 2000 = 10.000
+  //   Totales: unidades = 10 ; ingreso = 15.000 ; productos movidos = 2
+  //   Orden por unidades desc -> [A(5), B(5)] empatan; por ingreso desc -> [B, A].
+  // ----------------------------------------------------------
+  function agregarRanking(salidas, productos) {
+    const acum = new Map(); // product_id -> unidades
+    for (const s of salidas) {
+      if (!s.product_id) continue;
+      acum.set(s.product_id, (acum.get(s.product_id) || 0) + s.cantidad);
+    }
+
+    const filas = [];
+    for (const [productId, unidades] of acum.entries()) {
+      const prod = productos.get(productId) || null;
+      const precio = Math.trunc(Number(prod?.precio_venta) || 0);
+      // CONEXION FUTURA (software de Ventas): reemplazar precio_venta actual del
+      // producto por el precio real registrado en cada venta cuando Ventas
+      // registre ventas con su propio precio. El ingreso pasara de ESTIMADO a
+      // exacto SIN rehacer esta pantalla: solo cambia la fuente del precio aqui.
+      const ingreso = unidades * precio;
+      filas.push({
+        productId,
+        nombre: prod?.nombre || 'Producto',
+        sku: prod?.sku || '',
+        unidad: prod?.unidad_medida || 'unidad',
+        unidades,
+        ingreso
+      });
+    }
+    return filas;
+  }
+
+  // Ordena las filas por la metrica elegida y en el sentido elegido. El
+  // desempate es estable y sobrio: por la OTRA metrica y luego por nombre, para
+  // que dos productos con la misma cifra no bailen al azar. No interpreta nada.
+  function ordenarRanking(filas, metrica, sentido) {
+    const factor = (sentido === 'asc') ? 1 : -1;
+    const prim = (metrica === 'ingreso') ? 'ingreso' : 'unidades';
+    const sec = (prim === 'ingreso') ? 'unidades' : 'ingreso';
+    return [...filas].sort((a, b) => {
+      if (a[prim] !== b[prim]) return factor * (a[prim] - b[prim]);
+      if (a[sec] !== b[sec]) return factor * (a[sec] - b[sec]);
+      return a.nombre.localeCompare(b.nombre, 'es');
+    });
+  }
+
+  // ----------------------------------------------------------
+  // ESTADO VACIO SOBRIO (estilo Balance General / las otras categorias)
+  // ----------------------------------------------------------
+  function pintarVacio() {
+    resultado.innerHTML =
+      '<div class="mk-empty">' +
+        'No hubo ventas registradas en el rango elegido, así que aún no hay ' +
+        'ranking que mostrar. ' +
+        'Cuando el inventario registre salidas dentro de ese periodo, ' +
+        'aparecerán aquí ordenadas. ' +
+        'Puedes ampliar el rango o dejarlo vacío para ver todo el histórico.' +
+      '</div>';
+  }
+
+  // ----------------------------------------------------------
+  // RENDER DE LA TABLA-RANKING — un renglon por producto con ventas en el rango.
+  // Columnas: #, producto (nombre + sku), UNIDADES, INGRESO ESTIMADO. Ambas
+  // metricas SIEMPRE visibles; la columna por la que se ordeno se marca sutil
+  // (una flecha), sin color nuevo. SIN interpretacion.
+  // ----------------------------------------------------------
+  function pintarResultado(ctx) {
+    const { filas, metrica, sentido, desde, hasta } = ctx;
+
+    const totalUnidades = filas.reduce((a, f) => a + f.unidades, 0);
+    const totalIngreso = filas.reduce((a, f) => a + f.ingreso, 0);
+    const nProductos = filas.length;
+
+    // Marca sutil de la columna activa (por cual se ordeno). Sin color nuevo:
+    // una flecha textual segun el sentido. La OTRA columna no la lleva.
+    const flecha = (sentido === 'asc') ? ' ↑' : ' ↓';
+    const marcaUnidades = (metrica === 'unidades') ? flecha : '';
+    const marcaIngreso = (metrica === 'ingreso') ? flecha : '';
+
+    // CAPA 1 — contexto factual (NO interpretacion): totales del periodo.
+    const rango =
+      (desde || hasta)
+        ? ((desde ? 'desde ' + escaparHTML(formatearFecha(desde)) : 'desde el inicio del histórico') +
+           ' ' + (hasta ? 'hasta ' + escaparHTML(formatearFecha(hasta)) : 'hasta hoy'))
+        : 'en todo el histórico';
+
+    const hero =
+      '<div class="mk-hero">' +
+        '<div class="mk-hero-main">' +
+          '<span class="mk-hero-lbl">Unidades vendidas en el periodo</span>' +
+          '<span class="mk-hero-num">' + formatearNumero(totalUnidades) + '</span>' +
+          '<span class="mk-hero-sub">' + escaparHTML(rango) + '</span>' +
+        '</div>' +
+        '<div class="mk-hero-main">' +
+          '<span class="mk-hero-lbl">Ingreso estimado del periodo</span>' +
+          '<span class="mk-hero-num">' + formatearPesos(totalIngreso) + '</span>' +
+          '<span class="mk-hero-sub">calculado con el precio de venta actual</span>' +
+        '</div>' +
+        '<div class="mk-hero-meta">' +
+          '<div class="mk-hero-dato"><span class="k">Productos movidos</span><span class="v">' + formatearNumero(nProductos) + '</span></div>' +
+        '</div>' +
+      '</div>' +
+      // Nota de transparencia honesta sobre el dinero. NO interpreta; solo
+      // explica de donde sale la cifra y cuando sera exacta.
+      '<p class="mk-transparencia">' + ICONOS.info +
+        '<span>El <strong>ingreso estimado</strong> usa el precio de venta ' +
+        'actual de cada producto, no el precio real de cada venta (que aún no ' +
+        'se registra). Será exacto cuando exista el software de Ventas. ' +
+        'Impulse entrega el dato medido; la lectura la haces tú.</span></p>';
+
+    // TABLA-RANKING.
+    const filasHTML = filas.map((f, i) => {
+      const etiqueta = escaparHTML(f.nombre) + (f.sku ? ' · ' + escaparHTML(f.sku) : '');
+      return '<tr>' +
+        '<td class="num">' + (i + 1) + '</td>' +
+        '<td class="periodo">' + etiqueta + '</td>' +
+        '<td class="num">' + formatearNumero(f.unidades) + '</td>' +
+        '<td class="num">' + formatearPesos(f.ingreso) + '</td>' +
+      '</tr>';
+    }).join('');
+
+    const tabla =
+      '<div class="mk-tabla-caja">' +
+        '<p class="mk-tabla-titulo">Ranking de productos por ventas en el periodo</p>' +
+        '<table class="mk-tabla">' +
+          '<thead><tr>' +
+            '<th class="num">#</th>' +
+            '<th>Producto</th>' +
+            '<th class="num">Unidades' + marcaUnidades + '</th>' +
+            '<th class="num">Ingreso estimado' + marcaIngreso + '</th>' +
+          '</tr></thead>' +
+          '<tbody>' + filasHTML + '</tbody>' +
+          '<tfoot><tr>' +
+            '<td class="num"></td>' +
+            '<td class="periodo">Totales</td>' +
+            '<td class="num">' + formatearNumero(totalUnidades) + '</td>' +
+            '<td class="num">' + formatearPesos(totalIngreso) + '</td>' +
+          '</tr></tfoot>' +
+        '</table>' +
+      '</div>';
+
+    resultado.innerHTML = hero + tabla;
+    document.querySelectorAll('#mk-resultado [data-ico]').forEach((el) => {
+      el.innerHTML = ICONOS[el.dataset.ico] || '';
+    });
+  }
+
+  // ----------------------------------------------------------
+  // ORQUESTADOR: leer salidas + productos -> agregar -> ordenar -> pintar
+  // ----------------------------------------------------------
+  async function generar() {
+    limpiarError();
+    const desde = inDesde.value;
+    const hasta = inHasta.value;
+    if (desde && hasta && desde > hasta) {
+      mostrarError('El rango es inválido: "desde" no puede ser posterior a "hasta".');
+      return;
+    }
+    const metrica = selOrdenar.value;
+    const sentido = selSentido.value;
+
+    btnGenerar.disabled = true;
+    resultado.innerHTML = '<div class="mk-empty">Leyendo las ventas del periodo…</div>';
+
+    let salidas, productos;
+    try {
+      [salidas, productos] = await Promise.all([leerSalidas(desde, hasta), leerProductos()]);
+    } catch (err) {
+      resultado.innerHTML = '';
+      mostrarError('No se pudo leer el histórico de ventas: ' + (err?.message || 'error desconocido') + '.');
+      btnGenerar.disabled = false;
+      return;
+    }
+    btnGenerar.disabled = false;
+
+    let filas = agregarRanking(salidas, productos);
+    // Un ranking es de lo que se MOVIO: productos con 0 unidades no entran.
+    filas = filas.filter((f) => f.unidades > 0);
+
+    // Estado vacio sobrio: NO bloquea controles, solo informa.
+    if (!filas.length) { pintarVacio(); return; }
+
+    filas = ordenarRanking(filas, metrica, sentido);
+    pintarResultado({ filas, metrica, sentido, desde, hasta });
+  }
+
+  btnGenerar.addEventListener('click', generar);
+
+  (async () => {
+    const acceso = await asegurarAcceso(document.body, '../index.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Ranking de productos por periodo',
+      kicker: 'MARKETING PROJECT · COMPARATIVO',
+      lead: 'Qué se vendió y cuánto en un periodo, comparando todos los productos por unidades o por ingreso estimado. Impulse entrega el dato; el porqué lo analizas tú.',
+      sesion: acceso.sesion,
+      areaLabel: 'MARKETING PROJECT',
+      volverHref: 'index.html',
+      volverTexto: 'Marketing Project'
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    document.getElementById('mk-main').hidden = false;
+  })();
+</script>
+
+</body>
+</html>
