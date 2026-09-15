@@ -103,14 +103,20 @@
         </select>
       </label>
 
+      <!-- Rango de analisis Desde/Hasta: mismo metodo claro que Movimientos
+           (produccion/inventarios/movimientos.html). Sustituye al ambiguo
+           "periodo-base (ultimos N periodos)", donde "periodo" significaba
+           cosas distintas segun la granularidad. Ambos opcionales: vacios =
+           todo el historico. El recorte del historial lo hace este rango en la
+           consulta (.gte/.lte sobre 'fecha'), no un slice de buckets. -->
       <label class="mk-control">
-        <span>Periodo-base (histórico)</span>
-        <select class="mk-select" id="mk-base">
-          <option value="6">Últimos 6 periodos</option>
-          <option value="12" selected>Últimos 12 periodos</option>
-          <option value="24">Últimos 24 periodos</option>
-          <option value="0">Todo el histórico</option>
-        </select>
+        <span>Analizar desde</span>
+        <input class="mk-input" id="mk-desde" type="date">
+      </label>
+
+      <label class="mk-control">
+        <span>hasta</span>
+        <input class="mk-input" id="mk-hasta" type="date">
       </label>
 
       <label class="mk-control" id="mk-ctrl-ventana">
@@ -160,7 +166,8 @@
   const selProducto = document.getElementById('mk-producto');
   const selMetodo = document.getElementById('mk-metodo');
   const selGran = document.getElementById('mk-granularidad');
-  const selBase = document.getElementById('mk-base');
+  const inDesde = document.getElementById('mk-desde');
+  const inHasta = document.getElementById('mk-hasta');
   const ctrlVentana = document.getElementById('mk-ctrl-ventana');
   const inVentana = document.getElementById('mk-ventana');
   const ctrlAlpha = document.getElementById('mk-ctrl-alpha');
@@ -231,13 +238,17 @@
   // ----------------------------------------------------------
   // LECTURA DE SALIDAS DEL LIBRO (movimientos_inventario tipo='salida')
   // ----------------------------------------------------------
-  async function leerSalidas(productId) {
-    const { data, error } = await supabase
+  async function leerSalidas(productId, desde, hasta) {
+    let q = supabase
       .from('movimientos_inventario')
       .select('fecha, cantidad')
       .eq('product_id', productId)
-      .eq('tipo', 'salida')          // SOLO ventas/salidas: es la demanda
-      .order('fecha', { ascending: true });
+      .eq('tipo', 'salida');         // SOLO ventas/salidas: es la demanda
+    // Rango Desde/Hasta opcional, mismo patron .gte/.lte sobre 'fecha' que
+    // usa movimientos.html. El recorte del historial vive aqui, en la consulta.
+    if (desde) q = q.gte('fecha', desde);
+    if (hasta) q = q.lte('fecha', hasta);
+    const { data, error } = await q.order('fecha', { ascending: true });
     if (error) throw error;
     return (data || []).map((m) => ({ fecha: m.fecha, cantidad: Math.trunc(Number(m.cantidad) || 0) }));
   }
@@ -434,7 +445,15 @@
     const unidadProducto = opt ? (opt.dataset.unidad || 'unidades') : 'unidades';
     const metodo = selMetodo.value;
     const granularidad = selGran.value;
-    const base = Math.trunc(Number(selBase.value) || 0);       // 0 = todo
+    // Rango Desde/Hasta opcional (vacios = todo el historico). Sustituye al
+    // periodo-base ambiguo: el recorte del historial lo hace este rango en la
+    // consulta a Supabase, no un slice de buckets.
+    const desde = inDesde.value;
+    const hasta = inHasta.value;
+    if (desde && hasta && desde > hasta) {
+      mostrarError('El rango es inválido: "desde" no puede ser posterior a "hasta".');
+      return;
+    }
     const horizonte = Math.max(1, Math.trunc(Number(inHorizonte.value) || 1));
     // La unidad del horizonte NO es independiente: es la MISMA que la
     // granularidad. La matematica proyecta `horizonte` valores en la escala de
@@ -447,7 +466,7 @@
 
     let salidas;
     try {
-      salidas = await leerSalidas(productId);
+      salidas = await leerSalidas(productId, desde, hasta);
     } catch (err) {
       resultado.innerHTML = '';
       mostrarError('No se pudo leer el histórico de ventas: ' + (err?.message || 'error desconocido') + '.');
@@ -456,11 +475,9 @@
     }
     btnProyectar.disabled = false;
 
-    // Agrupar por periodo segun granularidad.
-    let buckets = agruparPorPeriodo(salidas, granularidad);
-
-    // Periodo-base: recorta a los ultimos N buckets (0 = todo el historial).
-    if (base > 0 && buckets.length > base) buckets = buckets.slice(-base);
+    // Agrupar por periodo segun granularidad. El historial que entra ya viene
+    // recortado por el rango Desde/Hasta de la consulta; no hay slice extra.
+    const buckets = agruparPorPeriodo(salidas, granularidad);
 
     // Estado vacio sobrio: NO bloquea controles, solo informa.
     if (!buckets.length) { pintarVacio(nombreProducto); return; }
