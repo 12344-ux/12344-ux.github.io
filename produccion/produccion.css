@@ -394,6 +394,7 @@ body.pr-body{
 .pr-msg.err{color:var(--pr-terracota)}
 
 /* Confirmacion de alta: muestra el SKU generado */
+.pr-alta-ok[hidden]{display:none}   /* respeta el atributo hidden: no mostrar hasta guardar */
 .pr-alta-ok{
   display:flex;align-items:center;gap:12px;
   background:var(--pr-salvia-bg);border:1px solid rgba(91,138,111,.3);
