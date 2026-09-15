@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Medidas de Tendencia Central</title>
+<meta name="description" content="Media, mediana y moda de las ventas de un producto por periodo · Marketing Project de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/marketing.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=1">
+<link rel="stylesheet" href="../marketing.css?v=1">
+
+<!--
+  MAGANDHI · Marketing Project · MEDIDAS DE TENDENCIA CENTRAL.
+  ============================================================================
+  QUE HACE: calcula MEDIA, MEDIANA y MODA de las ventas (salidas del libro) de
+  un producto, sobre la SERIE de totales por periodo (dia/semana/mes) dentro de
+  un rango de fechas opcional. Hermana visual y tecnica de Proyeccion de la
+  demanda: reutiliza el MISMO core (marketing-core.js), el MISMO enfoque de
+  lectura del libro (movimientos_inventario tipo='salida', bajo RLS) y la MISMA
+  funcion de agrupacion por periodo (agruparPorPeriodo). No cambia esquema ni
+  SQL: solo LEE, igual que proyeccion.
+
+  IDENTIDAD DE IMPULSE (regla estricta del dueno): Impulse ENTREGA el dato
+  limpio, medido y confiable; NO lo interpreta ni opina sobre que significa. La
+  lectura del numero es responsabilidad del director humano. Por eso esta
+  pantalla MUESTRA los tres numeros con rigor y NADA de frases de
+  interpretacion (nada de "tu media supera la mediana, hay picos"). Solo el
+  dato, impecable. Se muestra como CONTEXTO (no interpretacion) cuantos
+  periodos entraron (n) y la granularidad usada.
+
+  LAS MEDIDAS SE CALCULAN SOBRE LA SERIE DE TOTALES POR PERIODO: por ejemplo,
+  "media de unidades vendidas por semana". No sobre movimientos sueltos.
+
+  CASOS LIMITE (cubiertos con honestidad, sin bloquear el software):
+    · Serie vacia (sin ventas en el rango) -> estado vacio sobrio, como
+      proyeccion / Balance General.
+    · Serie de 1 periodo -> media = mediana = moda = ese unico valor.
+    · Sin moda real (ningun valor se repite) -> texto sobrio, no se inventa.
+    · Multimodal (varios valores empatan en frecuencia) -> se muestran TODOS.
+  ============================================================================
+-->
+</head>
+<body class="mk-body">
+
+<!-- Guardia reutilizable: sin sesion, redirige al login de la raiz. -->
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="mk-wrap" id="mk-main" hidden>
+
+  <!-- PANEL DE CONTROLES (mismo layout distintivo que Proyeccion) -->
+  <div class="mk-panel">
+    <div class="mk-controles">
+      <label class="mk-control">
+        <span>Producto</span>
+        <select class="mk-select" id="mk-producto"><option value="">Cargando…</option></select>
+      </label>
+
+      <label class="mk-control">
+        <span>Granularidad</span>
+        <select class="mk-select" id="mk-granularidad">
+          <option value="dia">Por día</option>
+          <option value="semana">Por semana</option>
+          <option value="mes" selected>Por mes</option>
+        </select>
+      </label>
+
+      <!-- Rango de analisis Desde/Hasta: mismo patron .gte/.lte sobre 'fecha'
+           que Proyeccion y Movimientos. Ambos opcionales: vacios = todo el
+           historico. El recorte del historial vive en la consulta. -->
+      <label class="mk-control">
+        <span>Analizar desde</span>
+        <input class="mk-input" id="mk-desde" type="date">
+      </label>
+
+      <label class="mk-control">
+        <span>hasta</span>
+        <input class="mk-input" id="mk-hasta" type="date">
+      </label>
+    </div>
+
+    <div class="mk-acciones">
+      <button class="mk-btn" id="mk-calcular" type="button">
+        <span data-ico="tendencia"></span><span>Calcular</span>
+      </button>
+      <p class="mk-msg err" id="mk-error" hidden></p>
+    </div>
+  </div>
+
+  <!-- Zona de resultados (3 medidas) o aviso sobrio de "aun no hay informacion" -->
+  <div id="mk-resultado"></div>
+
+</main>
+
+<script type="module">
+  import {
+    supabase, asegurarAcceso, montarHeader, ICONOS,
+    escaparHTML, formatearNumero, agruparPorPeriodo
+  } from '../marketing-core.js';
+
+  const selProducto = document.getElementById('mk-producto');
+  const selGran = document.getElementById('mk-granularidad');
+  const inDesde = document.getElementById('mk-desde');
+  const inHasta = document.getElementById('mk-hasta');
+  const btnCalcular = document.getElementById('mk-calcular');
+  const cajaError = document.getElementById('mk-error');
+  const resultado = document.getElementById('mk-resultado');
+
+  const UNIDAD_PERIODO = { dia: 'día', semana: 'semana', mes: 'mes' };
+  const UNIDAD_PERIODO_PL = { dia: 'días', semana: 'semanas', mes: 'meses' };
+
+  function mostrarError(t) { cajaError.textContent = t; cajaError.hidden = false; }
+  function limpiarError() { cajaError.hidden = true; cajaError.textContent = ''; }
+
+  // ==========================================================
+  //  MATEMATICA PURA (sin DOM): las tres medidas de tendencia central.
+  //  Trabajan sobre la SERIE de totales por periodo (un numero por bucket).
+  //  Verificadas a mano con el ejemplo [5, 5, 8]:
+  //    media   = (5+5+8)/3 = 6
+  //    mediana = ordenada [5,5,8], n impar -> central = 5
+  //    moda    = 5 (aparece 2 veces; 8 una) -> [5]
+  // ==========================================================
+
+  // MEDIA aritmetica. Redondeo de presentacion a 2 decimales (sin float largo).
+  function calcularMedia(serie) {
+    if (!serie.length) return 0;
+    const suma = serie.reduce((a, b) => a + b, 0);
+    return suma / serie.length;
+  }
+
+  // MEDIANA correcta (no aproximada): ordenar; n impar -> central;
+  // n par -> promedio de los dos centrales.
+  function calcularMediana(serie) {
+    if (!serie.length) return 0;
+    const orden = [...serie].sort((a, b) => a - b);
+    const n = orden.length;
+    const medio = Math.floor(n / 2);
+    return (n % 2 === 1) ? orden[medio] : (orden[medio - 1] + orden[medio]) / 2;
+  }
+
+  // MODA honesta: devuelve { valores:[...], frecuencia:N, hayModa:bool }.
+  //   · Sin moda real (todos aparecen una sola vez, frecuencia maxima = 1 con
+  //     mas de un valor) -> hayModa=false.
+  //   · Multimodal (varios empatan en la frecuencia maxima) -> todos en valores.
+  //   · Serie de 1 solo elemento -> ese valor es la moda (frecuencia 1).
+  function calcularModa(serie) {
+    if (!serie.length) return { valores: [], frecuencia: 0, hayModa: false };
+    const conteo = new Map();
+    for (const v of serie) conteo.set(v, (conteo.get(v) || 0) + 1);
+    let maxFrec = 0;
+    for (const f of conteo.values()) if (f > maxFrec) maxFrec = f;
+    const valores = [...conteo.entries()]
+      .filter(([, f]) => f === maxFrec)
+      .map(([v]) => v)
+      .sort((a, b) => a - b);
+    // No hay moda cuando ningun valor se repite: frecuencia maxima 1 y hay mas
+    // de un valor distinto. Con un solo periodo, ese valor SI es moda.
+    const hayModa = !(maxFrec === 1 && conteo.size > 1);
+    return { valores, frecuencia: maxFrec, hayModa };
+  }
+
+  // Presentacion sobria de un numero: entero con separador de miles si es
+  // entero; hasta 2 decimales (sin ceros de relleno) si no lo es. No opina.
+  function mostrarCifra(n) {
+    const x = Number(n) || 0;
+    if (Number.isInteger(x)) return formatearNumero(x);
+    const redondeado = Math.round(x * 100) / 100;
+    if (Number.isInteger(redondeado)) return formatearNumero(redondeado);
+    const entero = Math.trunc(redondeado);
+    const decimales = Math.abs(redondeado - entero);
+    const decTxt = decimales.toFixed(2).slice(2).replace(/0+$/, '');
+    return formatearNumero(entero) + ',' + decTxt;
+  }
+
+  // ----------------------------------------------------------
+  // CARGA DEL DROPDOWN DE PRODUCTOS (tabla productos, bajo RLS) — igual que proyeccion
+  // ----------------------------------------------------------
+  async function cargarProductos() {
+    const { data, error } = await supabase
+      .from('productos')
+      .select('id, sku, nombre, unidad_medida')
+      .eq('activo', true)
+      .order('nombre', { ascending: true });
+
+    if (error) {
+      selProducto.innerHTML = '<option value="">No se pudieron cargar los productos</option>';
+      mostrarError('No se pudieron cargar los productos: ' + (error.message || 'error desconocido') + '.');
+      return;
+    }
+    const filas = data || [];
+    if (!filas.length) {
+      selProducto.innerHTML = '<option value="">Aún no hay productos en el inventario</option>';
+      return;
+    }
+    selProducto.innerHTML = '<option value="">Elige un producto…</option>' +
+      filas.map((p) =>
+        '<option value="' + escaparHTML(p.id) + '" ' +
+          'data-sku="' + escaparHTML(p.sku || '') + '" ' +
+          'data-unidad="' + escaparHTML(p.unidad_medida || 'unidad') + '">' +
+          escaparHTML((p.nombre || 'Producto') + (p.sku ? ' · ' + p.sku : '')) +
+        '</option>'
+      ).join('');
+  }
+
+  // ----------------------------------------------------------
+  // LECTURA DE SALIDAS DEL LIBRO — mismo enfoque que leerSalidas de proyeccion
+  // ----------------------------------------------------------
+  async function leerSalidas(productId, desde, hasta) {
+    let q = supabase
+      .from('movimientos_inventario')
+      .select('fecha, cantidad')
+      .eq('product_id', productId)
+      .eq('tipo', 'salida');         // SOLO ventas/salidas: es la demanda
+    if (desde) q = q.gte('fecha', desde);
+    if (hasta) q = q.lte('fecha', hasta);
+    const { data, error } = await q.order('fecha', { ascending: true });
+    if (error) throw error;
+    return (data || []).map((m) => ({ fecha: m.fecha, cantidad: Math.trunc(Number(m.cantidad) || 0) }));
+  }
+
+  // ----------------------------------------------------------
+  // ESTADO VACIO SOBRIO (estilo Balance General / proyeccion) — NO bloquea nada
+  // ----------------------------------------------------------
+  function pintarVacio(nombreProducto) {
+    resultado.innerHTML =
+      '<div class="mk-empty">' +
+        'Aún no hay información de ventas registrada para ' +
+        '<strong>' + escaparHTML(nombreProducto || 'este producto') + '</strong> ' +
+        'en el rango elegido. ' +
+        'Cuando el inventario registre salidas, las medidas aparecerán aquí. ' +
+        'Puedes cambiar de producto o de ajustes cuando quieras.' +
+      '</div>';
+  }
+
+  // ----------------------------------------------------------
+  // RENDER DE LAS TRES MEDIDAS (media / mediana / moda) — SIN interpretacion
+  // ----------------------------------------------------------
+  function pintarResultado(ctx) {
+    const { nombreProducto, unidadProducto, granularidad, buckets } = ctx;
+
+    const serie = buckets.map((b) => b.cantidad);
+    const n = serie.length;
+    const media = calcularMedia(serie);
+    const mediana = calcularMediana(serie);
+    const moda = calcularModa(serie);
+
+    const unidad = escaparHTML(unidadProducto || 'unidades');
+    const uPer = escaparHTML(UNIDAD_PERIODO[granularidad] || 'periodo');
+    const uPerPl = escaparHTML(n === 1 ? (UNIDAD_PERIODO[granularidad] || 'periodo') : (UNIDAD_PERIODO_PL[granularidad] || 'periodos'));
+
+    // Cada medida como numero grande (reutiliza el hero de proyeccion: tres
+    // bloques mk-hero-main dentro de una misma banda mk-hero, en fila/grid).
+    const medidaMain = (lbl, cifraHTML, sub) =>
+      '<div class="mk-hero-main">' +
+        '<span class="mk-hero-lbl">' + lbl + '</span>' +
+        '<span class="mk-hero-num">' + cifraHTML + '</span>' +
+        '<span class="mk-hero-sub">' + sub + '</span>' +
+      '</div>';
+
+    // MEDIA y MEDIANA llevan unidad; ambas son unidades por periodo.
+    const mediaHTML = mostrarCifra(media) + '<span class="mk-hero-unidad">' + unidad + '</span>';
+    const medianaHTML = mostrarCifra(mediana) + '<span class="mk-hero-unidad">' + unidad + '</span>';
+
+    // MODA: honesta con los casos limite.
+    let modaHTML, modaSub;
+    if (!moda.hayModa) {
+      modaHTML = 'Sin moda';
+      modaSub = 'Ningún valor se repite';
+    } else if (moda.valores.length > 1) {
+      modaHTML = moda.valores.map((v) => mostrarCifra(v)).join(' · ') +
+        '<span class="mk-hero-unidad">' + unidad + '</span>';
+      modaSub = 'Multimodal · ' + moda.valores.length + ' valores empatan (' + moda.frecuencia + ' veces c/u)';
+    } else {
+      modaHTML = mostrarCifra(moda.valores[0]) + '<span class="mk-hero-unidad">' + unidad + '</span>';
+      modaSub = moda.frecuencia === 1
+        ? 'Aparece 1 vez'
+        : 'Se repite ' + moda.frecuencia + ' veces';
+    }
+
+    const subPeriodo = 'por ' + uPer;
+    const hero =
+      '<div class="mk-hero">' +
+        medidaMain('Media', mediaHTML, subPeriodo) +
+        medidaMain('Mediana', medianaHTML, subPeriodo) +
+        medidaMain('Moda', modaHTML, moda.hayModa ? subPeriodo : '') +
+      '</div>' +
+      // Contexto (NO interpretacion): cuantos periodos entraron y la escala.
+      '<p class="mk-transparencia">' + ICONOS.info +
+        '<span>Calculado sobre la serie de ventas por ' + uPer + ': ' +
+        '<strong>' + n + ' ' + uPerPl + '</strong> con ventas registradas. ' +
+        'Impulse entrega el dato medido; la lectura la haces tú.</span></p>';
+
+    // Detalle de la serie que alimenta las medidas (transparencia del dato).
+    const filas = buckets.map((b) =>
+      '<tr>' +
+        '<td class="periodo">' + escaparHTML(b.clave) + '</td>' +
+        '<td class="num">' + formatearNumero(b.cantidad) + '</td>' +
+      '</tr>'
+    ).join('');
+    const tabla =
+      '<div class="mk-tabla-caja">' +
+        '<p class="mk-tabla-titulo">Serie por periodo (base del cálculo)</p>' +
+        '<table class="mk-tabla">' +
+          '<thead><tr><th>Periodo</th><th class="num">Unidades</th></tr></thead>' +
+          '<tbody>' + filas + '</tbody>' +
+        '</table>' +
+      '</div>';
+
+    resultado.innerHTML = hero + tabla;
+    document.querySelectorAll('#mk-resultado [data-ico]').forEach((el) => {
+      el.innerHTML = ICONOS[el.dataset.ico] || '';
+    });
+  }
+
+  // ----------------------------------------------------------
+  // ORQUESTADOR: leer -> agrupar por periodo -> medir -> pintar
+  // ----------------------------------------------------------
+  async function calcular() {
+    limpiarError();
+    const opt = selProducto.selectedOptions[0];
+    const productId = selProducto.value;
+    if (!productId) { mostrarError('Elige un producto para calcular sus medidas.'); return; }
+
+    const nombreProducto = opt ? opt.textContent : 'Producto';
+    const unidadProducto = opt ? (opt.dataset.unidad || 'unidades') : 'unidades';
+    const granularidad = selGran.value;
+    const desde = inDesde.value;
+    const hasta = inHasta.value;
+    if (desde && hasta && desde > hasta) {
+      mostrarError('El rango es inválido: "desde" no puede ser posterior a "hasta".');
+      return;
+    }
+
+    btnCalcular.disabled = true;
+    resultado.innerHTML = '<div class="mk-empty">Leyendo el histórico de ventas…</div>';
+
+    let salidas;
+    try {
+      salidas = await leerSalidas(productId, desde, hasta);
+    } catch (err) {
+      resultado.innerHTML = '';
+      mostrarError('No se pudo leer el histórico de ventas: ' + (err?.message || 'error desconocido') + '.');
+      btnCalcular.disabled = false;
+      return;
+    }
+    btnCalcular.disabled = false;
+
+    // Agrupar por periodo: la serie de totales por periodo es la base de las
+    // tres medidas. Mismo agruparPorPeriodo que proyeccion (dia/semana/mes).
+    const buckets = agruparPorPeriodo(salidas, granularidad);
+
+    // Estado vacio sobrio: NO bloquea controles, solo informa.
+    if (!buckets.length) { pintarVacio(nombreProducto); return; }
+
+    pintarResultado({ nombreProducto, unidadProducto, granularidad, buckets });
+  }
+
+  btnCalcular.addEventListener('click', calcular);
+
+  (async () => {
+    const acceso = await asegurarAcceso(document.body, '../index.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Medidas de Tendencia Central',
+      kicker: 'MARKETING PROJECT · ESTADÍSTICA',
+      lead: 'Media, mediana y moda de las ventas de un producto, calculadas sobre la serie por periodo. Impulse entrega el dato medido; la interpretación la haces tú.',
+      sesion: acceso.sesion,
+      areaLabel: 'MARKETING PROJECT',
+      volverHref: 'index.html',
+      volverTexto: 'Marketing Project'
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    await cargarProductos();
+
+    document.getElementById('mk-main').hidden = false;
+  })();
+</script>
+
+</body>
+</html>
