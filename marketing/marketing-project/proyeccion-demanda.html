@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Proyección de la demanda</title>
+<meta name="description" content="Proyección de la demanda a partir del histórico real de ventas · Marketing Project de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/marketing.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=1">
+<link rel="stylesheet" href="../marketing.css?v=1">
+
+<!--
+  MAGANDHI · Marketing Project · PROYECCION DE LA DEMANDA (el motor real).
+  ============================================================================
+  ESTRATEGIA DE LECTURA (decidida y documentada aqui, sin RPC nueva):
+  ----------------------------------------------------------------------------
+  Se calcula EN EL CLIENTE. La pagina LEE el libro de inventario
+  (movimientos_inventario, SOLO filas tipo='salida' del producto elegido)
+  con el cliente Supabase publico/autenticado bajo RLS, agrupa las cantidades
+  por periodo en JS y aplica los tres metodos (promedio movil, suavizacion
+  exponencial, regresion lineal), tambien en JS.
+
+  POR QUE ASI (y no una RPC server-side):
+    · BAJO ACOPLAMIENTO: Marketing solo LEE el libro; no crea superficie SQL
+      nueva ni toca la logica de Inventario. Inventario y Marketing se hablan
+      por el dato (el libro), no por codigo. Misma "cita a ciegas" que pidio el
+      dueno: Inventario y Contabilidad alimentan a Marketing por separado.
+    · MATEMATICA SIMPLE Y TRANSPARENTE: promedio movil, suavizacion exponencial
+      y regresion por minimos cuadrados son sumas y una recta; correrlas en JS
+      es barato, auditable y no justifica una funcion Postgres dedicada.
+    · REPRODUCIBLE: las funciones viven en marketing-core.js con un auto-chequeo
+      contra un ejemplo a mano, asi cualquiera verifica la correccion.
+
+  PERMISO DE LECTURA (RLS) — nota para INSTRUCCIONES / FEAT-005:
+    El libro (movimientos_inventario) y productos tienen RLS
+    tiene_modulo('inventario'). Un usuario SOLO de marketing quedaria
+    bloqueado. Opcion elegida (la mejor UX, la mas simple correcta): ANADIR una
+    politica SELECT extra que tambien permita leer movimientos_inventario y
+    productos cuando tiene_modulo('marketing'). Va en una migracion nueva
+    idempotente y SOLO de lectura:
+      supabase/migrations/20250301000600_inventario_marketing_lectura.sql
+    (SELECT unicamente; ninguna escritura; el alta/edicion del libro sigue
+    pasando exclusivamente por las RPC security definer de Inventario). La
+    alternativa (exigir que el analista tenga tambien 'inventarios') se
+    descarto: obliga a mezclar permisos de dos areas para una tarea de solo
+    lectura. El dueno aplica esa migracion cuando corra el runbook.
+
+  ALCANCE (lo que el dueno pidio explicitamente):
+    · Elige: producto, metodo, periodo-base (cuanto historial mira),
+      horizonte (cuantos dias/semanas/meses proyecta) y granularidad del
+      periodo (dia/semana/mes).
+    · Resultado en 3 CAPAS: (1) numero grande arriba, (2) grafico temporal
+      (linea SOLIDA = ventas reales pasadas, PUNTEADA = proyeccion futura),
+      (3) tabla de detalle por periodo (real vs proyectado).
+    · Si NO hay datos de ventas: aviso sobrio "aun no hay informacion" (estilo
+      Balance General), SIN bloquear los controles ni limitar el software.
+    · NO se incluye el cruce proyeccion<->stock ("te faltarian X, considera
+      reponer"): el dueno quiere ver el numero puro y decidir manualmente.
+  ============================================================================
+-->
+</head>
+<body class="mk-body">
+
+<!-- Guardia reutilizable: sin sesion, redirige al login de la raiz. -->
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="mk-wrap" id="mk-main" hidden>
+
+  <div class="mk-nota">
+    <span data-ico="info"></span>
+    <span>La proyección lee el <strong>histórico real de ventas</strong> del inventario (salidas del libro) del producto que elijas y lo agrupa por periodo. Elige método, periodo-base y horizonte, y pulsa Proyectar. El número es una estimación estadística para orientar tu decisión: la reposición la decides tú.</span>
+  </div>
+
+  <!-- PANEL DE CONTROLES (el layout distintivo del area) -->
+  <div class="mk-panel">
+    <div class="mk-controles">
+      <label class="mk-control">
+        <span>Producto</span>
+        <select class="mk-select" id="mk-producto"><option value="">Cargando…</option></select>
+      </label>
+
+      <label class="mk-control">
+        <span>Método</span>
+        <select class="mk-select" id="mk-metodo">
+          <option value="promedio-movil">Promedio móvil</option>
+          <option value="suavizacion">Suavización exponencial</option>
+          <option value="regresion">Regresión lineal</option>
+        </select>
+      </label>
+
+      <label class="mk-control">
+        <span>Granularidad</span>
+        <select class="mk-select" id="mk-granularidad">
+          <option value="dia">Por día</option>
+          <option value="semana">Por semana</option>
+          <option value="mes" selected>Por mes</option>
+        </select>
+      </label>
+
+      <label class="mk-control">
+        <span>Periodo-base (histórico)</span>
+        <select class="mk-select" id="mk-base">
+          <option value="6">Últimos 6 periodos</option>
+          <option value="12" selected>Últimos 12 periodos</option>
+          <option value="24">Últimos 24 periodos</option>
+          <option value="0">Todo el histórico</option>
+        </select>
+      </label>
+
+      <label class="mk-control" id="mk-ctrl-ventana">
+        <span>Ventana (promedio móvil)</span>
+        <input class="mk-input" id="mk-ventana" type="number" min="1" step="1" value="3">
+      </label>
+
+      <label class="mk-control" id="mk-ctrl-alpha" hidden>
+        <span>Alfa (suavizado 0–1)</span>
+        <input class="mk-input" id="mk-alpha" type="number" min="0.05" max="1" step="0.05" value="0.5">
+      </label>
+
+      <label class="mk-control">
+        <span>Horizonte</span>
+        <span class="mk-horizonte-fila">
+          <input class="mk-input" id="mk-horizonte" type="number" min="1" step="1" value="3">
+          <select class="mk-select" id="mk-horizonte-unidad">
+            <option value="dia">días</option>
+            <option value="semana">semanas</option>
+            <option value="mes" selected>meses</option>
+          </select>
+        </span>
+      </label>
+    </div>
+
+    <div class="mk-acciones">
+      <button class="mk-btn" id="mk-proyectar" type="button">
+        <span data-ico="grafico"></span><span>Proyectar</span>
+      </button>
+      <p class="mk-msg err" id="mk-error" hidden></p>
+    </div>
+  </div>
+
+  <!-- Zona de resultados (3 capas) o aviso sobrio de "aun no hay informacion" -->
+  <div id="mk-resultado"></div>
+
+</main>
+
+<script type="module">
+  import {
+    supabase, asegurarAcceso, montarHeader, ICONOS,
+    escaparHTML, formatearNumero, formatearFecha, hoyISO,
+    promedioMovil, suavizacionExponencial, regresionLineal,
+    agruparPorPeriodo
+  } from '../marketing-core.js';
+
+  const selProducto = document.getElementById('mk-producto');
+  const selMetodo = document.getElementById('mk-metodo');
+  const selGran = document.getElementById('mk-granularidad');
+  const selBase = document.getElementById('mk-base');
+  const ctrlVentana = document.getElementById('mk-ctrl-ventana');
+  const inVentana = document.getElementById('mk-ventana');
+  const ctrlAlpha = document.getElementById('mk-ctrl-alpha');
+  const inAlpha = document.getElementById('mk-alpha');
+  const inHorizonte = document.getElementById('mk-horizonte');
+  const selHorizonteUnidad = document.getElementById('mk-horizonte-unidad');
+  const btnProyectar = document.getElementById('mk-proyectar');
+  const cajaError = document.getElementById('mk-error');
+  const resultado = document.getElementById('mk-resultado');
+
+  const NOMBRE_METODO = {
+    'promedio-movil': 'Promedio móvil',
+    'suavizacion': 'Suavización exponencial',
+    'regresion': 'Regresión lineal'
+  };
+  const UNIDAD_PERIODO = { dia: 'día', semana: 'semana', mes: 'mes' };
+  const UNIDAD_PERIODO_PL = { dia: 'días', semana: 'semanas', mes: 'meses' };
+
+  function mostrarError(t) { cajaError.textContent = t; cajaError.hidden = false; }
+  function limpiarError() { cajaError.hidden = true; cajaError.textContent = ''; }
+
+  // Los controles auxiliares (ventana / alfa) dependen del metodo elegido.
+  function sincronizarControlesMetodo() {
+    const m = selMetodo.value;
+    ctrlVentana.hidden = (m !== 'promedio-movil');
+    ctrlAlpha.hidden = (m !== 'suavizacion');
+  }
+  selMetodo.addEventListener('change', sincronizarControlesMetodo);
+
+  // ----------------------------------------------------------
+  // CARGA DEL DROPDOWN DE PRODUCTOS (tabla productos, bajo RLS)
+  // ----------------------------------------------------------
+  async function cargarProductos() {
+    const { data, error } = await supabase
+      .from('productos')
+      .select('id, sku, nombre, unidad_medida')
+      .eq('activo', true)
+      .order('nombre', { ascending: true });
+
+    if (error) {
+      selProducto.innerHTML = '<option value="">No se pudieron cargar los productos</option>';
+      mostrarError('No se pudieron cargar los productos: ' + (error.message || 'error desconocido') + '.');
+      return;
+    }
+    const filas = data || [];
+    if (!filas.length) {
+      selProducto.innerHTML = '<option value="">Aún no hay productos en el inventario</option>';
+      return;
+    }
+    selProducto.innerHTML = '<option value="">Elige un producto…</option>' +
+      filas.map((p) =>
+        '<option value="' + escaparHTML(p.id) + '" ' +
+          'data-sku="' + escaparHTML(p.sku || '') + '" ' +
+          'data-unidad="' + escaparHTML(p.unidad_medida || 'unidad') + '">' +
+          escaparHTML((p.nombre || 'Producto') + (p.sku ? ' · ' + p.sku : '')) +
+        '</option>'
+      ).join('');
+  }
+
+  // ----------------------------------------------------------
+  // LECTURA DE SALIDAS DEL LIBRO (movimientos_inventario tipo='salida')
+  // ----------------------------------------------------------
+  async function leerSalidas(productId) {
+    const { data, error } = await supabase
+      .from('movimientos_inventario')
+      .select('fecha, cantidad')
+      .eq('product_id', productId)
+      .eq('tipo', 'salida')          // SOLO ventas/salidas: es la demanda
+      .order('fecha', { ascending: true });
+    if (error) throw error;
+    return (data || []).map((m) => ({ fecha: m.fecha, cantidad: Math.trunc(Number(m.cantidad) || 0) }));
+  }
+
+  // ----------------------------------------------------------
+  // ESTADO VACIO SOBRIO (estilo Balance General) — NO bloquea nada
+  // ----------------------------------------------------------
+  function pintarVacio(nombreProducto) {
+    resultado.innerHTML =
+      '<div class="mk-empty">' +
+        'Aún no hay información de ventas registrada para ' +
+        '<strong>' + escaparHTML(nombreProducto || 'este producto') + '</strong>. ' +
+        'Cuando el inventario registre salidas, la proyección aparecerá aquí. ' +
+        'Puedes cambiar de producto o de ajustes cuando quieras.' +
+      '</div>';
+  }
+
+  // ----------------------------------------------------------
+  // GRAFICO TEMPORAL EN SVG (solido = pasado real, punteado = proyeccion)
+  // ----------------------------------------------------------
+  function construirGrafico(etiquetasReal, serieReal, etiquetasProy, serieProy) {
+    const W = 720, H = 260;
+    const m = { top: 16, right: 16, bottom: 34, left: 44 };
+    const iw = W - m.left - m.right;
+    const ih = H - m.top - m.bottom;
+
+    const etiquetas = etiquetasReal.concat(etiquetasProy);
+    const valores = serieReal.concat(serieProy);
+    const nTot = valores.length;
+    if (nTot === 0) return '';
+
+    const maxV = Math.max(1, ...valores);
+    // x uniforme por indice; y invertido (0 abajo).
+    const px = (i) => m.left + (nTot === 1 ? iw / 2 : (i * iw) / (nTot - 1));
+    const py = (v) => m.top + ih - (v / maxV) * ih;
+
+    // Puntos de la linea REAL (indices 0..nReal-1).
+    const nReal = serieReal.length;
+    const puntosReal = serieReal.map((v, i) => [px(i), py(v)]);
+    // La linea PUNTEADA de proyeccion arranca en el ultimo punto real para
+    // que el trazo sea continuo visualmente (empalme pasado -> futuro).
+    const puntosProy = [];
+    if (nReal > 0 && serieProy.length) puntosProy.push([px(nReal - 1), py(serieReal[nReal - 1])]);
+    serieProy.forEach((v, k) => puntosProy.push([px(nReal + k), py(v)]));
+
+    const dReal = puntosReal.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+    const dProy = puntosProy.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+
+    // Rejilla horizontal (4 lineas) + etiquetas de valor.
+    let grid = '';
+    for (let g = 0; g <= 4; g++) {
+      const y = m.top + (ih * g) / 4;
+      const val = Math.round(maxV * (1 - g / 4));
+      grid += '<line class="mk-grid" x1="' + m.left + '" y1="' + y.toFixed(1) + '" x2="' + (m.left + iw) + '" y2="' + y.toFixed(1) + '"></line>';
+      grid += '<text class="mk-eje-lbl" x="' + (m.left - 8) + '" y="' + (y + 3).toFixed(1) + '" text-anchor="end">' + formatearNumero(val) + '</text>';
+    }
+
+    // Etiquetas de eje X: se muestran algunas para no saturar (max ~8).
+    const paso = Math.max(1, Math.ceil(nTot / 8));
+    let ejeX = '';
+    for (let i = 0; i < nTot; i += paso) {
+      const x = px(i);
+      const txt = etiquetas[i] || '';
+      ejeX += '<text class="mk-eje-lbl" x="' + x.toFixed(1) + '" y="' + (m.top + ih + 20) + '" text-anchor="middle">' + escaparHTML(txt) + '</text>';
+    }
+
+    const puntosSvg = (puntos, clase) => puntos.map((p) =>
+      '<circle class="' + clase + '" cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="3"></circle>').join('');
+
+    return (
+      '<svg class="mk-grafico-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" ' +
+        'aria-label="Grafico de ventas reales (linea solida) y proyeccion (linea punteada)">' +
+        grid +
+        '<line class="mk-eje" x1="' + m.left + '" y1="' + (m.top + ih) + '" x2="' + (m.left + iw) + '" y2="' + (m.top + ih) + '"></line>' +
+        ejeX +
+        (dReal ? '<path class="mk-linea-real" d="' + dReal + '"></path>' : '') +
+        (dProy ? '<path class="mk-linea-proy" d="' + dProy + '"></path>' : '') +
+        puntosSvg(puntosReal, 'mk-punto-real') +
+        puntosSvg(puntosProy.slice(nReal > 0 && serieProy.length ? 1 : 0), 'mk-punto-proy') +
+      '</svg>'
+    );
+  }
+
+  // Genera etiquetas de periodo hacia adelante a partir del horizonte y la
+  // unidad elegida, arrancando desde HOY (solo para rotular el eje/tabla; la
+  // matematica ya proyecto `horizonte` valores).
+  function etiquetasFuturas(horizonte, unidad) {
+    const out = [];
+    const base = new Date();
+    for (let k = 1; k <= horizonte; k++) {
+      const d = new Date(base.getTime());
+      if (unidad === 'dia') d.setDate(d.getDate() + k);
+      else if (unidad === 'semana') d.setDate(d.getDate() + k * 7);
+      else d.setMonth(d.getMonth() + k);
+      const y = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      if (unidad === 'mes') out.push(`${y}-${mm}`);
+      else if (unidad === 'semana') out.push(`sem +${k}`);
+      else out.push(`${mm}-${dd}`);
+    }
+    return out;
+  }
+
+  // ----------------------------------------------------------
+  // RENDER DE LAS 3 CAPAS
+  // ----------------------------------------------------------
+  function pintarResultado(ctx) {
+    const {
+      nombreProducto, unidadProducto, metodo, granularidad,
+      buckets, proyeccion, horizonte, horizonteUnidad, nBase
+    } = ctx;
+
+    const etiquetasReal = buckets.map((b) => b.clave);
+    const serieReal = buckets.map((b) => b.cantidad);
+    const etiquetasProy = etiquetasFuturas(horizonte, horizonteUnidad);
+    const serieProy = proyeccion.map((v) => Math.max(0, Math.round(v)));
+
+    // CAPA 1 — numero grande: total proyectado en el horizonte.
+    const totalProyectado = serieProy.reduce((a, b) => a + b, 0);
+    const promProyectado = serieProy.length ? Math.round(totalProyectado / serieProy.length) : 0;
+    const unidad = escaparHTML(unidadProducto || 'unidades');
+    const uPer = UNIDAD_PERIODO_PL[horizonteUnidad] || 'periodos';
+
+    const hero =
+      '<div class="mk-hero">' +
+        '<div class="mk-hero-main">' +
+          '<span class="mk-hero-lbl">Demanda proyectada · próximos ' + horizonte + ' ' + escaparHTML(uPer) + '</span>' +
+          '<span class="mk-hero-num">' + formatearNumero(totalProyectado) +
+            '<span class="mk-hero-unidad">' + unidad + '</span></span>' +
+          '<span class="mk-hero-sub">≈ ' + formatearNumero(promProyectado) + ' por ' + escaparHTML(UNIDAD_PERIODO[horizonteUnidad] || 'periodo') + ' · ' + escaparHTML(NOMBRE_METODO[metodo] || '') + '</span>' +
+        '</div>' +
+        '<div class="mk-hero-meta">' +
+          '<div class="mk-hero-dato"><span class="k">Producto</span><span class="v">' + escaparHTML(nombreProducto) + '</span></div>' +
+          '<div class="mk-hero-dato"><span class="k">Base histórica</span><span class="v">' + nBase + ' ' + escaparHTML(nBase === 1 ? (UNIDAD_PERIODO[granularidad] || 'periodo') : (UNIDAD_PERIODO_PL[granularidad] || 'periodos')) + '</span></div>' +
+        '</div>' +
+      '</div>' +
+      '<p class="mk-transparencia">' + ICONOS.info +
+        '<span>Estimación basada en ' + nBase + ' ' + escaparHTML(nBase === 1 ? (UNIDAD_PERIODO[granularidad] || 'periodo') : (UNIDAD_PERIODO_PL[granularidad] || 'periodos')) +
+        ' con ventas registradas. Es una orientación estadística, no una promesa.</span></p>';
+
+    // CAPA 2 — grafico.
+    const grafico =
+      '<div class="mk-grafico-caja">' +
+        '<h3 class="mk-grafico-titulo">' + ICONOS.grafico + 'Ventas reales y proyección</h3>' +
+        construirGrafico(etiquetasReal, serieReal, etiquetasProy, serieProy) +
+        '<div class="mk-leyenda">' +
+          '<span class="mk-leyenda-item"><span class="mk-leyenda-swatch"></span>Ventas reales (pasado)</span>' +
+          '<span class="mk-leyenda-item"><span class="mk-leyenda-swatch proy"></span>Proyección (futuro)</span>' +
+        '</div>' +
+      '</div>';
+
+    // CAPA 3 — tabla de detalle (real vs proyectado por periodo).
+    let filasReal = buckets.map((b) =>
+      '<tr>' +
+        '<td class="periodo">' + escaparHTML(b.clave) + '</td>' +
+        '<td><span class="mk-tag real">Real</span></td>' +
+        '<td class="num">' + formatearNumero(b.cantidad) + '</td>' +
+      '</tr>'
+    ).join('');
+    let filasProy = serieProy.map((v, i) =>
+      '<tr class="proy">' +
+        '<td class="periodo">' + escaparHTML(etiquetasProy[i] || ('+' + (i + 1))) + '</td>' +
+        '<td><span class="mk-tag proy">Proyección</span></td>' +
+        '<td class="num">' + formatearNumero(v) + '</td>' +
+      '</tr>'
+    ).join('');
+
+    const tabla =
+      '<div class="mk-tabla-caja">' +
+        '<p class="mk-tabla-titulo">Detalle por periodo</p>' +
+        '<table class="mk-tabla">' +
+          '<thead><tr><th>Periodo</th><th>Tipo</th><th class="num">Unidades</th></tr></thead>' +
+          '<tbody>' + filasReal + filasProy + '</tbody>' +
+        '</table>' +
+      '</div>';
+
+    resultado.innerHTML = hero + grafico + tabla;
+    document.querySelectorAll('#mk-resultado [data-ico]').forEach((el) => {
+      el.innerHTML = ICONOS[el.dataset.ico] || '';
+    });
+  }
+
+  // ----------------------------------------------------------
+  // ORQUESTADOR: leer -> agrupar -> aplicar metodo -> pintar 3 capas
+  // ----------------------------------------------------------
+  async function proyectar() {
+    limpiarError();
+    const opt = selProducto.selectedOptions[0];
+    const productId = selProducto.value;
+    if (!productId) { mostrarError('Elige un producto para proyectar su demanda.'); return; }
+
+    const nombreProducto = opt ? opt.textContent : 'Producto';
+    const unidadProducto = opt ? (opt.dataset.unidad || 'unidades') : 'unidades';
+    const metodo = selMetodo.value;
+    const granularidad = selGran.value;
+    const base = Math.trunc(Number(selBase.value) || 0);       // 0 = todo
+    const horizonte = Math.max(1, Math.trunc(Number(inHorizonte.value) || 1));
+    const horizonteUnidad = selHorizonteUnidad.value;
+
+    btnProyectar.disabled = true;
+    resultado.innerHTML = '<div class="mk-empty">Leyendo el histórico de ventas…</div>';
+
+    let salidas;
+    try {
+      salidas = await leerSalidas(productId);
+    } catch (err) {
+      resultado.innerHTML = '';
+      mostrarError('No se pudo leer el histórico de ventas: ' + (err?.message || 'error desconocido') + '.');
+      btnProyectar.disabled = false;
+      return;
+    }
+    btnProyectar.disabled = false;
+
+    // Agrupar por periodo segun granularidad.
+    let buckets = agruparPorPeriodo(salidas, granularidad);
+
+    // Periodo-base: recorta a los ultimos N buckets (0 = todo el historial).
+    if (base > 0 && buckets.length > base) buckets = buckets.slice(-base);
+
+    // Estado vacio sobrio: NO bloquea controles, solo informa.
+    if (!buckets.length) { pintarVacio(nombreProducto); return; }
+
+    const serie = buckets.map((b) => b.cantidad);
+    let proyeccion;
+    if (metodo === 'promedio-movil') {
+      const ventana = Math.max(1, Math.trunc(Number(inVentana.value) || 1));
+      proyeccion = promedioMovil(serie, ventana, horizonte);
+    } else if (metodo === 'suavizacion') {
+      const alpha = Math.min(Math.max(Number(inAlpha.value) || 0.5, 0.0001), 1);
+      proyeccion = suavizacionExponencial(serie, alpha, horizonte).proyeccion;
+    } else {
+      proyeccion = regresionLineal(serie, horizonte).proyeccion;
+    }
+
+    pintarResultado({
+      nombreProducto, unidadProducto, metodo, granularidad,
+      buckets, proyeccion, horizonte, horizonteUnidad, nBase: buckets.length
+    });
+  }
+
+  btnProyectar.addEventListener('click', proyectar);
+
+  (async () => {
+    const acceso = await asegurarAcceso(document.body, '../index.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Proyección de la demanda',
+      kicker: 'MARKETING PROJECT · PRONÓSTICO',
+      lead: 'Cuánto se venderá de un producto, estimado a partir del histórico real del inventario. Tres métodos, tú eliges cuánto historial mira y hasta dónde proyecta.',
+      sesion: acceso.sesion,
+      areaLabel: 'MARKETING PROJECT',
+      volverHref: 'index.html',
+      volverTexto: 'Marketing Project'
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    sincronizarControlesMetodo();
+    await cargarProductos();
+
+    document.getElementById('mk-main').hidden = false;
+  })();
+</script>
+
+</body>
+</html>

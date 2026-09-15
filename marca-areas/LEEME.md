@@ -11,6 +11,13 @@ de MAGANDHI pero con una variación cromática por área.
 - `finanzas.png` → ícono del Área de Finanzas.
   Domo MAGANDHI + moneda ($) y gráfico ascendente, en **verde**. PNG con
   **fondo transparente**.
+- `marketing.png` → ícono del Área de Marketing (Marketing Project adentro).
+  **PLACEHOLDER provisional**: es una copia de `control-interno.png` (azul
+  marino) para que las páginas de `marketing/` no queden con un favicon 404.
+  El dueño debe **reemplazarlo** por el arte final del área (base del domo
+  MAGANDHI en la **familia azul marino** del back-office, **sin color nuevo**:
+  el verde ya es de Finanzas) y subir el `?v=N` del `<link rel="icon">` de las
+  páginas de Marketing.
 
 Ambos los diseñó el dueño y se exportaron con fondo transparente (removebg /
 Firefly). Se referencian con `?v=N` (cache-bust) en el `<link rel="icon">` de

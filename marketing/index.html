@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Área de Marketing</title>
+<meta name="description" content="Área de Marketing de Magandhi Corporation.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../marca-areas/marketing.png?v=1">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=1">
+<link rel="stylesheet" href="marketing.css?v=1">
+
+<!--
+  MAGANDHI · Area de Marketing · HOME del area (carpeta).
+  Protegida por auth-guard.js (via marketing-core). El candado real es RLS.
+  El area funciona como carpeta: hoy contiene la sub-area "Marketing Project"
+  y esta preparada para crecer con mas sub-areas en el futuro.
+-->
+</head>
+<body class="mk-body">
+
+<!-- Guardia reutilizable: sin sesion, redirige al login de la raiz. -->
+<script type="module" src="../auth-guard.js"></script>
+
+<main class="mk-wrap" id="mk-main" hidden>
+  <div class="mk-cards">
+    <a class="mk-card" href="marketing-project/index.html">
+      <span class="mk-card-ico" data-ico="tendencia"></span>
+      <h3>Marketing Project</h3>
+      <p>El laboratorio de análisis comercial: proyección de la demanda a partir del histórico real de ventas, con más categorías en camino.</p>
+    </a>
+    <!-- Hueco preparado para crecer: nuevas sub-areas de Marketing. No es un
+         enlace (sobrio, no promete funciones); comunica que el area escala. -->
+    <div class="mk-card proxima" aria-hidden="true">
+      <span class="mk-card-ico" data-ico="megafono"></span>
+      <h3>Más sub-áreas</h3>
+      <p>Este espacio queda listo para nuevas sub-áreas de Marketing conforme el ecosistema crezca.</p>
+      <span class="mk-chip-proxima">Próximamente</span>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+  import { asegurarAcceso, montarHeader, ICONOS } from './marketing-core.js';
+
+  (async () => {
+    const main = document.getElementById('mk-main');
+    const acceso = await asegurarAcceso(document.body, '../panel.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Área de Marketing',
+      kicker: 'INTELIGENCIA COMERCIAL',
+      lead: 'El área donde los datos del negocio se vuelven decisiones. Empieza por Marketing Project; el área está lista para crecer con nuevas herramientas.',
+      sesion: acceso.sesion,
+      areaLabel: 'ÁREA DE MARKETING',
+      volverHref: '../panel.html',
+      volverTexto: 'Panel'
+    });
+
+    document.querySelectorAll('[data-ico]').forEach((el) => {
+      el.innerHTML = ICONOS[el.dataset.ico] || '';
+    });
+
+    main.hidden = false;
+  })();
+</script>
+
+</body>
+</html>

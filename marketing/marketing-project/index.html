@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Marketing Project</title>
+<meta name="description" content="Marketing Project · análisis comercial del Área de Marketing de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/marketing.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=1">
+<link rel="stylesheet" href="../marketing.css?v=1">
+
+<!--
+  MAGANDHI · Area de Marketing · Sub-area MARKETING PROJECT (carpeta de
+  categorias de analisis). Hoy contiene "Proyeccion de la demanda"; el plano
+  aprobado prevee mas categorias (oportunidades de mercado, analisis cluster,
+  elasticidad, "cosas que podria estar ignorando"). Se dejan como huecos
+  sobrios para que el dueno vea que el modulo esta preparado para crecer, sin
+  prometer funciones que aun no existen.
+  Nota de profundidad: esta pagina vive DOS niveles bajo la raiz
+  (marketing/marketing-project/), por eso importa el core como
+  '../marketing-core.js' y las rutas de marca suben '../../'. El core resuelve
+  sus propios imports (supabase/auth-guard) relativos a SI MISMO (marketing/),
+  asi que una sola copia del nucleo sirve a ambas profundidades.
+-->
+</head>
+<body class="mk-body">
+
+<!-- Guardia reutilizable: sin sesion, redirige al login de la raiz. -->
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="mk-wrap" id="mk-main" hidden>
+  <p class="mk-cat-titulo">Categorías de análisis</p>
+  <div class="mk-cards">
+    <a class="mk-card" href="proyeccion-demanda.html">
+      <span class="mk-card-ico" data-ico="grafico"></span>
+      <h3>Proyección de la demanda</h3>
+      <p>Proyecta cuánto se venderá de un producto a partir del histórico real del inventario, con tres métodos elegibles.</p>
+    </a>
+
+    <!-- Huecos preparados (categorias nombradas en el plano aprobado). No son
+         enlaces: comunican el rumbo sin prometer funciones aun inexistentes. -->
+    <div class="mk-card proxima" aria-hidden="true">
+      <span class="mk-card-ico" data-ico="brujula"></span>
+      <h3>Oportunidades de mercado</h3>
+      <p>Dónde hay demanda que aún no estamos capturando.</p>
+      <span class="mk-chip-proxima">Próximamente</span>
+    </div>
+    <div class="mk-card proxima" aria-hidden="true">
+      <span class="mk-card-ico" data-ico="cluster"></span>
+      <h3>Análisis clúster</h3>
+      <p>Agrupar productos y clientes por comportamiento de compra.</p>
+      <span class="mk-chip-proxima">Próximamente</span>
+    </div>
+    <div class="mk-card proxima" aria-hidden="true">
+      <span class="mk-card-ico" data-ico="etiqueta"></span>
+      <h3>Elasticidad</h3>
+      <p>Cómo cambia la cantidad vendida ante cambios de precio.</p>
+      <span class="mk-chip-proxima">Próximamente</span>
+    </div>
+    <div class="mk-card proxima" aria-hidden="true">
+      <span class="mk-card-ico" data-ico="info"></span>
+      <h3>Cosas que podría estar ignorando</h3>
+      <p>Señales del negocio que pasan desapercibidas y conviene revisar.</p>
+      <span class="mk-chip-proxima">Próximamente</span>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+  import { asegurarAcceso, montarHeader, ICONOS } from '../marketing-core.js';
+
+  (async () => {
+    const main = document.getElementById('mk-main');
+    const acceso = await asegurarAcceso(document.body, '../index.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Marketing Project',
+      kicker: 'ANÁLISIS COMERCIAL',
+      lead: 'El laboratorio donde el histórico de ventas se vuelve pronóstico. Empieza por la proyección de la demanda; hay más categorías en camino.',
+      sesion: acceso.sesion,
+      areaLabel: 'MARKETING PROJECT',
+      volverHref: '../index.html',
+      volverTexto: 'Marketing'
+    });
+
+    document.querySelectorAll('[data-ico]').forEach((el) => {
+      el.innerHTML = ICONOS[el.dataset.ico] || '';
+    });
+
+    main.hidden = false;
+  })();
+</script>
+
+</body>
+</html>
