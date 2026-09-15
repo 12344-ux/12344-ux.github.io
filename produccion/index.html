@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Área de Producción</title>
+<meta name="description" content="Área de Producción de Magandhi Corporation.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../marca-areas/produccion.png?v=1">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=1">
+<link rel="stylesheet" href="produccion.css?v=1">
+
+<!--
+  MAGANDHI · Area de Produccion · HOME del area.
+  Protegida por auth-guard.js (via inventario-core). El candado real es RLS.
+  El area funciona como CARPETA: adentro viven sus sub-areas. Hoy una:
+  Inventarios. Preparada para crecer (mas tarjetas de sub-area).
+-->
+</head>
+<body class="pr-body">
+
+<!-- Guardia reutilizable: sin sesion, redirige al login de la raiz. -->
+<script type="module" src="../auth-guard.js"></script>
+
+<main class="pr-wrap" id="pr-main" hidden>
+  <div class="pr-cards">
+    <a class="pr-card" href="inventarios/index.html">
+      <span class="pr-card-ico" data-ico="box"></span>
+      <h3>Inventarios</h3>
+      <p>Libro de movimientos append-only, stock derivado y fichas de producto con imagen optimizada.</p>
+    </a>
+
+    <!-- Hueco preparado para sub-areas futuras del area de Produccion. -->
+    <div class="pr-card pr-card-futuro">
+      <span class="pr-card-ico" data-ico="warehouse"></span>
+      <span class="pr-badge-pronto">Próximamente</span>
+      <h3>Más sub-áreas</h3>
+      <p>El área está lista para crecer: nuevas herramientas de producción se sumarán aquí.</p>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+  import { asegurarAcceso, montarHeader, ICONOS } from './inventario-core.js';
+
+  (async () => {
+    const main = document.getElementById('pr-main');
+    const acceso = await asegurarAcceso(document.body, '../panel.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Área de Producción',
+      kicker: 'PRODUCCIÓN · OPERACIÓN',
+      lead: 'El corazón operativo de Magandhi. Cada sub-área es una carpeta: entra y encontrarás sus herramientas. Hoy vive aquí Inventarios.',
+      sesion: acceso.sesion,
+      volverHref: '../panel.html',
+      volverTexto: 'Panel'
+    });
+
+    document.querySelectorAll('[data-ico]').forEach((el) => {
+      el.innerHTML = ICONOS[el.dataset.ico] || '';
+    });
+
+    main.hidden = false;
+  })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Inventarios</title>
+<meta name="description" content="Inventarios · Área de Producción de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/produccion.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=1">
+<link rel="stylesheet" href="../produccion.css?v=1">
+
+<!--
+  MAGANDHI · Area de Produccion · Inventarios · HOME de la sub-area.
+  Dos funciones: Ver inventario (vitrina + detalle + movimientos) y Agregar a
+  inventario (alta con imagen optimizada; SKU/ID autogenerados). Se deja un
+  hueco visual para herramientas futuras (Movimientos, Alertas de stock bajo).
+  El candado real es RLS server-side (tiene_modulo('inventario')).
+-->
+</head>
+<body class="pr-body">
+
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="pr-wrap" id="pr-main" hidden>
+  <div class="pr-cards">
+    <a class="pr-card" href="ver.html">
+      <span class="pr-card-ico" data-ico="lista"></span>
+      <h3>Ver inventario</h3>
+      <p>Vitrina de fichas: imagen, SKU, existencias y precio de cada producto. Abre el detalle para ver su historial y registrar movimientos.</p>
+    </a>
+    <a class="pr-card" href="agregar.html">
+      <span class="pr-card-ico" data-ico="mas"></span>
+      <h3>Agregar a inventario</h3>
+      <p>Da de alta un producto con cantidad inicial e imagen. El SKU y el identificador se generan automáticamente.</p>
+    </a>
+
+    <!-- Huecos preparados para herramientas futuras de la sub-area. -->
+    <div class="pr-card pr-card-futuro">
+      <span class="pr-card-ico" data-ico="movimientos"></span>
+      <span class="pr-badge-pronto">Próximamente</span>
+      <h3>Movimientos</h3>
+      <p>Bitácora completa de entradas y salidas del libro, filtrable por producto y periodo.</p>
+    </div>
+    <div class="pr-card pr-card-futuro">
+      <span class="pr-card-ico" data-ico="alerta"></span>
+      <span class="pr-badge-pronto">Próximamente</span>
+      <h3>Alertas de stock bajo</h3>
+      <p>Aviso cuando las existencias caen por debajo del mínimo definido para cada producto.</p>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+  import { asegurarAcceso, montarHeader, ICONOS } from '../inventario-core.js';
+
+  (async () => {
+    const main = document.getElementById('pr-main');
+    const acceso = await asegurarAcceso(document.body, '../index.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Inventarios',
+      kicker: 'PRODUCCIÓN · INVENTARIOS',
+      lead: 'El libro de existencias de Magandhi. Cada producto vive en una ficha con su imagen; el stock se deriva del libro de movimientos y nada se borra.',
+      sesion: acceso.sesion,
+      areaLabel: 'INVENTARIOS',
+      volverHref: '../index.html',
+      volverTexto: 'Producción'
+    });
+
+    document.querySelectorAll('[data-ico]').forEach((el) => {
+      el.innerHTML = ICONOS[el.dataset.ico] || '';
+    });
+
+    main.hidden = false;
+  })();
+</script>
+
+</body>
+</html>
