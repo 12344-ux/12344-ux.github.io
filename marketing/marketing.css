@@ -209,7 +209,7 @@ body.mk-body{
    consulta. Espejo funcional de fz-bc-controles pero pensada como panel.
    ============================================================ */
 .mk-panel{
-  background:var(--mk-tarjeta);border:1px solid var(--mk-linea);
+  background:var(--mk-tarjeta);border:1.5px solid var(--mk-acento);
   border-radius:var(--mk-radio);padding:18px 20px;
 }
 .mk-controles{
