@@ -1,0 +1,534 @@
+/* ============================================================
+   MAGANDHI · AREA DE PRODUCCION · Tokens y estilos de area
+   ------------------------------------------------------------
+   Extiende marca.css (terracota + crema). Se carga DESPUES de marca.css.
+
+   IDENTIDAD DEL AREA (aprobada por el dueno):
+   · HEREDA el AZUL MARINO institucional del back-office (#101C33): NO se
+     introduce ningun color nuevo. El verde salvia ya es de Finanzas y el
+     terracota ya es marca; aqui salvia/terracota solo se usan como
+     INDICADORES DE ESTADO de un movimiento (entrada = salvia, salida =
+     terracota), nunca como color del area.
+   · La diferenciacion frente a Finanzas es por LAYOUT: el Inventario se
+     presenta como una VITRINA DE FICHAS donde la IMAGEN del producto
+     manda, no como filas numericas densas.
+   · Densidad de trabajo, montos con tabular-nums, mismo header, cards,
+     tablas, buscador con lupa, modal, timeline (bitacora), aviso de
+     acceso denegado y sello Impulse que el area de Finanzas.
+
+   Los tokens de color reproducen los mismos valores de finanzas.css a
+   proposito (mismo azul marino institucional). Se replican aqui con
+   prefijo pr- para no acoplar este archivo a finanzas.css (cada area es
+   clonable de forma independiente). NINGUN valor nuevo de color.
+
+   Prefijo de clase: pr- (area) / inv- (inventario, la vitrina).
+   ============================================================ */
+:root{
+  --pr-marino:#101C33;        /* header institucional (mismo del back-office) */
+  --pr-azul:#1B2A47;          /* azul marino de apoyo */
+  --pr-azul-cl:#8FA3C4;       /* etiqueta 'AREA DE PRODUCCION' */
+  --pr-crema:#F7F3EC;         /* fondo de trabajo */
+  --pr-carbon:#2A2622;        /* texto principal */
+  --pr-gris:#8A8578;          /* gris de apoyo */
+  --pr-terracota:var(--rojo); /* estado 'salida' / alerta (reusa marca.css) */
+  --pr-salvia:#5B8A6F;        /* estado 'entrada' (indicador, no color de area) */
+  --pr-salvia-bg:#E7F0EA;     /* fondo suave del estado entrada */
+  --pr-linea:rgba(16,28,51,.12);
+  --pr-tarjeta:#FFFFFF;
+  --pr-radio:14px;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body.pr-body{
+  background:var(--pr-crema);
+  color:var(--pr-carbon);
+  font-family:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  line-height:1.55;-webkit-font-smoothing:antialiased;
+  min-height:100vh;
+  display:flex;flex-direction:column;
+}
+
+/* Cifras: siempre tabular para alinear */
+.pr-num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ============================================================
+   HEADER INSTITUCIONAL FIJO (identico al de Finanzas, azul marino)
+   ============================================================ */
+.pr-header{
+  position:sticky;top:0;z-index:50;
+  background:var(--pr-marino);color:#fff;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:12px 24px;
+  box-shadow:0 2px 10px rgba(16,28,51,.18);
+}
+.pr-header-left{display:flex;align-items:center;gap:14px;min-width:0}
+.pr-volver{
+  display:inline-flex;align-items:center;gap:6px;flex:none;
+  font-family:inherit;font-size:13px;font-weight:600;letter-spacing:.02em;
+  color:var(--pr-azul-cl);text-decoration:none;
+  background:rgba(143,163,196,.14);border-radius:999px;
+  padding:7px 14px 7px 10px;
+  transition:background-color .15s ease, color .15s ease;
+}
+.pr-volver:hover{background:rgba(143,163,196,.28);color:#fff}
+.pr-volver svg{width:18px;height:18px;flex:none}
+.pr-logo{width:34px;height:34px;display:block;flex:none}
+.pr-word{font-weight:600;font-size:17px;letter-spacing:.22em;color:#fff;line-height:1}
+.pr-sep{width:1px;height:26px;background:rgba(143,163,196,.4);flex:none}
+.pr-area{
+  font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--pr-azul-cl);white-space:nowrap;
+}
+.pr-header-right{display:flex;align-items:center;gap:14px}
+.pr-icon-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:36px;height:36px;border-radius:10px;
+  background:rgba(143,163,196,.14);border:0;color:var(--pr-azul-cl);
+  cursor:pointer;transition:background-color .15s ease;text-decoration:none;
+}
+.pr-icon-btn:hover{background:rgba(143,163,196,.28);color:#fff}
+.pr-icon-btn svg{width:20px;height:20px}
+.pr-avatar{
+  width:36px;height:36px;border-radius:50%;flex:none;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--pr-terracota);color:#fff;
+  font-weight:600;font-size:15px;letter-spacing:.02em;text-transform:uppercase;
+  border:0;font-family:inherit;cursor:pointer;padding:0;
+  transition:box-shadow .15s ease, transform .1s ease;
+}
+.pr-avatar:hover{box-shadow:0 0 0 3px rgba(143,163,196,.35)}
+.pr-avatar:focus-visible{outline:0;box-shadow:0 0 0 3px rgba(143,163,196,.55)}
+.pr-avatar[aria-expanded="true"]{box-shadow:0 0 0 3px rgba(143,163,196,.55)}
+
+/* ============================================================
+   MENU DE PERFIL (dropdown bajo el avatar)
+   ============================================================ */
+.pr-perfil{position:relative;display:flex;align-items:center}
+.pr-perfil-menu{
+  position:absolute;top:calc(100% + 10px);right:0;z-index:60;
+  min-width:230px;
+  background:var(--pr-tarjeta);color:var(--pr-carbon);
+  border:1px solid var(--pr-linea);border-radius:12px;
+  box-shadow:0 14px 40px rgba(16,28,51,.24);padding:6px;
+}
+.pr-perfil-menu[hidden]{display:none}
+.pr-perfil-info{
+  display:flex;flex-direction:column;gap:2px;
+  padding:10px 12px 12px;border-bottom:1px solid var(--pr-linea);
+}
+.pr-perfil-lbl{
+  font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--pr-gris);
+}
+.pr-perfil-email{font-size:13.5px;color:var(--pr-carbon);word-break:break-all}
+.pr-perfil-salir{
+  display:flex;align-items:center;gap:9px;width:100%;margin-top:4px;
+  font-family:inherit;font-size:13.5px;font-weight:600;text-align:left;
+  color:var(--pr-terracota);background:transparent;border:0;border-radius:9px;
+  padding:10px 12px;cursor:pointer;transition:background-color .15s ease;
+}
+.pr-perfil-salir:hover{background:rgba(166,51,46,.08)}
+.pr-perfil-salir:focus-visible{outline:0;background:rgba(166,51,46,.12)}
+.pr-perfil-salir svg{width:17px;height:17px;flex:none}
+
+/* ============================================================
+   SELLO DE PROVEEDOR ("Con tecnologia Impulse")
+   Firma sobria; solo back-office interno, nunca la tienda publica.
+   ============================================================ */
+.pr-sello{
+  margin-top:auto;
+  padding:26px 24px 30px;text-align:center;
+  font-size:11.5px;letter-spacing:.05em;color:var(--pr-gris);
+}
+.pr-sello-marca{color:var(--pr-marino);font-weight:600;letter-spacing:.06em}
+
+/* ============================================================
+   ENCABEZADO EDITORIAL DE PANTALLA (bajo el header)
+   ============================================================ */
+.pr-screen-head{max-width:1080px;margin:0 auto;padding:26px 24px 6px}
+.pr-kicker{
+  margin:0 0 6px;
+  font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--pr-terracota);
+}
+.pr-title{
+  margin:0;font-size:clamp(22px,3vw,30px);font-weight:600;
+  color:var(--pr-marino);letter-spacing:-.01em;
+}
+.pr-lead{margin:8px 0 0;font-size:14px;color:var(--pr-gris);max-width:60ch}
+
+/* Contenedor general de trabajo */
+.pr-wrap{max-width:1080px;margin:0 auto;padding:18px 24px 60px}
+
+/* Aviso de acceso denegado */
+.pr-denegado{
+  max-width:560px;margin:60px auto;padding:34px 28px;text-align:center;
+  background:var(--pr-tarjeta);border:1px solid var(--pr-linea);
+  border-radius:var(--pr-radio);
+}
+.pr-denegado h2{margin:0 0 8px;color:var(--pr-terracota);font-size:18px}
+.pr-denegado p{margin:0;color:var(--pr-gris);font-size:14px}
+.pr-denegado a{color:var(--pr-marino);font-weight:600}
+
+/* ============================================================
+   TARJETAS DE NAVEGACION (home del area / sub-area)
+   ============================================================ */
+.pr-cards{
+  display:grid;gap:16px;
+  grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+}
+.pr-card{
+  display:flex;flex-direction:column;gap:10px;
+  background:var(--pr-tarjeta);border:1px solid var(--pr-linea);
+  border-radius:var(--pr-radio);padding:20px;
+  text-decoration:none;color:inherit;
+  transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.pr-card:hover{
+  transform:translateY(-2px);
+  box-shadow:0 8px 22px rgba(16,28,51,.10);
+  border-color:var(--pr-azul-cl);
+}
+.pr-card-ico{
+  width:42px;height:42px;border-radius:11px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(16,28,51,.06);color:var(--pr-marino);
+}
+.pr-card-ico svg{width:22px;height:22px}
+.pr-card h3{margin:0;font-size:16px;font-weight:600;color:var(--pr-marino)}
+.pr-card p{margin:0;font-size:13px;color:var(--pr-gris)}
+
+/* Hueco visual para sub-areas futuras (Movimientos, Alertas de stock bajo) */
+.pr-card.pr-card-futuro{
+  border-style:dashed;background:rgba(16,28,51,.02);cursor:default;
+  pointer-events:none;opacity:.75;
+}
+.pr-card.pr-card-futuro:hover{transform:none;box-shadow:none;border-color:var(--pr-linea)}
+.pr-card-futuro .pr-card-ico{background:rgba(16,28,51,.04);color:var(--pr-gris)}
+.pr-card-futuro h3{color:var(--pr-gris)}
+.pr-badge-pronto{
+  align-self:flex-start;
+  font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--pr-gris);background:rgba(16,28,51,.06);
+  border-radius:999px;padding:3px 10px;
+}
+
+/* ============================================================
+   BUSCADOR (input con lupa) · igual que el catalogo PUC
+   ============================================================ */
+.pr-search{position:relative;max-width:520px;margin-bottom:6px}
+.pr-search .pr-search-ico{
+  position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  color:var(--pr-gris);pointer-events:none;
+}
+.pr-search .pr-search-ico svg{width:18px;height:18px;display:block}
+.pr-input{
+  width:100%;font-family:inherit;font-size:14px;color:var(--pr-carbon);
+  background:var(--pr-tarjeta);border:1px solid var(--pr-linea);
+  border-radius:10px;padding:11px 14px 11px 38px;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+.pr-input:focus{
+  outline:0;border-color:var(--pr-marino);box-shadow:0 0 0 3px rgba(16,28,51,.10);
+}
+.pr-hint{font-size:12px;color:var(--pr-gris);margin:14px 0 4px}
+.pr-empty{color:var(--pr-gris);font-size:14px;padding:24px 4px;text-align:center}
+
+/* Aviso sobrio "aun no hay informacion" (mismo espiritu que el Balance General) */
+.pr-aviso-vacio{
+  display:flex;align-items:flex-start;gap:12px;
+  max-width:620px;margin:22px auto;
+  font-size:14px;color:var(--pr-gris);
+  background:rgba(16,28,51,.04);border:1px solid var(--pr-linea);
+  border-radius:var(--pr-radio);padding:18px 20px;
+}
+.pr-aviso-vacio svg{width:20px;height:20px;color:var(--pr-marino);flex:none;margin-top:1px}
+.pr-aviso-vacio strong{color:var(--pr-marino)}
+
+/* ============================================================
+   VITRINA DE FICHAS (Ver inventario) · LAYOUT que diferencia el area:
+   la IMAGEN del producto manda; los numeros son secundarios.
+   ============================================================ */
+.pr-vitrina{
+  display:grid;gap:18px;margin-top:20px;
+  grid-template-columns:repeat(auto-fill,minmax(236px,1fr));
+}
+.inv-ficha{
+  display:flex;flex-direction:column;
+  background:var(--pr-tarjeta);border:1px solid var(--pr-linea);
+  border-radius:var(--pr-radio);overflow:hidden;text-align:left;
+  padding:0;cursor:pointer;font-family:inherit;color:inherit;
+  transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.inv-ficha:hover{
+  transform:translateY(-2px);
+  box-shadow:0 10px 26px rgba(16,28,51,.12);
+  border-color:var(--pr-azul-cl);
+}
+.inv-ficha:focus-visible{outline:0;border-color:var(--pr-marino);
+  box-shadow:0 0 0 3px rgba(16,28,51,.15)}
+/* La imagen lidera: relacion cuadrada, fondo neutro para productos sin foto */
+.inv-foto{
+  position:relative;width:100%;aspect-ratio:1/1;overflow:hidden;
+  background:rgba(16,28,51,.05);
+  display:flex;align-items:center;justify-content:center;
+}
+.inv-foto img{width:100%;height:100%;object-fit:cover;display:block}
+.inv-foto-sin{color:var(--pr-gris);display:flex;align-items:center;justify-content:center}
+.inv-foto-sin svg{width:46px;height:46px;opacity:.5}
+/* Badges sobre la imagen (estado de stock) */
+.inv-badges{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:6px}
+.inv-badge{
+  font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:999px;padding:4px 10px;backdrop-filter:blur(2px);
+}
+.inv-badge.bajo{color:#fff;background:rgba(166,51,46,.92)}
+.inv-badge.negativo{color:#fff;background:var(--pr-terracota);
+  box-shadow:0 0 0 2px rgba(255,255,255,.5)}
+.inv-ficha-cuerpo{display:flex;flex-direction:column;gap:6px;padding:14px 16px 16px}
+.inv-sku{
+  font-variant-numeric:tabular-nums;font-size:12px;font-weight:600;
+  letter-spacing:.04em;color:var(--pr-marino);
+  background:rgba(16,28,51,.07);border-radius:999px;padding:3px 10px;
+  align-self:flex-start;
+}
+.inv-nombre{font-size:15px;font-weight:600;color:var(--pr-carbon);line-height:1.3}
+.inv-cat{font-size:12px;color:var(--pr-gris)}
+.inv-ficha-pie{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:10px;
+  margin-top:6px;padding-top:10px;border-top:1px solid var(--pr-linea);
+}
+.inv-existencias{display:flex;flex-direction:column;gap:0}
+.inv-existencias .lbl{
+  font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--pr-gris);
+}
+.inv-existencias .val{
+  font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;
+  color:var(--pr-marino);line-height:1.1;
+}
+.inv-existencias.bajo .val{color:var(--pr-terracota)}
+.inv-existencias.negativo .val{color:var(--pr-terracota)}
+.inv-precio{
+  font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;
+  color:var(--pr-carbon);text-align:right;
+}
+.inv-precio .lbl{
+  display:block;font-size:10px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--pr-gris);
+}
+
+/* ============================================================
+   FORMULARIO (Agregar a inventario) · reusa la estetica de Finanzas
+   ============================================================ */
+.pr-panel{
+  background:var(--pr-tarjeta);border:1px solid var(--pr-linea);
+  border-radius:var(--pr-radio);padding:20px;
+}
+.pr-field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.pr-field label{
+  font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--pr-gris);
+}
+.pr-field-row{display:flex;gap:16px;flex-wrap:wrap}
+.pr-field-row .pr-field{flex:1;min-width:200px}
+.pr-field input,.pr-field textarea,.pr-field select{
+  width:100%;font-family:inherit;font-size:14px;color:var(--pr-carbon);
+  background:var(--pr-tarjeta);border:1px solid var(--pr-linea);
+  border-radius:9px;padding:10px 12px;
+}
+.pr-field textarea{resize:vertical;min-height:78px}
+.pr-field input:focus,.pr-field textarea:focus,.pr-field select:focus{
+  outline:0;border-color:var(--pr-marino);box-shadow:0 0 0 3px rgba(16,28,51,.10);
+}
+.pr-field .pr-ayuda{font-size:12px;color:var(--pr-gris);font-weight:400;text-transform:none;letter-spacing:0}
+/* Campo de monto: tabular, alineado a la derecha */
+.pr-field.pr-monto input{font-variant-numeric:tabular-nums;text-align:right;font-weight:600}
+
+/* Aviso "SKU e ID se generan automaticamente" */
+.pr-autogen{
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:13px;color:var(--pr-marino);
+  background:rgba(16,28,51,.05);border-radius:10px;padding:11px 14px;margin-bottom:16px;
+}
+.pr-autogen svg{width:18px;height:18px;flex:none;margin-top:1px}
+
+/* Zona de imagen (dropzone + preview) */
+.pr-imagen-zona{
+  display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;
+}
+.pr-imagen-preview{
+  width:150px;height:150px;flex:none;border-radius:var(--pr-radio);
+  border:1px dashed var(--pr-linea);overflow:hidden;
+  background:rgba(16,28,51,.04);
+  display:flex;align-items:center;justify-content:center;color:var(--pr-gris);
+}
+.pr-imagen-preview img{width:100%;height:100%;object-fit:cover;display:block}
+.pr-imagen-preview svg{width:40px;height:40px;opacity:.5}
+.pr-imagen-datos{flex:1;min-width:200px;font-size:12.5px;color:var(--pr-gris)}
+.pr-imagen-datos .pr-peso{
+  font-variant-numeric:tabular-nums;color:var(--pr-marino);font-weight:600;
+}
+
+.pr-acciones{display:flex;gap:12px;align-items:center;margin-top:22px;flex-wrap:wrap}
+.pr-btn-guardar{
+  font-family:inherit;font-size:15px;font-weight:600;letter-spacing:.02em;
+  color:#fff;background:var(--pr-terracota);
+  border:0;border-radius:11px;padding:13px 26px;cursor:pointer;
+  transition:background-color .15s ease, opacity .15s ease;
+}
+.pr-btn-guardar:hover:not(:disabled){background:var(--rojo-osc)}
+.pr-btn-guardar:disabled{opacity:.45;cursor:not-allowed}
+.pr-btn-sec{
+  font-family:inherit;font-size:14px;font-weight:600;
+  color:var(--pr-marino);background:var(--pr-tarjeta);
+  border:1px solid var(--pr-linea);border-radius:11px;padding:12px 20px;
+  cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;
+  transition:background-color .15s ease, border-color .15s ease;
+}
+.pr-btn-sec:hover{background:rgba(16,28,51,.05);border-color:var(--pr-azul-cl)}
+.pr-btn-sec svg{width:16px;height:16px}
+.pr-msg{font-size:13px}
+.pr-msg.ok{color:var(--pr-salvia)}
+.pr-msg.err{color:var(--pr-terracota)}
+
+/* Confirmacion de alta: muestra el SKU generado */
+.pr-alta-ok{
+  display:flex;align-items:center;gap:12px;
+  background:var(--pr-salvia-bg);border:1px solid rgba(91,138,111,.3);
+  border-radius:var(--pr-radio);padding:16px 18px;margin-bottom:18px;
+}
+.pr-alta-ok svg{width:22px;height:22px;color:var(--pr-salvia);flex:none}
+.pr-alta-ok .pr-sku-gen{
+  font-variant-numeric:tabular-nums;font-weight:700;color:var(--pr-marino);
+  letter-spacing:.03em;
+}
+
+/* ============================================================
+   MODAL (detalle de producto + registrar movimiento)
+   ============================================================ */
+.pr-modal{
+  position:fixed;inset:0;z-index:100;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  background:rgba(16,28,51,.45);overflow:auto;
+}
+.pr-modal[hidden]{display:none}
+.pr-modal-card{
+  width:100%;max-width:720px;margin:auto;
+  background:var(--pr-tarjeta);border-radius:var(--pr-radio);
+  padding:0;box-shadow:0 20px 60px rgba(16,28,51,.30);
+  max-height:calc(100vh - 40px);display:flex;flex-direction:column;overflow:hidden;
+}
+.pr-modal-top{
+  display:flex;align-items:center;gap:14px;
+  padding:18px 22px;border-bottom:1px solid var(--pr-linea);
+}
+.pr-modal-top .pr-modal-titulo{flex:1;min-width:0}
+.pr-modal-top h3{margin:0;font-size:18px;color:var(--pr-marino);font-weight:600}
+.pr-modal-top .inv-sku{margin-top:4px}
+.pr-modal-cerrar{
+  width:36px;height:36px;border-radius:10px;flex:none;
+  background:rgba(16,28,51,.06);border:0;color:var(--pr-marino);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.pr-modal-cerrar:hover{background:rgba(16,28,51,.12)}
+.pr-modal-cerrar svg{width:18px;height:18px}
+.pr-modal-cuerpo{padding:20px 22px;overflow:auto}
+
+/* Detalle: foto + ficha en dos columnas */
+.pr-detalle{display:flex;gap:20px;flex-wrap:wrap}
+.pr-detalle-foto{
+  width:200px;height:200px;flex:none;border-radius:var(--pr-radio);overflow:hidden;
+  background:rgba(16,28,51,.05);display:flex;align-items:center;justify-content:center;
+  color:var(--pr-gris);
+}
+.pr-detalle-foto img{width:100%;height:100%;object-fit:cover;display:block}
+.pr-detalle-foto svg{width:52px;height:52px;opacity:.5}
+.pr-detalle-datos{flex:1;min-width:240px}
+.pr-detalle-existencias{
+  display:flex;align-items:baseline;gap:10px;margin-bottom:12px;
+}
+.pr-detalle-existencias .val{
+  font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--pr-marino);
+}
+.pr-detalle-existencias.bajo .val,.pr-detalle-existencias.negativo .val{color:var(--pr-terracota)}
+.pr-detalle-existencias .uni{font-size:13px;color:var(--pr-gris)}
+.pr-negativo-aviso{
+  display:flex;align-items:flex-start;gap:9px;
+  font-size:12.5px;color:var(--pr-terracota);
+  background:rgba(166,51,46,.08);border:1px solid rgba(166,51,46,.25);
+  border-radius:10px;padding:10px 12px;margin-bottom:12px;
+}
+.pr-negativo-aviso svg{width:16px;height:16px;flex:none;margin-top:1px}
+.pr-ficha-datos{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;margin-top:4px}
+.pr-dato{display:flex;flex-direction:column;gap:1px}
+.pr-dato .k{
+  font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--pr-gris);
+}
+.pr-dato .v{font-size:13.5px;color:var(--pr-carbon)}
+.pr-dato .v.num{font-variant-numeric:tabular-nums}
+.pr-detalle-desc{margin:12px 0 0;font-size:13.5px;color:var(--pr-carbon)}
+
+/* Seccion (encabezado dentro del modal) */
+.pr-seccion-tit{
+  display:flex;align-items:center;gap:8px;
+  margin:22px 0 12px;font-size:13px;font-weight:600;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--pr-marino);
+}
+.pr-seccion-tit svg{width:16px;height:16px}
+
+/* Formulario "Registrar movimiento" dentro del modal */
+.pr-mov-form{
+  display:grid;gap:12px;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  background:rgba(16,28,51,.03);border:1px solid var(--pr-linea);
+  border-radius:var(--pr-radio);padding:16px;align-items:end;
+}
+.pr-mov-form .pr-field{margin-bottom:0}
+.pr-mov-form .pr-acciones{grid-column:1/-1;margin-top:4px}
+
+/* Timeline / bitacora de movimientos (entradas salvia, salidas terracota) */
+.pr-timeline{list-style:none;margin:12px 0 0;padding:0}
+.pr-tl-item{position:relative;display:flex;gap:12px;padding:0 0 16px 4px}
+.pr-tl-item:last-child{padding-bottom:0}
+.pr-tl-dot{
+  position:relative;flex:none;width:12px;height:12px;border-radius:50%;
+  margin-top:4px;background:var(--pr-gris);
+}
+.pr-tl-item::before{
+  content:'';position:absolute;left:9px;top:16px;bottom:0;width:2px;background:var(--pr-linea);
+}
+.pr-tl-item:last-child::before{display:none}
+/* Entradas suman (salvia); salidas restan (terracota); ajustes tono neutro */
+.pr-tl-item.entrada .pr-tl-dot,.pr-tl-item.ajuste_entrada .pr-tl-dot{background:var(--pr-salvia)}
+.pr-tl-item.salida .pr-tl-dot,.pr-tl-item.ajuste_salida .pr-tl-dot{background:var(--pr-terracota)}
+.pr-tl-body{flex:1;min-width:0}
+.pr-tl-top{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px}
+.pr-tl-tipo{
+  font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+  border-radius:999px;padding:2px 10px;
+}
+.pr-tl-tipo.entrada,.pr-tl-tipo.ajuste_entrada{color:var(--pr-salvia);background:var(--pr-salvia-bg)}
+.pr-tl-tipo.salida,.pr-tl-tipo.ajuste_salida{color:var(--pr-terracota);background:rgba(166,51,46,.10)}
+.pr-tl-cant{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--pr-carbon)}
+.pr-tl-cant.entrada,.pr-tl-cant.ajuste_entrada{color:var(--pr-salvia)}
+.pr-tl-cant.salida,.pr-tl-cant.ajuste_salida{color:var(--pr-terracota)}
+.pr-tl-cuando{font-size:12px;color:var(--pr-gris);font-variant-numeric:tabular-nums}
+.pr-tl-det{margin:4px 0 0;font-size:12.5px;color:var(--pr-gris)}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width:720px){
+  .pr-area{font-size:11px;letter-spacing:.12em}
+  .pr-word{font-size:15px;letter-spacing:.16em}
+  .pr-header{gap:10px}
+  .pr-header-left{gap:10px}
+  .pr-volver{padding:7px 10px}
+  .pr-volver span{display:none}
+  .pr-perfil-menu{min-width:210px}
+  .pr-ficha-datos{grid-template-columns:1fr}
+  .pr-detalle-foto{width:100%;height:auto;aspect-ratio:1/1}
+}

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Agregar a inventario</title>
+<meta name="description" content="Agregar un producto al inventario · Área de Producción de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/produccion.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=1">
+<link rel="stylesheet" href="../produccion.css?v=1">
+
+<!--
+  MAGANDHI · Area de Produccion · Inventarios · AGREGAR A INVENTARIO.
+  Alta de un producto. El SKU y el product_id (uuid) NO los escribe el dueno:
+  los genera el servidor (RPC inv_crear_producto, que ademas registra la
+  'entrada' inicial con la CANTIDAD declarada). Tras guardar se muestra el SKU
+  generado. La IMAGEN se OPTIMIZA en el navegador (canvas/createImageBitmap:
+  redimension a ~1200px de borde mayor + re-codificacion JPEG ~0.8) ANTES de
+  subirse a Storage con la SESION del usuario (nunca service_role); luego se
+  guarda imagen_path con inv_editar_producto. Montos parseados a ENTERO de
+  pesos (parsearMonto), nunca float. El candado real es RLS + las RPC.
+-->
+</head>
+<body class="pr-body">
+
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="pr-wrap" id="pr-main" hidden>
+  <!-- Confirmacion de alta (muestra el SKU generado). Oculto hasta guardar. -->
+  <div class="pr-alta-ok" id="pr-alta-ok" hidden>
+    <span data-ico="check"></span>
+    <span>Producto agregado. Su código es <span class="pr-sku-gen" id="pr-sku-gen"></span>.
+      Ya aparece en <a href="ver.html">Ver inventario</a>.</span>
+  </div>
+
+  <form class="pr-panel" id="pr-form" autocomplete="off">
+    <!-- Aviso: SKU + ID se generan solos -->
+    <div class="pr-autogen" data-ico-host>
+      <span data-ico="info"></span>
+      <span>El <strong>SKU</strong> (ej. MAG-CATEGORÍA-0001) y el identificador interno
+        se <strong>generan automáticamente</strong> al guardar. No tienes que escribirlos.</span>
+    </div>
+
+    <div class="pr-field-row">
+      <div class="pr-field">
+        <label for="pr-nombre">Nombre del producto</label>
+        <input id="pr-nombre" type="text" placeholder="Ej. Vela aromática de lavanda" required>
+      </div>
+      <div class="pr-field">
+        <label for="pr-categoria">Categoría</label>
+        <input id="pr-categoria" type="text" placeholder="Ej. Cuidado del hogar">
+        <span class="pr-ayuda">Se usa para el tramo del SKU (ej. CUI). Si la dejas vacía, el SKU se genera sin ese tramo.</span>
+      </div>
+    </div>
+
+    <div class="pr-field">
+      <label for="pr-descripcion">Descripción</label>
+      <textarea id="pr-descripcion" placeholder="Detalle del producto: características, presentación, notas..."></textarea>
+    </div>
+
+    <div class="pr-field-row">
+      <div class="pr-field">
+        <label for="pr-marca">Marca</label>
+        <input id="pr-marca" type="text" placeholder="Ej. Magandhi">
+      </div>
+      <div class="pr-field">
+        <label for="pr-unidad">Unidad de medida</label>
+        <input id="pr-unidad" type="text" placeholder="unidad" value="unidad">
+      </div>
+      <div class="pr-field">
+        <label for="pr-contenido">Contenido</label>
+        <input id="pr-contenido" type="text" placeholder="Ej. 200 g, 500 ml">
+      </div>
+    </div>
+
+    <div class="pr-field-row">
+      <div class="pr-field pr-monto">
+        <label for="pr-costo">Costo unitario (COP)</label>
+        <input id="pr-costo" type="text" inputmode="numeric" placeholder="0">
+      </div>
+      <div class="pr-field pr-monto">
+        <label for="pr-precio">Precio de venta (COP)</label>
+        <input id="pr-precio" type="text" inputmode="numeric" placeholder="0">
+      </div>
+      <div class="pr-field">
+        <label for="pr-minimo">Stock mínimo</label>
+        <input id="pr-minimo" type="text" inputmode="numeric" placeholder="0">
+        <span class="pr-ayuda">Umbral para marcar "stock bajo". No dispara nada automático.</span>
+      </div>
+    </div>
+
+    <div class="pr-field-row">
+      <div class="pr-field">
+        <label for="pr-ubicacion">Ubicación</label>
+        <input id="pr-ubicacion" type="text" placeholder="Ej. Bodega A, estante 3">
+      </div>
+      <div class="pr-field">
+        <label for="pr-proveedor">Proveedor</label>
+        <input id="pr-proveedor" type="text" placeholder="Ej. Aromas del Valle">
+      </div>
+      <div class="pr-field">
+        <label for="pr-cantidad">Cantidad inicial</label>
+        <input id="pr-cantidad" type="text" inputmode="numeric" placeholder="0">
+        <span class="pr-ayuda">Se registra como la primera "entrada" en el libro de movimientos.</span>
+      </div>
+    </div>
+
+    <div class="pr-field">
+      <label for="pr-imagen">Imagen del producto</label>
+      <div class="pr-imagen-zona">
+        <div class="pr-imagen-preview" id="pr-img-preview">
+          <span data-ico="imagen"></span>
+        </div>
+        <div class="pr-imagen-datos">
+          <input id="pr-imagen" type="file" accept="image/*">
+          <p style="margin:10px 0 0">El sistema <strong>ajusta la imagen automáticamente</strong>
+            (la redimensiona y comprime) para que no ocupe tanto espacio, sin que pierdas la elegida.</p>
+          <p id="pr-img-info" style="margin:8px 0 0" hidden>
+            Original: <span class="pr-peso" id="pr-img-orig">—</span> ·
+            Optimizada: <span class="pr-peso" id="pr-img-opt">—</span>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="pr-acciones">
+      <button class="pr-btn-guardar" id="pr-guardar" type="submit">Agregar al inventario</button>
+      <a class="pr-btn-sec" href="index.html"><span data-ico="flecha"></span> Volver</a>
+      <span class="pr-msg" id="pr-msg"></span>
+    </div>
+  </form>
+</main>
+
+<script type="module">
+  import {
+    supabase, asegurarAcceso, montarHeader, ICONOS,
+    parsearMonto, parsearCantidad,
+    optimizarImagen, urlPublicaImagen, BUCKET_PRODUCTOS
+  } from '../inventario-core.js';
+
+  const form = document.getElementById('pr-form');
+  const altaOk = document.getElementById('pr-alta-ok');
+  const skuGen = document.getElementById('pr-sku-gen');
+  const guardarBtn = document.getElementById('pr-guardar');
+  const msgEl = document.getElementById('pr-msg');
+
+  const imgInput = document.getElementById('pr-imagen');
+  const imgPreview = document.getElementById('pr-img-preview');
+  const imgInfo = document.getElementById('pr-img-info');
+  const imgOrig = document.getElementById('pr-img-orig');
+  const imgOpt = document.getElementById('pr-img-opt');
+
+  // Blob optimizado listo para subir (se recalcula al elegir imagen).
+  let blobOptimizado = null;
+
+  const kb = (bytes) => (bytes / 1024).toFixed(0) + ' KB';
+
+  // Al elegir imagen: previsualiza y OPTIMIZA en el navegador (no sube nada).
+  imgInput.addEventListener('change', async () => {
+    blobOptimizado = null;
+    const file = imgInput.files && imgInput.files[0];
+    if (!file) {
+      imgPreview.innerHTML = ICONOS.imagen;
+      imgInfo.hidden = true;
+      return;
+    }
+    imgOrig.textContent = kb(file.size);
+    imgOpt.textContent = 'procesando...';
+    imgInfo.hidden = false;
+    try {
+      const { blob } = await optimizarImagen(file, { maxBorde: 1200, calidad: 0.8 });
+      blobOptimizado = blob;
+      imgOpt.textContent = kb(blob.size);
+      const url = URL.createObjectURL(blob);
+      imgPreview.innerHTML = '<img src="' + url + '" alt="Previsualización">';
+    } catch (_) {
+      imgOpt.textContent = 'no se pudo procesar';
+      imgPreview.innerHTML = ICONOS.imagen;
+    }
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msgEl.textContent = ''; msgEl.className = 'pr-msg';
+    altaOk.hidden = true;
+
+    const p_nombre = document.getElementById('pr-nombre').value.trim();
+    if (!p_nombre) { msgEl.className = 'pr-msg err'; msgEl.textContent = 'El nombre del producto es obligatorio.'; return; }
+
+    const p_categoria = document.getElementById('pr-categoria').value.trim() || null;
+    const p_descripcion = document.getElementById('pr-descripcion').value.trim() || null;
+    const p_marca = document.getElementById('pr-marca').value.trim() || null;
+    const p_unidad_medida = document.getElementById('pr-unidad').value.trim() || 'unidad';
+    const p_contenido = document.getElementById('pr-contenido').value.trim() || null;
+    const p_costo_unitario = parsearMonto(document.getElementById('pr-costo').value) || null;
+    const p_precio_venta = parsearMonto(document.getElementById('pr-precio').value) || null;
+    const p_stock_minimo = parsearCantidad(document.getElementById('pr-minimo').value);
+    const p_ubicacion = document.getElementById('pr-ubicacion').value.trim() || null;
+    const p_proveedor = document.getElementById('pr-proveedor').value.trim() || null;
+    const p_cantidad_inicial = parsearCantidad(document.getElementById('pr-cantidad').value);
+
+    guardarBtn.disabled = true;
+    guardarBtn.textContent = 'Guardando...';
+    try {
+      // (1) Optimizar la imagen ya se hizo al elegirla (blobOptimizado). Si el
+      //     usuario eligio una imagen pero fallo el procesamiento, avisar.
+      const eligioImagen = imgInput.files && imgInput.files.length > 0;
+      if (eligioImagen && !blobOptimizado) {
+        throw new Error('La imagen no se pudo procesar. Elige otra o quítala e inténtalo de nuevo.');
+      }
+
+      // (2) Crear el producto: la RPC genera el SKU y registra la entrada
+      //     inicial con la cantidad declarada. Devuelve {id, sku}.
+      const { data: creado, error: eCrear } = await supabase.rpc('inv_crear_producto', {
+        p_nombre, p_descripcion, p_marca, p_categoria, p_unidad_medida,
+        p_contenido, p_costo_unitario, p_precio_venta, p_stock_minimo,
+        p_proveedor, p_ubicacion, p_imagen_path: null,
+        p_cantidad_inicial
+      });
+      if (eCrear) throw eCrear;
+
+      const id = creado?.id;
+      const sku = creado?.sku;
+      if (!id) throw new Error('No se recibió el identificador del producto.');
+
+      // (3) Subir la imagen OPTIMIZADA a Storage con la SESION del usuario
+      //     (nunca service_role). Ruta derivada del id/sku del producto.
+      let imagenPath = null;
+      if (blobOptimizado) {
+        imagenPath = 'productos/' + id + '.jpg';
+        const { error: eUp } = await supabase.storage
+          .from(BUCKET_PRODUCTOS)
+          .upload(imagenPath, blobOptimizado, {
+            contentType: 'image/jpeg',
+            upsert: true
+          });
+        if (eUp) {
+          // El producto ya existe; avisamos que la imagen no subio, sin abortar.
+          msgEl.className = 'pr-msg err';
+          msgEl.textContent = 'Producto creado (' + (sku || id) + '), pero la imagen no se pudo subir: ' + (eUp.message || 'error de Storage') + '. Puedes reintentar la imagen editando el producto.';
+          imagenPath = null;
+        }
+      }
+
+      // (4) Persistir imagen_path en la ficha (solo si subio la imagen).
+      if (imagenPath) {
+        const { error: eEdit } = await supabase.rpc('inv_editar_producto', {
+          p_id: id,
+          p_nombre, p_descripcion, p_marca, p_categoria, p_unidad_medida,
+          p_contenido, p_costo_unitario, p_precio_venta, p_stock_minimo,
+          p_proveedor, p_ubicacion,
+          p_imagen_path: imagenPath,
+          p_activo: true,
+          p_publicado: false
+        });
+        if (eEdit) {
+          msgEl.className = 'pr-msg err';
+          msgEl.textContent = 'Producto creado (' + (sku || id) + '), pero no se guardó la ruta de la imagen: ' + (eEdit.message || 'error');
+        }
+      }
+
+      // Confirmacion: mostrar el SKU generado.
+      skuGen.textContent = sku || '(SKU generado)';
+      altaOk.hidden = false;
+      if (!msgEl.textContent) {
+        msgEl.className = 'pr-msg ok';
+        msgEl.textContent = '✓ Producto agregado al inventario.';
+      }
+
+      // Limpiar el formulario para otra alta.
+      form.reset();
+      document.getElementById('pr-unidad').value = 'unidad';
+      blobOptimizado = null;
+      imgPreview.innerHTML = ICONOS.imagen;
+      imgInfo.hidden = true;
+      altaOk.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (err) {
+      msgEl.className = 'pr-msg err';
+      msgEl.textContent = err?.message || 'No se pudo agregar el producto.';
+    } finally {
+      guardarBtn.disabled = false;
+      guardarBtn.textContent = 'Agregar al inventario';
+    }
+  });
+
+  (async () => {
+    const acceso = await asegurarAcceso(document.body, '../index.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Agregar a inventario',
+      kicker: 'INVENTARIOS · NUEVO PRODUCTO',
+      lead: 'Da de alta un producto con su cantidad inicial e imagen. El SKU y el identificador se generan solos; la imagen se optimiza antes de guardarse.',
+      sesion: acceso.sesion,
+      areaLabel: 'INVENTARIOS',
+      volverHref: 'index.html',
+      volverTexto: 'Inventarios'
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    document.getElementById('pr-main').hidden = false;
+  })();
+</script>
+
+</body>
+</html>

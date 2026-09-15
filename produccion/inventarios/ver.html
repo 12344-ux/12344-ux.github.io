@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Ver inventario</title>
+<meta name="description" content="Ver inventario · Área de Producción de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/produccion.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=1">
+<link rel="stylesheet" href="../produccion.css?v=1">
+
+<!--
+  MAGANDHI · Area de Produccion · Inventarios · VER INVENTARIO.
+  Vitrina de fichas (la IMAGEN manda) leida de la vista stock_actual + la
+  ficha en productos. Buscador por SKU o nombre (ilike). Al abrir una ficha:
+  detalle completo + timeline de movimientos (bitacora) + accion "Registrar
+  movimiento" (inv_registrar_movimiento) + edicion de ficha (inv_editar_producto,
+  nunca sku ni existencias). Una salida que deja el stock negativo NO se
+  bloquea: se registra y se muestra el numero honesto en rojo. Si no hay
+  productos, un aviso sobrio "aun no hay informacion", sin bloquear el software.
+  El candado real es RLS server-side; la UI es comodidad.
+-->
+</head>
+<body class="pr-body">
+
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="pr-wrap" id="pr-main" hidden>
+  <div class="pr-search">
+    <span class="pr-search-ico" data-ico="lupa"></span>
+    <input class="pr-input" id="pr-q" type="search" autocomplete="off"
+           placeholder="Buscar por SKU (ej. MAG-0001) o nombre...">
+  </div>
+  <p class="pr-hint" id="pr-hint">Todos los productos del inventario</p>
+  <div id="pr-vitrina-cont"></div>
+</main>
+
+<!-- Detalle de producto (modal): ficha + movimientos + registrar movimiento -->
+<div class="pr-modal" id="pr-modal" hidden>
+  <div class="pr-modal-card">
+    <div class="pr-modal-top">
+      <div class="pr-modal-titulo">
+        <h3 id="pr-m-nombre"></h3>
+        <span class="inv-sku" id="pr-m-sku"></span>
+      </div>
+      <button class="pr-modal-cerrar" id="pr-m-cerrar" type="button" aria-label="Cerrar">
+        <span data-ico="equis"></span>
+      </button>
+    </div>
+    <div class="pr-modal-cuerpo" id="pr-m-cuerpo"><!-- se pinta al abrir --></div>
+  </div>
+</div>
+
+<script type="module">
+  import {
+    supabase, asegurarAcceso, montarHeader, ICONOS,
+    escaparHTML, formatearCOP, parsearCantidad,
+    formatearFecha, hoyISO, urlPublicaImagen
+  } from '../inventario-core.js';
+
+  const main = document.getElementById('pr-main');
+  const input = document.getElementById('pr-q');
+  const hint = document.getElementById('pr-hint');
+  const cont = document.getElementById('pr-vitrina-cont');
+  const modalEl = document.getElementById('pr-modal');
+  const mNombre = document.getElementById('pr-m-nombre');
+  const mSku = document.getElementById('pr-m-sku');
+  const mCuerpo = document.getElementById('pr-m-cuerpo');
+
+  // Etiquetas legibles de cada tipo de movimiento.
+  const TIPO_TXT = {
+    entrada: 'Entrada',
+    salida: 'Salida',
+    ajuste_entrada: 'Ajuste (+)',
+    ajuste_salida: 'Ajuste (−)'
+  };
+
+  let productoActivo = null; // producto abierto en el modal
+
+  // ----------------------------------------------------------
+  // VITRINA (listado)
+  // ----------------------------------------------------------
+  function fichaHTML(p) {
+    const ex = Number(p.existencias) || 0;
+    const min = Number(p.stock_minimo) || 0;
+    const bajo = ex < min && min > 0;
+    const neg = ex < 0;
+    const url = urlPublicaImagen(p.imagen_path);
+
+    let badges = '';
+    if (neg) badges += '<span class="inv-badge negativo">Stock negativo</span>';
+    else if (bajo) badges += '<span class="inv-badge bajo">Stock bajo</span>';
+
+    const foto = url
+      ? '<img src="' + escaparHTML(url) + '" alt="' + escaparHTML(p.nombre || '') + '" loading="lazy">'
+      : '<span class="inv-foto-sin">' + ICONOS.imagen + '</span>';
+
+    const clsEx = neg ? ' negativo' : (bajo ? ' bajo' : '');
+    const precio = (p.precio_venta != null && p.precio_venta !== '')
+      ? '<div class="inv-precio"><span class="lbl">Precio</span>$' + formatearCOP(p.precio_venta) + '</div>'
+      : '';
+
+    return (
+      '<button type="button" class="inv-ficha" data-id="' + escaparHTML(p.product_id) + '">' +
+        '<span class="inv-foto">' + foto +
+          (badges ? '<span class="inv-badges">' + badges + '</span>' : '') +
+        '</span>' +
+        '<span class="inv-ficha-cuerpo">' +
+          '<span class="inv-sku">' + escaparHTML(p.sku || '') + '</span>' +
+          '<span class="inv-nombre">' + escaparHTML(p.nombre || '') + '</span>' +
+          (p.categoria ? '<span class="inv-cat">' + escaparHTML(p.categoria) + '</span>' : '') +
+          '<span class="inv-ficha-pie">' +
+            '<span class="inv-existencias' + clsEx + '">' +
+              '<span class="lbl">Existencias</span>' +
+              '<span class="val">' + ex + '</span>' +
+            '</span>' + precio +
+          '</span>' +
+        '</span>' +
+      '</button>'
+    );
+  }
+
+  function pintar(items) {
+    if (!items || items.length === 0) {
+      // Aviso sobrio "aun no hay informacion" (mismo espiritu que Balance
+      // General): no bloquea ni limita el software.
+      cont.innerHTML =
+        '<div class="pr-aviso-vacio">' + ICONOS.info +
+          '<span>Aún no hay información en el inventario. Cuando agregues productos ' +
+          'en <strong>Agregar a inventario</strong>, aparecerán aquí como fichas.</span>' +
+        '</div>';
+      return;
+    }
+    cont.innerHTML = '<div class="pr-vitrina">' + items.map(fichaHTML).join('') + '</div>';
+    cont.querySelectorAll('.inv-ficha').forEach((el) => {
+      el.addEventListener('click', () => abrirDetalle(el.dataset.id));
+    });
+  }
+
+  // Une stock_actual (existencias) con la ficha de productos por product_id.
+  async function cargar(q) {
+    // 1) Existencias por producto desde la vista derivada del libro.
+    let stockQ = supabase.from('stock_actual').select('product_id, sku, nombre, existencias');
+    if (q) {
+      const patron = '%' + q + '%';
+      stockQ = stockQ.or('sku.ilike.' + patron + ',nombre.ilike.' + patron);
+    }
+    const { data: stock, error: e1 } = await stockQ.order('nombre', { ascending: true }).limit(300);
+    if (e1) { cont.innerHTML = '<div class="pr-empty">No se pudo cargar el inventario.</div>'; return; }
+    if (!stock || stock.length === 0) { pintar([]); return; }
+
+    // 2) Ficha (categoria, precio, imagen, minimo) desde productos activos.
+    const ids = stock.map((s) => s.product_id);
+    const { data: fichas, error: e2 } = await supabase
+      .from('productos')
+      .select('id, categoria, precio_venta, imagen_path, stock_minimo, activo')
+      .in('id', ids);
+    if (e2) { cont.innerHTML = '<div class="pr-empty">No se pudo cargar el inventario.</div>'; return; }
+
+    const porId = new Map((fichas || []).map((f) => [f.id, f]));
+    const items = stock
+      .map((s) => {
+        const f = porId.get(s.product_id) || {};
+        return {
+          product_id: s.product_id, sku: s.sku, nombre: s.nombre,
+          existencias: s.existencias,
+          categoria: f.categoria, precio_venta: f.precio_venta,
+          imagen_path: f.imagen_path, stock_minimo: f.stock_minimo,
+          activo: f.activo
+        };
+      })
+      // Ocultar productos dados de baja (activo=false) del listado principal.
+      .filter((it) => it.activo !== false);
+    pintar(items);
+  }
+
+  let t;
+  input.addEventListener('input', () => {
+    clearTimeout(t);
+    const q = input.value.trim();
+    hint.textContent = q ? 'Resultados para "' + q + '"' : 'Todos los productos del inventario';
+    t = setTimeout(() => cargar(q), 220);
+  });
+
+  // ----------------------------------------------------------
+  // DETALLE (modal): ficha + movimientos + registrar movimiento + editar
+  // ----------------------------------------------------------
+  async function abrirDetalle(id) {
+    // Ficha completa + existencias actuales en paralelo.
+    const [{ data: prod, error: ep }, { data: st }] = await Promise.all([
+      supabase.from('productos').select('*').eq('id', id).maybeSingle(),
+      supabase.from('stock_actual').select('existencias').eq('product_id', id).maybeSingle()
+    ]);
+    if (ep || !prod) return;
+    productoActivo = prod;
+    productoActivo.existencias = st ? (Number(st.existencias) || 0) : 0;
+
+    mNombre.textContent = prod.nombre || '';
+    mSku.textContent = prod.sku || '';
+    pintarCuerpo();
+    modalEl.hidden = false;
+    document.querySelectorAll('#pr-modal [data-ico]').forEach((el) => {
+      el.innerHTML = ICONOS[el.dataset.ico] || '';
+    });
+    await cargarMovimientos(id);
+  }
+
+  function pintarCuerpo() {
+    const p = productoActivo;
+    const ex = Number(p.existencias) || 0;
+    const min = Number(p.stock_minimo) || 0;
+    const bajo = ex < min && min > 0;
+    const neg = ex < 0;
+    const clsEx = neg ? ' negativo' : (bajo ? ' bajo' : '');
+    const url = urlPublicaImagen(p.imagen_path);
+    const foto = url
+      ? '<img src="' + escaparHTML(url) + '" alt="' + escaparHTML(p.nombre || '') + '">'
+      : ICONOS.imagen;
+
+    const dato = (k, v, num) => v == null || v === ''
+      ? ''
+      : '<div class="pr-dato"><span class="k">' + k + '</span><span class="v' +
+        (num ? ' num' : '') + '">' + escaparHTML(v) + '</span></div>';
+
+    const avisoNeg = neg
+      ? '<div class="pr-negativo-aviso">' + ICONOS.info +
+        '<span>Las existencias están en negativo. Se registró más salida que entrada; ' +
+        'revisa y repón o ajusta cuando corresponda.</span></div>'
+      : '';
+
+    mCuerpo.innerHTML =
+      '<div class="pr-detalle">' +
+        '<div class="pr-detalle-foto">' + foto + '</div>' +
+        '<div class="pr-detalle-datos">' +
+          '<div class="pr-detalle-existencias' + clsEx + '">' +
+            '<span class="val">' + ex + '</span>' +
+            '<span class="uni">' + escaparHTML(p.unidad_medida || 'unidad') + (Math.abs(ex) === 1 ? '' : 's') + ' en existencia</span>' +
+          '</div>' +
+          avisoNeg +
+          '<div class="pr-ficha-datos">' +
+            dato('Categoría', p.categoria) +
+            dato('Marca', p.marca) +
+            dato('Contenido', p.contenido) +
+            dato('Ubicación', p.ubicacion) +
+            dato('Proveedor', p.proveedor) +
+            dato('Stock mínimo', p.stock_minimo, true) +
+            (p.costo_unitario != null ? dato('Costo', '$' + formatearCOP(p.costo_unitario), true) : '') +
+            (p.precio_venta != null ? dato('Precio', '$' + formatearCOP(p.precio_venta), true) : '') +
+          '</div>' +
+          (p.descripcion ? '<p class="pr-detalle-desc">' + escaparHTML(p.descripcion) + '</p>' : '') +
+        '</div>' +
+      '</div>' +
+
+      // Registrar movimiento
+      '<div class="pr-seccion-tit">' + ICONOS.movimientos + 'Registrar movimiento</div>' +
+      '<form class="pr-mov-form" id="pr-mov-form" autocomplete="off">' +
+        '<div class="pr-field">' +
+          '<label for="pr-mov-tipo">Tipo</label>' +
+          '<select id="pr-mov-tipo">' +
+            '<option value="entrada">Entrada (suma)</option>' +
+            '<option value="salida">Salida (resta)</option>' +
+            '<option value="ajuste_entrada">Ajuste + (suma)</option>' +
+            '<option value="ajuste_salida">Ajuste − (resta)</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="pr-field">' +
+          '<label for="pr-mov-cant">Cantidad</label>' +
+          '<input id="pr-mov-cant" type="text" inputmode="numeric" placeholder="0">' +
+        '</div>' +
+        '<div class="pr-field">' +
+          '<label for="pr-mov-fecha">Fecha</label>' +
+          '<input id="pr-mov-fecha" type="date">' +
+        '</div>' +
+        '<div class="pr-field">' +
+          '<label for="pr-mov-motivo">Motivo</label>' +
+          '<input id="pr-mov-motivo" type="text" placeholder="Ej. venta, compra, conteo físico">' +
+        '</div>' +
+        '<div class="pr-field">' +
+          '<label for="pr-mov-ref">Referencia</label>' +
+          '<input id="pr-mov-ref" type="text" placeholder="Opcional (ej. factura)">' +
+        '</div>' +
+        '<div class="pr-acciones">' +
+          '<button class="pr-btn-guardar" id="pr-mov-guardar" type="submit">Registrar</button>' +
+          '<span class="pr-msg" id="pr-mov-msg"></span>' +
+        '</div>' +
+      '</form>' +
+
+      // Historial (timeline)
+      '<div class="pr-seccion-tit">' + ICONOS.lista + 'Historial de movimientos</div>' +
+      '<div id="pr-mov-lista"><p class="pr-empty">Cargando historial...</p></div>';
+
+    // Fecha por defecto = hoy.
+    const fechaEl = mCuerpo.querySelector('#pr-mov-fecha');
+    if (fechaEl) fechaEl.value = hoyISO();
+
+    // Iconos recien inyectados.
+    mCuerpo.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    // Cablear el submit del movimiento.
+    const form = mCuerpo.querySelector('#pr-mov-form');
+    form.addEventListener('submit', registrarMovimiento);
+  }
+
+  async function cargarMovimientos(id) {
+    const lista = mCuerpo.querySelector('#pr-mov-lista');
+    if (!lista) return;
+    const { data, error } = await supabase
+      .from('movimientos_inventario')
+      .select('id, tipo, cantidad, motivo, referencia, fecha, creado')
+      .eq('product_id', id)
+      .order('fecha', { ascending: false })
+      .order('creado', { ascending: false })
+      .limit(200);
+    if (error) { lista.innerHTML = '<p class="pr-empty">No se pudo cargar el historial.</p>'; return; }
+    if (!data || data.length === 0) {
+      lista.innerHTML = '<p class="pr-empty">Sin movimientos registrados todavía.</p>';
+      return;
+    }
+    const suma = new Set(['entrada', 'ajuste_entrada']);
+    lista.innerHTML = '<ul class="pr-timeline">' + data.map((m) => {
+      const signo = suma.has(m.tipo) ? '+' : '−';
+      const det = [];
+      if (m.motivo) det.push(escaparHTML(m.motivo));
+      if (m.referencia) det.push('Ref.: ' + escaparHTML(m.referencia));
+      return (
+        '<li class="pr-tl-item ' + m.tipo + '">' +
+          '<span class="pr-tl-dot"></span>' +
+          '<div class="pr-tl-body">' +
+            '<div class="pr-tl-top">' +
+              '<span class="pr-tl-tipo ' + m.tipo + '">' + (TIPO_TXT[m.tipo] || m.tipo) + '</span>' +
+              '<span class="pr-tl-cant ' + m.tipo + '">' + signo + (Number(m.cantidad) || 0) + '</span>' +
+              '<span class="pr-tl-cuando">' + escaparHTML(formatearFecha(m.fecha)) + '</span>' +
+            '</div>' +
+            (det.length ? '<p class="pr-tl-det">' + det.join(' · ') + '</p>' : '') +
+          '</div>' +
+        '</li>'
+      );
+    }).join('') + '</ul>';
+  }
+
+  async function registrarMovimiento(e) {
+    e.preventDefault();
+    const msg = mCuerpo.querySelector('#pr-mov-msg');
+    const btn = mCuerpo.querySelector('#pr-mov-guardar');
+    msg.textContent = ''; msg.className = 'pr-msg';
+
+    const tipo = mCuerpo.querySelector('#pr-mov-tipo').value;
+    const cantidad = parsearCantidad(mCuerpo.querySelector('#pr-mov-cant').value);
+    const motivo = mCuerpo.querySelector('#pr-mov-motivo').value.trim() || null;
+    const referencia = mCuerpo.querySelector('#pr-mov-ref').value.trim() || null;
+    const fecha = mCuerpo.querySelector('#pr-mov-fecha').value || hoyISO();
+
+    if (cantidad <= 0) { msg.className = 'pr-msg err'; msg.textContent = 'La cantidad debe ser un entero mayor que cero.'; return; }
+
+    btn.disabled = true; btn.textContent = 'Registrando...';
+    try {
+      const { data, error } = await supabase.rpc('inv_registrar_movimiento', {
+        p_product_id: productoActivo.id,
+        p_tipo: tipo,
+        p_cantidad: cantidad,
+        p_motivo: motivo,
+        p_referencia: referencia,
+        p_costo_unitario_mov: null,
+        p_fecha: fecha
+      });
+      if (error) throw error;
+
+      // La RPC devuelve el stock resultante (puede ser negativo: se permite).
+      const existencias = Number(data?.existencias);
+      productoActivo.existencias = Number.isFinite(existencias) ? existencias : productoActivo.existencias;
+
+      if (Number.isFinite(existencias) && existencias < 0) {
+        msg.className = 'pr-msg err';
+        msg.textContent = '✓ Movimiento registrado. Atención: las existencias quedaron en ' + existencias + ' (negativo).';
+      } else {
+        msg.className = 'pr-msg ok';
+        msg.textContent = '✓ Movimiento registrado. Existencias: ' + existencias + '.';
+      }
+
+      // Refrescar existencias del detalle y el historial, y limpiar cantidad.
+      actualizarExistenciasDetalle();
+      mCuerpo.querySelector('#pr-mov-cant').value = '';
+      await cargarMovimientos(productoActivo.id);
+    } catch (err) {
+      msg.className = 'pr-msg err';
+      msg.textContent = err?.message || 'No se pudo registrar el movimiento.';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Registrar';
+    }
+  }
+
+  // Reescribe solo el bloque de existencias del detalle tras un movimiento.
+  function actualizarExistenciasDetalle() {
+    const p = productoActivo;
+    const ex = Number(p.existencias) || 0;
+    const min = Number(p.stock_minimo) || 0;
+    const bajo = ex < min && min > 0;
+    const neg = ex < 0;
+    const bloque = mCuerpo.querySelector('.pr-detalle-existencias');
+    if (!bloque) return;
+    bloque.className = 'pr-detalle-existencias' + (neg ? ' negativo' : (bajo ? ' bajo' : ''));
+    const val = bloque.querySelector('.val');
+    if (val) val.textContent = ex;
+  }
+
+  function cerrarModal() {
+    modalEl.hidden = true;
+    productoActivo = null;
+    mCuerpo.innerHTML = '';
+    // Recargar la vitrina para reflejar existencias actualizadas.
+    cargar(input.value.trim());
+  }
+  document.getElementById('pr-m-cerrar').addEventListener('click', cerrarModal);
+  modalEl.addEventListener('click', (e) => { if (e.target === modalEl) cerrarModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modalEl.hidden) cerrarModal(); });
+
+  // ----------------------------------------------------------
+  // ARRANQUE
+  // ----------------------------------------------------------
+  (async () => {
+    const acceso = await asegurarAcceso(document.body, '../index.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Ver inventario',
+      kicker: 'INVENTARIOS · VITRINA',
+      lead: 'Cada producto es una ficha con su imagen. Busca por SKU o nombre; abre una ficha para ver su historial y registrar entradas, salidas o ajustes.',
+      sesion: acceso.sesion,
+      areaLabel: 'INVENTARIOS',
+      volverHref: 'index.html',
+      volverTexto: 'Inventarios'
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    main.hidden = false;
+    await cargar('');
+  })();
+</script>
+
+</body>
+</html>
