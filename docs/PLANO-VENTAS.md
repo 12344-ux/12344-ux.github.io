@@ -1,14 +1,58 @@
 # PLANO MAESTRO · Área de Ventas (ecosistema Impulse · piloto MAGANDHI)
 
-> **Estado: BORRADOR PARA APROBACIÓN DEL DUEÑO.** Este documento NO está
-> aprobado todavía. Es una propuesta de diseño completa para que la revises,
-> la ajustes y le des luz verde ANTES de construir una sola línea de código o
-> una sola migración. Nada de lo que aquí se describe existe aún en el repo.
+> **Estado: APROBADO POR EL DUEÑO — EN CONSTRUCCIÓN.** El dueño revisó el plano
+> y dio luz verde con las decisiones registradas abajo. Este documento es la
+> memoria fiel del diseño.
 >
 > Tono: socio honesto. Donde hay una decisión con costo o un riesgo, lo digo
 > sin humo. Donde algo es "para después", lo marco para no caer en
-> gold-plating. Donde tengo una recomendación, la doy y explico el porqué,
-> pero la decisión final es tuya (§10).
+> gold-plating.
+
+---
+
+## ⭐ DECISIONES FINALES DEL DUEÑO (sesión de aprobación) — prevalecen sobre el resto
+
+Estas cierran las preguntas abiertas de la §10:
+
+- **Baja de stock: al CREAR el pedido** (no al entregar). Coherente con la puerta
+  web futura, que también bajará al crear. La salida al libro (`referencia = id
+  del pedido`) ocurre al registrar/crear el pedido.
+- **Estados del pedido (4):** **Recibido → Preparando → En camino → Entregado.**
+  ("En camino" lo añadió el dueño: es la etapa que el cliente más quiere saber.)
+  Más un terminal aparte para cancelado/anulado y otro para **devuelto** (ver
+  devoluciones). Los estados quedan preparados para, MÁS ADELANTE, disparar
+  correos al cliente en algunas etapas (Email Marketing / notificaciones =
+  enchufe futuro, NO se construye ahora).
+- **Coincidencia de cliente: 3 niveles** alta / media / baja, con % y explicación;
+  el humano decide con botón (nunca fusiona solo, nunca bloquea).
+- **DEVOLUCIONES — decisión de alcance:** NO se construye la pantalla de
+  devoluciones en esta tanda. Se construye Ventas (Pedidos + Portafolio) con el
+  **MOTOR de devolución técnicamente listo por debajo**: la capacidad de revertir
+  un pedido con una **entrada compensatoria** al inventario (nunca borrando; misma
+  filosofía del libro append-only). La devolución **siempre se ancla a un pedido
+  existente** (parte de un pedido, no de producto que aparece de la nada).
+  - La CATEGORÍA "Devoluciones" será una sub-área de **PRODUCCIÓN** (hermana de
+    Inventarios), NO de Ventas — porque una devolución es producto físico que
+    vuelve a la bodega. Se construirá DESPUÉS, cuando el dueño defina su POLÍTICA
+    de devoluciones (qué se acepta, en qué estado, plazo, y el matiz belleza vs
+    objeto: un cosmético abierto/higiene no se revende por temas sanitarios; un
+    objeto en buen estado sí). Esa política es decisión de NEGOCIO/LEGAL del dueño
+    (marco: derecho de retracto Ley 1480), NO del software. El software registra
+    la devolución que el dueño APRUEBA; no decide si procede (regla de oro: la
+    máquina registra, el humano decide). El modelo actual del dueño (él revisa
+    calidad antes de entregar) acota el caso a: cliente insatisfecho o daño en la
+    entrega. Diseñar para devolución **parcial** (compró 3, devuelve 1) además de
+    total.
+- **Diseño / interfaz: PILAR innegociable**, al nivel de Finanzas. Especial
+  cuidado en que "Seguimiento de pedidos" sea clarísimo de un vistazo (pantalla
+  operativa para quien prepara y entrega) y en la UX del registro con las
+  coincidencias (candidatos con % + botones, sin abrumar). Azul marino heredado,
+  sin color nuevo, sello Impulse, wordmark MAGANDHI.
+- **Alcance de HOY:** construir el área Ventas con sus 2 sub-áreas (Seguimiento de
+  pedidos —con registro manual y coincidencias— y Portafolio de clientes),
+  encender el `customer_id`, y dejar el enchufe de devolución listo. NO: pantalla
+  de Devoluciones, ni Clúster/salud, ni Email, ni geocoding, ni enganche a
+  Finanzas (cita a ciegas).
 
 ---
 
