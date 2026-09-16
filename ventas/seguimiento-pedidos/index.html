@@ -26,13 +26,11 @@
   cambiar el estado y anular (via anular_pedido, la RPC security definer). El
   candado real es RLS; ocultar UI es solo comodidad.
 
-  NOTA sobre cambio de estado: FEAT-001 no expone una RPC dedicada para
-  avanzar el estado del pedido (solo crear_pedido y anular_pedido). El avance
-  recibido->preparando->en_camino->entregado se hace con un UPDATE directo de
-  pedidos.estado; si la RLS bloquea el UPDATE (no hay policy de UPDATE, solo
-  SELECT), se avisa con mesura y se documenta como mejora (una RPC de avance
-  de estado). Anular SIEMPRE va por anular_pedido (transaccional, reversa el
-  libro).
+  NOTA sobre cambio de estado: el avance recibido->preparando->en_camino->
+  entregado se hace via la RPC security definer avanzar_estado_pedido (pedidos
+  es SELECT-only bajo RLS, asi que un UPDATE directo lo rechazaria Postgres).
+  Anular SIEMPRE va por anular_pedido (transaccional, reversa el libro); por eso
+  'anulado' no es un destino de avanzar_estado_pedido.
 -->
 <style>
   /* Detalle del pedido: panel lateral (drawer) sobrio, sin color nuevo. */
@@ -363,15 +361,16 @@
       const sig = btnAvanzar.dataset.sig;
       btnAvanzar.disabled = true;
       msg.className = 'vt-msg'; msg.textContent = 'Actualizando...';
-      // No hay RPC de avance en FEAT-001; se intenta un UPDATE directo. Si la
-      // RLS lo bloquea (solo hay policy de SELECT), se avisa con mesura.
-      const { error } = await supabase.from('pedidos')
-        .update({ estado: sig, actualizado: new Date().toISOString() })
-        .eq('id', p.id);
+      // El avance va por la RPC security definer avanzar_estado_pedido: pedidos
+      // es SELECT-only bajo RLS, asi que un UPDATE directo lo rechazaria. La RPC
+      // valida el acceso, el estado destino y que el pedido no este anulado.
+      const { error } = await supabase.rpc('avanzar_estado_pedido', {
+        p_pedido_id: p.id,
+        p_nuevo_estado: sig
+      });
       if (error) {
         msg.className = 'vt-msg err';
-        msg.textContent = 'No se pudo actualizar el estado: ' + (error.message || 'permiso denegado') +
-          '. Puede requerir una RPC de avance (mejora futura).';
+        msg.textContent = 'No se pudo actualizar el estado: ' + (error.message || 'error') + '.';
         btnAvanzar.disabled = false;
         return;
       }

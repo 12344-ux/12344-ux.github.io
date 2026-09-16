@@ -469,3 +469,74 @@ end;
 $$;
 
 comment on function anular_pedido(uuid, text) is 'Anula un pedido de forma logica y reversible, transaccional (§5.3): marca anulado=true + estado=anulado + motivo_anulacion (nunca DELETE) y registra una ENTRADA compensatoria por cada pedido_item en el libro (insert directo, motivo=Anulacion de venta, referencia=pedido_id, customer_id del pedido) -- NO llama inv_registrar_movimiento. Si el pedido ya estaba anulado no revierte de nuevo. Devuelve jsonb {pedido_id, revertidos}. Exige tiene_acceso_ventas().';
+
+-- ------------------------------------------------------------
+-- avanzar_estado_pedido: mueve el estado del pedido a lo largo del ciclo de
+-- vida operativo (recibido -> preparando -> en_camino -> entregado, §5.1).
+--
+-- POR QUE ES UNA RPC Y NO UN UPDATE DIRECTO: pedidos es SELECT-only bajo RLS
+-- (ver 20250401000300_ventas_rls.sql); NO tiene policy de UPDATE, asi que un
+-- UPDATE directo desde el navegador lo rechaza Postgres. Como el resto de la
+-- escritura de Ventas, el avance de estado pasa por una RPC security definer
+-- que salta RLS de forma controlada tras validar tiene_acceso_ventas().
+--
+-- ANULAR NO VA POR AQUI: 'anulado' NO es un estado destino valido de esta RPC.
+-- La anulacion tiene su propia RPC (anular_pedido) porque ademas de cambiar el
+-- estado REVIERTE el stock con una entrada compensatoria en el libro; hacerlo
+-- por un simple cambio de estado dejaria el inventario descuadrado. Aqui solo
+-- se avanza el ciclo operativo, sin tocar el libro.
+--
+-- REGLAS: (1) el estado destino debe estar en el flujo operativo
+-- (recibido/preparando/en_camino/entregado); (2) el pedido debe existir; (3) un
+-- pedido ya anulado NO se avanza (es terminal). No impone la direccion del
+-- flujo (permite corregir un estado marcado por error); el tablero propone el
+-- siguiente paso, pero la RPC acepta cualquier estado valido del flujo.
+--
+-- Hace update pedidos set estado=p_nuevo_estado, actualizado=now(). Devuelve
+-- jsonb {pedido_id, estado}. IDEMPOTENTE (create or replace); reaplicar el mismo
+-- estado no causa dano (queda igual, solo refresca actualizado).
+-- ------------------------------------------------------------
+create or replace function avanzar_estado_pedido(
+  p_pedido_id    uuid,
+  p_nuevo_estado text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_anulado boolean;
+begin
+  if not tiene_acceso_ventas() then
+    raise exception 'Acceso denegado: se requiere el area de ventas.';
+  end if;
+
+  -- 'anulado' se excluye a proposito: la anulacion va por anular_pedido (revierte
+  -- stock). Aqui solo se avanza el ciclo operativo.
+  if p_nuevo_estado is null or p_nuevo_estado not in ('recibido','preparando','en_camino','entregado') then
+    raise exception 'Estado invalido: %. Use recibido, preparando, en_camino o entregado (para anular use anular_pedido).', p_nuevo_estado;
+  end if;
+
+  select anulado into v_anulado from pedidos where id = p_pedido_id;
+
+  if not found then
+    raise exception 'El pedido % no existe.', p_pedido_id;
+  end if;
+
+  -- Un pedido anulado es terminal: no se avanza (para reactivarlo habria que
+  -- registrar uno nuevo; la anulacion ya devolvio el stock al libro).
+  if v_anulado then
+    raise exception 'El pedido % esta anulado y no admite avance de estado.', p_pedido_id;
+  end if;
+
+  update pedidos
+     set estado = p_nuevo_estado,
+         actualizado = now()
+   where id = p_pedido_id;
+
+  return jsonb_build_object('pedido_id', p_pedido_id, 'estado', p_nuevo_estado);
+end;
+$$;
+
+comment on function avanzar_estado_pedido(uuid, text) is 'Avanza el estado operativo de un pedido (recibido/preparando/en_camino/entregado, §5.1) via RPC security definer, porque pedidos es SELECT-only bajo RLS y un UPDATE directo lo rechaza Postgres. NO acepta anulado como destino: la anulacion va por anular_pedido (que ademas revierte stock). Valida tiene_acceso_ventas(), que el estado destino este en el flujo, que el pedido exista y que NO este anulado (terminal). Hace update de pedidos.estado + actualizado=now(). Devuelve jsonb {pedido_id, estado}. Idempotente.';

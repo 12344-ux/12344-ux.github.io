@@ -96,6 +96,30 @@ create policy "pedido_items_select_ventas" on pedido_items
 -- policy para anon: el area entera es tras login (authenticated).
 
 -- ------------------------------------------------------------
+-- PUENTE DE LECTURA VENTAS -> productos: SELECT adicional sobre el catalogo.
+-- ESPEJO EXACTO de productos_select_marketing (ver 20250301000600_inventario_
+-- marketing_lectura.sql). POR QUE: el selector de productos de registrar.html
+-- (el formulario de registro de pedidos) LEE el catalogo productos para armar
+-- las lineas del pedido. Pero las unicas policies de SELECT sobre productos son
+-- las de Inventario (productos_select_modulo) y Marketing (productos_select_
+-- marketing); un usuario SOLO de ventas quedaria bloqueado por RLS al cargar el
+-- catalogo. Esta policy anade el acceso de LECTURA para el Area de Ventas.
+--
+-- CONVIVE sin quitar nada: en RLS basta con que UNA policy permisiva de SELECT
+-- sea verdadera, asi que esta convive con las de inventario/marketing (no las
+-- toca ni las reemplaza). SOLO LECTURA: el catalogo se sigue escribiendo por
+-- las RPC de Inventario (inv_crear_producto / inv_editar_producto); Ventas
+-- nunca escribe productos. CERO policy para anon.
+-- ------------------------------------------------------------
+alter table productos enable row level security;
+
+drop policy if exists "productos_select_ventas" on productos;
+create policy "productos_select_ventas" on productos
+  for select
+  to authenticated
+  using (tiene_acceso_ventas());
+
+-- ------------------------------------------------------------
 -- ENCENDER LA FK DEL ENCHUFE: movimientos_inventario.customer_id -> clientes(id).
 -- La columna existe desde 20250301000100 como uuid nullable SIN FK ("enchufe
 -- apagado"). Se le agrega la FK ahora que clientes existe. La columna esta VACIA
