@@ -404,7 +404,12 @@ puertas invocan**:
 
 1. **Vincular o crear el cliente** en el Portafolio: recibe el `customer_id`
    elegido por el humano (§4) o, si es cliente nuevo, crea la fila en `clientes`
-   con la normalización de correo/teléfono (§1.4).
+   con la normalización de correo/teléfono (§1.4). **Ante colisión del UNIQUE
+   parcial** (`correo_norm` o `telefono_norm` ya existente), la RPC **no falla y
+   no crea un cliente duplicado**: resuelve al cliente existente que ya tiene ese
+   contacto y lo usa como `customer_id`, de modo que **el registro del pedido
+   nunca se cae**. El detalle de este comportamiento y su orden de precedencia
+   está en §4.5.
 2. **Crear la orden:** inserta en `pedidos` (con `canal`, `fecha_orden`, estado
    inicial) y una fila en `pedido_items` por cada producto, guardando el
    **`precio_unitario` real** de la venta. Calcula `total` en bigint.
@@ -514,6 +519,41 @@ Reglas de hierro:
 Los copys de este documento son **ejemplos**; el copy final se afina en
 implementación (voz MAGANDHI, sin jerga técnica). Lo cuadras tú.
 
+### 4.5. Las dos redes anti-duplicados y quién manda (orden de precedencia)
+
+Hay **dos** mecanismos que evitan clientes duplicados, y conviven en distinta
+capa. Es importante decir cuál gana para que nunca se contradigan:
+
+1. **El UNIQUE parcial sobre `correo_norm`/`telefono_norm` (§1) es el PISO DURO.**
+   Vive en la base de datos, es infalible dentro de su regla: no puede haber dos
+   filas de `clientes` con el mismo `correo_norm` (o el mismo `telefono_norm`).
+2. **El puntaje explicable (§4.1 a §4.4) es la RECOMENDACIÓN BLANDA para ti.**
+   Ordena candidatos con un porcentaje y su porqué, pero no decide nada por su
+   cuenta.
+
+**Regla de precedencia: el UNIQUE gana.** Los dos pueden discrepar (por ejemplo,
+un candidato con porcentaje bajo pero con `correo_norm` idéntico al que estás
+diligenciando). Para que eso **nunca aborte el registro**, `crear_pedido` se
+comporta así ante una colisión de `_norm`:
+
+- Si diligencias un correo/teléfono cuyo normalizado **ya existe** y pediste
+  "registrar como cliente nuevo", la RPC **no inserta un duplicado**: **resuelve
+  al cliente existente** que tiene ese contacto y registra el pedido a su nombre.
+  El pedido se crea igual (nunca se bloquea).
+- Cómo se te presenta esto al humano: ese cliente existente **siempre aparece
+  como candidato en la lista de abajo** (con su porqué: "mismo correo" o "mismo
+  teléfono"), aunque el puntaje por otras señales sea bajo. Es decir, un `_norm`
+  idéntico **fuerza** que el dueño de ese contacto salga como candidato, para que
+  no elijas "nuevo" a ciegas contra el piso duro. Si aun así confirmas, el sistema
+  te lo asigna a ese cliente existente en vez de fallar.
+- El caso raro de **dos personas reales que comparten un teléfono** (familia,
+  negocio) se aborda en §11: como el piso duro no debe tumbar una venta legítima,
+  la salida es relajar la unicidad del teléfono (dejarla solo en correo). Nunca
+  se sacrifica la regla de hierro "no bloquea" por mantener el índice.
+
+En resumen: **la máquina protege contra duplicados con el UNIQUE, tú decides la
+identidad con el puntaje, y el registro del pedido nunca se cae.**
+
 ---
 
 ## 5. Ciclo de vida del pedido y manejo honesto de cancelación/devolución
@@ -562,6 +602,15 @@ Coherente con el libro append-only de Inventario: **nada se borra.**
 Una devolución parcial se maneja igual: una entrada compensatoria por la
 cantidad devuelta. Sin borrar, sin editar hechos viejos.
 
+**La cadena de anulación corre en una TRANSACCIÓN** (igual que `crear_pedido`,
+§3): marcar `pedidos.anulado = true` y registrar las entradas compensatorias en
+el libro son un solo hecho atómico. O pasa todo, o no pasa nada. Así se evita el
+caso feo de que la entrada compensatoria se registre pero el `update` de
+`pedidos.anulado` no (o al revés), que dejaría el libro y el estado del pedido
+**desincronizados**. Esta anulación vive en su propia RPC security definer
+(nombre propuesto `anular_pedido`, ver §10), con `set search_path = public` y
+chequeo de `tiene_acceso_ventas()`, igual que el resto.
+
 ---
 
 ## 6. Arquitectura de seguridad (el candado real está en los datos)
@@ -609,10 +658,15 @@ publishable key desde afuera **no debe poder leerlos**. Concretamente:
 
 - **Cero GRANT a `anon`** sobre cualquier tabla o vista de Ventas. Todo el área es
   tras login (`authenticated`).
-- **Escritura solo vía RPC security definer** (`crear_pedido`,
-  `buscar_candidatos_cliente` para lectura controlada, y las que editen cliente),
-  cada una con `set search_path = public` y chequeo de `tiene_acceso_ventas()` al
-  entrar. Ninguna tabla tiene policy de INSERT/UPDATE/DELETE para el cliente.
+- **Escritura solo vía RPC security definer de ESCRITURA** (`crear_pedido`,
+  `anular_pedido`, y las que editen cliente), cada una con
+  `set search_path = public` y chequeo de `tiene_acceso_ventas()` al entrar.
+  Ninguna tabla tiene policy de INSERT/UPDATE/DELETE para el cliente.
+- **Lectura controlada:** `buscar_candidatos_cliente` (§4.3) es una RPC de **SOLO
+  LECTURA**. Corre como `security definer` no para escribir, sino para **leer de
+  forma acotada** (devuelve candidatos con su score y señales) sin abrir toda la
+  tabla `clientes` al navegador. No escribe nada; se lista aparte de las RPC de
+  escritura justamente por eso.
 - **SIN DELETE** en ninguna tabla: clientes y pedidos se inactivan/anulan con
   bitácora.
 - **GRANT SELECT explícito a `authenticated`** sobre lo que el cliente lee directo
@@ -692,8 +746,20 @@ significado en Finanzas (DEBE) y en la tienda pública.
 Un `ventas-core.js` hermano de `inventario-core.js` y `marketing-core.js`, que
 reutilice `supabase-config.js` y `auth-guard.js` y exponga:
 
-- `asegurarAcceso` adaptado a `tiene_acceso_ventas` (equivalente al
-  `asegurarAcceso` de los otros cores).
+- `asegurarAcceso`: **gate de UX en JS**, equivalente al de los otros cores. Ojo
+  con no confundir dos cosas que se llaman parecido:
+  - El **gate de UX** vive en el core (JS) y es una **comodidad**: lee
+    `perfil.modulos` con un helper cliente (`tieneAccesoVentas(perfil)`, espejo
+    de `tieneAccesoMarketing(perfil)` en `marketing-core.js`) para decidir si
+    muestra u oculta la pantalla y redirige con gracia. NO llama a la función
+    SQL. Sirve para que el usuario sin permiso no vea una pantalla rota.
+  - El **candado real** (el que de verdad protege los datos) es la **RLS
+    server-side** apoyada en la función SQL `tiene_acceso_ventas()` (§6). Ese
+    candado se cumple aunque alguien salte el JS: Postgres no devuelve filas si
+    la RLS no pasa.
+  - Por eso el gate de UX **no se cuelga de** `tiene_acceso_ventas()` (la función
+    de datos): son capas distintas. El core solo replica la comodidad de UX que
+    ya tienen Inventario y Marketing; la seguridad de verdad está en §6.
 - `montarHeader` con "ÁREA DE VENTAS", header azul marino, wordmark MAGANDHI.
 - `ICONOS`, `escaparHTML`, `formatearCOP` (pesos con puntos de miles).
 - `montarSelloImpulse` (pie "Con tecnología Impulse", solo back-office).
@@ -776,8 +842,10 @@ Las migraciones de Inventario usan el prefijo `20250301...` y las de Finanzas
    policy para `anon`. Aquí también, opcionalmente, se **enciende la FK** de
    `movimientos_inventario.customer_id → clientes(id)` (§2).
 5. **`20250401000400_ventas_funciones.sql`**: RPCs `crear_pedido` (las dos
-   puertas, la cadena completa) y `buscar_candidatos_cliente` (el algoritmo de
-   coincidencia). Ambas security definer, `set search_path = public`, chequean
+   puertas, la cadena completa, transaccional), `anular_pedido` (anulación +
+   entrada compensatoria, también transaccional, §5.3) y
+   `buscar_candidatos_cliente` (solo lectura, el algoritmo de coincidencia).
+   Todas security definer, `set search_path = public`, chequean
    `tiene_acceso_ventas()`.
 6. **`20250401000500_ventas_grants.sql`**: `GRANT SELECT` a `authenticated`
    sobre `clientes`, `pedidos`, `pedido_items` y la vista (auto-expose OFF, misma
@@ -827,7 +895,8 @@ Para no asumir por ti, confirma estas antes de implementar:
    `ventas/seguimiento-pedidos/` y `ventas/portafolio-clientes/`. ¿Te gustan o
    prefieres otros?
 7. **Nombre de la RPC del núcleo:** `crear_pedido` o `ventas_crear_pedido` (para
-   mantener el prefijo de área). Detalle menor, tú decides.
+   mantener el prefijo de área). Detalle menor, tú decides. Lo mismo para la RPC
+   de anulación (`anular_pedido` o `ventas_anular_pedido`, §5.3).
 
 **Nota:** el **copy final** del algoritmo de coincidencia (los mensajes de "es
 este cliente", "coincidencia de X%", etc.) lo afina el dueño/orquestador en
@@ -845,11 +914,16 @@ documento son solo ejemplos.
   se ajusta un número, no se rehace nada. Y como nunca fusiona solo, un umbral
   imperfecto no daña datos.
 - **Duplicados de cliente:** el índice UNIQUE parcial sobre `correo_norm` y
-  `telefono_norm` es la red de seguridad por debajo del algoritmo. Riesgo honesto:
-  si dos clientes reales comparten un teléfono (una familia, un negocio), la
-  unicidad podría chocar. Es un caso raro en el piloto; si aparece, se maneja
-  relajando la unicidad del teléfono (dejándola solo en correo) sin romper nada.
-  Lo dejo anotado, no lo sobre-diseño ahora.
+  `telefono_norm` es la red de seguridad (piso duro) por debajo del algoritmo. El
+  orden de precedencia entre ese UNIQUE y el puntaje explicable, y qué hace
+  `crear_pedido` ante una colisión de `_norm` (resolver al cliente existente en
+  vez de fallar, sin bloquear el registro), están **cerrados en §4.5**, no
+  quedan al aire. Riesgo residual honesto: si dos clientes reales comparten un
+  teléfono (una familia, un negocio), el UNIQUE de teléfono podría empujar dos
+  ventas legítimas al mismo cliente. Es un caso raro en el piloto; si aparece, se
+  maneja relajando la unicidad del teléfono (dejándola solo en correo) sin romper
+  nada, porque **la regla de hierro "no bloquea" siempre gana sobre mantener el
+  índice**. Lo dejo anotado, no lo sobre-diseño ahora.
 - **Bajar stock al crear el pedido puede dejar existencias negativas** si se
   vende algo no cargado en Inventario. Eso NO se bloquea (contrato existente de
   `inv_registrar_movimiento`): es una señal honesta de reconciliación, y la UI la
