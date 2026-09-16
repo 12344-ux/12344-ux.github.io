@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Magandhi · Ranking de productos por periodo</title>
-<meta name="description" content="Qué se vendió y cuánto en un periodo, comparando todos los productos por unidades o ingreso estimado · Marketing Project de Magandhi.">
+<meta name="description" content="Qué se vendió y cuánto en un periodo, comparando todos los productos por unidades o ingreso (precio real cuando la venta se registró en Ventas) · Marketing Project de Magandhi.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" type="image/png" href="../../marca-areas/marketing.png?v=1">
 <link rel="apple-touch-icon" href="../../icono-app-180.png?v=1">
@@ -23,9 +23,10 @@
   Central (que analizan UN producto en el tiempo), esta pantalla es un
   COMPARATIVO ENTRE TODOS los productos. En un rango de fechas, suma las
   SALIDAS del libro (tipo='salida') de cada producto y arma una tabla-ranking:
-  un renglon por producto que se movio, con UNIDADES vendidas e INGRESO
-  ESTIMADO. NO parte el tiempo en dia/semana/mes: usa el rango completo
-  desde/hasta como una sola ventana y suma dentro de ella.
+  un renglon por producto que se movio, con UNIDADES vendidas e INGRESO (real
+  cuando la venta se registro en Ventas; estimado con el precio de lista para
+  las ventas sin pedido asociado). NO parte el tiempo en dia/semana/mes: usa el
+  rango completo desde/hasta como una sola ventana y suma dentro de ella.
 
   Hermana visual y tecnica de las otras dos categorias: reutiliza el MISMO core
   (marketing-core.js), el MISMO enfoque de lectura del libro (bajo RLS) y el
@@ -38,12 +39,16 @@
   porque (temporada, campana, etc.) la hace el director humano. Por eso esta
   pantalla muestra SOLO la tabla, los totales y el contexto factual.
 
-  HONESTIDAD DEL DATO DE DINERO (pedido explicito del dueno): el ingreso es
-  ESTIMADO porque se calcula con el precio_venta ACTUAL del producto, no con el
-  precio real de cada venta (que no existe hasta que se construya el software de
-  Ventas). Por eso la columna se rotula "Ingreso estimado" y hay una nota sobria
-  de transparencia. Ver la CONEXION FUTURA marcada en el codigo, en el punto
-  exacto donde se calcula el ingreso.
+  HONESTIDAD DEL DATO DE DINERO (pedido explicito del dueno): el ingreso usa el
+  PRECIO REAL cobrado cuando la venta se registro en el Area de Ventas (cada
+  'salida' del libro nacida de un pedido cruza con pedido_items via
+  referencia=pedido_id, de donde sale precio_unitario real). Para las salidas
+  SIN pedido asociado (ventas anteriores a Ventas o ajustes de inventario) no
+  hay precio real, asi que esa parte cae al precio_venta ACTUAL del producto y
+  queda ESTIMADA. Por eso la columna se rotula "Ingreso real" cuando todo el
+  ranking viene de Ventas e "Ingreso estimado" cuando hay al menos una fila por
+  fallback (esas filas se marcan con "≈"), con una nota sobria de transparencia.
+  Ver leerIngresoRealPorProducto y la mezcla real/fallback en agregarRanking.
 
   CASOS LIMITE (con honestidad, sin bloquear):
     · Sin ventas en el rango -> estado vacio sobrio (estilo Balance General).
@@ -77,14 +82,14 @@
         <input class="mk-input" id="mk-hasta" type="date">
       </label>
 
-      <!-- Orden del ranking: por que metrica (Unidades / Ingreso estimado) y en
+      <!-- Orden del ranking: por que metrica (Unidades / Ingreso) y en
            que sentido (mas vendido = descendente / menos vendido = ascendente).
            Ambas metricas SIEMPRE se muestran; el orden solo cambia el sort. -->
       <label class="mk-control">
         <span>Ordenar por</span>
         <select class="mk-select" id="mk-ordenar">
           <option value="unidades" selected>Unidades vendidas</option>
-          <option value="ingreso">Ingreso estimado</option>
+          <option value="ingreso">Ingreso</option>
         </select>
       </label>
 
@@ -171,8 +176,69 @@
   }
 
   // ----------------------------------------------------------
+  // INGRESO REAL POR PRODUCTO — CONEXION con el Area de Ventas (antes marcada
+  // como CONEXION FUTURA). Cuando una venta se registra desde Ventas
+  // (crear_pedido), el libro guarda la 'salida' con referencia = pedido_id y,
+  // en paralelo, pedido_items conserva el PRECIO REAL cobrado en esa venta
+  // (precio_unitario), que puede diferir del precio_venta actual del producto
+  // (promociones, cambios de lista, negociacion). Aqui sumamos ese ingreso REAL
+  // por producto: precio_unitario * cantidad de los items de pedidos NO anulados
+  // dentro del rango, para que el ingreso deje de ser un estimado cuando el dato
+  // real existe.
+  //
+  // COMO SE ACOTA EL RANGO: pedidos.fecha_orden es la misma fecha con la que
+  // crear_pedido estampa la 'salida' del libro, asi que filtramos por
+  // fecha_orden con el MISMO criterio .gte/.lte que leerSalidas usa sobre
+  // 'fecha'. Solo cuentan pedidos con anulado=false (la anulacion ya devolvio el
+  // stock con una entrada compensatoria en el libro, y portafolio_metricas
+  // tambien los excluye): asi el ingreso real coincide con lo que de verdad
+  // quedo vendido.
+  //
+  // FALLBACK (documentado): las salidas del libro que NO nacieron de un pedido
+  // (ventas viejas anteriores a Ventas, ajustes manuales con
+  // inv_registrar_movimiento) no tienen items con precio real; para esas,
+  // agregarRanking conserva el precio_venta ACTUAL del producto como estimacion.
+  //
+  // Solo LEE (bajo RLS de Ventas: pedidos/pedido_items exigen tiene_acceso_ventas
+  // para el analista de marketing sin ese acceso, esta consulta puede volver
+  // vacia -> se cae limpio al fallback de precio_venta, sin romper la pantalla).
+  // Devuelve un Map product_id -> ingreso real acumulado (bigint en pesos).
+  // ----------------------------------------------------------
+  async function leerIngresoRealPorProducto(desde, hasta) {
+    // Traemos los items junto con el estado/fecha de su pedido en un solo select
+    // con join implicito de PostgREST (pedidos!inner). El !inner descarta items
+    // cuyo pedido no cumple el filtro (anulado o fuera de rango).
+    let q = supabase
+      .from('pedido_items')
+      .select('product_id, cantidad, precio_unitario, pedidos!inner(anulado, fecha_orden)')
+      .eq('pedidos.anulado', false);
+    if (desde) q = q.gte('pedidos.fecha_orden', desde);
+    if (hasta) q = q.lte('pedidos.fecha_orden', hasta);
+    const { data, error } = await q;
+    // Si el usuario no tiene acceso al Area de Ventas (RLS) o la tabla aun no
+    // existe, NO rompemos el ranking: devolvemos un mapa vacio y todo cae al
+    // fallback de precio_venta. El ingreso volvera a ser estimado, con honestidad.
+    if (error) return new Map();
+    const mapa = new Map();
+    for (const it of (data || [])) {
+      if (!it.product_id) continue;
+      const aporte = Math.trunc(Number(it.precio_unitario) || 0) * Math.trunc(Number(it.cantidad) || 0);
+      mapa.set(it.product_id, (mapa.get(it.product_id) || 0) + aporte);
+    }
+    return mapa;
+  }
+
+  // ----------------------------------------------------------
   // AGREGACION EN MEMORIA — por cada product_id, suma unidades vendidas en el
-  // rango; ingreso estimado = unidades * precio_venta actual del producto.
+  // rango y arma el ingreso combinando dos fuentes, en este orden:
+  //   1) INGRESO REAL de Ventas (precio_unitario real de cada pedido no anulado
+  //      en el rango, ya sumado por producto en `ingresoReal`). Es el dato
+  //      exacto de lo que se cobro.
+  //   2) FALLBACK ESTIMADO: para el producto que NO tenga ingreso real (ventas
+  //      viejas/ajustes sin pedido asociado), unidades * precio_venta ACTUAL.
+  //      Es una estimacion honesta con el precio de lista de hoy.
+  // Asi el ingreso deja de ser un puro estimado cuando la venta paso por Ventas
+  // (§CONEXION), sin rehacer la pantalla: solo cambia la FUENTE del precio.
   //
   // Verificacion a mano (ejemplo pequeno):
   //   salidas = [
@@ -181,13 +247,21 @@
   //     { product_id: 'A', cantidad: 2 },
   //   ]
   //   productos: A -> precio_venta 1000 ; B -> precio_venta 2000
-  //   Agregado:
-  //     A: unidades = 3 + 2 = 5 ; ingreso = 5 * 1000 = 5.000
-  //     B: unidades = 5         ; ingreso = 5 * 2000 = 10.000
-  //   Totales: unidades = 10 ; ingreso = 15.000 ; productos movidos = 2
-  //   Orden por unidades desc -> [A(5), B(5)] empatan; por ingreso desc -> [B, A].
+  //   Caso 1 (sin Ventas / mapa vacio): ingresoReal = {} -> todo por fallback:
+  //     A: unidades = 3 + 2 = 5 ; ingreso = 5 * 1000 = 5.000  (estimado)
+  //     B: unidades = 5         ; ingreso = 5 * 2000 = 10.000 (estimado)
+  //     Totales: unidades = 10 ; ingreso = 15.000 ; productos movidos = 2
+  //   Caso 2 (con Ventas): supongamos que A se vendio con promocion a 800 el
+  //   precio real de sus 5 unidades, y B no paso por Ventas:
+  //     ingresoReal = { A: 5*800 = 4.000 }
+  //     A: usa el REAL -> ingreso = 4.000
+  //     B: sin real -> fallback -> ingreso = 5 * 2000 = 10.000
+  //     Totales: unidades = 10 ; ingreso = 14.000
+  //   Orden por unidades desc -> [A(5), B(5)] empatan; por ingreso desc, caso 1
+  //   -> [B, A]; caso 2 -> [B, A] (10.000 > 4.000).
   // ----------------------------------------------------------
-  function agregarRanking(salidas, productos) {
+  function agregarRanking(salidas, productos, ingresoReal) {
+    const real = ingresoReal || new Map();
     const acum = new Map(); // product_id -> unidades
     for (const s of salidas) {
       if (!s.product_id) continue;
@@ -198,18 +272,19 @@
     for (const [productId, unidades] of acum.entries()) {
       const prod = productos.get(productId) || null;
       const precio = Math.trunc(Number(prod?.precio_venta) || 0);
-      // CONEXION FUTURA (software de Ventas): reemplazar precio_venta actual del
-      // producto por el precio real registrado en cada venta cuando Ventas
-      // registre ventas con su propio precio. El ingreso pasara de ESTIMADO a
-      // exacto SIN rehacer esta pantalla: solo cambia la fuente del precio aqui.
-      const ingreso = unidades * precio;
+      // Precio REAL cobrado en Ventas (precio_unitario de pedido_items) cuando
+      // existe; si el producto no tiene ninguna venta registrada en Ventas
+      // dentro del rango, FALLBACK al precio_venta actual (estimado documentado).
+      const tieneReal = real.has(productId);
+      const ingreso = tieneReal ? real.get(productId) : (unidades * precio);
       filas.push({
         productId,
         nombre: prod?.nombre || 'Producto',
         sku: prod?.sku || '',
         unidad: prod?.unidad_medida || 'unidad',
         unidades,
-        ingreso
+        ingreso,
+        ingresoReal: tieneReal
       });
     }
     return filas;
@@ -256,6 +331,16 @@
     const totalIngreso = filas.reduce((a, f) => a + f.ingreso, 0);
     const nProductos = filas.length;
 
+    // El ingreso es EXACTO (precio real de Ventas) cuando TODAS las filas del
+    // ranking provienen de pedidos registrados en Ventas; es ESTIMADO si al
+    // menos una fila cayo al fallback de precio_venta (ventas viejas/ajustes sin
+    // pedido). Con eso rotulamos con honestidad: "Ingreso real" solo cuando todo
+    // el dato es real; "Ingreso estimado" si hay aunque sea una fila estimada.
+    const conReal = filas.filter((f) => f.ingresoReal).length;
+    const todoReal = conReal === filas.length && conReal > 0;
+    const hayEstimado = conReal < filas.length;
+    const rotuloIngreso = todoReal ? 'Ingreso real' : 'Ingreso estimado';
+
     // Marca sutil de la columna activa (por cual se ordeno). Sin color nuevo:
     // una flecha textual segun el sentido. La OTRA columna no la lleva.
     const flecha = (sentido === 'asc') ? ' ↑' : ' ↓';
@@ -277,30 +362,48 @@
           '<span class="mk-hero-sub">' + escaparHTML(rango) + '</span>' +
         '</div>' +
         '<div class="mk-hero-main">' +
-          '<span class="mk-hero-lbl">Ingreso estimado del periodo</span>' +
+          '<span class="mk-hero-lbl">' + rotuloIngreso + ' del periodo</span>' +
           '<span class="mk-hero-num">' + formatearPesos(totalIngreso) + '</span>' +
-          '<span class="mk-hero-sub">calculado con el precio de venta actual</span>' +
+          '<span class="mk-hero-sub">' +
+            (todoReal
+              ? 'con el precio real cobrado en Ventas'
+              : 'precio real de Ventas; precio de lista donde no hubo pedido') +
+          '</span>' +
         '</div>' +
         '<div class="mk-hero-meta">' +
           '<div class="mk-hero-dato"><span class="k">Productos movidos</span><span class="v">' + formatearNumero(nProductos) + '</span></div>' +
         '</div>' +
       '</div>' +
       // Nota de transparencia honesta sobre el dinero. NO interpreta; solo
-      // explica de donde sale la cifra y cuando sera exacta.
+      // explica de donde sale cada cifra. Cuando la venta paso por el Area de
+      // Ventas, el ingreso usa el PRECIO REAL cobrado (pedido_items); si alguna
+      // venta no tiene pedido asociado (ventas viejas/ajustes), esa parte cae al
+      // precio de venta actual, y lo decimos.
       '<p class="mk-transparencia">' + ICONOS.info +
-        '<span>El <strong>ingreso estimado</strong> usa el precio de venta ' +
-        'actual de cada producto, no el precio real de cada venta (que aún no ' +
-        'se registra). Será exacto cuando exista el software de Ventas. ' +
+        '<span>' +
+        (todoReal
+          ? 'El <strong>ingreso real</strong> usa el precio efectivamente ' +
+            'cobrado en cada venta registrada en Ventas (no el precio de lista ' +
+            'actual). '
+          : 'El <strong>ingreso</strong> usa el precio real cobrado en Ventas ' +
+            'cuando la venta se registró allí; para las ventas sin pedido ' +
+            'asociado (ventas antiguas o ajustes de inventario) cae al precio ' +
+            'de venta actual del producto, así que esa parte es estimada. ') +
         'Impulse entrega el dato medido; la lectura la haces tú.</span></p>';
 
-    // TABLA-RANKING.
+    // TABLA-RANKING. En un ranking MIXTO (algunas filas con precio real de
+    // Ventas y otras estimadas por fallback), marcamos con un "≈" sobrio las
+    // filas cuyo ingreso es estimado, para no dar por exacto lo que no lo es.
+    // Sin color nuevo: solo el signo textual. Si todo es real (o todo estimado),
+    // no se marca fila por fila (el rotulo de la columna ya lo dice).
     const filasHTML = filas.map((f, i) => {
       const etiqueta = escaparHTML(f.nombre) + (f.sku ? ' · ' + escaparHTML(f.sku) : '');
+      const marcaFila = (hayEstimado && conReal > 0 && !f.ingresoReal) ? '≈ ' : '';
       return '<tr>' +
         '<td class="num">' + (i + 1) + '</td>' +
         '<td class="periodo">' + etiqueta + '</td>' +
         '<td class="num">' + formatearNumero(f.unidades) + '</td>' +
-        '<td class="num">' + formatearPesos(f.ingreso) + '</td>' +
+        '<td class="num">' + marcaFila + formatearPesos(f.ingreso) + '</td>' +
       '</tr>';
     }).join('');
 
@@ -312,7 +415,7 @@
             '<th class="num">#</th>' +
             '<th>Producto</th>' +
             '<th class="num">Unidades' + marcaUnidades + '</th>' +
-            '<th class="num">Ingreso estimado' + marcaIngreso + '</th>' +
+            '<th class="num">' + rotuloIngreso + marcaIngreso + '</th>' +
           '</tr></thead>' +
           '<tbody>' + filasHTML + '</tbody>' +
           '<tfoot><tr>' +
@@ -347,9 +450,13 @@
     btnGenerar.disabled = true;
     resultado.innerHTML = '<div class="mk-empty">Leyendo las ventas del periodo…</div>';
 
-    let salidas, productos;
+    let salidas, productos, ingresoReal;
     try {
-      [salidas, productos] = await Promise.all([leerSalidas(desde, hasta), leerProductos()]);
+      [salidas, productos, ingresoReal] = await Promise.all([
+        leerSalidas(desde, hasta),
+        leerProductos(),
+        leerIngresoRealPorProducto(desde, hasta)
+      ]);
     } catch (err) {
       resultado.innerHTML = '';
       mostrarError('No se pudo leer el histórico de ventas: ' + (err?.message || 'error desconocido') + '.');
@@ -358,7 +465,7 @@
     }
     btnGenerar.disabled = false;
 
-    let filas = agregarRanking(salidas, productos);
+    let filas = agregarRanking(salidas, productos, ingresoReal);
     // Un ranking es de lo que se MOVIO: productos con 0 unidades no entran.
     filas = filas.filter((f) => f.unidades > 0);
 
@@ -378,7 +485,7 @@
     montarHeader({
       titulo: 'Ranking de productos por periodo',
       kicker: 'MARKETING PROJECT · COMPARATIVO',
-      lead: 'Qué se vendió y cuánto en un periodo, comparando todos los productos por unidades o por ingreso estimado. Impulse entrega el dato; el porqué lo analizas tú.',
+      lead: 'Qué se vendió y cuánto en un periodo, comparando todos los productos por unidades o por ingreso (precio real cuando la venta se registró en Ventas). Impulse entrega el dato; el porqué lo analizas tú.',
       sesion: acceso.sesion,
       areaLabel: 'MARKETING PROJECT',
       volverHref: 'index.html',
