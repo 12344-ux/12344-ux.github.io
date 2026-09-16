@@ -181,14 +181,68 @@ Inventario (un error de un lado no envenena el otro). El reparto de una venta:
 inventario baja (auto cuando haya checkout / manual en piloto), ingreso de inventario
 y registro contable = manuales (humano con criterio).
 
+## SOFTWARE 4 — Área VENTAS  ⏳ PLANO APROBADO, FALTA CONSTRUIR (justo aquí quedó la sesión)
+
+**ESTADO EXACTO AL ABRIR EL PRÓXIMO CHAT:** el dueño y Kiro diseñaron el área Ventas
+a fondo y el dueño APROBÓ el plano. El plano vive en **`docs/PLANO-VENTAS.md`**, en el
+**PR #183 (abierto, aún NO mergeado)** — LEERLO COMPLETO; su cabecera "⭐ DECISIONES
+FINALES DEL DUEÑO" manda. **NO se ha construido nada de Ventas todavía** (no existe la
+carpeta `ventas/`). El siguiente paso es: (1) que el dueño mergee el PR #183, y (2)
+CONSTRUIR el área siguiendo el plano. (Un intento de lanzar la construcción se abortó
+por un fallo mecánico de Kiro, sin efecto: nada se construyó ni se rompió, main quedó
+intacto.)
+
+**Qué es Ventas (cuarta área, `ventas/`), con 2 sub-áreas:**
+- **Seguimiento de pedidos** (operativo, para quien prepara y entrega): tablero de
+  pedidos + **registrar pedido MANUAL**. Un solo NÚCLEO `crear_pedido` con DOS PUERTAS
+  (manual hoy / web futura cuando haya checkout). Al crear el pedido: baja inventario
+  (salida en el libro, `referencia = id del pedido`), crea la orden, vincula/crea el
+  cliente, registra el **precio real** de venta.
+- **Portafolio de clientes** (la memoria): ficha (nombre, correo, teléfono, dirección)
+  + historial + métricas OBJETIVAS (última compra, frecuencia, total). NO interpreta la
+  "salud" (eso lo hará el Análisis Clúster de Marketing después).
+
+**Decisiones finales del dueño (en la cabecera del plano):**
+- **Baja de stock AL CREAR** el pedido (coherente con la web futura).
+- **Estados (4):** Recibido → Preparando → **En camino** → Entregado (+ cancelado y
+  devuelto). Preparados para disparar correos por etapa MÁS ADELANTE (Email Marketing).
+- **Coincidencia de cliente por PUNTAJE explicable** (NO IA): correo/teléfono
+  normalizados = señal fuerte; nombre similar = débil. 3 niveles alta/media/baja con %
+  + el porqué. El humano decide con botón; NUNCA fusiona solo, NUNCA bloquea el
+  registro. Enciende el `customer_id`.
+- **DEVOLUCIONES:** se construye SOLO el MOTOR por debajo (revertir un pedido con
+  ENTRADA compensatoria al inventario, anclada a un pedido, parcial o total; nunca
+  borrando). La **pantalla/categoría "Devoluciones" NO se construye aún** — irá en
+  PRODUCCIÓN (hermana de Inventarios), y se hará cuando el dueño defina su POLÍTICA de
+  devoluciones (qué acepta, estado, plazo; matiz belleza/higiene abierto NO se revende
+  vs objeto en buen estado sí; marco legal: derecho de retracto Ley 1480). Esa política
+  es decisión de NEGOCIO/LEGAL del dueño, NO del software (el software registra la
+  devolución que el dueño aprueba, no decide si procede). El dueño se informará y luego
+  se construye.
+- **Seguridad REFORZADA** de datos personales (correos/teléfonos/direcciones): RLS
+  estricta vía `tiene_acceso_ventas()`, NUNCA públicos.
+- **Diseño nivel Finanzas** (PILAR innegociable para el dueño), sin color nuevo (azul
+  marino), sello Impulse. Migraciones nuevas con prefijo `20250401...`.
+
+**Enchufes que enciende/deja Ventas:** `customer_id` encendido (Marketing por cliente),
+precio real (el Ranking deja de estimar — actualizar su marcador CONEXION FUTURA),
+correo normalizado → Email Marketing futuro, dirección → Mapas/Rutas futuro. Finanzas
+sigue DESCONECTADA (cita a ciegas).
+
 ## Próximos pasos posibles (decidir con el dueño)
 
-- **Software de VENTAS (el orquestador):** cuando se concrete una venta, baja stock,
-  calcula costo y arma el paquete contable. Requiere pasarela/checkout + Pedidos +
-  Clientes. Aquí irá la **gráfica en tiempo real** del negocio (idea del dueño) y aquí
-  se conecta el "ingreso real" del Ranking. NO existe aún.
-- **Software de CLIENTES:** el dueño lo quiere más completo que una tabla; conectará el
-  `customer_id` (enchufe apagado) del libro.
+- **CONSTRUIR VENTAS** (lo inmediato): mergear PR #183 y construir las 2 sub-áreas
+  según `docs/PLANO-VENTAS.md`.
+- **Software de CLIENTES más completo:** el dueño lo quiere más que una tabla; el
+  Portafolio de Ventas es la base, se puede enriquecer después.
+- **Análisis Clúster (Marketing):** leerá el Portafolio + pedidos para agrupar clientes
+  y calcular la "salud" (por periodo, individual o general). Será "bastante cargado".
+  Se hace DESPUÉS de que Ventas llene datos reales.
+- **Email Marketing:** sección futura; campañas dirigidas por clúster, usando el correo
+  recolectado. El dueño ya lo anticipó.
+- **Devoluciones (pantalla en Producción):** cuando el dueño defina su política.
+- **Mapas/Rutas de entrega:** la dirección alimentará geolocalización y rutas (futuro).
+
 - **Marketing:** activar Análisis clúster y Elasticidad cuando haya datos.
 - **Tienda pública magandhi.com:** falta la PÁGINA DE PRODUCTO REAL (el hero lleva a
   404); diseño v1 ya aprobado. La superficie de lectura pública (`catalogo_publico`)
@@ -208,8 +262,10 @@ Posible que pidan RUT para el cambio aunque se haya registrado con cédula (a
 confirmar con soporte). NO borrar/recrear la cuenta (perdería aprobación + llaves de
 integración). Postura del dueño sobre formalización (Cámara de Comercio/RUT): no
 hacerla A MEDIAS ni sobre-formalizar antes de validar ventas, pero sí tener el piso
-mínimo cuando entre dinero real. El dueño gestionará Wompi con soporte
-"mañana" (respecto a esta jornada).
+mínimo cuando entre dinero real. **ESTADO ACTUAL:** el dueño YA CONTACTÓ al equipo de
+soporte de Wompi y el cambio de nombre está en trámite ("pronto quedará solucionado").
+Kiro NO interviene en Wompi (no tiene acceso); acompaña con capturas/redacción si el
+dueño lo pide. Retomar solo si el dueño trae novedad de soporte.
 
 ## Flujo de trabajo Git
 - Rama nueva + PR por cada cambio. NUNCA push directo a main. El dueño mergea rápido.
@@ -218,13 +274,34 @@ mínimo cuando entre dinero real. El dueño gestionará Wompi con soporte
   `supabase/INSTRUCCIONES.md`, con orden exacto y queries de verificación).
 
 ---
-_Última actualización: jornada en que se construyeron el módulo **Inventario**
-(área Producción) y **Marketing Project** (Proyección de demanda, Medidas de
-Tendencia Central, Ranking de productos), se reorganizó el panel en 3 áreas
-jerárquicas, y se definieron las dos reglas de identidad de Impulse (solo datos
-propios / no interpreta). PRs #167–#181 mergeados (171 y 172 reemplazados por el
-#173 combinado). Pendiente abierto: cambio de nombre en Wompi (a soporte) y la
-formalización, que el dueño gestiona a su ritmo. Antes de tocar SQL, leer
-`supabase/INSTRUCCIONES.md`; antes de tocar diseño, recordar que la interfaz y la
-coherencia de marca son FUNDAMENTALES (nivel Finanzas, sin color nuevo, sello
-Impulse)._
+## 🔖 DÓNDE RETOMAR (cierre de sesión — leer esto primero al abrir chat nuevo)
+
+**El ecosistema Impulse tiene 3 áreas VIVAS en producción:** Finanzas (Contabilidad
+PUC), Producción (Inventarios: Ver/Agregar/Movimientos) y Marketing (Marketing
+Project: Proyección de demanda, Tendencia Central, Ranking de productos).
+
+**La 4.ª área, VENTAS, está DISEÑADA Y APROBADA pero NO construida.** El plano es
+`docs/PLANO-VENTAS.md` en el **PR #183 (abierto, sin mergear)**. Ver la sección
+"SOFTWARE 4 — Área VENTAS" arriba para el detalle completo.
+
+**PASO INMEDIATO para continuar el proyecto tal cual:**
+1. El dueño **mergea el PR #183** (deja el plano en main como fuente de verdad).
+2. Kiro **construye el área Ventas** siguiendo `docs/PLANO-VENTAS.md` y sus decisiones
+   finales (2 sub-áreas: Seguimiento de pedidos + Portafolio de clientes; núcleo
+   `crear_pedido`; coincidencia por puntaje; motor de devoluciones por debajo;
+   migraciones `20250401...`; nivel Finanzas, sin color nuevo, sello Impulse). El SQL
+   lo aplica el dueño a mano (documentar en `supabase/INSTRUCCIONES.md`).
+
+**RECORDATORIOS PERMANENTES:** (a) reglas de identidad de Impulse: solo DATOS PROPIOS /
+NO interpreta (el humano decide/lee). (b) La INTERFAZ y la coherencia de marca son
+FUNDAMENTALES para el dueño (nivel Finanzas, azul marino, sin color nuevo, sello
+Impulse, wordmark MAGANDHI). (c) Flujo Git: rama nueva + PR por cada cambio, nunca push
+a main, el dueño mergea; SQL/Edge/Storage los aplica el dueño a mano. (d) "Hacer las
+cosas bien": sin afán, nada a medias; frenar al dueño si se afana. (e) Wompi en trámite
+con soporte (Kiro no interviene). (f) Modo de trabajo: "regar fichas" → trazar el
+camino de conexión (husmear los tapetes de otras áreas para conectar) → construir.
+
+_Última actualización: sesión en que se DISEÑÓ y APROBÓ el área **Ventas** (plano en
+PR #183, sin construir aún) y el dueño puso en trámite el cambio de nombre en Wompi.
+Sesión anterior: se construyeron Inventario + Marketing Project y las reglas de
+identidad de Impulse (PRs #167–#182 mergeados)._
