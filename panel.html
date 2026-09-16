@@ -20,8 +20,8 @@
   · Protegido por auth-guard.js: sin sesion valida, redirige al login.
     Recordatorio: el redirect es comodidad de UX; la seguridad real
     esta en RLS sobre los datos (ver supabase-config.js / migraciones).
-  · Arquitectura por AREAS: el panel agrupa el back-office en 3 areas
-    (FINANZAS, MARKETING, PRODUCCION). Cada tarjeta es una 'carpeta' que
+  · Arquitectura por AREAS: el panel agrupa el back-office en 4 areas
+    (FINANZAS, MARKETING, PRODUCCION, VENTAS). Cada tarjeta es una 'carpeta' que
     lleva al index.html del area, donde viven sus sub-areas. Preparado
     para crecer: agregar un area = agregar su tarjeta + su clave de modulo.
   · Reutiliza el sistema de marca (marca.css, wordmark, Poppins, terracota).
@@ -203,14 +203,23 @@
       <p>Inventarios: libro de movimientos append-only, stock derivado, imagenes optimizadas de cada producto.</p>
     </a>
 
+    <!-- VENTAS (carpeta: adentro viven Seguimiento de pedidos y Portafolio) -->
+    <a class="mg-mod-card" id="mg-card-ventas" href="ventas/index.html" hidden>
+      <span class="mg-mod-ico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/><path d="M5.12 8h14.44"/></svg>
+      </span>
+      <h3>Ventas</h3>
+      <p>Seguimiento de pedidos y portafolio de clientes: registro manual, coincidencia de cliente y metricas objetivas.</p>
+    </a>
+
   </section>
 
   <!-- Placeholder: solo visible si el usuario NO puede ver ningun area. -->
   <section class="mg-modules" id="mg-modules">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg>
     <h2>Espacio preparado para modulos futuros</h2>
-    <p>Aqui apareceran las herramientas internas (por ejemplo, Pedidos)
-       a medida que se habiliten. Por ahora este es el cascaron protegido.</p>
+    <p>Aqui apareceran las herramientas internas a medida que se habiliten
+       para tu perfil. Por ahora este es el cascaron protegido.</p>
   </section>
 </main>
 
@@ -255,6 +264,7 @@
         { id: 'finanzas',   claves: ['finanzas'],                   card: 'mg-card-finanzas' },
         { id: 'marketing',  claves: ['marketing', 'marketing-project'], card: 'mg-card-marketing' },
         { id: 'produccion', claves: ['produccion', 'inventarios'],  card: 'mg-card-produccion' },
+        { id: 'ventas',     claves: ['ventas', 'pedidos', 'clientes', 'portafolio'], card: 'mg-card-ventas' },
       ];
 
       const esAdmin = perfil?.rol === 'admin';

@@ -928,3 +928,234 @@ a proposito, para no dejar cosas a medias:
 - **Contabilidad sigue MANUAL y desconectada de Inventario.** No hay enganche
   automatico Inventario -> Finanzas: cada area alimenta a Marketing por su
   cuenta (cita a ciegas). Registrar una salida NO crea ningun asiento contable.
+
+---
+
+# Modulo Ventas · Pedidos, clientes y portafolio
+
+Esta seccion aplica el cimiento de datos del TERCER software interno: el **Area
+de Ventas**, con dos sub-areas (Seguimiento de pedidos y Portafolio de
+clientes). Mismo estandar y misma filosofia que Finanzas e Inventario: nada se
+borra en silencio, cantidades enteras (unidades), montos en `bigint` (pesos
+enteros, nunca float), y el candado real vive en los DATOS (RLS + RPC security
+definer), no en el HTML.
+
+Idea central: **el pedido es el HECHO que se escribe; el resto se DERIVA.** El
+pedido baja el stock del MISMO libro de Inventario (una `salida` con
+`referencia = pedido_id` y `customer_id` estampado), y las metricas del
+Portafolio (ultima compra, numero de pedidos, total gastado) NO se guardan: se
+derivan de `pedidos` con la vista `portafolio_metricas`. Anular un pedido
+registra una ENTRADA compensatoria en el libro y la metrica se recalcula sola.
+
+**El enchufe apagado se enciende aqui (decision del dueno):**
+`movimientos_inventario.customer_id` existia como columna ANTICIPADA sin FK
+desde Inventario. El archivo 4 de V1 (`20250401000300_ventas_rls.sql`) le
+enciende la FK hacia `clientes(id)`, por eso **la tabla `clientes` debe existir
+antes** (archivo 1). Ventas alimenta a Marketing por el DATO (el Ranking usa el
+precio real de `pedido_items`), no por codigo.
+
+**Requisito previo:** la migracion de perfiles y roles
+(`20250101000000_crear_perfiles_y_roles.sql`) y el modulo de **Inventario**
+(seccion I1 completa, en especial `productos` y `movimientos_inventario`) YA
+deben estar aplicados: `pedido_items.product_id` es FK a `productos`, el pedido
+baja stock del libro de Inventario y `tiene_acceso_ventas()` envuelve la misma
+funcion central `tiene_modulo(text)`.
+
+## V1. Orden EXACTO de ejecucion en el SQL Editor
+
+Abre el **SQL Editor** (igual que en el paso 1 de arriba) y ejecuta, EN ESTE
+ORDEN, el contenido completo de cada archivo (cada uno con su propio **Run**):
+
+1. `supabase/migrations/20250401000000_ventas_clientes.sql`
+   Crea la tabla `clientes` (identidad del cliente: nombre, correo/telefono y
+   sus formas normalizadas `correo_norm`/`telefono_norm`, direccion, ciudad,
+   etc.), con indices UNIQUE PARCIALES sobre `correo_norm`/`telefono_norm`
+   (piso duro anti-duplicados). Su `id` es el `customer_id` del libro. Debe ir
+   PRIMERO porque el archivo 4 enciende la FK que apunta a esta tabla.
+2. `supabase/migrations/20250401000100_ventas_pedidos.sql`
+   Crea `pedidos` (la orden: `customer_id`, `fecha_orden`, `estado`
+   recibido/preparando/en_camino/entregado/anulado, `canal` manual/web,
+   `total` bigint, `anulado`) y `pedido_items` (las lineas: `pedido_id`,
+   `product_id`, `cantidad`, `precio_unitario` = PRECIO REAL de la venta,
+   `subtotal`). Ese `precio_unitario` es el que enciende el ingreso real del
+   Ranking de Marketing.
+3. `supabase/migrations/20250401000200_ventas_portafolio_vista.sql`
+   Crea la vista `portafolio_metricas` (una fila por cliente, DERIVADA de sus
+   pedidos NO anulados: `ultima_compra`, `num_pedidos`, `total_gastado`).
+   SECURITY INVOKER: hereda la RLS de `clientes`/`pedidos`. Corre DESPUES de los
+   archivos 1 y 2.
+4. `supabase/migrations/20250401000300_ventas_rls.sql`
+   Crea la funcion de acceso del area `tiene_acceso_ventas()` (envuelve
+   `tiene_modulo` y acepta las claves equivalentes `ventas`/`pedidos`/
+   `clientes`/`portafolio`) y activa RLS de SOLO SELECT en `clientes`,
+   `pedidos`, `pedido_items` (y una policy SELECT extra en `productos` para el
+   usuario de ventas). **Ademas ENCIENDE LA FK del enchufe:**
+   `movimientos_inventario.customer_id -> clientes(id)`; por eso `clientes`
+   (archivo 1) tiene que existir antes de este paso. Sin policies de
+   INSERT/UPDATE/DELETE (toda escritura va por RPC).
+5. `supabase/migrations/20250401000400_ventas_funciones.sql`
+   Crea las RPC security definer (la UNICA via de escritura; cada una valida
+   `tiene_acceso_ventas()` al entrar): `buscar_candidatos_cliente` (solo
+   lectura, algoritmo de coincidencia), `crear_pedido` (nucleo unico: resuelve/
+   crea cliente, inserta pedido + items con precio real, baja stock con una
+   `salida` directa en el libro), `anular_pedido` (anulacion logica + entrada
+   compensatoria) y `avanzar_estado_pedido` (mueve el estado operativo).
+   **Corre DESPUES del archivo 4**, que es donde se define `tiene_acceso_ventas()`.
+6. `supabase/migrations/20250401000500_ventas_grants.sql`
+   Otorga al rol `authenticated` el GRANT base de tabla (SELECT) que faltaba
+   por tener "auto-expose new tables" en OFF. POR QUE: igual que en Finanzas
+   (archivo 8 de F1) e Inventario (archivo 6 de I1), sin este GRANT de capa 1
+   Postgres responde `permission denied` (403) ANTES de evaluar RLS. Destraba
+   solo esa capa con el minimo privilegio: SELECT en `clientes`, `pedidos`,
+   `pedido_items` y la vista `portafolio_metricas`. NO abre INSERT/UPDATE/DELETE
+   (toda escritura va por RPC) ni concede nada a `anon` (los datos personales de
+   terceros nunca se exponen al publico).
+
+Los archivos son idempotentes (`create ... if not exists`, `create or replace`,
+`drop policy if exists`, y la FK se anade solo si no existe): si algo falla a
+mitad, puedes re-ejecutar sin duplicar nada.
+
+## V2. Como verificar que quedo bien
+
+Ejecuta estas consultas en el SQL Editor (estando logueado como admin). Primero
+necesitas el `id` uuid de un producto con stock; tomalo del inventario:
+
+```sql
+select product_id, sku, existencias from stock_actual order by sku;
+-- Copia el product_id de un producto para usarlo abajo como <uuid-del-producto>.
+```
+
+1. **Acceso al area** (estando logueado como admin devuelve `true`):
+
+   ```sql
+   select tiene_acceso_ventas();   -- acepta ventas/pedidos/clientes/portafolio
+   ```
+
+2. **Registrar un pedido manual** (crea el cliente si es nuevo y baja stock en un
+   solo paso; NO escribes tu el customer_id ni el pedido_id, los devuelve la
+   RPC). La firma de items es un array jsonb de
+   `{product_id, cantidad, precio_unitario}` con el PRECIO REAL cobrado:
+
+   ```sql
+   select crear_pedido(
+     p_nombre        => 'Cliente de prueba Ventas',
+     p_correo        => 'prueba.ventas@example.com',
+     p_telefono      => '3001234567',
+     p_ciudad        => 'Cali',
+     p_canal         => 'manual',
+     p_items         => '[{"product_id":"<uuid-del-producto>","cantidad":2,"precio_unitario":25000}]'::jsonb
+   );
+   -- Esperado: jsonb {"pedido_id":"<uuid>","customer_id":"<uuid>","total":50000}.
+   -- Copia el pedido_id y el customer_id para los pasos siguientes.
+   ```
+
+   > Si el cliente ya existia (mismo `correo_norm` o `telefono_norm`), la RPC NO
+   > lo duplica: resuelve al existente y devuelve su `customer_id` (§4.5). Para
+   > un cliente nuevo el `p_nombre` es obligatorio.
+
+3. **El stock BAJA y la salida queda estampada** con `referencia = <pedido_id>` y
+   `customer_id` (el enchufe encendido):
+
+   ```sql
+   select product_id, tipo, cantidad, motivo, referencia, customer_id, fecha
+   from movimientos_inventario
+   where referencia = '<pedido_id>'
+   order by fecha;
+   -- Esperado: una fila tipo='salida', motivo='Venta', cantidad=2,
+   -- referencia=<pedido_id>, customer_id=<customer_id del paso 2>.
+
+   select existencias from stock_actual where product_id = '<uuid-del-producto>';
+   -- Esperado: bajo 2 unidades respecto de lo que tenia antes.
+   ```
+
+4. **Ver las metricas derivadas del Portafolio** (sin anular todavia):
+
+   ```sql
+   select * from portafolio_metricas where customer_id = '<customer_id>';
+   -- Esperado: num_pedidos=1, total_gastado=50000, ultima_compra=hoy.
+   ```
+
+5. **Anular el pedido y confirmar la ENTRADA compensatoria** (nada se borra: el
+   libro conserva la salida original Y la entrada que la revierte):
+
+   ```sql
+   select anular_pedido('<pedido_id>', 'prueba de anulacion');
+   -- Esperado: jsonb {"pedido_id":"<uuid>","revertidos":1}.
+
+   select tipo, cantidad, motivo, referencia, customer_id
+   from movimientos_inventario
+   where referencia = '<pedido_id>'
+   order by fecha, tipo;
+   -- Esperado: DOS filas con el mismo referencia: la 'salida' original (Venta) y
+   -- una 'entrada' nueva (motivo='Anulacion de venta') por la misma cantidad.
+
+   select existencias from stock_actual where product_id = '<uuid-del-producto>';
+   -- Esperado: vuelve al valor que tenia ANTES del pedido (la salida quedo
+   -- compensada por la entrada).
+   ```
+
+6. **La metrica se recalcula sola** (la vista excluye los pedidos anulados; no
+   hay contador que actualizar a mano):
+
+   ```sql
+   select * from portafolio_metricas where customer_id = '<customer_id>';
+   -- Esperado: num_pedidos=0, total_gastado=0, ultima_compra NULL (el unico
+   -- pedido quedo anulado). El cliente sigue existiendo en el portafolio.
+   ```
+
+   (Opcional) Para dejar limpio tras las pruebas NO borres nada: el pedido ya
+   quedo anulado y el stock compensado. El modelo, igual que Finanzas e
+   Inventario, no permite borrado fisico; el cliente de prueba puede quedarse o
+   marcarse `activo=false` mas adelante si estorba.
+
+## V3. Como DAR ACCESO al Area de Ventas a un usuario
+
+El acceso al area se controla con la lista `modulos` de la tabla `perfiles`
+(el `admin` ya tiene todo), con la misma convencion que Finanzas e Inventario.
+`tiene_acceso_ventas()` acepta cualquiera de las claves equivalentes del area:
+la del area (`ventas`) o la de una sub-area (`pedidos`, `clientes`,
+`portafolio`); cualquiera de ellas abre la carpeta Ventas en el panel Y habilita
+operar sus datos (quien ve la carpeta, puede operar sus datos).
+
+1. Crea su usuario en **Authentication > Users** (o pidele que se registre).
+2. Copia su UID y ejecuta en el SQL Editor:
+
+   ```sql
+   insert into perfiles (id, rol, modulos)
+   values ('<UID-del-usuario-de-ventas>', 'ventas', '{ventas}')
+     on conflict (id) do update
+       set rol = excluded.rol, modulos = excluded.modulos;
+   ```
+
+   Ese usuario solo vera el Area de Ventas. Puedes usar indistintamente
+   `'{ventas}'`, `'{pedidos}'`, `'{clientes}'` o `'{portafolio}'`: las cuatro
+   son equivalentes para Ventas (recomendado: la clave del area, `'{ventas}'`,
+   por ser la mas legible). Si quisieras darle Ventas ADEMAS de otra area, combina
+   como en Finanzas: `'{ventas,marketing}'`, etc.
+
+   > El analista de Marketing NO necesita el Area de Ventas para su trabajo
+   > habitual: el Ranking de productos usa el precio real de `pedido_items`, pero
+   > si el analista no tiene acceso a Ventas la consulta cae limpio al precio de
+   > venta actual (ingreso estimado) sin romperse. Dale `'{ventas}'` ademas de
+   > `'{marketing}'` solo si quieres que vea el ingreso REAL en el Ranking.
+
+## V4. Que NO se construye en esta vuelta (nota honesta)
+
+Igual que las notas honestas de Balance General e Inventario, aqui esta lo que
+queda pendiente a proposito, para no dejar cosas a medias:
+
+- **La pantalla de DEVOLUCIONES no se construye.** El MOTOR por debajo si queda
+  listo: `anular_pedido` revierte el stock con una entrada compensatoria y deja
+  el rastro completo. Pero NO hay una pantalla dedicada de devoluciones
+  (parciales por item, motivos catalogados, etc.); hoy la reversion es la
+  anulacion completa del pedido. La pantalla de devoluciones queda como trabajo
+  futuro sobre ese motor.
+- **Contabilidad sigue MANUAL y desconectada de Ventas (cita a ciegas).** Igual
+  que Inventario, registrar o anular un pedido NO crea ningun asiento contable.
+  No hay enganche automatico Ventas -> Finanzas; Finanzas se sigue llevando a
+  mano en el Libro Diario. Ventas alimenta a Marketing por el DATO (el Ranking),
+  no a Finanzas por codigo.
+- **El canal `web` queda como enchufe, sin checkout.** `pedidos.canal` acepta
+  `web`, listo para que un checkout futuro (Wompi) invoque el MISMO nucleo
+  `crear_pedido` con `canal=web`. Hoy todos los pedidos entran `manual`; la
+  superficie publica de compra no se construye esta vuelta.

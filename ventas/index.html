@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Área de Ventas</title>
+<meta name="description" content="Área de Ventas de Magandhi Corporation.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../marca-areas/ventas.png?v=1">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=1">
+<link rel="stylesheet" href="ventas.css?v=1">
+
+<!--
+  MAGANDHI · Area de Ventas · HOME del area (carpeta).
+  Protegida por auth-guard.js (via ventas-core). El candado real es RLS
+  (tiene_acceso_ventas(); ver 20250401000300_ventas_rls.sql).
+  El area funciona como carpeta: hoy contiene dos sub-areas (Seguimiento de
+  pedidos y Portafolio de clientes) y esta preparada para crecer.
+-->
+</head>
+<body class="vt-body">
+
+<!-- Guardia reutilizable: sin sesion, redirige al login de la raiz. -->
+<script type="module" src="../auth-guard.js"></script>
+
+<main class="vt-wrap" id="vt-main" hidden>
+  <div class="vt-cards">
+    <a class="vt-card" href="seguimiento-pedidos/index.html">
+      <span class="vt-card-ico" data-ico="recibo"></span>
+      <h3>Seguimiento de pedidos</h3>
+      <p>El tablero de la operación: registra pedidos, sigue su estado (recibido, preparando, en camino, entregado) y anula con trazabilidad en el libro.</p>
+    </a>
+
+    <a class="vt-card" href="portafolio-clientes/index.html">
+      <span class="vt-card-ico" data-ico="usuarios"></span>
+      <h3>Portafolio de clientes</h3>
+      <p>La cartera de clientes con sus métricas derivadas de pedidos reales: cuánto han comprado, cada cuánto y qué prefieren.</p>
+    </a>
+
+    <!-- Hueco preparado para crecer: nuevas sub-areas de Ventas. No es un
+         enlace (sobrio, no promete funciones); comunica que el area escala. -->
+    <div class="vt-card proxima" aria-hidden="true">
+      <span class="vt-card-ico" data-ico="carrito"></span>
+      <h3>Más sub-áreas</h3>
+      <p>Este espacio queda listo para nuevas sub-áreas de Ventas conforme el ecosistema crezca (por ejemplo, el checkout web).</p>
+      <span class="vt-chip-proxima">Próximamente</span>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+  import { asegurarAcceso, montarHeader, ICONOS } from './ventas-core.js';
+
+  (async () => {
+    const main = document.getElementById('vt-main');
+    const acceso = await asegurarAcceso(document.body, '../panel.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Área de Ventas',
+      kicker: 'VENTAS · OPERACIÓN Y CLIENTES',
+      lead: 'El área donde el pedido se convierte en operación y el cliente en relación. Entra a Seguimiento de pedidos para el día a día, o al Portafolio de clientes para conocer la cartera.',
+      sesion: acceso.sesion,
+      areaLabel: 'ÁREA DE VENTAS',
+      volverHref: '../panel.html',
+      volverTexto: 'Panel'
+    });
+
+    document.querySelectorAll('[data-ico]').forEach((el) => {
+      el.innerHTML = ICONOS[el.dataset.ico] || '';
+    });
+
+    main.hidden = false;
+  })();
+</script>
+
+</body>
+</html>

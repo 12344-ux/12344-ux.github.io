@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Portafolio de clientes</title>
+<meta name="description" content="Portafolio de clientes · Área de Ventas de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/ventas.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=1">
+<link rel="stylesheet" href="../ventas.css?v=1">
+
+<!--
+  MAGANDHI · Area de Ventas · Portafolio de clientes · LISTA.
+  La cartera de clientes con sus metricas OBJETIVAS derivadas de pedidos reales
+  (vista portafolio_metricas: ultima_compra, num_pedidos, total_gastado). Se
+  cruza con clientes para el contacto (correo/telefono/ciudad). Filtrable y
+  ordenable por total gastado y por ultima compra, con buscador por nombre/
+  correo/telefono. Cada fila enlaza a ver.html?id=<customer_id>.
+
+  SOLO EL DATO OBJETIVO (regla de identidad de Impulse): aqui NO se interpreta
+  la "salud" del cliente (sano / en riesgo / dormido). Eso es trabajo del
+  Analisis Cluster futuro. El candado real es RLS; ocultar UI es comodidad.
+-->
+</head>
+<body class="vt-body">
+
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="vt-wrap" id="vt-main" hidden>
+  <div class="vt-barra">
+    <input class="vt-input vt-crece" id="vt-buscar" type="search" placeholder="Buscar por nombre, correo o teléfono…" aria-label="Buscar cliente">
+    <select class="vt-select" id="vt-orden" style="max-width:250px" aria-label="Ordenar">
+      <option value="total_desc">Mayor total gastado</option>
+      <option value="total_asc">Menor total gastado</option>
+      <option value="reciente">Compra más reciente</option>
+      <option value="antigua">Compra más antigua</option>
+      <option value="pedidos_desc">Más pedidos</option>
+      <option value="nombre">Nombre (A–Z)</option>
+    </select>
+  </div>
+
+  <p class="vt-nota"><span data-ico="info"></span>
+    <span>Cifras objetivas derivadas de pedidos reales (cuánto, cada cuánto, cuándo). El portafolio no interpreta la salud del cliente: eso llegará con el análisis de segmentos.</span>
+  </p>
+
+  <div id="vt-lista"><p class="vt-empty">Cargando clientes...</p></div>
+</main>
+
+<script type="module">
+  import {
+    supabase, asegurarAcceso, montarHeader, ICONOS,
+    escaparHTML, formatearCOP, formatearFecha
+  } from '../ventas-core.js';
+
+  const main = document.getElementById('vt-main');
+  const lista = document.getElementById('vt-lista');
+  const buscar = document.getElementById('vt-buscar');
+  const orden = document.getElementById('vt-orden');
+
+  // Datos en memoria: metricas del portafolio cruzadas con el contacto.
+  let filas = [];
+
+  async function cargar() {
+    lista.innerHTML = '<p class="vt-empty">Cargando clientes...</p>';
+
+    // Metricas objetivas (una fila por cliente).
+    const { data: metricas, error: eM } = await supabase
+      .from('portafolio_metricas')
+      .select('customer_id, nombre, ultima_compra, num_pedidos, total_gastado')
+      .limit(2000);
+    if (eM) {
+      lista.innerHTML = '<div class="vt-empty">No se pudo cargar el portafolio. <strong>' +
+        escaparHTML(eM.message || 'Error') + '</strong></div>';
+      return;
+    }
+
+    // Contacto de cada cliente (correo/telefono/ciudad) desde clientes.
+    const { data: clientes, error: eC } = await supabase
+      .from('clientes')
+      .select('id, correo, telefono, ciudad')
+      .limit(2000);
+    const contactoPorId = new Map();
+    if (!eC && clientes) clientes.forEach((c) => contactoPorId.set(c.id, c));
+
+    filas = (metricas || []).map((m) => {
+      const c = contactoPorId.get(m.customer_id) || {};
+      return {
+        id: m.customer_id,
+        nombre: m.nombre || 'Sin nombre',
+        correo: c.correo || '',
+        telefono: c.telefono || '',
+        ciudad: c.ciudad || '',
+        ultima_compra: m.ultima_compra || null,
+        num_pedidos: Number(m.num_pedidos) || 0,
+        total_gastado: Number(m.total_gastado) || 0
+      };
+    });
+
+    pintar();
+  }
+
+  function ordenar(arr) {
+    const v = orden.value;
+    const copia = arr.slice();
+    const fecha = (x) => x.ultima_compra ? new Date(x.ultima_compra).getTime() : 0;
+    switch (v) {
+      case 'total_asc': copia.sort((a, b) => a.total_gastado - b.total_gastado); break;
+      case 'reciente': copia.sort((a, b) => fecha(b) - fecha(a)); break;
+      case 'antigua': copia.sort((a, b) => fecha(a) - fecha(b)); break;
+      case 'pedidos_desc': copia.sort((a, b) => b.num_pedidos - a.num_pedidos); break;
+      case 'nombre': copia.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')); break;
+      case 'total_desc':
+      default: copia.sort((a, b) => b.total_gastado - a.total_gastado); break;
+    }
+    return copia;
+  }
+
+  function filtrar(arr) {
+    const q = buscar.value.trim().toLowerCase();
+    if (!q) return arr;
+    return arr.filter((x) =>
+      x.nombre.toLowerCase().includes(q) ||
+      x.correo.toLowerCase().includes(q) ||
+      x.telefono.toLowerCase().includes(q));
+  }
+
+  function pintar() {
+    const datos = ordenar(filtrar(filas));
+    if (!datos.length) {
+      lista.innerHTML = filas.length
+        ? '<div class="vt-empty">Ningún cliente coincide con la búsqueda.</div>'
+        : '<div class="vt-empty">Aún no hay clientes en el portafolio. Se irán sumando conforme registres pedidos.</div>';
+      return;
+    }
+
+    const cuerpo = datos.map((x) => {
+      const contacto = [x.correo, x.telefono].filter(Boolean).map(escaparHTML).join('<br>') || '<span style="color:var(--vt-gris)">—</span>';
+      return (
+        '<tr>' +
+          '<td class="cliente"><a href="ver.html?id=' + encodeURIComponent(x.id) + '" style="color:inherit;text-decoration:none">' + escaparHTML(x.nombre) + '</a></td>' +
+          '<td style="font-size:12.5px">' + contacto + '</td>' +
+          '<td>' + (x.ciudad ? escaparHTML(x.ciudad) : '<span style="color:var(--vt-gris)">—</span>') + '</td>' +
+          '<td class="fecha">' + (x.ultima_compra ? escaparHTML(formatearFecha(x.ultima_compra)) : '<span style="color:var(--vt-gris)">Sin compras</span>') + '</td>' +
+          '<td class="num">' + x.num_pedidos + '</td>' +
+          '<td class="num">' + formatearCOP(x.total_gastado) + '</td>' +
+        '</tr>'
+      );
+    }).join('');
+
+    lista.innerHTML =
+      '<div class="vt-tabla-caja"><table class="vt-tabla">' +
+        '<thead><tr>' +
+          '<th>Cliente</th>' +
+          '<th>Contacto</th>' +
+          '<th>Ciudad</th>' +
+          '<th>Última compra</th>' +
+          '<th class="num">Pedidos</th>' +
+          '<th class="num">Total gastado</th>' +
+        '</tr></thead>' +
+        '<tbody>' + cuerpo + '</tbody>' +
+      '</table></div>';
+  }
+
+  buscar.addEventListener('input', pintar);
+  orden.addEventListener('change', pintar);
+
+  (async () => {
+    const acceso = await asegurarAcceso(document.body, '../../panel.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Portafolio de clientes',
+      kicker: 'VENTAS · CARTERA',
+      lead: 'La cartera de clientes con sus métricas derivadas de pedidos reales: cuánto han comprado, cuántas veces y cuándo fue la última. Ordena por total gastado o por recencia, o busca un cliente puntual.',
+      sesion: acceso.sesion,
+      areaLabel: 'ÁREA DE VENTAS',
+      volverHref: '../index.html',
+      volverTexto: 'Ventas'
+    });
+    document.querySelectorAll('main [data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    main.hidden = false;
+    await cargar();
+  })();
+</script>
+
+</body>
+</html>
