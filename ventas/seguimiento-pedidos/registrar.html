@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Registrar pedido</title>
+<meta name="description" content="Registrar un pedido · Área de Ventas de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/ventas.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=1">
+<link rel="stylesheet" href="../ventas.css?v=1">
+
+<!--
+  MAGANDHI · Area de Ventas · Seguimiento de pedidos · REGISTRAR (manual).
+  El nucleo unico de creacion de pedido, puerta manual. ARRIBA el formulario:
+  datos del cliente + datos del pedido + selector de productos con cantidad y
+  PRECIO UNITARIO EDITABLE (el default sugerido es productos.precio_venta pero
+  el precio real de la venta manda, §1.6). DEBAJO, cuando hay senal (correo/
+  telefono/nombre), se llama buscar_candidatos_cliente y se muestran los
+  candidatos con su % y el porque (senales legibles), con botones "Es este
+  cliente" y "Registrar como cliente nuevo". NUNCA se bloquea el registro.
+
+  Al enviar se llama crear_pedido con p_customer_id (si se eligio candidato) o
+  los datos del cliente nuevo + p_items (jsonb con product_id, cantidad,
+  precio_unitario). El total lo recalcula el servidor; aqui se muestra en vivo
+  solo como guia. El candado real es RLS + la RPC security definer.
+-->
+<style>
+  /* Selector de productos del pedido: una fila por linea. Sin color nuevo. */
+  .vt-items-tabla{width:100%;border-collapse:collapse;margin-top:6px}
+  .vt-items-tabla th{
+    text-align:left;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--vt-gris);padding:6px 8px;border-bottom:1px solid var(--vt-linea);
+  }
+  .vt-items-tabla th.num{text-align:right}
+  .vt-items-tabla td{padding:8px 8px;border-bottom:1px solid var(--vt-linea);vertical-align:middle}
+  .vt-items-tabla td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .vt-items-tabla .vt-select,.vt-items-tabla .vt-input{padding:8px 9px;font-size:13px}
+  .vt-cant{width:74px;text-align:right}
+  .vt-precio{width:120px;text-align:right}
+  .vt-quitar{
+    background:transparent;border:0;color:var(--vt-acento);cursor:pointer;
+    width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;
+  }
+  .vt-quitar:hover{background:rgba(166,51,46,.08)}
+  .vt-quitar svg{width:16px;height:16px}
+  .vt-total-linea{
+    display:flex;justify-content:flex-end;gap:16px;align-items:baseline;margin-top:12px;
+    font-size:15px;color:var(--vt-carbon);
+  }
+  .vt-total-linea .v{font-size:22px;font-weight:700;color:var(--vt-marino);font-variant-numeric:tabular-nums}
+  .vt-subhead{
+    margin:22px 0 10px;font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--vt-marino);border-top:1px solid var(--vt-linea);padding-top:16px;
+  }
+  .vt-candidato .banda{
+    font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--vt-gris);
+  }
+  .vt-candidato.elegido{border-color:var(--vt-marino);box-shadow:0 0 0 2px rgba(16,28,51,.12)}
+  .vt-candidato-btns{display:flex;flex-direction:column;gap:6px;flex:none}
+  /* Confirmacion de exito. */
+  .vt-ok{
+    display:flex;align-items:flex-start;gap:12px;background:rgba(16,28,51,.05);
+    border:1px solid var(--vt-linea);border-radius:12px;padding:16px 18px;margin-bottom:18px;
+  }
+  .vt-ok[hidden]{display:none}
+  .vt-ok svg{width:22px;height:22px;color:var(--vt-marino);flex:none;margin-top:1px}
+  .vt-ok h3{margin:0 0 4px;font-size:15px;color:var(--vt-marino)}
+  .vt-ok p{margin:0;font-size:13.5px;color:var(--vt-gris)}
+  .vt-ok .acc{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+  .vt-elegido-aviso{
+    font-size:13px;color:var(--vt-marino);background:rgba(16,28,51,.05);
+    border:1px solid var(--vt-linea);border-radius:10px;padding:10px 13px;margin-top:12px;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+  }
+  .vt-elegido-aviso[hidden]{display:none}
+  .vt-elegido-aviso button{background:transparent;border:0;color:var(--vt-acento);font-weight:600;cursor:pointer;font-family:inherit;font-size:13px}
+</style>
+</head>
+<body class="vt-body">
+
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="vt-wrap" id="vt-main" hidden>
+  <!-- Confirmacion de exito (oculta hasta registrar). -->
+  <div class="vt-ok" id="vt-ok" hidden>
+    <span data-ico="check"></span>
+    <div>
+      <h3>Pedido registrado</h3>
+      <p id="vt-ok-txt"></p>
+      <div class="acc">
+        <a class="vt-btn" id="vt-ok-ver" href="index.html"><span data-ico="recibo"></span> Ver en el tablero</a>
+        <button class="vt-btn ghost" id="vt-ok-otro" type="button"><span data-ico="mas"></span> Registrar otro</button>
+      </div>
+    </div>
+  </div>
+
+  <form class="vt-form" id="vt-form" autocomplete="off">
+    <div class="vt-subhead" style="border-top:0;padding-top:0;margin-top:0">Cliente</div>
+    <div class="vt-form-grid">
+      <label class="vt-campo"><span>Nombre</span>
+        <input class="vt-input" id="vt-nombre" type="text" placeholder="Nombre y apellido" required>
+      </label>
+      <label class="vt-campo"><span>Correo</span>
+        <input class="vt-input" id="vt-correo" type="email" placeholder="correo@ejemplo.com">
+      </label>
+      <label class="vt-campo"><span>Teléfono</span>
+        <input class="vt-input" id="vt-telefono" type="tel" placeholder="300 000 0000">
+      </label>
+      <label class="vt-campo"><span>Dirección</span>
+        <input class="vt-input" id="vt-direccion" type="text" placeholder="Dirección de entrega">
+      </label>
+      <label class="vt-campo"><span>Ciudad</span>
+        <input class="vt-input" id="vt-ciudad" type="text" placeholder="Ciudad">
+      </label>
+      <label class="vt-campo"><span>Departamento</span>
+        <input class="vt-input" id="vt-departamento" type="text" placeholder="Departamento">
+      </label>
+      <label class="vt-campo" style="grid-column:1/-1"><span>Notas del cliente</span>
+        <textarea class="vt-textarea" id="vt-notas-cliente" placeholder="Preferencias, referencia de entrega, etc."></textarea>
+      </label>
+    </div>
+
+    <!-- Candidatos: aparecen SOLO cuando hay senal (no abruma). -->
+    <div id="vt-candidatos-zona" hidden>
+      <div class="vt-subhead">¿Es un cliente que ya existe?</div>
+      <p style="margin:0;font-size:13px;color:var(--vt-gris)">Encontramos clientes parecidos. Si es uno de ellos, márcalo para no duplicarlo; si no, sigue como cliente nuevo.</p>
+      <div class="vt-candidatos" id="vt-candidatos"></div>
+    </div>
+    <div class="vt-elegido-aviso" id="vt-elegido-aviso" hidden>
+      <span id="vt-elegido-txt"></span>
+      <button type="button" id="vt-elegido-quitar">Cambiar</button>
+    </div>
+
+    <div class="vt-subhead">Pedido</div>
+    <div class="vt-form-grid">
+      <label class="vt-campo"><span>Fecha de la orden</span>
+        <input class="vt-input" id="vt-fecha" type="date">
+      </label>
+      <label class="vt-campo" style="grid-column:1/-1"><span>Notas del pedido</span>
+        <textarea class="vt-textarea" id="vt-notas-pedido" placeholder="Detalles de esta orden en particular"></textarea>
+      </label>
+    </div>
+
+    <div class="vt-subhead">Productos</div>
+    <p class="vt-ayuda" style="margin-top:0">El precio sugerido es el precio de venta actual del producto, pero <strong>puedes editarlo</strong>: manda el precio real de esta venta.</p>
+    <div style="overflow-x:auto">
+      <table class="vt-items-tabla">
+        <thead><tr>
+          <th>Producto</th>
+          <th class="num">Cantidad</th>
+          <th class="num">Precio unitario</th>
+          <th class="num">Subtotal</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="vt-items"></tbody>
+      </table>
+    </div>
+    <button class="vt-btn ghost" id="vt-add-item" type="button" style="margin-top:12px"><span data-ico="mas"></span> Agregar producto</button>
+
+    <div class="vt-total-linea">Total del pedido <span class="v vt-num" id="vt-total">0</span></div>
+
+    <div class="vt-acciones">
+      <button class="vt-btn" id="vt-guardar" type="submit"><span data-ico="check"></span> Registrar pedido</button>
+      <a class="vt-btn ghost" href="index.html"><span data-ico="flecha"></span> Volver al tablero</a>
+      <span class="vt-msg" id="vt-msg"></span>
+    </div>
+  </form>
+</main>
+
+<script type="module">
+  import {
+    supabase, asegurarAcceso, montarHeader, ICONOS,
+    escaparHTML, formatearCOP, parsearMonto, parsearCantidad, hoyISO
+  } from '../ventas-core.js';
+
+  const main = document.getElementById('vt-main');
+  const form = document.getElementById('vt-form');
+  const msg = document.getElementById('vt-msg');
+  const guardar = document.getElementById('vt-guardar');
+
+  const inNombre = document.getElementById('vt-nombre');
+  const inCorreo = document.getElementById('vt-correo');
+  const inTelefono = document.getElementById('vt-telefono');
+  const inDireccion = document.getElementById('vt-direccion');
+  const inCiudad = document.getElementById('vt-ciudad');
+  const inDepto = document.getElementById('vt-departamento');
+  const inNotasCliente = document.getElementById('vt-notas-cliente');
+  const inFecha = document.getElementById('vt-fecha');
+  const inNotasPedido = document.getElementById('vt-notas-pedido');
+
+  const itemsBody = document.getElementById('vt-items');
+  const totalEl = document.getElementById('vt-total');
+  const okBox = document.getElementById('vt-ok');
+  const okTxt = document.getElementById('vt-ok-txt');
+
+  const candZona = document.getElementById('vt-candidatos-zona');
+  const candLista = document.getElementById('vt-candidatos');
+  const elegidoAviso = document.getElementById('vt-elegido-aviso');
+  const elegidoTxt = document.getElementById('vt-elegido-txt');
+
+  // Catalogo de productos activos (para el picker). Se lee la tabla productos.
+  let productos = [];
+  // Cliente elegido de los candidatos (customer_id) o null = cliente nuevo.
+  let clienteElegidoId = null;
+
+  // ----------------------------------------------------------
+  // PRODUCTOS
+  // ----------------------------------------------------------
+  async function cargarProductos() {
+    const { data, error } = await supabase
+      .from('productos')
+      .select('id, sku, nombre, precio_venta, activo')
+      .eq('activo', true)
+      .order('nombre', { ascending: true })
+      .limit(1000);
+    if (error) {
+      msg.className = 'vt-msg err';
+      msg.textContent = 'No se pudo cargar el catálogo de productos: ' + (error.message || 'error');
+      return;
+    }
+    productos = data || [];
+  }
+
+  function opcionesProductos(selId) {
+    return '<option value="">Elige un producto…</option>' + productos.map((p) =>
+      '<option value="' + escaparHTML(p.id) + '"' + (p.id === selId ? ' selected' : '') + '>' +
+        escaparHTML((p.sku ? p.sku + ' · ' : '') + (p.nombre || 'Sin nombre')) +
+      '</option>'
+    ).join('');
+  }
+
+  // Agrega una fila de item al pedido.
+  function agregarItem() {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td><select class="vt-select vt-it-prod">' + opcionesProductos(null) + '</select></td>' +
+      '<td class="num"><input class="vt-input num vt-cant vt-it-cant" type="text" inputmode="numeric" value="1"></td>' +
+      '<td class="num"><input class="vt-input num vt-precio vt-it-precio" type="text" inputmode="numeric" value="0"></td>' +
+      '<td class="num vt-it-sub">0</td>' +
+      '<td><button class="vt-quitar vt-it-quitar" type="button" aria-label="Quitar"></button></td>';
+    itemsBody.appendChild(tr);
+
+    const sel = tr.querySelector('.vt-it-prod');
+    const cant = tr.querySelector('.vt-it-cant');
+    const precio = tr.querySelector('.vt-it-precio');
+    const quitar = tr.querySelector('.vt-it-quitar');
+    quitar.innerHTML = ICONOS.equis;
+
+    // Al elegir producto, sugerir su precio_venta (editable).
+    sel.addEventListener('change', () => {
+      const p = productos.find((x) => x.id === sel.value);
+      if (p && (parsearMonto(precio.value) === 0)) {
+        precio.value = formatearCOP(p.precio_venta || 0);
+      }
+      recalcular();
+    });
+    cant.addEventListener('input', recalcular);
+    precio.addEventListener('input', recalcular);
+    quitar.addEventListener('click', () => { tr.remove(); recalcular(); });
+
+    recalcular();
+  }
+
+  // Recalcula subtotales y total en vivo (guia; el servidor recalcula al crear).
+  function recalcular() {
+    let total = 0;
+    itemsBody.querySelectorAll('tr').forEach((tr) => {
+      const cant = parsearCantidad(tr.querySelector('.vt-it-cant').value);
+      const precio = parsearMonto(tr.querySelector('.vt-it-precio').value);
+      const sub = cant * precio;
+      tr.querySelector('.vt-it-sub').textContent = formatearCOP(sub);
+      total += sub;
+    });
+    totalEl.textContent = formatearCOP(total);
+  }
+
+  // Reune los items validos (producto elegido, cantidad > 0) como jsonb.
+  function reunirItems() {
+    const items = [];
+    itemsBody.querySelectorAll('tr').forEach((tr) => {
+      const product_id = tr.querySelector('.vt-it-prod').value;
+      const cantidad = parsearCantidad(tr.querySelector('.vt-it-cant').value);
+      const precio_unitario = parsearMonto(tr.querySelector('.vt-it-precio').value);
+      if (product_id && cantidad > 0) {
+        items.push({ product_id, cantidad, precio_unitario });
+      }
+    });
+    return items;
+  }
+
+  // ----------------------------------------------------------
+  // CANDIDATOS DE COINCIDENCIA (aparecen solo cuando hay senal)
+  // ----------------------------------------------------------
+  let candTimer = null;
+  function programarBusqueda() {
+    clearTimeout(candTimer);
+    candTimer = setTimeout(buscarCandidatos, 350);
+  }
+
+  async function buscarCandidatos() {
+    const p_correo = inCorreo.value.trim() || null;
+    const p_telefono = inTelefono.value.trim() || null;
+    const p_nombre = inNombre.value.trim() || null;
+
+    // Sin ninguna senal, no se molesta al usuario ni al servidor.
+    if (!p_correo && !p_telefono && !p_nombre) {
+      candZona.hidden = true;
+      candLista.innerHTML = '';
+      return;
+    }
+
+    const { data, error } = await supabase.rpc('buscar_candidatos_cliente', {
+      p_correo, p_telefono, p_nombre
+    });
+    if (error) { candZona.hidden = true; return; }
+
+    const candidatos = Array.isArray(data) ? data : [];
+    if (!candidatos.length) {
+      candZona.hidden = true;
+      candLista.innerHTML = '';
+      return;
+    }
+
+    candLista.innerHTML = candidatos.map((c) => {
+      const senales = Array.isArray(c.senales) ? c.senales.join(' · ') : '';
+      const contacto = [c.correo, c.telefono].filter(Boolean).map(escaparHTML).join(' · ');
+      const pct = Math.max(0, Math.min(100, Number(c.porcentaje) || 0));
+      return (
+        '<div class="vt-candidato" data-id="' + escaparHTML(c.id) + '" data-banda="' + escaparHTML(c.banda || '') + '" data-nombre="' + escaparHTML(c.nombre || '') + '">' +
+          '<div class="vt-candidato-main">' +
+            '<span class="vt-candidato-nombre">' + escaparHTML(c.nombre || 'Cliente') + '</span>' +
+            (contacto ? '<span class="vt-candidato-exp">' + contacto + '</span>' : '') +
+            (senales ? '<span class="vt-candidato-exp">' + escaparHTML(senales) + '</span>' : '') +
+          '</div>' +
+          '<div class="vt-candidato-pct">' +
+            '<span class="v vt-num">' + pct + '%</span>' +
+            '<span class="banda">' + escaparHTML(c.banda || '') + '</span>' +
+            '<div class="vt-candidato-barra"><i style="width:' + pct + '%"></i></div>' +
+          '</div>' +
+          '<div class="vt-candidato-btns">' +
+            '<button class="vt-btn vt-usar" type="button" data-id="' + escaparHTML(c.id) + '">Es este cliente</button>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join('');
+
+    candZona.hidden = false;
+
+    candLista.querySelectorAll('.vt-usar').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const card = btn.closest('.vt-candidato');
+        elegirCliente(card.dataset.id, card.dataset.nombre, card.dataset.banda);
+      });
+    });
+  }
+
+  function elegirCliente(id, nombre, banda) {
+    // Confirmacion sobria SOLO en candidatos de alta coincidencia.
+    if (banda === 'alta') {
+      const ok = window.confirm('Vas a registrar el pedido a nombre de "' + nombre +
+        '" (coincidencia alta). ¿Es el mismo cliente?');
+      if (!ok) return;
+    }
+    clienteElegidoId = id;
+    elegidoTxt.innerHTML = 'Pedido para <strong>' + escaparHTML(nombre) + '</strong> (cliente existente).';
+    elegidoAviso.hidden = false;
+    candLista.querySelectorAll('.vt-candidato').forEach((c) =>
+      c.classList.toggle('elegido', c.dataset.id === id));
+  }
+
+  document.getElementById('vt-elegido-quitar').addEventListener('click', () => {
+    clienteElegidoId = null;
+    elegidoAviso.hidden = true;
+    candLista.querySelectorAll('.vt-candidato').forEach((c) => c.classList.remove('elegido'));
+  });
+
+  [inNombre, inCorreo, inTelefono].forEach((el) => el.addEventListener('input', programarBusqueda));
+
+  // ----------------------------------------------------------
+  // ENVIO: crear_pedido (nunca bloquea; nuevo o elegido)
+  // ----------------------------------------------------------
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg.className = 'vt-msg'; msg.textContent = '';
+
+    const items = reunirItems();
+    if (!items.length) {
+      msg.className = 'vt-msg err';
+      msg.textContent = 'Agrega al menos un producto con cantidad y precio.';
+      return;
+    }
+    // Para cliente nuevo, el nombre es obligatorio (lo exige la RPC).
+    if (!clienteElegidoId && !inNombre.value.trim()) {
+      msg.className = 'vt-msg err';
+      msg.textContent = 'El nombre del cliente es obligatorio para un cliente nuevo.';
+      return;
+    }
+
+    guardar.disabled = true;
+    const guardarLabel = guardar.innerHTML;
+    guardar.textContent = 'Registrando...';
+    try {
+      const { data, error } = await supabase.rpc('crear_pedido', {
+        p_customer_id: clienteElegidoId,
+        p_nombre: inNombre.value.trim() || null,
+        p_correo: inCorreo.value.trim() || null,
+        p_telefono: inTelefono.value.trim() || null,
+        p_direccion: inDireccion.value.trim() || null,
+        p_ciudad: inCiudad.value.trim() || null,
+        p_departamento: inDepto.value.trim() || null,
+        p_pais: null,
+        p_notas_cliente: inNotasCliente.value.trim() || null,
+        p_canal: 'manual',
+        p_fecha_orden: inFecha.value || hoyISO(),
+        p_notas_pedido: inNotasPedido.value.trim() || null,
+        p_items: items
+      });
+      if (error) throw error;
+
+      const total = data?.total != null ? formatearCOP(data.total) : '';
+      okTxt.textContent = 'El pedido quedó registrado por ' + total +
+        ' y el inventario ya bajó con trazabilidad en el libro.';
+      okBox.hidden = false;
+      form.reset();
+      itemsBody.innerHTML = '';
+      agregarItem();
+      inFecha.value = hoyISO();
+      clienteElegidoId = null;
+      elegidoAviso.hidden = true;
+      candZona.hidden = true;
+      recalcular();
+      okBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (err) {
+      msg.className = 'vt-msg err';
+      msg.textContent = 'No se pudo registrar el pedido: ' + (err?.message || 'error');
+    } finally {
+      guardar.disabled = false;
+      guardar.innerHTML = guardarLabel;
+    }
+  });
+
+  document.getElementById('vt-add-item').addEventListener('click', agregarItem);
+  document.getElementById('vt-ok-otro').addEventListener('click', () => { okBox.hidden = true; });
+
+  // ----------------------------------------------------------
+  // ARRANQUE
+  // ----------------------------------------------------------
+  (async () => {
+    const acceso = await asegurarAcceso(document.body, '../../panel.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Registrar pedido',
+      kicker: 'VENTAS · NUEVO PEDIDO',
+      lead: 'Registra un pedido manual. Escribe los datos del cliente y, si aparece uno parecido abajo, márcalo para no duplicarlo. El precio de cada producto es editable: manda el precio real de la venta.',
+      sesion: acceso.sesion,
+      areaLabel: 'ÁREA DE VENTAS',
+      volverHref: '../index.html',
+      volverTexto: 'Ventas'
+    });
+    document.querySelectorAll('main [data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    inFecha.value = hoyISO();
+    await cargarProductos();
+    agregarItem();
+    main.hidden = false;
+  })();
+</script>
+
+</body>
+</html>

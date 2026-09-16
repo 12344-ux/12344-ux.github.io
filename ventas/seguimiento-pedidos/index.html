@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Seguimiento de pedidos</title>
+<meta name="description" content="Seguimiento de pedidos · Área de Ventas de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/ventas.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=1">
+<link rel="stylesheet" href="../ventas.css?v=1">
+
+<!--
+  MAGANDHI · Area de Ventas · Seguimiento de pedidos · TABLERO.
+  El tablero de la operacion: una tabla MUY ORGANIZADA que de un vistazo dice
+  quien pidio que, cuando, cuanto y en que estado va (recibido -> preparando ->
+  en_camino -> entregado, mas anulado). Lee pedidos + clientes + pedido_items
+  de solo lectura (RLS: tiene_acceso_ventas() + GRANT SELECT a authenticated).
+  El detalle de cada pedido abre un panel con linea de tiempo que permite
+  cambiar el estado y anular (via anular_pedido, la RPC security definer). El
+  candado real es RLS; ocultar UI es solo comodidad.
+
+  NOTA sobre cambio de estado: FEAT-001 no expone una RPC dedicada para
+  avanzar el estado del pedido (solo crear_pedido y anular_pedido). El avance
+  recibido->preparando->en_camino->entregado se hace con un UPDATE directo de
+  pedidos.estado; si la RLS bloquea el UPDATE (no hay policy de UPDATE, solo
+  SELECT), se avisa con mesura y se documenta como mejora (una RPC de avance
+  de estado). Anular SIEMPRE va por anular_pedido (transaccional, reversa el
+  libro).
+-->
+<style>
+  /* Detalle del pedido: panel lateral (drawer) sobrio, sin color nuevo. */
+  .vt-drawer-fondo{
+    position:fixed;inset:0;z-index:70;background:rgba(16,28,51,.42);
+    display:flex;justify-content:flex-end;
+  }
+  .vt-drawer-fondo[hidden]{display:none}
+  .vt-drawer{
+    width:min(460px,100%);height:100%;overflow-y:auto;
+    background:var(--vt-crema);box-shadow:-14px 0 40px rgba(16,28,51,.28);
+    display:flex;flex-direction:column;
+  }
+  .vt-drawer-head{
+    position:sticky;top:0;background:var(--vt-marino);color:#fff;
+    padding:16px 20px;display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+  }
+  .vt-drawer-head h2{margin:0;font-size:16px;font-weight:600}
+  .vt-drawer-head .sub{font-size:12px;color:var(--vt-azul-cl);margin-top:3px;font-variant-numeric:tabular-nums}
+  .vt-drawer-x{
+    background:rgba(143,163,196,.16);border:0;border-radius:9px;color:var(--vt-azul-cl);
+    width:34px;height:34px;flex:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  .vt-drawer-x:hover{background:rgba(143,163,196,.3);color:#fff}
+  .vt-drawer-x svg{width:18px;height:18px}
+  .vt-drawer-body{padding:18px 20px 26px;display:flex;flex-direction:column;gap:18px}
+  .vt-bloque{background:var(--vt-tarjeta);border:1px solid var(--vt-linea);border-radius:12px;padding:14px 16px}
+  .vt-bloque h3{
+    margin:0 0 10px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--vt-gris);
+  }
+  .vt-dato{display:flex;justify-content:space-between;gap:12px;padding:4px 0;font-size:13.5px}
+  .vt-dato .k{color:var(--vt-gris)}
+  .vt-dato .v{color:var(--vt-carbon);text-align:right;font-variant-numeric:tabular-nums}
+  .vt-items-mini{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+  .vt-items-mini li{display:flex;justify-content:space-between;gap:12px;font-size:13px}
+  .vt-items-mini .nom{color:var(--vt-carbon)}
+  .vt-items-mini .cant{color:var(--vt-gris);font-variant-numeric:tabular-nums;white-space:nowrap}
+  /* Linea de tiempo del ciclo de vida (estilo Finanzas/Inventario). */
+  .vt-timeline{list-style:none;margin:0;padding:0}
+  .vt-timeline li{position:relative;padding:0 0 16px 24px;font-size:13px;color:var(--vt-gris)}
+  .vt-timeline li:last-child{padding-bottom:0}
+  .vt-timeline li::before{
+    content:"";position:absolute;left:4px;top:4px;width:9px;height:9px;border-radius:50%;
+    background:var(--vt-linea);border:2px solid var(--vt-crema);
+  }
+  .vt-timeline li::after{
+    content:"";position:absolute;left:8px;top:14px;bottom:0;width:1px;background:var(--vt-linea);
+  }
+  .vt-timeline li:last-child::after{display:none}
+  .vt-timeline li.hecho{color:var(--vt-carbon)}
+  .vt-timeline li.hecho::before{background:var(--vt-marino);border-color:var(--vt-marino-2)}
+  .vt-timeline li.actual{color:var(--vt-marino);font-weight:600}
+  .vt-timeline li .cuando{display:block;font-size:11.5px;color:var(--vt-gris);font-variant-numeric:tabular-nums}
+  .vt-avance{display:flex;flex-direction:column;gap:8px}
+  .vt-avance .vt-btn{width:100%;justify-content:center}
+  .vt-anular-zona{display:flex;flex-direction:column;gap:8px}
+  .vt-anular-zona textarea{min-height:60px}
+</style>
+</head>
+<body class="vt-body">
+
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="vt-wrap" id="vt-main" hidden>
+  <div class="vt-barra">
+    <a class="vt-btn" href="registrar.html"><span data-ico="mas"></span> Registrar pedido</a>
+    <div class="vt-crece"></div>
+    <select class="vt-select" id="vt-f-estado" style="max-width:210px">
+      <option value="">Todos los estados</option>
+      <option value="recibido">Recibido</option>
+      <option value="preparando">Preparando</option>
+      <option value="en_camino">En camino</option>
+      <option value="entregado">Entregado</option>
+      <option value="anulado">Anulado</option>
+    </select>
+    <input class="vt-input" id="vt-f-desde" type="date" style="max-width:170px" aria-label="Desde">
+    <input class="vt-input" id="vt-f-hasta" type="date" style="max-width:170px" aria-label="Hasta">
+  </div>
+
+  <p class="vt-nota"><span data-ico="info"></span>
+    <span>Un vistazo basta: la columna <strong>Estado</strong> dice qué hay que preparar o entregar. Abre un pedido para ver el detalle, avanzar su estado o anularlo.</span>
+  </p>
+
+  <div id="vt-lista"><p class="vt-empty">Cargando pedidos...</p></div>
+</main>
+
+<!-- Drawer de detalle del pedido (oculto hasta abrir). -->
+<div class="vt-drawer-fondo" id="vt-drawer-fondo" hidden>
+  <aside class="vt-drawer" id="vt-drawer" role="dialog" aria-modal="true" aria-label="Detalle del pedido">
+    <div class="vt-drawer-head">
+      <div>
+        <h2 id="vt-d-cliente">Pedido</h2>
+        <span class="sub" id="vt-d-sub"></span>
+      </div>
+      <button class="vt-drawer-x" id="vt-d-cerrar" type="button" aria-label="Cerrar"><span data-ico="equis"></span></button>
+    </div>
+    <div class="vt-drawer-body" id="vt-drawer-body"></div>
+  </aside>
+</div>
+
+<script type="module">
+  import {
+    supabase, asegurarAcceso, montarHeader, ICONOS,
+    escaparHTML, formatearCOP, formatearFecha, formatearMomento
+  } from '../ventas-core.js';
+
+  const main = document.getElementById('vt-main');
+  const lista = document.getElementById('vt-lista');
+  const fEstado = document.getElementById('vt-f-estado');
+  const fDesde = document.getElementById('vt-f-desde');
+  const fHasta = document.getElementById('vt-f-hasta');
+
+  const drawerFondo = document.getElementById('vt-drawer-fondo');
+  const drawerBody = document.getElementById('vt-drawer-body');
+  const dCliente = document.getElementById('vt-d-cliente');
+  const dSub = document.getElementById('vt-d-sub');
+
+  // Etiquetas legibles y orden del ciclo de vida del pedido (§5.1).
+  const ESTADO_TXT = {
+    recibido: 'Recibido',
+    preparando: 'Preparando',
+    en_camino: 'En camino',
+    entregado: 'Entregado',
+    anulado: 'Anulado'
+  };
+  // Iconos por estado (heredan currentColor, sin color propio).
+  const ESTADO_ICO = {
+    recibido: 'recibo',
+    preparando: 'paquete',
+    en_camino: 'camion',
+    entregado: 'check',
+    anulado: 'equis'
+  };
+  // Flujo normal (sin anulado): el orden en que avanza un pedido.
+  const FLUJO = ['recibido', 'preparando', 'en_camino', 'entregado'];
+
+  // Cache de pedidos cargados (por id) para abrir el detalle sin re-consultar.
+  let pedidosPorId = new Map();
+
+  function badge(estado) {
+    const ico = ICONOS[ESTADO_ICO[estado]] || '';
+    return '<span class="vt-badge ' + escaparHTML(estado) + '">' + ico +
+      escaparHTML(ESTADO_TXT[estado] || estado) + '</span>';
+  }
+
+  // Resume los items de un pedido en un texto corto para el tablero:
+  // "Vela lavanda ×2, Jabón ×1" (con "+N más" si hay muchos).
+  function resumenItems(items) {
+    if (!items || !items.length) return '<span class="vt-num">—</span>';
+    const partes = items.slice(0, 2).map((it) => {
+      const nom = it.producto?.nombre || 'Producto';
+      return escaparHTML(nom) + ' <span class="vt-num">×' + (Number(it.cantidad) || 0) + '</span>';
+    });
+    let txt = partes.join(', ');
+    if (items.length > 2) txt += ' <span style="color:var(--vt-gris)">+' + (items.length - 2) + ' más</span>';
+    return txt;
+  }
+
+  // ----------------------------------------------------------
+  // CARGA DEL TABLERO
+  // ----------------------------------------------------------
+  async function cargar() {
+    lista.innerHTML = '<p class="vt-empty">Cargando pedidos...</p>';
+
+    // Un solo select con relaciones: pedido -> cliente (contacto) y sus lineas
+    // con el producto. PostgREST resuelve las FK declaradas en las migraciones.
+    let q = supabase
+      .from('pedidos')
+      .select(
+        'id, fecha_orden, estado, canal, total, notas, anulado, motivo_anulacion, creado,' +
+        ' cliente:clientes ( id, nombre, correo, telefono, direccion, ciudad, departamento, pais ),' +
+        ' items:pedido_items ( id, cantidad, precio_unitario, subtotal, product_id, producto:productos ( nombre, sku ) )'
+      );
+
+    if (fEstado.value) q = q.eq('estado', fEstado.value);
+    if (fDesde.value) q = q.gte('fecha_orden', fDesde.value);
+    if (fHasta.value) q = q.lte('fecha_orden', fHasta.value);
+
+    const { data, error } = await q
+      .order('fecha_orden', { ascending: false })
+      .order('creado', { ascending: false })
+      .limit(500);
+
+    if (error) {
+      lista.innerHTML = '<div class="vt-empty">No se pudieron cargar los pedidos. ' +
+        '<strong>' + escaparHTML(error.message || 'Error') + '</strong></div>';
+      return;
+    }
+
+    pedidosPorId = new Map((data || []).map((p) => [p.id, p]));
+    pintar(data || []);
+  }
+
+  function pintar(pedidos) {
+    if (!pedidos.length) {
+      const hayFiltro = fEstado.value || fDesde.value || fHasta.value;
+      lista.innerHTML = hayFiltro
+        ? '<div class="vt-empty">Ningún pedido coincide con los filtros. Ajusta el estado o el periodo.</div>'
+        : '<div class="vt-empty">Aún no hay pedidos registrados. Usa <strong>Registrar pedido</strong> para crear el primero.</div>';
+      return;
+    }
+
+    const filas = pedidos.map((p) => {
+      const c = p.cliente || {};
+      const contacto = [c.correo, c.telefono].filter(Boolean).map(escaparHTML).join(' · ');
+      const lugar = [c.direccion, c.ciudad].filter(Boolean).map(escaparHTML).join(', ');
+      return (
+        '<tr class="' + (p.anulado ? 'anulado' : '') + '" data-id="' + escaparHTML(p.id) + '" tabindex="0" role="button" aria-label="Ver pedido de ' + escaparHTML(c.nombre || 'cliente') + '">' +
+          '<td class="cliente">' + escaparHTML(c.nombre || 'Sin nombre') +
+            (contacto ? '<div style="font-weight:400;font-size:12px;color:var(--vt-gris)">' + contacto + '</div>' : '') +
+            (lugar ? '<div style="font-weight:400;font-size:12px;color:var(--vt-gris)">' + lugar + '</div>' : '') +
+          '</td>' +
+          '<td>' + resumenItems(p.items) + '</td>' +
+          '<td class="fecha">' + escaparHTML(formatearFecha(p.fecha_orden)) + '</td>' +
+          '<td class="num">' + formatearCOP(p.total) + '</td>' +
+          '<td>' + badge(p.estado) + '</td>' +
+        '</tr>'
+      );
+    }).join('');
+
+    lista.innerHTML =
+      '<div class="vt-tabla-caja"><table class="vt-tabla">' +
+        '<thead><tr>' +
+          '<th>Cliente y contacto</th>' +
+          '<th>Producto(s)</th>' +
+          '<th>Fecha</th>' +
+          '<th class="num">Total</th>' +
+          '<th>Estado</th>' +
+        '</tr></thead>' +
+        '<tbody>' + filas + '</tbody>' +
+      '</table></div>';
+
+    lista.querySelectorAll('tr[data-id]').forEach((tr) => {
+      const abrir = () => abrirDetalle(tr.dataset.id);
+      tr.addEventListener('click', abrir);
+      tr.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(); }
+      });
+    });
+  }
+
+  // ----------------------------------------------------------
+  // DETALLE (drawer) con linea de tiempo, avance de estado y anulacion
+  // ----------------------------------------------------------
+  function abrirDetalle(id) {
+    const p = pedidosPorId.get(id);
+    if (!p) return;
+    const c = p.cliente || {};
+
+    dCliente.textContent = c.nombre || 'Pedido';
+    dSub.textContent = formatearFecha(p.fecha_orden) + ' · ' + (ESTADO_TXT[p.estado] || p.estado) +
+      ' · ' + formatearCOP(p.total);
+
+    const contacto = [];
+    if (c.correo) contacto.push({ k: 'Correo', v: c.correo });
+    if (c.telefono) contacto.push({ k: 'Teléfono', v: c.telefono });
+    const dir = [c.direccion, c.ciudad, c.departamento, c.pais].filter(Boolean).join(', ');
+    if (dir) contacto.push({ k: 'Entrega', v: dir });
+
+    const itemsHtml = (p.items || []).map((it) => {
+      const nom = it.producto?.nombre || 'Producto';
+      const sku = it.producto?.sku ? ' <span style="color:var(--vt-gris)">' + escaparHTML(it.producto.sku) + '</span>' : '';
+      return '<li><span class="nom">' + escaparHTML(nom) + sku + '</span>' +
+        '<span class="cant">' + (Number(it.cantidad) || 0) + ' × ' + formatearCOP(it.precio_unitario) +
+        ' = ' + formatearCOP(it.subtotal) + '</span></li>';
+    }).join('');
+
+    // Linea de tiempo del ciclo de vida. Si el pedido esta anulado se muestra
+    // el flujo alcanzado + el terminal anulado.
+    const idxActual = FLUJO.indexOf(p.estado);
+    const timelineHtml = FLUJO.map((e, i) => {
+      let cls = '';
+      if (!p.anulado) {
+        if (i < idxActual) cls = 'hecho';
+        else if (i === idxActual) cls = 'actual';
+      } else if (i <= FLUJO.indexOf('recibido')) {
+        cls = 'hecho';
+      }
+      return '<li class="' + cls + '">' + escaparHTML(ESTADO_TXT[e]) + '</li>';
+    }).join('') + (p.anulado
+      ? '<li class="actual">' + escaparHTML(ESTADO_TXT.anulado) +
+        (p.motivo_anulacion ? '<span class="cuando">' + escaparHTML(p.motivo_anulacion) + '</span>' : '') + '</li>'
+      : '');
+
+    // Siguiente estado del flujo (para el boton de avance), si aplica.
+    const siguiente = (!p.anulado && idxActual >= 0 && idxActual < FLUJO.length - 1)
+      ? FLUJO[idxActual + 1] : null;
+
+    let avanceHtml = '';
+    if (p.anulado) {
+      avanceHtml = '<div class="vt-bloque"><h3>Pedido anulado</h3>' +
+        '<p style="margin:0;font-size:13px;color:var(--vt-gris)">Este pedido está anulado; el inventario ya fue devuelto con una entrada compensatoria en el libro. No admite más cambios.</p></div>';
+    } else {
+      avanceHtml = '<div class="vt-bloque"><h3>Acciones</h3><div class="vt-avance">' +
+        (siguiente
+          ? '<button class="vt-btn" id="vt-avanzar" data-sig="' + escaparHTML(siguiente) + '">' +
+            (ICONOS[ESTADO_ICO[siguiente]] || '') + ' Marcar como ' + escaparHTML(ESTADO_TXT[siguiente]) + '</button>'
+          : '<p style="margin:0;font-size:13px;color:var(--vt-gris)">Pedido entregado. Ciclo completo.</p>') +
+        '<div class="vt-anular-zona">' +
+          '<textarea class="vt-textarea" id="vt-motivo" placeholder="Motivo de la anulación (opcional)"></textarea>' +
+          '<button class="vt-btn ghost" id="vt-anular"><span></span> Anular pedido</button>' +
+        '</div>' +
+        '<p class="vt-msg" id="vt-d-msg"></p>' +
+      '</div></div>';
+    }
+
+    drawerBody.innerHTML =
+      (contacto.length ? '<div class="vt-bloque"><h3>Cliente</h3>' +
+        contacto.map((d) => '<div class="vt-dato"><span class="k">' + escaparHTML(d.k) + '</span><span class="v">' + escaparHTML(d.v) + '</span></div>').join('') +
+      '</div>' : '') +
+      '<div class="vt-bloque"><h3>Productos</h3><ul class="vt-items-mini">' + (itemsHtml || '<li>Sin líneas</li>') + '</ul>' +
+        '<div class="vt-dato" style="border-top:1px solid var(--vt-linea);margin-top:8px;padding-top:8px"><span class="k">Total</span><span class="v" style="font-weight:700;color:var(--vt-marino)">' + formatearCOP(p.total) + '</span></div>' +
+      '</div>' +
+      (p.notas ? '<div class="vt-bloque"><h3>Notas del pedido</h3><p style="margin:0;font-size:13px">' + escaparHTML(p.notas) + '</p></div>' : '') +
+      '<div class="vt-bloque"><h3>Ciclo de vida</h3><ul class="vt-timeline">' + timelineHtml + '</ul>' +
+        '<div class="vt-dato" style="margin-top:6px"><span class="k">Registrado</span><span class="v">' + escaparHTML(formatearMomento(p.creado)) + '</span></div>' +
+        '<div class="vt-dato"><span class="k">Canal</span><span class="v">' + escaparHTML(p.canal || 'manual') + '</span></div>' +
+      '</div>' +
+      avanceHtml;
+
+    // Cablear acciones (solo si el pedido no esta anulado).
+    const btnAvanzar = drawerBody.querySelector('#vt-avanzar');
+    const btnAnular = drawerBody.querySelector('#vt-anular');
+    const msg = drawerBody.querySelector('#vt-d-msg');
+    if (btnAnular) btnAnular.querySelector('span').innerHTML = ICONOS.equis;
+
+    btnAvanzar?.addEventListener('click', async () => {
+      const sig = btnAvanzar.dataset.sig;
+      btnAvanzar.disabled = true;
+      msg.className = 'vt-msg'; msg.textContent = 'Actualizando...';
+      // No hay RPC de avance en FEAT-001; se intenta un UPDATE directo. Si la
+      // RLS lo bloquea (solo hay policy de SELECT), se avisa con mesura.
+      const { error } = await supabase.from('pedidos')
+        .update({ estado: sig, actualizado: new Date().toISOString() })
+        .eq('id', p.id);
+      if (error) {
+        msg.className = 'vt-msg err';
+        msg.textContent = 'No se pudo actualizar el estado: ' + (error.message || 'permiso denegado') +
+          '. Puede requerir una RPC de avance (mejora futura).';
+        btnAvanzar.disabled = false;
+        return;
+      }
+      cerrarDetalle();
+      await cargar();
+      abrirDetalle(p.id);
+    });
+
+    btnAnular?.addEventListener('click', async () => {
+      const motivo = drawerBody.querySelector('#vt-motivo').value.trim() || null;
+      btnAnular.disabled = true;
+      msg.className = 'vt-msg'; msg.textContent = 'Anulando...';
+      const { error } = await supabase.rpc('anular_pedido', {
+        p_pedido_id: p.id,
+        p_motivo: motivo
+      });
+      if (error) {
+        msg.className = 'vt-msg err';
+        msg.textContent = 'No se pudo anular: ' + (error.message || 'error');
+        btnAnular.disabled = false;
+        return;
+      }
+      cerrarDetalle();
+      await cargar();
+      abrirDetalle(p.id);
+    });
+
+    drawerFondo.hidden = false;
+    document.getElementById('vt-d-cerrar').focus();
+  }
+
+  function cerrarDetalle() { drawerFondo.hidden = true; }
+
+  document.getElementById('vt-d-cerrar').addEventListener('click', cerrarDetalle);
+  drawerFondo.addEventListener('click', (e) => { if (e.target === drawerFondo) cerrarDetalle(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !drawerFondo.hidden) cerrarDetalle(); });
+
+  [fEstado, fDesde, fHasta].forEach((el) => el.addEventListener('change', cargar));
+
+  // ----------------------------------------------------------
+  // ARRANQUE
+  // ----------------------------------------------------------
+  (async () => {
+    const acceso = await asegurarAcceso(document.body, '../../panel.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Seguimiento de pedidos',
+      kicker: 'VENTAS · OPERACIÓN',
+      lead: 'El tablero de la operación. De un vistazo: quién pidió qué, cuándo, cuánto y en qué estado va. Abre un pedido para avanzar su estado o anularlo con trazabilidad en el libro.',
+      sesion: acceso.sesion,
+      areaLabel: 'ÁREA DE VENTAS',
+      volverHref: '../index.html',
+      volverTexto: 'Ventas'
+    });
+    document.querySelectorAll('main [data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    main.hidden = false;
+    await cargar();
+  })();
+</script>
+
+</body>
+</html>

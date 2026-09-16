@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Ficha de cliente</title>
+<meta name="description" content="Ficha de cliente · Área de Ventas de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/ventas.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=1">
+<link rel="stylesheet" href="../ventas.css?v=1">
+
+<!--
+  MAGANDHI · Area de Ventas · Portafolio de clientes · FICHA (ver.html?id=...).
+  Ficha de LECTURA de un cliente: sus datos de contacto, sus metricas objetivas
+  del portafolio (ultima compra, numero de pedidos, total gastado) y el
+  historial de sus pedidos (fecha, estado, total, items) enlazando al tablero.
+
+  SOLO LECTURA en esta tanda: FEAT-001 NO expone una RPC de EDICION de cliente
+  (solo crear_pedido / anular_pedido / buscar_candidatos_cliente). Editar la
+  ficha exigiria una RPC security definer nueva (no hay policy de UPDATE en
+  clientes: RLS es SELECT-only). Se prioriza LEER la ficha; la edicion queda
+  como MEJORA futura documentada en findings, sin inventar un camino de
+  escritura que evada el patron de seguridad. La salud del cliente NO se
+  interpreta (eso es el Cluster futuro).
+-->
+</head>
+<body class="vt-body">
+
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="vt-wrap" id="vt-main" hidden>
+  <div id="vt-contenido"><p class="vt-empty">Cargando ficha...</p></div>
+</main>
+
+<script type="module">
+  import {
+    supabase, asegurarAcceso, montarHeader, ICONOS,
+    escaparHTML, formatearCOP, formatearFecha
+  } from '../ventas-core.js';
+
+  const main = document.getElementById('vt-main');
+  const cont = document.getElementById('vt-contenido');
+
+  const ESTADO_TXT = {
+    recibido: 'Recibido', preparando: 'Preparando', en_camino: 'En camino',
+    entregado: 'Entregado', anulado: 'Anulado'
+  };
+  const ESTADO_ICO = {
+    recibido: 'recibo', preparando: 'paquete', en_camino: 'camion',
+    entregado: 'check', anulado: 'equis'
+  };
+
+  function badge(estado) {
+    return '<span class="vt-badge ' + escaparHTML(estado) + '">' +
+      (ICONOS[ESTADO_ICO[estado]] || '') + escaparHTML(ESTADO_TXT[estado] || estado) + '</span>';
+  }
+
+  function paramId() {
+    const p = new URLSearchParams(window.location.search);
+    return p.get('id');
+  }
+
+  async function cargar(id) {
+    // Datos del cliente.
+    const { data: cliente, error: eCli } = await supabase
+      .from('clientes')
+      .select('id, nombre, correo, telefono, direccion, ciudad, departamento, pais, notas, activo')
+      .eq('id', id)
+      .maybeSingle();
+    if (eCli || !cliente) {
+      cont.innerHTML = '<div class="vt-empty">No se encontró el cliente solicitado. <a href="index.html">Volver al portafolio</a>.</div>';
+      return;
+    }
+
+    // Metricas objetivas del portafolio para este cliente.
+    const { data: metrica } = await supabase
+      .from('portafolio_metricas')
+      .select('ultima_compra, num_pedidos, total_gastado')
+      .eq('customer_id', id)
+      .maybeSingle();
+
+    // Historial de pedidos con sus items.
+    const { data: pedidos } = await supabase
+      .from('pedidos')
+      .select('id, fecha_orden, estado, total, anulado, items:pedido_items ( cantidad, producto:productos ( nombre ) )')
+      .eq('customer_id', id)
+      .order('fecha_orden', { ascending: false })
+      .order('creado', { ascending: false })
+      .limit(500);
+
+    pintar(cliente, metrica || {}, pedidos || []);
+  }
+
+  function pintar(cliente, metrica, pedidos) {
+    // Datos de contacto.
+    const datos = [
+      ['Correo', cliente.correo],
+      ['Teléfono', cliente.telefono],
+      ['Dirección', cliente.direccion],
+      ['Ciudad', cliente.ciudad],
+      ['Departamento', cliente.departamento],
+      ['País', cliente.pais]
+    ].filter((d) => d[1]);
+
+    const datosHtml = datos.length
+      ? datos.map((d) => '<div class="vt-dato" style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-size:13.5px;border-bottom:1px solid var(--vt-linea)">' +
+          '<span class="k" style="color:var(--vt-gris)">' + escaparHTML(d[0]) + '</span>' +
+          '<span class="v" style="text-align:right">' + escaparHTML(d[1]) + '</span></div>').join('')
+      : '<p style="margin:0;font-size:13px;color:var(--vt-gris)">Sin datos de contacto registrados.</p>';
+
+    // Metricas objetivas (sin interpretar salud).
+    const metricasHtml =
+      '<div class="vt-metrica"><span class="k">Última compra</span><span class="v">' +
+        (metrica.ultima_compra ? escaparHTML(formatearFecha(metrica.ultima_compra)) : '—') + '</span></div>' +
+      '<div class="vt-metrica"><span class="k">Pedidos</span><span class="v">' + (Number(metrica.num_pedidos) || 0) + '</span></div>' +
+      '<div class="vt-metrica"><span class="k">Total gastado</span><span class="v">' + formatearCOP(metrica.total_gastado || 0) + '</span></div>';
+
+    // Historial de pedidos.
+    let historialHtml;
+    if (!pedidos.length) {
+      historialHtml = '<div class="vt-empty" style="margin-top:0">Este cliente aún no tiene pedidos registrados.</div>';
+    } else {
+      const filas = pedidos.map((p) => {
+        const items = (p.items || []).map((it) =>
+          escaparHTML(it.producto?.nombre || 'Producto') + ' ×' + (Number(it.cantidad) || 0)).join(', ');
+        return (
+          '<tr class="' + (p.anulado ? 'anulado' : '') + '">' +
+            '<td class="fecha">' + escaparHTML(formatearFecha(p.fecha_orden)) + '</td>' +
+            '<td>' + (items || '<span style="color:var(--vt-gris)">—</span>') + '</td>' +
+            '<td>' + badge(p.estado) + '</td>' +
+            '<td class="num">' + formatearCOP(p.total) + '</td>' +
+          '</tr>'
+        );
+      }).join('');
+      historialHtml =
+        '<div class="vt-tabla-caja" style="margin-top:0"><table class="vt-tabla">' +
+          '<thead><tr><th>Fecha</th><th>Productos</th><th>Estado</th><th class="num">Total</th></tr></thead>' +
+          '<tbody>' + filas + '</tbody>' +
+        '</table></div>';
+    }
+
+    cont.innerHTML =
+      '<a class="vt-btn ghost" href="index.html" style="margin-bottom:18px"><span>' + ICONOS.flecha + '</span> Volver al portafolio</a>' +
+      '<div class="vt-ficha">' +
+        '<h2 style="margin:0 0 4px;font-size:20px;color:var(--vt-marino)">' + escaparHTML(cliente.nombre || 'Cliente') + '</h2>' +
+        (cliente.activo === false ? '<p style="margin:0 0 12px;font-size:12px;color:var(--vt-gris)">Cliente inactivo</p>' : '') +
+        '<div style="margin-top:14px">' + datosHtml + '</div>' +
+        (cliente.notas ? '<div style="margin-top:16px"><span style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--vt-gris)">Notas</span>' +
+          '<p style="margin:6px 0 0;font-size:13.5px">' + escaparHTML(cliente.notas) + '</p></div>' : '') +
+        '<div style="margin-top:20px"><span style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--vt-gris)">Métricas del portafolio</span>' +
+          '<div class="vt-ficha-metricas">' + metricasHtml + '</div></div>' +
+      '</div>' +
+      '<div class="vt-subhead-ficha" style="margin:26px 0 12px;font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--vt-marino)">Historial de pedidos</div>' +
+      historialHtml;
+  }
+
+  (async () => {
+    const acceso = await asegurarAcceso(document.body, '../../panel.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Ficha de cliente',
+      kicker: 'VENTAS · PORTAFOLIO',
+      lead: 'Los datos del cliente, sus métricas objetivas de compra y el historial de sus pedidos. Es una vista de lectura del portafolio.',
+      sesion: acceso.sesion,
+      areaLabel: 'ÁREA DE VENTAS',
+      volverHref: 'index.html',
+      volverTexto: 'Portafolio'
+    });
+
+    main.hidden = false;
+    const id = paramId();
+    if (!id) {
+      cont.innerHTML = '<div class="vt-empty">No se indicó un cliente. <a href="index.html">Volver al portafolio</a>.</div>';
+      return;
+    }
+    await cargar(id);
+  })();
+</script>
+
+</body>
+</html>
