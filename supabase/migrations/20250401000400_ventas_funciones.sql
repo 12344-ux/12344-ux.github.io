@@ -260,8 +260,9 @@ comment on function buscar_candidatos_cliente(text, text, text) is 'SOLO LECTURA
 --   (1) resolver cliente (usar p_customer_id, o crear en clientes; ante colision
 --       del UNIQUE parcial NO falla ni duplica: resuelve al existente, §4.5).
 --   (2) insertar el pedido (estado inicial 'recibido', canal, fecha_orden).
---   (3) por cada item: insertar pedido_items con precio real y subtotal, sumar
---       el total (bigint).
+--   (3) por cada item: validar que el producto exista Y este activo (mismo
+--       chequeo que inv_registrar_movimiento), insertar pedido_items con precio
+--       real y subtotal, sumar el total (bigint).
 --   (4) bajar inventario: INSERT directo de una 'salida' en el libro por item
 --       (ver DECISION DE CRITERIO en la cabecera; salida sin stock NO se bloquea).
 -- Devuelve jsonb {pedido_id, customer_id, total}.
@@ -299,6 +300,7 @@ declare
   v_cantidad      integer;
   v_precio        bigint;
   v_subtotal      bigint;
+  v_activo        boolean;
 begin
   if not tiene_acceso_ventas() then
     raise exception 'Acceso denegado: se requiere el area de ventas.';
@@ -369,6 +371,21 @@ begin
       raise exception 'El precio_unitario de cada item debe ser un bigint no negativo.';
     end if;
 
+    -- VALIDACION DE PRODUCTO (mismo chequeo que inv_registrar_movimiento): el
+    -- producto debe existir Y estar activo antes de tocar el libro. La FK de
+    -- pedido_items.product_id atrapa el inexistente, pero NO el inactivo; sin
+    -- este chequeo un producto dado de baja (activo=false) pasaria. El picker
+    -- manual ya filtra activo=true, pero la puerta web futura invoca el mismo
+    -- nucleo y no necesariamente filtra igual: cerramos la divergencia
+    -- server-side para no depender del cliente.
+    select activo into v_activo from productos where id = v_product_id;
+    if v_activo is null then
+      raise exception 'El producto % no existe.', v_product_id;
+    end if;
+    if not v_activo then
+      raise exception 'El producto % esta inactivo; no admite movimientos.', v_product_id;
+    end if;
+
     v_subtotal := v_cantidad::bigint * v_precio;
     v_total := v_total + v_subtotal;
 
@@ -397,7 +414,7 @@ begin
 end;
 $$;
 
-comment on function crear_pedido(uuid, text, text, text, text, text, text, text, text, text, date, text, jsonb) is 'NUCLEO UNICO de creacion de pedido (dos puertas: manual hoy, web futura via canal). Transaccional: resuelve/crea cliente (ante colision del UNIQUE parcial resuelve al existente, no falla ni duplica, §4.5), inserta pedidos + pedido_items con precio real, calcula total bigint y baja stock con un INSERT directo de salida (motivo=Venta, referencia=pedido_id, customer_id estampado) en el libro -- NO llama inv_registrar_movimiento (no acopla areas ni exige permiso de inventario; salida sin stock no se bloquea). Devuelve jsonb {pedido_id, customer_id, total}. Exige tiene_acceso_ventas().';
+comment on function crear_pedido(uuid, text, text, text, text, text, text, text, text, text, date, text, jsonb) is 'NUCLEO UNICO de creacion de pedido (dos puertas: manual hoy, web futura via canal). Transaccional: resuelve/crea cliente (ante colision del UNIQUE parcial resuelve al existente, no falla ni duplica, §4.5), inserta pedidos + pedido_items con precio real, calcula total bigint y baja stock con un INSERT directo de salida (motivo=Venta, referencia=pedido_id, customer_id estampado) en el libro -- NO llama inv_registrar_movimiento (no acopla areas ni exige permiso de inventario; salida sin stock no se bloquea). Valida por item que el producto exista Y este activo (mismo chequeo que inv_registrar_movimiento) antes de tocar el libro. Devuelve jsonb {pedido_id, customer_id, total}. Exige tiene_acceso_ventas().';
 
 -- ------------------------------------------------------------
 -- anular_pedido: anulacion logica + reversion de stock, TRANSACCIONAL (§5.3).
@@ -452,6 +469,14 @@ begin
    where id = p_pedido_id;
 
   -- Entrada compensatoria por cada linea (devuelve al inventario lo restado).
+  -- DECISION DE CRITERIO: a diferencia de crear_pedido, aqui NO se exige que el
+  -- producto siga activo. Un producto puede darse de baja (activo=false) DESPUES
+  -- de una venta, y anular esa venta debe poder devolver el stock que la salida
+  -- original resto: registrar una ENTRADA que reintegra existencias es una
+  -- operacion segura (nunca deja stock negativo ni vende algo dado de baja).
+  -- Bloquearla por inactividad dejaria el libro descuadrado (salida sin su
+  -- entrada compensatoria). La FK product_id -> productos(id) sigue garantizando
+  -- que el producto exista.
   for v_item in
     select product_id, cantidad from pedido_items where pedido_id = p_pedido_id
   loop

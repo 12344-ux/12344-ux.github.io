@@ -380,6 +380,15 @@
     });
 
     btnAnular?.addEventListener('click', async () => {
+      // "El humano decide": anular NO se bloquea por estado (ni siquiera un
+      // pedido ya entregado), por decision del duenio. Pero un pedido entregado
+      // ya salio fisicamente, asi que damos un aviso sobrio de confirmacion para
+      // que la anulacion (que revierte stock) sea deliberada y no un clic al
+      // azar. No es un candado: si el humano confirma, se anula igual.
+      if (p.estado === 'entregado' &&
+          !window.confirm('Este pedido ya figura como ENTREGADO. Anularlo revertira el stock al inventario. ¿Confirmas la anulacion?')) {
+        return;
+      }
       const motivo = drawerBody.querySelector('#vt-motivo').value.trim() || null;
       btnAnular.disabled = true;
       msg.className = 'vt-msg'; msg.textContent = 'Anulando...';

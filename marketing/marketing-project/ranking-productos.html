@@ -202,7 +202,12 @@
   // Solo LEE (bajo RLS de Ventas: pedidos/pedido_items exigen tiene_acceso_ventas
   // para el analista de marketing sin ese acceso, esta consulta puede volver
   // vacia -> se cae limpio al fallback de precio_venta, sin romper la pantalla).
-  // Devuelve un Map product_id -> ingreso real acumulado (bigint en pesos).
+  // Devuelve DOS mapas por product_id:
+  //   ingreso  -> Σ(precio_unitario × cantidad) real de los items (bigint pesos).
+  //   unidades -> Σ(cantidad) cubierta por pedidos (para saber cuantas unidades
+  //               de las salidas del libro tienen precio real y cuantas NO).
+  // El segundo mapa es la clave del arreglo de granularidad: permite mezclar
+  // real + estimado POR UNIDAD (no por producto), ver agregarRanking.
   // ----------------------------------------------------------
   async function leerIngresoRealPorProducto(desde, hasta) {
     // Traemos los items junto con el estado/fecha de su pedido en un solo select
@@ -216,29 +221,40 @@
     if (hasta) q = q.lte('pedidos.fecha_orden', hasta);
     const { data, error } = await q;
     // Si el usuario no tiene acceso al Area de Ventas (RLS) o la tabla aun no
-    // existe, NO rompemos el ranking: devolvemos un mapa vacio y todo cae al
+    // existe, NO rompemos el ranking: devolvemos mapas vacios y todo cae al
     // fallback de precio_venta. El ingreso volvera a ser estimado, con honestidad.
-    if (error) return new Map();
-    const mapa = new Map();
+    if (error) return { ingreso: new Map(), unidades: new Map() };
+    const ingreso = new Map();
+    const unidades = new Map();
     for (const it of (data || [])) {
       if (!it.product_id) continue;
-      const aporte = Math.trunc(Number(it.precio_unitario) || 0) * Math.trunc(Number(it.cantidad) || 0);
-      mapa.set(it.product_id, (mapa.get(it.product_id) || 0) + aporte);
+      const cant = Math.trunc(Number(it.cantidad) || 0);
+      const aporte = Math.trunc(Number(it.precio_unitario) || 0) * cant;
+      ingreso.set(it.product_id, (ingreso.get(it.product_id) || 0) + aporte);
+      unidades.set(it.product_id, (unidades.get(it.product_id) || 0) + cant);
     }
-    return mapa;
+    return { ingreso, unidades };
   }
 
   // ----------------------------------------------------------
-  // AGREGACION EN MEMORIA — por cada product_id, suma unidades vendidas en el
-  // rango y arma el ingreso combinando dos fuentes, en este orden:
-  //   1) INGRESO REAL de Ventas (precio_unitario real de cada pedido no anulado
-  //      en el rango, ya sumado por producto en `ingresoReal`). Es el dato
-  //      exacto de lo que se cobro.
-  //   2) FALLBACK ESTIMADO: para el producto que NO tenga ingreso real (ventas
-  //      viejas/ajustes sin pedido asociado), unidades * precio_venta ACTUAL.
-  //      Es una estimacion honesta con el precio de lista de hoy.
-  // Asi el ingreso deja de ser un puro estimado cuando la venta paso por Ventas
-  // (§CONEXION), sin rehacer la pantalla: solo cambia la FUENTE del precio.
+  // AGREGACION EN MEMORIA — por cada product_id, suma las unidades vendidas del
+  // libro en el rango y arma el ingreso mezclando real + estimado POR UNIDAD (no
+  // por producto). El defecto anterior era decidir la fuente del ingreso por
+  // producto: un producto con salidas de Ventas Y salidas sin pedido (ventas
+  // viejas/ajustes) en el mismo rango contaba TODAS sus unidades pero solo el
+  // ingreso real, subestimando el total y dejando unidades↔ingreso inconsistentes.
+  // Ahora el ingreso combina, por producto:
+  //   1) INGRESO REAL de Ventas: Σ(precio_unitario × cantidad) de los items no
+  //      anulados en el rango (ya sumado en ingresoReal.ingreso). Dato exacto.
+  //   2) FALLBACK ESTIMADO de las unidades NO cubiertas por un pedido:
+  //      max(0, unidades − unidadesConPedido) × precio_venta ACTUAL. Estimacion
+  //      honesta con el precio de lista de hoy para las salidas sin precio real.
+  // Cuando no hay ninguna venta de Ventas para el producto, unidadesConPedido=0
+  // y todo cae al fallback (degradacion con gracia; mapa vacio -> todo estimado).
+  //
+  // Una fila se considera MIXTA/ESTIMADA (marca "≈") si alguna de sus unidades
+  // cayo al fallback, es decir si unidades > unidadesConPedido (o no hubo pedido).
+  // Solo es "real pura" cuando TODAS sus unidades vinieron de un pedido.
   //
   // Verificacion a mano (ejemplo pequeno):
   //   salidas = [
@@ -247,21 +263,24 @@
   //     { product_id: 'A', cantidad: 2 },
   //   ]
   //   productos: A -> precio_venta 1000 ; B -> precio_venta 2000
-  //   Caso 1 (sin Ventas / mapa vacio): ingresoReal = {} -> todo por fallback:
-  //     A: unidades = 3 + 2 = 5 ; ingreso = 5 * 1000 = 5.000  (estimado)
-  //     B: unidades = 5         ; ingreso = 5 * 2000 = 10.000 (estimado)
+  //   Caso 1 (sin Ventas / mapas vacios): todo por fallback:
+  //     A: unidades = 3 + 2 = 5 ; conPedido = 0 ; ingreso = 5 * 1000 = 5.000  (estimado)
+  //     B: unidades = 5         ; conPedido = 0 ; ingreso = 5 * 2000 = 10.000 (estimado)
   //     Totales: unidades = 10 ; ingreso = 15.000 ; productos movidos = 2
-  //   Caso 2 (con Ventas): supongamos que A se vendio con promocion a 800 el
-  //   precio real de sus 5 unidades, y B no paso por Ventas:
-  //     ingresoReal = { A: 5*800 = 4.000 }
-  //     A: usa el REAL -> ingreso = 4.000
-  //     B: sin real -> fallback -> ingreso = 5 * 2000 = 10.000
-  //     Totales: unidades = 10 ; ingreso = 14.000
+  //   Caso 2 (mixto por unidad): A movio 5 unidades; 3 de ellas pasaron por
+  //   Ventas con promocion a 800 (real = 3*800 = 2.400) y 2 son de un ajuste sin
+  //   pedido; B no paso por Ventas:
+  //     ingresoReal.ingreso = { A: 2.400 } ; ingresoReal.unidades = { A: 3 }
+  //     A: real 2.400 + fallback (5 − 3) * 1000 = 2.400 + 2.000 = 4.400 (mixta, "≈")
+  //     B: sin real -> fallback -> 5 * 2000 = 10.000 (estimada, "≈")
+  //     Totales: unidades = 10 ; ingreso = 14.400
+  //   (Antes, el caso 2 daba A=2.400 ignorando 2 unidades: subestimaba en 2.000.)
   //   Orden por unidades desc -> [A(5), B(5)] empatan; por ingreso desc, caso 1
-  //   -> [B, A]; caso 2 -> [B, A] (10.000 > 4.000).
+  //   -> [B, A]; caso 2 -> [B(10.000), A(4.400)].
   // ----------------------------------------------------------
   function agregarRanking(salidas, productos, ingresoReal) {
-    const real = ingresoReal || new Map();
+    const real = (ingresoReal && ingresoReal.ingreso) || new Map();
+    const realUnidades = (ingresoReal && ingresoReal.unidades) || new Map();
     const acum = new Map(); // product_id -> unidades
     for (const s of salidas) {
       if (!s.product_id) continue;
@@ -272,11 +291,16 @@
     for (const [productId, unidades] of acum.entries()) {
       const prod = productos.get(productId) || null;
       const precio = Math.trunc(Number(prod?.precio_venta) || 0);
-      // Precio REAL cobrado en Ventas (precio_unitario de pedido_items) cuando
-      // existe; si el producto no tiene ninguna venta registrada en Ventas
-      // dentro del rango, FALLBACK al precio_venta actual (estimado documentado).
-      const tieneReal = real.has(productId);
-      const ingreso = tieneReal ? real.get(productId) : (unidades * precio);
+      // Ingreso real cobrado en Ventas (precio_unitario de pedido_items) y las
+      // unidades que ese ingreso cubre. Las unidades restantes (salidas sin
+      // pedido: ventas viejas/ajustes) se estiman con el precio_venta actual.
+      const ingresoRealProd = Math.trunc(Number(real.get(productId)) || 0);
+      const unidadesConPedido = Math.trunc(Number(realUnidades.get(productId)) || 0);
+      const unidadesSinPedido = Math.max(0, unidades - unidadesConPedido);
+      const ingreso = ingresoRealProd + (unidadesSinPedido * precio);
+      // La fila es "estimada" (marca "≈" en un ranking mixto) si alguna unidad
+      // cayo al fallback. Es "real pura" solo si TODAS vinieron de un pedido.
+      const filaReal = unidadesConPedido > 0 && unidadesSinPedido === 0;
       filas.push({
         productId,
         nombre: prod?.nombre || 'Producto',
@@ -284,7 +308,7 @@
         unidad: prod?.unidad_medida || 'unidad',
         unidades,
         ingreso,
-        ingresoReal: tieneReal
+        ingresoReal: filaReal
       });
     }
     return filas;
@@ -391,11 +415,13 @@
             'de venta actual del producto, así que esa parte es estimada. ') +
         'Impulse entrega el dato medido; la lectura la haces tú.</span></p>';
 
-    // TABLA-RANKING. En un ranking MIXTO (algunas filas con precio real de
-    // Ventas y otras estimadas por fallback), marcamos con un "≈" sobrio las
-    // filas cuyo ingreso es estimado, para no dar por exacto lo que no lo es.
-    // Sin color nuevo: solo el signo textual. Si todo es real (o todo estimado),
-    // no se marca fila por fila (el rotulo de la columna ya lo dice).
+    // TABLA-RANKING. En un ranking MIXTO (algunas filas 100% reales de Ventas y
+    // otras con al menos una unidad estimada por fallback) marcamos con un "≈"
+    // sobrio las filas cuyo ingreso NO es enteramente real -- incluidas las
+    // MIXTAS (parte real de Ventas + parte estimada de salidas sin pedido), para
+    // no dar por exacto lo que solo lo es en parte. Sin color nuevo: solo el
+    // signo textual. Si todo es real (o todo estimado), no se marca fila por
+    // fila (el rotulo de la columna ya lo dice).
     const filasHTML = filas.map((f, i) => {
       const etiqueta = escaparHTML(f.nombre) + (f.sku ? ' · ' + escaparHTML(f.sku) : '');
       const marcaFila = (hayEstimado && conReal > 0 && !f.ingresoReal) ? '≈ ' : '';
