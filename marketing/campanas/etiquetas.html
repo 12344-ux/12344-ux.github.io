@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Etiquetas de campaña</title>
+<meta name="description" content="Gestionar etiquetas oficiales de segmentación · Área de Marketing de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/marketing.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=1">
+<link rel="stylesheet" href="../marketing.css?v=1">
+<link rel="stylesheet" href="campanas.css?v=1">
+
+<!--
+  MAGANDHI · Area de Marketing · Sub-area CAMPANAS · ETIQUETAS OFICIALES.
+  Catalogo controlado de etiquetas de segmentacion INTERNAS (nunca se muestran
+  en la tienda). Aqui se AGREGAN nuevas etiquetas y se editan/DESACTIVAN las
+  existentes. Toda la escritura pasa por las RPC security definer
+  cm_crear_etiqueta / cm_editar_etiqueta (ver
+  supabase/migrations/20250502000000_campanas_placeholder_slug.sql). El cliente
+  solo hace .select para LEER y .rpc para ESCRIBIR; nunca insert/update directo.
+
+  Patron 'agregar al catalogo' espejo de finanzas/agregar-cuenta.html: se sugiere
+  EN VIVO el codigo normalizado (la misma normalizacion que hace la RPC:
+  minusculas, sin acentos, no-[a-z0-9] -> guion bajo, colapsa y recorta). El
+  codigo es la clave estable (PK): al editar NO cambia. Nada se borra: solo se
+  desactiva (baja logica). Desactivar una etiqueta no rompe asignaciones
+  historicas del puente.
+
+  Profundidad de rutas: esta pagina vive DOS niveles bajo la raiz
+  (marketing/campanas/), por eso auth-guard sube '../../', marca.css '../../',
+  y el nucleo compartido se importa como '../marketing-core.js'.
+
+  El candado real es RLS server-side + las RPC (tiene_acceso_marketing());
+  ocultar UI es solo comodidad de UX.
+-->
+</head>
+<body class="mk-body">
+
+<!-- Guardia reutilizable: sin sesion, redirige al login de la raiz. -->
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="mk-wrap" id="cm-main" hidden>
+
+  <!-- ============ AGREGAR ETIQUETA AL CATALOGO ============ -->
+  <section class="cm-seccion">
+    <div class="cm-seccion-cab">
+      <span class="cm-seccion-num">+</span>
+      <div>
+        <h2 class="cm-seccion-tit">Agregar etiqueta</h2>
+        <p class="cm-seccion-sub">Crea una etiqueta oficial para agrupar el catálogo. El código se genera y normaliza automáticamente a partir del nombre; es la clave estable y no cambia después.</p>
+      </div>
+    </div>
+    <form id="cm-et-form" class="cm-campos" novalidate>
+      <div class="cm-campo">
+        <label for="cm-et-nombre" class="cm-campo-lbl">Nombre de la etiqueta *</label>
+        <input id="cm-et-nombre" class="mk-input" type="text" maxlength="120" placeholder="Ej. Regalo Premium" required>
+        <span class="cm-campo-ayuda">Código sugerido: <strong id="cm-et-codigo-sug" class="cm-codigo-sug">—</strong> (minúsculas, sin acentos, guion bajo). Se confirma y normaliza en el servidor.</span>
+      </div>
+      <div class="cm-campo">
+        <label for="cm-et-desc" class="cm-campo-lbl">Descripción (opcional)</label>
+        <input id="cm-et-desc" class="mk-input" type="text" maxlength="240" placeholder="Para qué sirve esta etiqueta (uso interno).">
+      </div>
+      <div class="cm-campo" style="max-width:200px">
+        <label for="cm-et-orden" class="cm-campo-lbl">Orden</label>
+        <input id="cm-et-orden" class="mk-input" type="number" min="0" step="1" inputmode="numeric" value="0">
+        <span class="cm-campo-ayuda">Menor número aparece primero en las listas.</span>
+      </div>
+      <p id="cm-et-msg" class="cm-form-msg" hidden></p>
+      <div class="cm-guardar-barra">
+        <button type="submit" id="cm-et-guardar" class="cm-btn-primario">
+          <span data-ico="mas"></span>
+          <span>Agregar etiqueta</span>
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ============ CATALOGO DE ETIQUETAS ============ -->
+  <section class="cm-seccion">
+    <div class="cm-seccion-cab">
+      <span data-ico="lista" class="cm-seccion-ico"></span>
+      <div>
+        <h2 class="cm-seccion-tit">Etiquetas del catálogo</h2>
+        <p class="cm-seccion-sub">Activas e inactivas. Edita nombre, descripción y orden, o desactiva una etiqueta sin borrarla (baja lógica: no rompe asignaciones anteriores).</p>
+      </div>
+    </div>
+    <div id="cm-et-lista" class="cm-et-lista" aria-live="polite"></div>
+  </section>
+
+  <div class="cm-aviso-vida">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+    <span><b>Nada se borra nunca.</b> Desactivar una etiqueta solo la retira de la lista para nuevas campañas: no se pierde y no rompe las campañas que ya la usaban. Puedes reactivarla cuando quieras.</span>
+  </div>
+</main>
+
+<script type="module">
+  import {
+    asegurarAcceso, montarHeader, ICONOS,
+    supabase, escaparHTML
+  } from '../marketing-core.js';
+
+  const $ = (id) => document.getElementById(id);
+
+  // ------------------------------------------------------------
+  // NORMALIZACION DEL CODIGO (espejo EXACTO de cm_crear_etiqueta en SQL):
+  // minusculas + trim, quitar acentos, cualquier caracter que no sea [a-z0-9]
+  // -> '_', colapsar guiones bajos repetidos y recortar los de los extremos.
+  // Solo es una SUGERENCIA visual; el servidor vuelve a normalizar (candado).
+  // ------------------------------------------------------------
+  function normalizarCodigo(texto) {
+    return String(texto || '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quita acentos/diacriticos
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '_') // no-alfanumerico -> guion bajo
+      .replace(/_+/g, '_')          // colapsa repetidos
+      .replace(/^_+|_+$/g, '');     // recorta extremos
+  }
+
+  // ------------------------------------------------------------
+  // MENSAJES DEL FORMULARIO DE ALTA
+  // ------------------------------------------------------------
+  const msg = $('cm-et-msg');
+  function mostrarMsg(texto, tipo) {
+    msg.textContent = texto;
+    msg.className = 'cm-form-msg ' + (tipo || 'err');
+    msg.hidden = false;
+  }
+  function ocultarMsg() { msg.hidden = true; msg.textContent = ''; }
+
+  // ------------------------------------------------------------
+  // SUGERENCIA EN VIVO DEL CODIGO NORMALIZADO
+  // ------------------------------------------------------------
+  const nombreEl = $('cm-et-nombre');
+  const codigoSug = $('cm-et-codigo-sug');
+  function refrescarSugerencia() {
+    const cod = normalizarCodigo(nombreEl.value);
+    codigoSug.textContent = cod || '—';
+  }
+  nombreEl.addEventListener('input', refrescarSugerencia);
+
+  // ------------------------------------------------------------
+  // LISTA DEL CATALOGO
+  // ------------------------------------------------------------
+  const listaEl = $('cm-et-lista');
+  let etiquetas = []; // [{codigo,nombre,descripcion,orden,activo}]
+
+  async function cargarEtiquetas() {
+    listaEl.innerHTML = '<div class="cm-empty">Cargando etiquetas…</div>';
+    const { data, error } = await supabase
+      .from('campana_etiqueta')
+      .select('codigo, nombre, descripcion, orden, activo')
+      .order('activo', { ascending: false })
+      .order('orden', { ascending: true })
+      .order('codigo', { ascending: true });
+
+    if (error) {
+      listaEl.innerHTML =
+        '<div class="cm-empty err"><strong>No se pudo cargar el catálogo</strong>' +
+        escaparHTML(error.message || 'Error al consultar las etiquetas.') + '</div>';
+      return;
+    }
+    etiquetas = data || [];
+    if (!etiquetas.length) {
+      listaEl.innerHTML =
+        '<div class="cm-empty"><strong>Aún no hay etiquetas</strong>' +
+        'Crea la primera con el formulario de arriba.</div>';
+      return;
+    }
+    listaEl.innerHTML = etiquetas.map(pintarFila).join('');
+    cablearFilas();
+  }
+
+  function pintarFila(e) {
+    const cod = escaparHTML(e.codigo);
+    const estadoChip = e.activo
+      ? '<span class="cm-chip publicado">Activa</span>'
+      : '<span class="cm-chip borrador">Inactiva</span>';
+    return '' +
+      '<div class="cm-et-item' + (e.activo ? '' : ' inactiva') + '" data-codigo="' + cod + '">' +
+        '<div class="cm-et-cab">' +
+          '<div class="cm-et-ids">' +
+            '<b class="cm-et-nombre" data-rol="nombre">' + escaparHTML(e.nombre) + '</b>' +
+            '<code class="cm-et-codigo">' + cod + '</code>' +
+          '</div>' +
+          estadoChip +
+        '</div>' +
+        '<div class="cm-et-campos">' +
+          '<label class="cm-campo">' +
+            '<span class="cm-campo-lbl">Nombre</span>' +
+            '<input class="mk-input" data-campo="nombre" type="text" maxlength="120" value="' + escaparHTML(e.nombre) + '">' +
+          '</label>' +
+          '<label class="cm-campo">' +
+            '<span class="cm-campo-lbl">Descripción</span>' +
+            '<input class="mk-input" data-campo="descripcion" type="text" maxlength="240" value="' + escaparHTML(e.descripcion || '') + '">' +
+          '</label>' +
+          '<label class="cm-campo" style="max-width:120px">' +
+            '<span class="cm-campo-lbl">Orden</span>' +
+            '<input class="mk-input" data-campo="orden" type="number" min="0" step="1" inputmode="numeric" value="' + escaparHTML(String(e.orden ?? 0)) + '">' +
+          '</label>' +
+        '</div>' +
+        '<div class="cm-et-acciones">' +
+          '<button type="button" class="cm-accion editar" data-accion="guardar">Guardar cambios</button>' +
+          (e.activo
+            ? '<button type="button" class="cm-accion despublicar" data-accion="desactivar">Desactivar</button>'
+            : '<button type="button" class="cm-accion publicar" data-accion="activar">Reactivar</button>') +
+          '<span class="cm-et-fila-msg" data-rol="msg" hidden></span>' +
+        '</div>' +
+      '</div>';
+  }
+
+  // ------------------------------------------------------------
+  // GUARDAR / ACTIVAR / DESACTIVAR una etiqueta -> cm_editar_etiqueta
+  // Nombres de parametro EXACTOS de la firma SQL: p_codigo, p_nombre,
+  // p_descripcion, p_orden, p_activo. El codigo NO cambia (es la PK).
+  // ------------------------------------------------------------
+  function cablearFilas() {
+    listaEl.querySelectorAll('.cm-et-item').forEach((item) => {
+      const codigo = item.dataset.codigo;
+      const filaMsg = item.querySelector('[data-rol="msg"]');
+      const val = (campo) => item.querySelector('[data-campo="' + campo + '"]');
+
+      const mostrarFilaMsg = (texto, tipo) => {
+        filaMsg.textContent = texto;
+        filaMsg.className = 'cm-et-fila-msg ' + (tipo || 'err');
+        filaMsg.hidden = false;
+      };
+
+      async function editar(activo) {
+        const btns = item.querySelectorAll('.cm-accion');
+        btns.forEach((b) => (b.disabled = true));
+        filaMsg.hidden = true;
+
+        const nombre = val('nombre').value.trim();
+        if (!nombre) {
+          mostrarFilaMsg('El nombre no puede quedar vacío.');
+          btns.forEach((b) => (b.disabled = false));
+          return;
+        }
+        let orden = Math.trunc(Number(val('orden').value));
+        if (Number.isNaN(orden) || orden < 0) orden = 0;
+
+        const { error } = await supabase.rpc('cm_editar_etiqueta', {
+          p_codigo: codigo,
+          p_nombre: nombre,
+          p_descripcion: val('descripcion').value.trim() || null,
+          p_orden: orden,
+          p_activo: activo
+        });
+
+        if (error) {
+          mostrarFilaMsg('No se pudo guardar: ' + (error.message || 'error.'));
+          btns.forEach((b) => (b.disabled = false));
+          return;
+        }
+        await cargarEtiquetas();
+      }
+
+      item.querySelector('[data-accion="guardar"]').addEventListener('click', () => {
+        // Al guardar cambios se conserva el estado activo actual de la fila.
+        const activa = !item.classList.contains('inactiva');
+        editar(activa);
+      });
+      const btnDes = item.querySelector('[data-accion="desactivar"]');
+      if (btnDes) btnDes.addEventListener('click', () => editar(false));
+      const btnAct = item.querySelector('[data-accion="activar"]');
+      if (btnAct) btnAct.addEventListener('click', () => editar(true));
+    });
+  }
+
+  // ------------------------------------------------------------
+  // ALTA -> cm_crear_etiqueta (p_codigo, p_nombre, p_descripcion, p_orden).
+  // La RPC devuelve { codigo } normalizado. El p_codigo que enviamos es la
+  // sugerencia; el servidor lo re-normaliza y es el candado real.
+  // ------------------------------------------------------------
+  async function crear(e) {
+    e.preventDefault();
+    ocultarMsg();
+
+    const nombre = nombreEl.value.trim();
+    if (!nombre) {
+      mostrarMsg('El nombre de la etiqueta es obligatorio.');
+      nombreEl.focus();
+      return;
+    }
+    const codigo = normalizarCodigo(nombre);
+    if (!codigo) {
+      mostrarMsg('El nombre no produce un código válido (usa letras o números).');
+      nombreEl.focus();
+      return;
+    }
+    let orden = Math.trunc(Number($('cm-et-orden').value));
+    if (Number.isNaN(orden) || orden < 0) orden = 0;
+
+    const btn = $('cm-et-guardar');
+    btn.disabled = true;
+
+    const { data, error } = await supabase.rpc('cm_crear_etiqueta', {
+      p_codigo: codigo,
+      p_nombre: nombre,
+      p_descripcion: $('cm-et-desc').value.trim() || null,
+      p_orden: orden
+    });
+
+    btn.disabled = false;
+    if (error) {
+      mostrarMsg('No se pudo crear: ' + (error.message || 'error desconocido.'));
+      return;
+    }
+
+    const codCreado = (data && data.codigo) ? data.codigo : codigo;
+    mostrarMsg('Etiqueta “' + nombre + '” creada con el código “' + codCreado + '”.', 'ok');
+    $('cm-et-form').reset();
+    $('cm-et-orden').value = '0';
+    refrescarSugerencia();
+    await cargarEtiquetas();
+  }
+
+  // ------------------------------------------------------------
+  // ARRANQUE
+  // ------------------------------------------------------------
+  (async () => {
+    const main = $('cm-main');
+    const acceso = await asegurarAcceso(document.body, '../index.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Etiquetas de campaña',
+      kicker: 'CATÁLOGO DE SEGMENTACIÓN',
+      lead: 'Las etiquetas oficiales para agrupar el catálogo de campañas (uso interno; nunca se muestran en la tienda). Agrega nuevas, ajústalas o desactívalas sin borrar nada.',
+      sesion: acceso.sesion,
+      areaLabel: 'ÁREA DE MARKETING',
+      volverHref: 'index.html',
+      volverTexto: 'Campañas'
+    });
+
+    document.querySelectorAll('[data-ico]').forEach((el) => {
+      el.innerHTML = ICONOS[el.dataset.ico] || '';
+    });
+
+    refrescarSugerencia();
+    $('cm-et-form').addEventListener('submit', crear);
+    await cargarEtiquetas();
+    main.hidden = false;
+  })();
+</script>
+
+</body>
+</html>

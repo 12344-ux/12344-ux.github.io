@@ -84,9 +84,25 @@
             <input id="cm-hook-corto" class="mk-input" type="text" maxlength="200" placeholder="Frase gancho breve para el grid">
           </div>
           <div class="cm-campo">
-            <label for="cm-imagen-banner" class="cm-campo-lbl">Imagen del banner (path o URL)</label>
-            <input id="cm-imagen-banner" class="mk-input" type="text" placeholder="Ej. productos/grisi-manzanilla-gold/portada.jpg">
-            <span class="cm-campo-ayuda">Pega la ruta o URL de la imagen. La subida asistida de imágenes queda como mejora futura.</span>
+            <span class="cm-campo-lbl">Imagen del banner</span>
+            <span class="cm-campo-ayuda">Elígela desde tu equipo o arrástrala aquí. Se optimiza en tu navegador (calidad boutique) y se sube al guardar.</span>
+            <div class="cm-banner-carga">
+              <div class="cm-drop" id="cm-banner-drop">
+                <span class="cm-drop-ico" data-ico="upload"></span>
+                <p class="cm-drop-txt"><b>Arrastra una imagen</b> aquí o</p>
+                <button type="button" class="cm-elegir" id="cm-banner-btn">
+                  <span data-ico="upload"></span><span>Elegir archivo</span>
+                </button>
+                <input id="cm-banner-file" class="cm-file-oculto" type="file" accept="image/*">
+              </div>
+              <div class="cm-banner-prev" id="cm-banner-prev">
+                <img id="cm-banner-img" alt="Previsualización del banner">
+                <button type="button" class="cm-prev-quitar" id="cm-banner-quitar" aria-label="Quitar imagen del banner">
+                  <span data-ico="equis"></span>
+                </button>
+              </div>
+              <p class="cm-carga-info" id="cm-banner-info" hidden></p>
+            </div>
           </div>
         </div>
       </section>
@@ -137,15 +153,19 @@
             </button>
           </div>
 
-          <!-- Editor de galeria: lista de paths/URL de imagenes. -->
+          <!-- Galeria: cargador multiple + reorden tipo Spotify (drag & drop). -->
           <div class="cm-campo">
             <span class="cm-campo-lbl">Imágenes de la galería</span>
-            <span class="cm-campo-ayuda">Rutas o URL de las fotos del producto (una por fila).</span>
-            <div id="cm-imgs" class="cm-img-filas"></div>
-            <button type="button" id="cm-imgs-add" class="cm-agregar">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-              <span>Agregar imagen</span>
-            </button>
+            <span class="cm-campo-ayuda">Agrega varias fotos. <b>Arrástralas para reordenar</b>: la primera es la <b>imagen principal</b> y ese orden es el que verá la página del producto.</span>
+            <div class="cm-drop" id="cm-galeria-drop">
+              <span class="cm-drop-ico" data-ico="upload"></span>
+              <p class="cm-drop-txt"><b>Arrastra imágenes</b> aquí o</p>
+              <button type="button" class="cm-elegir" id="cm-galeria-btn">
+                <span data-ico="mas"></span><span>Agregar imágenes</span>
+              </button>
+              <input id="cm-galeria-file" class="cm-file-oculto" type="file" accept="image/*" multiple>
+            </div>
+            <div id="cm-galeria" class="cm-galeria"></div>
           </div>
 
           <!-- Etiquetas de segmentacion INTERNAS: catalogo controlado, multiseleccion. -->
@@ -273,18 +293,33 @@
 <script type="module">
   import {
     asegurarAcceso, montarHeader, ICONOS,
-    supabase, escaparHTML, formatearNumero
+    supabase, escaparHTML, formatearNumero,
+    optimizarImagen, optimizarDosTamanos, BUCKET_CAMPANAS
   } from '../marketing-core.js';
 
   // ============================================================
   //  Estado en memoria de los editores dinamicos (ficha y galeria).
-  //  Se pintan como filas de inputs; al guardar se recolectan en jsonb.
+  //  La ficha se pinta como filas de inputs; la galeria como miniaturas
+  //  reordenables. Las imagenes se OPTIMIZAN en el navegador y se suben al
+  //  bucket 'campanas' con la SESION del usuario al guardar (nunca service_role).
   // ============================================================
   const SVG_QUITAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
 
   const $ = (id) => document.getElementById(id);
+  const kb = (bytes) => (bytes / 1024).toFixed(0) + ' KB';
+  // Key aleatoria y estable (no depende del id del producto): asi podemos subir
+  // ANTES de crear la campana y pasarle los paths ya resueltos a cm_crear_campana.
+  const claveAleatoria = () =>
+    Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
 
   let categorias = [];   // [{codigo,nombre,color_fuerte,color_claro,color_sombra}]
+
+  // Blob optimizado del banner pendiente de subir (o null).
+  let bannerPend = null; // { blob, ext, tipo, url }
+  // Galeria en memoria: arreglo ORDENADO. Cada item, al ser nuevo:
+  //   { id, url, grande:{blob,ext,tipo}, liviana:{blob,ext,tipo} }
+  // (en editar.html un item puede venir con { path } preexistente).
+  let galeria = [];
 
   // ------------------------------------------------------------
   // EDITOR DE FICHA TECNICA (filas clave/valor)
@@ -315,29 +350,223 @@
   $('cm-ficha-add').addEventListener('click', () => agregarFilaFicha());
 
   // ------------------------------------------------------------
-  // EDITOR DE IMAGENES DE GALERIA (lista de paths)
+  // CARGADOR DEL BANNER (explorador + drag & drop, una imagen)
   // ------------------------------------------------------------
-  const imgsCont = $('cm-imgs');
-  function agregarFilaImg(valor = '') {
-    const fila = document.createElement('div');
-    fila.className = 'cm-img-fila';
-    fila.innerHTML =
-      '<input class="mk-input cm-img-path" type="text" placeholder="Ej. productos/grisi-manzanilla-gold/1.jpg">' +
-      '<button type="button" class="cm-quitar" aria-label="Quitar imagen">' + SVG_QUITAR + '</button>';
-    fila.querySelector('.cm-img-path').value = valor;
-    fila.querySelector('.cm-quitar').addEventListener('click', () => fila.remove());
-    imgsCont.appendChild(fila);
-  }
-  function recolectarImgs() {
-    const filas = [...imgsCont.querySelectorAll('.cm-img-fila')];
-    const out = [];
-    for (const f of filas) {
-      const v = f.querySelector('.cm-img-path').value.trim();
-      if (v) out.push(v);
+  const bannerDrop = $('cm-banner-drop');
+  const bannerFile = $('cm-banner-file');
+  const bannerPrev = $('cm-banner-prev');
+  const bannerImg = $('cm-banner-img');
+  const bannerInfo = $('cm-banner-info');
+
+  async function tomarBanner(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    bannerInfo.hidden = false;
+    bannerInfo.textContent = 'Original: ' + kb(file.size) + ' · optimizando…';
+    try {
+      // El banner es UNA imagen grande (pagina de producto / grid del home).
+      const { blob, ext, tipo } = await optimizarImagen(file, { maxBorde: 1600, calidad: 0.85 });
+      if (bannerPend?.url) URL.revokeObjectURL(bannerPend.url);
+      const url = URL.createObjectURL(blob);
+      bannerPend = { blob, ext, tipo, url };
+      bannerImg.src = url;
+      bannerPrev.classList.add('tiene');
+      bannerInfo.textContent = 'Original: ' + kb(file.size) + ' · optimizada: ' + kb(blob.size) + ' (' + ext.toUpperCase() + ')';
+      refrescarPreview();
+    } catch (_) {
+      bannerInfo.textContent = 'No se pudo procesar la imagen. Prueba con otra.';
     }
-    return out;
   }
-  $('cm-imgs-add').addEventListener('click', () => agregarFilaImg());
+  function quitarBanner() {
+    if (bannerPend?.url) URL.revokeObjectURL(bannerPend.url);
+    bannerPend = null;
+    // Marca que se quiere DEJAR SIN banner (relevante al editar).
+    bannerPathExistente = null;
+    bannerImg.removeAttribute('src');
+    bannerPrev.classList.remove('tiene');
+    bannerInfo.hidden = true;
+    bannerFile.value = '';
+    refrescarPreview();
+  }
+  // path preexistente del banner (solo lo usa editar.html; aqui siempre null).
+  let bannerPathExistente = null;
+
+  $('cm-banner-btn').addEventListener('click', () => bannerFile.click());
+  bannerFile.addEventListener('change', () => {
+    const f = bannerFile.files && bannerFile.files[0];
+    if (f) tomarBanner(f);
+  });
+  $('cm-banner-quitar').addEventListener('click', quitarBanner);
+  cablearDrop(bannerDrop, (files) => { if (files[0]) tomarBanner(files[0]); });
+
+  // ------------------------------------------------------------
+  // GALERIA · cargador multiple + reorden tipo Spotify (drag & drop nativo)
+  // ------------------------------------------------------------
+  const galeriaDrop = $('cm-galeria-drop');
+  const galeriaFile = $('cm-galeria-file');
+  const galeriaCont = $('cm-galeria');
+  let arrastrandoId = null;
+
+  async function tomarGaleria(files) {
+    for (const file of files) {
+      if (!file || !file.type.startsWith('image/')) continue;
+      const id = claveAleatoria();
+      // Placeholder inmediato mientras se optimiza (UX).
+      galeria.push({ id, url: '', grande: null, liviana: null, cargando: true });
+      pintarGaleria();
+      try {
+        // Dos tamanos: grande para la pagina de producto, liviana para el grid.
+        const { grande, liviana } = await optimizarDosTamanos(file);
+        const item = galeria.find((g) => g.id === id);
+        if (!item) continue;
+        item.url = URL.createObjectURL(grande.blob);
+        item.grande = grande;
+        item.liviana = liviana;
+        item.cargando = false;
+      } catch (_) {
+        galeria = galeria.filter((g) => g.id !== id);
+      }
+      pintarGaleria();
+    }
+  }
+
+  function quitarDeGaleria(id) {
+    const item = galeria.find((g) => g.id === id);
+    if (item?.url) URL.revokeObjectURL(item.url);
+    galeria = galeria.filter((g) => g.id !== id);
+    pintarGaleria();
+  }
+
+  // Reorden por indice: mueve el item `desdeId` justo antes de `hastaId`.
+  function reordenarGaleria(desdeId, hastaId) {
+    if (desdeId === hastaId) return;
+    const desde = galeria.findIndex((g) => g.id === desdeId);
+    const hasta = galeria.findIndex((g) => g.id === hastaId);
+    if (desde < 0 || hasta < 0) return;
+    const [mov] = galeria.splice(desde, 1);
+    galeria.splice(hasta, 0, mov);
+    pintarGaleria();
+  }
+
+  function pintarGaleria() {
+    if (!galeria.length) { galeriaCont.innerHTML = ''; return; }
+    galeriaCont.innerHTML = galeria.map((g, i) => {
+      const fuente = g.url || (g.path ? urlPathPreview(g.path) : '');
+      const foto = fuente
+        ? '<img src="' + escaparHTML(fuente) + '" alt="Imagen ' + (i + 1) + '">'
+        : '';
+      return '' +
+        '<div class="cm-galeria-item' + (i === 0 ? ' es-principal' : '') + '" draggable="true" data-id="' + escaparHTML(g.id) + '">' +
+          '<span class="cm-principal">Principal</span>' +
+          '<span class="cm-galeria-asa" aria-hidden="true">' + ICONOS.asa + '</span>' +
+          '<button type="button" class="cm-galeria-quitar" data-quitar="' + escaparHTML(g.id) + '" aria-label="Quitar imagen">' + ICONOS.equis + '</button>' +
+          '<div class="cm-galeria-foto">' + foto + '</div>' +
+          '<div class="cm-galeria-pie"><span class="cm-galeria-num">#' + (i + 1) + '</span>' +
+            (g.cargando ? '<span>optimizando…</span>' : '<span>' + (i === 0 ? 'principal' : 'galería') + '</span>') +
+          '</div>' +
+        '</div>';
+    }).join('');
+    cablearGaleriaItems();
+  }
+
+  // urlPublicaImagen se usa en editar.html; aqui solo puede haber items nuevos,
+  // pero se deja el hook por si un item trae path preexistente.
+  function urlPathPreview(_) { return ''; }
+
+  function cablearGaleriaItems() {
+    galeriaCont.querySelectorAll('.cm-galeria-quitar').forEach((btn) => {
+      btn.addEventListener('click', () => quitarDeGaleria(btn.dataset.quitar));
+    });
+    galeriaCont.querySelectorAll('.cm-galeria-item').forEach((el) => {
+      el.addEventListener('dragstart', (e) => {
+        arrastrandoId = el.dataset.id;
+        el.classList.add('arrastrando');
+        e.dataTransfer.effectAllowed = 'move';
+        try { e.dataTransfer.setData('text/plain', arrastrandoId); } catch (_) { /* ignore */ }
+      });
+      el.addEventListener('dragend', () => {
+        arrastrandoId = null;
+        el.classList.remove('arrastrando');
+        galeriaCont.querySelectorAll('.cm-galeria-item').forEach((x) => x.classList.remove('sobre'));
+      });
+      el.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        el.classList.add('sobre');
+      });
+      el.addEventListener('dragleave', () => el.classList.remove('sobre'));
+      el.addEventListener('drop', (e) => {
+        e.preventDefault();
+        el.classList.remove('sobre');
+        const desde = arrastrandoId;
+        if (desde) reordenarGaleria(desde, el.dataset.id);
+      });
+    });
+  }
+
+  $('cm-galeria-btn').addEventListener('click', () => galeriaFile.click());
+  galeriaFile.addEventListener('change', () => {
+    tomarGaleria([...(galeriaFile.files || [])]);
+    galeriaFile.value = '';
+  });
+  cablearDrop(galeriaDrop, (files) => tomarGaleria(files));
+
+  // Helper de drag & drop de ARCHIVOS sobre una zona (banner o galeria).
+  function cablearDrop(zona, alSoltar) {
+    ['dragenter', 'dragover'].forEach((ev) =>
+      zona.addEventListener(ev, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        zona.classList.add('arrastrando');
+      })
+    );
+    ['dragleave', 'dragend'].forEach((ev) =>
+      zona.addEventListener(ev, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        zona.classList.remove('arrastrando');
+      })
+    );
+    zona.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      zona.classList.remove('arrastrando');
+      const files = [...(e.dataTransfer?.files || [])].filter((f) => f.type.startsWith('image/'));
+      if (files.length) alSoltar(files);
+    });
+  }
+
+  // ------------------------------------------------------------
+  // SUBIDA A STORAGE (bucket 'campanas', SESION del usuario, nunca service_role)
+  // Sube el/los blob(s) pendientes y devuelve el path (key) resuelto. La galeria
+  // guarda el path de la version GRANDE (pagina de producto) y, ademas, sube la
+  // version liviana con sufijo '-sm' (misma base) para el grid; en el arreglo
+  // imagenes jsonb solo persiste el path grande (documentado con criterio).
+  // ------------------------------------------------------------
+  async function subirBlob(blob, ext, contentType) {
+    const key = claveAleatoria() + '.' + ext;
+    const { error } = await supabase.storage
+      .from(BUCKET_CAMPANAS)
+      .upload(key, blob, { contentType, upsert: true });
+    if (error) throw error;
+    return key;
+  }
+  async function subirItemGaleria(item) {
+    // La key liviana comparte base con la grande (sufijo -sm) para trazabilidad.
+    const base = claveAleatoria();
+    const keyGrande = base + '.' + item.grande.ext;
+    const { error: e1 } = await supabase.storage
+      .from(BUCKET_CAMPANAS)
+      .upload(keyGrande, item.grande.blob, { contentType: item.grande.tipo, upsert: true });
+    if (e1) throw e1;
+    // La liviana es best-effort (no aborta si falla): mejora la carga del grid.
+    try {
+      const keySm = base + '-sm.' + item.liviana.ext;
+      await supabase.storage
+        .from(BUCKET_CAMPANAS)
+        .upload(keySm, item.liviana.blob, { contentType: item.liviana.tipo, upsert: true });
+    } catch (_) { /* la liviana es opcional */ }
+    return keyGrande;
+  }
 
   // ------------------------------------------------------------
   // ETIQUETAS (chips multiseleccion desde el catalogo controlado)
@@ -387,7 +616,8 @@
     $('pv-hook').textContent = hook;
     $('pv-hook').hidden = !hook;
 
-    const img = $('cm-imagen-banner').value.trim();
+    // La imagen del banner sale de la previsualizacion local (blob optimizado).
+    const img = bannerPend?.url || '';
     $('pv-img').style.backgroundImage = img ? 'url("' + img.replace(/"/g, '\\"') + '")' : '';
 
     // Precio.
@@ -445,8 +675,9 @@
     });
     $('cm-aviso-cantidad').addEventListener('input', refrescarPreview);
 
-    // Campos de texto/select que alimentan la vista previa.
-    ['cm-categoria', 'cm-nombre', 'cm-detalle', 'cm-hook-corto', 'cm-imagen-banner', 'cm-precio']
+    // Campos de texto/select que alimentan la vista previa (el banner ya no es
+    // un input de texto: se refresca desde el cargador de imagenes).
+    ['cm-categoria', 'cm-nombre', 'cm-detalle', 'cm-hook-corto', 'cm-precio']
       .forEach((id) => {
         const el = $(id);
         el.addEventListener('input', refrescarPreview);
@@ -507,22 +738,55 @@
     let stock = Math.trunc(Number($('cm-stock').value));
     if (Number.isNaN(stock) || stock < 0) stock = 0;
 
+    // No permitir guardar mientras alguna imagen de la galeria aun se optimiza.
+    if (galeria.some((g) => g.cargando)) {
+      mostrarMsg('Espera a que terminen de optimizarse las imágenes de la galería.');
+      return;
+    }
+
     const btn = $('cm-guardar');
     btn.disabled = true;
+
+    // ------------------------------------------------------------
+    // SUBIR IMAGENES A STORAGE (bucket 'campanas', SESION del usuario) ANTES de
+    // crear la campana, con keys aleatorias unicas (no dependen del id). Asi le
+    // pasamos a cm_crear_campana los paths ya resueltos, en el ORDEN elegido.
+    // Un fallo de subida NO aborta todo: se avisa y se guarda lo que se pudo.
+    // ------------------------------------------------------------
+    let bannerPath = null;
+    let huboFalloImagen = false;
+    try {
+      if (bannerPend) {
+        bannerPath = await subirBlob(bannerPend.blob, bannerPend.ext, bannerPend.tipo);
+      }
+    } catch (_) {
+      huboFalloImagen = true;
+    }
+
+    const imagenesPaths = [];
+    for (const item of galeria) {
+      if (item.path) { imagenesPaths.push(item.path); continue; } // preexistente
+      if (!item.grande) continue;
+      try {
+        imagenesPaths.push(await subirItemGaleria(item));
+      } catch (_) {
+        huboFalloImagen = true;
+      }
+    }
 
     const { data, error } = await supabase.rpc('cm_crear_campana', {
       p_nombre: nombre,
       p_categoria_codigo: $('cm-categoria').value || null,
       p_detalle_presentacion: $('cm-detalle').value.trim() || null,
       p_hook_corto: $('cm-hook-corto').value.trim() || null,
-      p_imagen_banner_path: $('cm-imagen-banner').value.trim() || null,
+      p_imagen_banner_path: bannerPath,
       p_caracteristica_adicional: $('cm-caracteristica').value.trim() || null,
       p_precio_venta: precio,
       p_hook_largo: $('cm-hook-largo').value.trim() || null,
       p_por_que_magandhi: $('cm-por-que').value.trim() || null,
       p_sobre_este_producto: $('cm-sobre').value.trim() || null,
       p_ficha_tecnica: recolectarFicha(),
-      p_imagenes: recolectarImgs(),
+      p_imagenes: imagenesPaths,
       p_sello_elegido: $('cm-sello').checked,
       p_estrella: $('cm-sello').checked && $('cm-estrella').checked,
       p_stock_disponible: stock,
@@ -534,6 +798,15 @@
     if (error) {
       btn.disabled = false;
       mostrarMsg('No se pudo guardar: ' + (error.message || 'error desconocido.'));
+      return;
+    }
+
+    if (huboFalloImagen) {
+      // La campana se creo, pero alguna imagen no subio. Avisamos sin abortar
+      // (el dueno puede reintentar las imagenes editando la campana).
+      mostrarMsg('Campaña creada, pero alguna imagen no se pudo subir. Reintenta las imágenes editándola.', 'err');
+      setTimeout(() => { window.location.href = 'index.html'; }, 2200);
+      void data;
       return;
     }
 
@@ -594,9 +867,9 @@
       pintarEtiquetas(tagRes.data || []);
     }
 
-    // Una fila inicial para ficha y galeria (comodidad).
+    // Una fila inicial para la ficha (comodidad). La galeria arranca vacia:
+    // se llena eligiendo o arrastrando imagenes.
     agregarFilaFicha();
-    agregarFilaImg();
 
     cablearInterruptores();
     refrescarPreview();
