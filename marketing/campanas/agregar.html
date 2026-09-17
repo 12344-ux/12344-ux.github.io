@@ -714,6 +714,12 @@
         if (!campoNombre.value.trim() && prod.nombre) campoNombre.value = prod.nombre;
         const campoPrecio = $('cm-precio');
         if (!campoPrecio.value.trim() && prod.precio_venta != null) {
+          // prod.precio_venta es un ENTERO CRUDO (bigint, pesos enteros) de
+          // Inventario: se asigna tal cual, SIN separadores de miles. El input
+          // es type=number y guardar() lo re-parsea con Math.trunc(Number(...)),
+          // asi que el valor que viaja a la RPC es exactamente el mismo bigint
+          // (no se altera). El formateo con separadores solo ocurre en la vista
+          // previa (formatearNumero), nunca en el input ni en el guardado.
           campoPrecio.value = prod.precio_venta;
         }
       }

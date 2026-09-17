@@ -723,6 +723,12 @@
         if (!campoNombre.value.trim() && prod.nombre) campoNombre.value = prod.nombre;
         const campoPrecio = $('cm-precio');
         if (!campoPrecio.value.trim() && prod.precio_venta != null) {
+          // prod.precio_venta es un ENTERO CRUDO (bigint, pesos enteros) de
+          // Inventario: se asigna tal cual, SIN separadores de miles. El input
+          // es type=number y guardar() lo re-parsea con Math.trunc(Number(...)),
+          // asi que el valor que viaja a la RPC es exactamente el mismo bigint
+          // (no se altera). El formateo con separadores solo ocurre en la vista
+          // previa (formatearNumero), nunca en el input ni en el guardado.
           campoPrecio.value = prod.precio_venta;
         }
       }
@@ -762,6 +768,43 @@
     }
   }
 
+  // Garantiza que el producto ligado (product_id_ref) tenga una <option> en el
+  // desplegable, aunque este INACTIVO (baja logica) y por eso no venga en la
+  // lista de activos del ARRANQUE. Sin esto, el value quedaria vacio y guardar
+  // des-ligaria la campana en silencio. Si el id no viene, o ya tiene opcion, no
+  // hace nada. Si la consulta falla, inyecta una opcion generica con el propio
+  // id para NO perder el enlace (guardar reenvia el mismo uuid).
+  async function asegurarOpcionProductoLigado(idLigado) {
+    if (!idLigado) return;
+    const sel = $('cm-producto');
+    // Ya representado por una opcion (producto activo cargado en el ARRANQUE).
+    if (productos.some((p) => p.id === idLigado)) return;
+    if (sel.querySelector('option[value="' + idLigado + '"]')) return;
+
+    let etiqueta = null;
+    try {
+      const { data: prod, error } = await supabase
+        .from('productos')
+        .select('id, sku, nombre, precio_venta, activo')
+        .eq('id', idLigado)
+        .maybeSingle();
+      if (!error && prod) {
+        // Lo sumamos a la lista en memoria para que la auto-sugerencia de
+        // nombre/precio tambien lo encuentre por id.
+        productos.push(prod);
+        etiqueta = (prod.sku || 's/sku') + ' - ' + (prod.nombre || 'sin nombre') +
+          (prod.activo ? '' : ' (inactivo)');
+      }
+    } catch (_) { /* sin red: caemos al texto generico de abajo */ }
+
+    const opt = document.createElement('option');
+    opt.value = idLigado;
+    // textContent escapa solo; nunca interpreta HTML. Si no pudimos leer el
+    // producto, mostramos el id para dejar claro que el enlace se conserva.
+    opt.textContent = etiqueta || ('Producto ligado (inactivo) · ' + idLigado);
+    sel.appendChild(opt);
+  }
+
   async function precargar() {
     const { data, error } = await supabase
       .from('campana_producto')
@@ -784,8 +827,20 @@
 
     $('cm-categoria').value = data.categoria_codigo || '';
     // Preseleccionar el producto de Inventario ligado (si lo hay). El <select>
-    // ya viene lleno del ARRANQUE; si el product_id_ref no esta en la lista
-    // (producto inactivo, por ejemplo) el value queda vacio sin romper nada.
+    // ya viene lleno del ARRANQUE solo con productos activos.
+    //
+    // OJO (des-ligado silencioso): un producto puede estar en BAJA LOGICA
+    // (activo=false) y SEGUIR ligado a esta campana; eso es un estado normal del
+    // ecosistema (nada se borra). Ese producto NO aparece en el desplegable, asi
+    // que si solo hicieramos `value = product_id_ref`, el <select> quedaria vacio
+    // y, como cm_editar_campana asigna `product_id_ref = p_product_id_ref` de
+    // forma incondicional, el siguiente guardado BORRARIA el enlace sin que el
+    // operador lo tocara. Para preservar SIEMPRE el enlace precargado, si el id
+    // ligado no tiene opcion en la lista, inyectamos una opcion para ese producto
+    // (consultado aparte por id) marcada como "inactivo" y la seleccionamos, de
+    // modo que guardar reenvie el mismo id y el enlace NO se pierda. El operador
+    // solo lo cambia si elige otro producto o "Sin producto de inventario".
+    await asegurarOpcionProductoLigado(data.product_id_ref || null);
     $('cm-producto').value = data.product_id_ref || '';
     $('cm-nombre').value = data.nombre || '';
     $('cm-detalle').value = data.detalle_presentacion || '';
