@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Campañas</title>
+<meta name="description" content="Campañas · presentación de productos del Área de Marketing de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/marketing.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=1">
+<link rel="stylesheet" href="../marketing.css?v=1">
+<link rel="stylesheet" href="campanas.css?v=1">
+
+<!--
+  MAGANDHI · Area de Marketing · Sub-area CAMPANAS · HOME/LISTA.
+  Campanas es donde un producto se "viste" para salir a la tienda: se le pone
+  hook, foto, ficha, precio y estado, y desde aqui se publica en magandhi.com.
+  Es hermana de "Marketing Project" dentro del Area de Marketing.
+
+  Profundidad de rutas: esta pagina vive DOS niveles bajo la raiz
+  (marketing/campanas/), por eso:
+    · auth-guard.js se incluye como '../../auth-guard.js'
+    · marca.css sube '../../'
+    · el nucleo compartido se importa como '../marketing-core.js' (una carpeta
+      arriba, en marketing/). El core resuelve sus propios imports
+      (supabase-config / auth-guard) relativos a SI MISMO, asi que una sola
+      copia del nucleo sirve a esta profundidad tambien.
+
+  El candado real es RLS server-side (tiene_acceso_marketing); ocultar UI es
+  solo comodidad de UX. Toda ESCRITURA pasa por RPC (aqui: cm_publicar_campana).
+-->
+</head>
+<body class="mk-body">
+
+<!-- Guardia reutilizable: sin sesion, redirige al login de la raiz. -->
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="mk-wrap" id="cm-main" hidden>
+  <div class="cm-barra">
+    <p class="cm-barra-titulo">Productos en campaña</p>
+    <a class="cm-btn-primario" href="agregar.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      <span>Agregar campaña</span>
+    </a>
+  </div>
+
+  <!-- La lista se pinta por JS tras confirmar acceso. -->
+  <div id="cm-lista" class="cm-lista" aria-live="polite"></div>
+</main>
+
+<script type="module">
+  import {
+    asegurarAcceso, montarHeader, ICONOS,
+    supabase, escaparHTML, formatearNumero
+  } from '../marketing-core.js';
+
+  // ----------------------------------------------------------
+  // Iconos pequenos usados dentro de las tarjetas (inline, sobrios).
+  // ----------------------------------------------------------
+  const SVG = {
+    editar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    publicar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></svg>',
+    despublicar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="m2 2 20 20"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
+    borrador: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    estrella: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M12 2 15.09 8.26 22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 6.91-1.01Z"/></svg>',
+    urgencia: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg>'
+  };
+
+  const lista = document.getElementById('cm-lista');
+
+  // ----------------------------------------------------------
+  // Carga la lista de campanas con su categoria (nombre + terna de color).
+  // Ordena por 'orden'. Cada fila trae el join a campana_categoria.
+  // ----------------------------------------------------------
+  async function cargarCampanas() {
+    lista.innerHTML = '<div class="cm-empty">Cargando campañas…</div>';
+
+    const { data, error } = await supabase
+      .from('campana_producto')
+      .select('id, nombre, categoria_codigo, hook_corto, imagen_banner_path, precio_venta, sello_elegido, estrella, aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, orden, campana_categoria ( nombre, color_fuerte, color_claro, color_sombra )')
+      .order('orden', { ascending: true });
+
+    if (error) {
+      lista.innerHTML =
+        '<div class="cm-empty err"><strong>No se pudo cargar la lista</strong>' +
+        escaparHTML(error.message || 'Error al consultar las campañas.') + '</div>';
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      lista.innerHTML =
+        '<div class="cm-empty"><strong>Aún no hay campañas</strong>' +
+        'Crea la primera con “Agregar campaña”: le pones nombre, foto, precio y su gancho, ' +
+        'y cuando esté lista la publicas en la tienda.</div>';
+      return;
+    }
+
+    lista.innerHTML = data.map(pintarTarjeta).join('');
+    cablearAcciones();
+  }
+
+  // ----------------------------------------------------------
+  // Devuelve el HTML de una tarjeta. El color de categoria se inyecta como
+  // variables inline (--cm-acento*), mismo espiritu que --acento en la tienda.
+  // ----------------------------------------------------------
+  function pintarTarjeta(c) {
+    const cat = c.campana_categoria || null;
+    const acento   = cat?.color_fuerte || '#6E6A66';
+    const acentoCl = cat?.color_claro  || '#A8A29C';
+    const acentoSo = cat?.color_sombra || 'rgba(110,106,102,.15)';
+    const catNombre = cat?.nombre || 'Sin categoría';
+
+    const style =
+      '--cm-acento:' + escaparHTML(acento) + ';' +
+      '--cm-acento-cl:' + escaparHTML(acentoCl) + ';' +
+      '--cm-acento-sombra:' + escaparHTML(acentoSo) + ';';
+
+    const id = escaparHTML(c.id);
+    const hrefEditar = 'editar.html?id=' + encodeURIComponent(c.id);
+
+    // Fondo del banner con la imagen (si hay ruta relativa al repo de la tienda,
+    // aqui solo se referencia; el back-office no aloja las fotos de la tienda).
+    const imagen = c.imagen_banner_path
+      ? '<span class="cm-banner-imagen" style="background-image:url(' + escaparHTML(c.imagen_banner_path) + ')"></span>'
+      : '';
+
+    const precio = (c.precio_venta === null || c.precio_venta === undefined)
+      ? '<span class="cm-precio-vacio">Sin precio definido</span>'
+      : '<span class="cm-precio mk-num">$' + formatearNumero(c.precio_venta) + '</span>' +
+        '<span class="cm-precio-moneda">COP</span>';
+
+    // Chips de estado. Publicado vs Borrador siempre; estrella y urgencia solo
+    // cuando corresponden (el aviso es MANUAL: "Solo X disponibles").
+    const chips = [];
+    if (c.publicado) {
+      chips.push('<span class="cm-chip publicado">' + SVG.check + 'Publicado</span>');
+    } else {
+      chips.push('<span class="cm-chip borrador">' + SVG.borrador + 'Borrador</span>');
+    }
+    if (c.estrella) {
+      chips.push('<span class="cm-chip estrella">' + SVG.estrella + 'Estrella</span>');
+    }
+    if (c.aviso_urgencia_activo && Number(c.aviso_urgencia_cantidad) > 0) {
+      chips.push('<span class="cm-chip urgencia">' + SVG.urgencia +
+        'Solo ' + formatearNumero(c.aviso_urgencia_cantidad) + ' disponibles</span>');
+    }
+
+    // Boton de publicar/despublicar segun el estado actual.
+    const accionPub = c.publicado
+      ? '<button type="button" class="cm-accion despublicar" data-id="' + id + '" data-publicar="false">' +
+          SVG.despublicar + '<span>Despublicar</span></button>'
+      : '<button type="button" class="cm-accion publicar" data-id="' + id + '" data-publicar="true">' +
+          SVG.publicar + '<span>Publicar</span></button>';
+
+    return '' +
+      '<article class="cm-card" style="' + style + '">' +
+        '<a class="cm-banner" href="' + hrefEditar + '">' +
+          imagen +
+          '<span class="cm-banner-cont">' +
+            '<span class="cm-cat">' + escaparHTML(catNombre) + '</span>' +
+            '<h3 class="cm-nombre">' + escaparHTML(c.nombre) + '</h3>' +
+            (c.hook_corto ? '<p class="cm-hook">' + escaparHTML(c.hook_corto) + '</p>' : '') +
+          '</span>' +
+        '</a>' +
+        '<div class="cm-cuerpo">' +
+          '<div class="cm-precio-fila">' + precio + '</div>' +
+          '<div class="cm-chips">' + chips.join('') + '</div>' +
+        '</div>' +
+        '<p class="cm-card-msg" data-msg="' + id + '" hidden></p>' +
+        '<div class="cm-acciones">' +
+          '<a class="cm-accion editar" href="' + hrefEditar + '">' + SVG.editar + '<span>Editar</span></a>' +
+          accionPub +
+        '</div>' +
+      '</article>';
+  }
+
+  // ----------------------------------------------------------
+  // Cablea los botones Publicar/Despublicar. Cada uno llama a la RPC
+  // cm_publicar_campana({p_id, p_publicado}) y refresca la lista al terminar.
+  // ----------------------------------------------------------
+  function cablearAcciones() {
+    lista.querySelectorAll('.cm-accion.publicar, .cm-accion.despublicar').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const publicar = btn.dataset.publicar === 'true';
+        const msg = lista.querySelector('[data-msg="' + CSS.escape(id) + '"]');
+        if (msg) { msg.hidden = true; msg.textContent = ''; }
+
+        btn.disabled = true;
+        const { error } = await supabase.rpc('cm_publicar_campana', {
+          p_id: id,
+          p_publicado: publicar
+        });
+
+        if (error) {
+          btn.disabled = false;
+          if (msg) {
+            msg.textContent = 'No se pudo actualizar: ' + (error.message || 'error desconocido.');
+            msg.hidden = false;
+          }
+          return;
+        }
+        // Exito: recargar para reflejar el nuevo estado (chip + boton).
+        await cargarCampanas();
+      });
+    });
+  }
+
+  (async () => {
+    const main = document.getElementById('cm-main');
+    const acceso = await asegurarAcceso(document.body, '../index.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Campañas',
+      kicker: 'PRESENTACIÓN DE PRODUCTOS',
+      lead: 'Campañas es donde un producto se viste para salir a la tienda: le pones su gancho, su foto, su ficha y su precio, y desde aquí lo publicas en magandhi.com. Cada tarjeta lleva el color de su categoría.',
+      sesion: acceso.sesion,
+      areaLabel: 'ÁREA DE MARKETING',
+      volverHref: '../index.html',
+      volverTexto: 'Marketing'
+    });
+
+    // Los data-ico del header/tarjetas de navegacion (si hubiera) se pintan aqui.
+    document.querySelectorAll('[data-ico]').forEach((el) => {
+      el.innerHTML = ICONOS[el.dataset.ico] || '';
+    });
+
+    await cargarCampanas();
+    main.hidden = false;
+  })();
+</script>
+
+</body>
+</html>

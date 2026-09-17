@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Editar campaña</title>
+<meta name="description" content="Editar campaña · ajustar la presentación de un producto del Área de Marketing de Magandhi.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/marketing.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=1">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=1">
+<link rel="stylesheet" href="../marketing.css?v=1">
+<link rel="stylesheet" href="campanas.css?v=1">
+
+<!--
+  MAGANDHI · Area de Marketing · Sub-area CAMPANAS · EDITAR.
+  Igual al formulario de Agregar pero precargando una campana existente
+  (?id=... en la URL) con supabase.from('campana_producto').select (+ sus
+  etiquetas desde la tabla puente campana_producto_etiqueta). Al guardar, toda
+  la escritura pasa por la RPC cm_editar_campana; el interruptor
+  Publicar/Despublicar usa cm_publicar_campana. El cliente NUNCA hace
+  insert/update directo a las tablas (solo .select para leer y .rpc para
+  escribir).
+
+  ISLA (nota de arquitectura): Campanas NO lee Inventario hoy. El STOCK y el
+  AVISO DE URGENCIA son MANUALES. El estado "Agotado" queda preparado en el
+  diseno del modelo pero NO se dispara solo todavia. El aviso de urgencia es
+  REAL y honesto (por ejemplo, cuando de verdad quedan 3 unidades); por eso, si
+  el switch esta activo, la cantidad es obligatoria (> 0).
+
+  NADA SE BORRA: despublicar NO borra la ficha (solo la saca de la tienda);
+  inactivar seria baja logica. La informacion siempre queda viva.
+
+  El color del banner es AUTOMATICO segun la categoria (no hay color manual).
+-->
+</head>
+<body class="mk-body">
+
+<!-- Guardia reutilizable: sin sesion, redirige al login de la raiz. -->
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="mk-wrap" id="cm-main" hidden>
+  <form id="cm-form" class="cm-form-layout" novalidate>
+
+    <!-- Columna izquierda: las dos secciones + interruptores + publicar. -->
+    <div class="cm-form">
+
+      <!-- ============ SECCION 1 · BANNER HOOK ============ -->
+      <section class="cm-seccion">
+        <div class="cm-seccion-cab">
+          <span class="cm-seccion-num">1</span>
+          <div>
+            <h2 class="cm-seccion-tit">Banner hook</h2>
+            <p class="cm-seccion-sub">Lo que engancha en el grid del home: categoría (define el color), nombre, presentación, gancho corto e imagen principal.</p>
+          </div>
+        </div>
+        <div class="cm-campos">
+          <div class="cm-campo">
+            <label for="cm-categoria" class="cm-campo-lbl">Categoría</label>
+            <select id="cm-categoria" class="mk-select">
+              <option value="">Sin categoría</option>
+            </select>
+            <span class="cm-campo-ayuda">El color del banner es automático según la categoría (se ve en la vista previa). No hay color manual.</span>
+          </div>
+          <div class="cm-campo">
+            <label for="cm-nombre" class="cm-campo-lbl">Nombre del producto *</label>
+            <input id="cm-nombre" class="mk-input" type="text" maxlength="160" placeholder="Ej. Grisi Manzanilla Gold" required>
+          </div>
+          <div class="cm-campo">
+            <label for="cm-detalle" class="cm-campo-lbl">Detalle de presentación</label>
+            <input id="cm-detalle" class="mk-input" type="text" maxlength="200" placeholder="Ej. Con extracto de manzanilla · 400 mL">
+          </div>
+          <div class="cm-campo">
+            <label for="cm-hook-corto" class="cm-campo-lbl">Hook corto</label>
+            <input id="cm-hook-corto" class="mk-input" type="text" maxlength="200" placeholder="Frase gancho breve para el grid">
+          </div>
+          <div class="cm-campo">
+            <label for="cm-imagen-banner" class="cm-campo-lbl">Imagen del banner (path o URL)</label>
+            <input id="cm-imagen-banner" class="mk-input" type="text" placeholder="Ej. productos/grisi-manzanilla-gold/portada.jpg">
+            <span class="cm-campo-ayuda">Pega la ruta o URL de la imagen. La subida asistida de imágenes queda como mejora futura.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SECCION 2 · PRODUCTO ============ -->
+      <section class="cm-seccion">
+        <div class="cm-seccion-cab">
+          <span class="cm-seccion-num">2</span>
+          <div>
+            <h2 class="cm-seccion-tit">Producto</h2>
+            <p class="cm-seccion-sub">La página real del producto: característica, precio, descripción, curaduría, ficha técnica, galería y etiquetas internas.</p>
+          </div>
+        </div>
+        <div class="cm-campos">
+          <div class="cm-campo">
+            <label for="cm-caracteristica" class="cm-campo-lbl">Característica adicional</label>
+            <input id="cm-caracteristica" class="mk-input" type="text" maxlength="220" placeholder="Ej. Con extracto de manzanilla · 400 mL · Marca Grisi">
+          </div>
+          <div class="cm-campo">
+            <label for="cm-precio" class="cm-campo-lbl">Precio de venta (pesos enteros)</label>
+            <div class="cm-precio-input">
+              <span class="cm-signo">$</span>
+              <input id="cm-precio" class="mk-input" type="number" min="0" step="1" inputmode="numeric" placeholder="0">
+            </div>
+            <span class="cm-campo-ayuda">Pesos colombianos enteros (COP). Sin decimales.</span>
+          </div>
+          <div class="cm-campo">
+            <label for="cm-hook-largo" class="cm-campo-lbl">Descripción larga</label>
+            <textarea id="cm-hook-largo" class="mk-input" placeholder="Párrafo bajo el precio en la página del producto."></textarea>
+          </div>
+          <div class="cm-campo">
+            <label for="cm-por-que" class="cm-campo-lbl">Por qué está en MAGANDHI</label>
+            <textarea id="cm-por-que" class="mk-input" placeholder="Bloque de curaduría: por qué elegimos este producto."></textarea>
+          </div>
+          <div class="cm-campo">
+            <label for="cm-sobre" class="cm-campo-lbl">Sobre este producto</label>
+            <textarea id="cm-sobre" class="mk-input" placeholder="Uno o dos párrafos sobre el producto."></textarea>
+          </div>
+
+          <div class="cm-campo">
+            <span class="cm-campo-lbl">Ficha técnica</span>
+            <span class="cm-campo-ayuda">Pares clave / valor para la tabla de la ficha (ej. Contenido → 400 mL).</span>
+            <div id="cm-ficha" class="cm-ficha-filas"></div>
+            <button type="button" id="cm-ficha-add" class="cm-agregar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              <span>Agregar fila</span>
+            </button>
+          </div>
+
+          <div class="cm-campo">
+            <span class="cm-campo-lbl">Imágenes de la galería</span>
+            <span class="cm-campo-ayuda">Rutas o URL de las fotos del producto (una por fila).</span>
+            <div id="cm-imgs" class="cm-img-filas"></div>
+            <button type="button" id="cm-imgs-add" class="cm-agregar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              <span>Agregar imagen</span>
+            </button>
+          </div>
+
+          <div class="cm-campo">
+            <span class="cm-campo-lbl">Etiquetas de segmentación (internas)</span>
+            <span class="cm-campo-ayuda">Uso interno del equipo para agrupar el catálogo. Nunca se muestran en la tienda. Elige de la lista (no es texto libre).</span>
+            <div id="cm-tags" class="cm-tags"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ CONTROLES / INTERRUPTORES ============ -->
+      <section class="cm-seccion">
+        <div class="cm-seccion-cab">
+          <span class="cm-seccion-num">3</span>
+          <div>
+            <h2 class="cm-seccion-tit">Controles</h2>
+            <p class="cm-seccion-sub">Interruptores por producto: sello, estrella, aviso de urgencia manual y stock. Se pueden cambiar en cualquier momento.</p>
+          </div>
+        </div>
+        <div class="cm-controles-caja">
+
+          <div class="cm-switch-fila">
+            <div class="cm-switch-texto">
+              <b>Sello “Elegido por MAGANDHI”</b>
+              <span>Muestra el sello de curaduría en la tarjeta y la página del producto.</span>
+            </div>
+            <label class="cm-switch">
+              <input type="checkbox" id="cm-sello">
+              <span class="cm-riel"></span>
+              <span class="cm-perilla"></span>
+            </label>
+          </div>
+
+          <div class="cm-switch-fila" id="cm-fila-estrella">
+            <div class="cm-switch-texto">
+              <b>Estrella (destacado)</b>
+              <span id="cm-estrella-nota">La estrella vive dentro del sello. Activa primero el sello para poder destacarlo.</span>
+            </div>
+            <label class="cm-switch">
+              <input type="checkbox" id="cm-estrella" disabled>
+              <span class="cm-riel"></span>
+              <span class="cm-perilla"></span>
+            </label>
+          </div>
+
+          <div class="cm-switch-fila">
+            <div class="cm-switch-texto">
+              <b>Aviso de urgencia (“Solo X disponibles”)</b>
+              <span>Interruptor manual y honesto: actívalo en el momento adecuado (por ejemplo, cuando de verdad queden 3 unidades). Hoy Campañas no lee Inventario, así que el número lo defines tú.</span>
+              <div class="cm-sub" id="cm-aviso-sub" hidden>
+                <label for="cm-aviso-cantidad" class="cm-campo-lbl">Cantidad para el aviso *</label>
+                <input id="cm-aviso-cantidad" class="mk-input" type="number" min="1" step="1" inputmode="numeric" placeholder="Ej. 3">
+                <span class="cm-campo-ayuda">Obligatorio y mayor que cero cuando el aviso está activo.</span>
+              </div>
+            </div>
+            <label class="cm-switch">
+              <input type="checkbox" id="cm-aviso">
+              <span class="cm-riel"></span>
+              <span class="cm-perilla"></span>
+            </label>
+          </div>
+
+          <div class="cm-switch-fila">
+            <div class="cm-switch-texto">
+              <b>Stock disponible (manual)</b>
+              <span>Unidades que declaras a mano. Hoy no se conecta con Inventario; el estado “Agotado” está preparado en el diseño pero no se dispara solo todavía.</span>
+              <div class="cm-sub" style="display:block">
+                <input id="cm-stock" class="mk-input" type="number" min="0" step="1" inputmode="numeric" value="0">
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============ PUBLICAR / DESPUBLICAR (cm_publicar_campana) ============ -->
+      <section class="cm-seccion">
+        <div class="cm-seccion-cab">
+          <span class="cm-seccion-num">4</span>
+          <div>
+            <h2 class="cm-seccion-tit">Publicación</h2>
+            <p class="cm-seccion-sub">Controla si el producto aparece en la tienda pública (magandhi.com).</p>
+          </div>
+        </div>
+        <div class="cm-publicar-caja">
+          <div class="cm-pub-texto">
+            <b id="cm-pub-estado">Cargando…</b>
+            <span id="cm-pub-detalle">Publicar lo muestra en la tienda. Despublicar lo retira, sin borrarlo.</span>
+          </div>
+          <button type="button" id="cm-pub-btn" class="cm-btn-primario" disabled>
+            <span id="cm-pub-btn-txt">Publicar</span>
+          </button>
+        </div>
+        <p id="cm-pub-msg" class="cm-form-msg" hidden></p>
+        <div class="cm-aviso-vida">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <span><b>Nada se borra nunca.</b> Despublicar solo saca el producto de la tienda: su ficha sigue viva y puedes volver a publicarla cuando quieras. La información no se pierde.</span>
+        </div>
+      </section>
+
+      <!-- Barra de guardar los cambios de la ficha. -->
+      <p id="cm-msg" class="cm-form-msg" hidden></p>
+      <div class="cm-guardar-barra">
+        <button type="submit" id="cm-guardar" class="cm-btn-primario">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+          <span>Guardar cambios</span>
+        </button>
+        <a class="cm-cancelar" href="index.html">Cancelar</a>
+      </div>
+
+    </div>
+
+    <!-- Columna derecha: vista previa en vivo del banner-hook. -->
+    <aside class="cm-preview-col" id="cm-preview" style="--cm-acento:#6E6A66;--cm-acento-cl:#A8A29C;--cm-acento-sombra:rgba(110,106,102,.15)">
+      <span class="cm-preview-lbl">Vista previa</span>
+      <div class="cm-preview-card">
+        <div class="cm-preview-banner">
+          <span class="cm-preview-img" id="pv-img"></span>
+          <span class="cm-preview-cat" id="pv-cat">Sin categoría</span>
+          <h3 class="cm-preview-nombre" id="pv-nombre">Nombre del producto</h3>
+          <p class="cm-preview-detalle" id="pv-detalle" hidden></p>
+          <p class="cm-preview-hook" id="pv-hook" hidden></p>
+        </div>
+        <div class="cm-preview-cuerpo">
+          <span class="cm-preview-sello" id="pv-sello" hidden>
+            <svg class="cm-preview-estrella" id="pv-estrella" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true" hidden><path d="M12 2 15.09 8.26 22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 6.91-1.01Z"/></svg>
+            <span>Elegido por MAGANDHI</span>
+          </span>
+          <div class="cm-preview-precio" id="pv-precio">
+            <span class="vacio">Sin precio definido</span>
+          </div>
+          <span class="cm-preview-aviso" id="pv-aviso" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg>
+            <span id="pv-aviso-txt">Solo 0 disponibles</span>
+          </span>
+          <span class="cm-preview-estado borrador" id="pv-estado">Borrador</span>
+        </div>
+      </div>
+    </aside>
+
+  </form>
+</main>
+
+<script type="module">
+  import {
+    asegurarAcceso, montarHeader, ICONOS,
+    supabase, escaparHTML, formatearNumero
+  } from '../marketing-core.js';
+
+  const SVG_QUITAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+  const SVG_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+
+  const $ = (id) => document.getElementById(id);
+
+  let categorias = [];
+  let campanaId = null;      // uuid de la campana en edicion (?id=...)
+  let publicadoActual = false;
+
+  // ------------------------------------------------------------
+  // EDITOR DE FICHA TECNICA
+  // ------------------------------------------------------------
+  const fichaCont = $('cm-ficha');
+  function agregarFilaFicha(clave = '', valor = '') {
+    const fila = document.createElement('div');
+    fila.className = 'cm-ficha-fila';
+    fila.innerHTML =
+      '<input class="mk-input cm-ficha-clave" type="text" maxlength="120" placeholder="Clave (ej. Contenido)">' +
+      '<input class="mk-input cm-ficha-valor" type="text" maxlength="240" placeholder="Valor (ej. 400 mL)">' +
+      '<button type="button" class="cm-quitar" aria-label="Quitar fila">' + SVG_QUITAR + '</button>';
+    fila.querySelector('.cm-ficha-clave').value = clave;
+    fila.querySelector('.cm-ficha-valor').value = valor;
+    fila.querySelector('.cm-quitar').addEventListener('click', () => fila.remove());
+    fichaCont.appendChild(fila);
+  }
+  function recolectarFicha() {
+    const out = [];
+    for (const f of fichaCont.querySelectorAll('.cm-ficha-fila')) {
+      const clave = f.querySelector('.cm-ficha-clave').value.trim();
+      const valor = f.querySelector('.cm-ficha-valor').value.trim();
+      if (clave || valor) out.push({ clave, valor });
+    }
+    return out;
+  }
+  $('cm-ficha-add').addEventListener('click', () => agregarFilaFicha());
+
+  // ------------------------------------------------------------
+  // EDITOR DE IMAGENES DE GALERIA
+  // ------------------------------------------------------------
+  const imgsCont = $('cm-imgs');
+  function agregarFilaImg(valor = '') {
+    const fila = document.createElement('div');
+    fila.className = 'cm-img-fila';
+    fila.innerHTML =
+      '<input class="mk-input cm-img-path" type="text" placeholder="Ej. productos/grisi-manzanilla-gold/1.jpg">' +
+      '<button type="button" class="cm-quitar" aria-label="Quitar imagen">' + SVG_QUITAR + '</button>';
+    fila.querySelector('.cm-img-path').value = valor;
+    fila.querySelector('.cm-quitar').addEventListener('click', () => fila.remove());
+    imgsCont.appendChild(fila);
+  }
+  function recolectarImgs() {
+    const out = [];
+    for (const f of imgsCont.querySelectorAll('.cm-img-fila')) {
+      const v = f.querySelector('.cm-img-path').value.trim();
+      if (v) out.push(v);
+    }
+    return out;
+  }
+  $('cm-imgs-add').addEventListener('click', () => agregarFilaImg());
+
+  // ------------------------------------------------------------
+  // ETIQUETAS (chips multiseleccion)
+  // ------------------------------------------------------------
+  const tagsCont = $('cm-tags');
+  function pintarEtiquetas(etiquetas, seleccionadas) {
+    const sel = new Set(seleccionadas || []);
+    if (!etiquetas || !etiquetas.length) {
+      tagsCont.innerHTML = '<span class="cm-campo-ayuda">No hay etiquetas activas en el catálogo.</span>';
+      return;
+    }
+    tagsCont.innerHTML = etiquetas.map((e) =>
+      '<label class="cm-tag">' +
+        '<input type="checkbox" value="' + escaparHTML(e.codigo) + '"' + (sel.has(e.codigo) ? ' checked' : '') + '>' +
+        '<span class="cm-tag-check">' + SVG_CHECK + '</span>' +
+        '<span>' + escaparHTML(e.nombre) + '</span>' +
+      '</label>'
+    ).join('');
+  }
+  function recolectarEtiquetas() {
+    return [...tagsCont.querySelectorAll('input[type=checkbox]:checked')].map((c) => c.value);
+  }
+
+  // ------------------------------------------------------------
+  // VISTA PREVIA EN VIVO
+  // ------------------------------------------------------------
+  const preview = $('cm-preview');
+  function categoriaPorCodigo(cod) {
+    return categorias.find((c) => c.codigo === cod) || null;
+  }
+  function refrescarPreview() {
+    const cat = categoriaPorCodigo($('cm-categoria').value);
+    preview.style.setProperty('--cm-acento', cat?.color_fuerte || '#6E6A66');
+    preview.style.setProperty('--cm-acento-cl', cat?.color_claro || '#A8A29C');
+    preview.style.setProperty('--cm-acento-sombra', cat?.color_sombra || 'rgba(110,106,102,.15)');
+    $('pv-cat').textContent = cat?.nombre || 'Sin categoría';
+
+    const nombre = $('cm-nombre').value.trim();
+    $('pv-nombre').textContent = nombre || 'Nombre del producto';
+
+    const detalle = $('cm-detalle').value.trim();
+    $('pv-detalle').textContent = detalle;
+    $('pv-detalle').hidden = !detalle;
+
+    const hook = $('cm-hook-corto').value.trim();
+    $('pv-hook').textContent = hook;
+    $('pv-hook').hidden = !hook;
+
+    const img = $('cm-imagen-banner').value.trim();
+    $('pv-img').style.backgroundImage = img ? 'url("' + img.replace(/"/g, '\\"') + '")' : '';
+
+    const precioBox = $('pv-precio');
+    const precioRaw = $('cm-precio').value.trim();
+    if (precioRaw === '' || Number(precioRaw) < 0 || Number.isNaN(Number(precioRaw))) {
+      precioBox.innerHTML = '<span class="vacio">Sin precio definido</span>';
+    } else {
+      precioBox.innerHTML = '<span class="n mk-num">$' + formatearNumero(precioRaw) + '</span><span class="m">COP</span>';
+    }
+
+    const sello = $('cm-sello').checked;
+    $('pv-sello').hidden = !sello;
+    $('pv-estrella').hidden = !(sello && $('cm-estrella').checked);
+
+    const aviso = $('cm-aviso').checked;
+    const cant = Number($('cm-aviso-cantidad').value);
+    const avisoOk = aviso && cant > 0;
+    $('pv-aviso').hidden = !avisoOk;
+    if (avisoOk) $('pv-aviso-txt').textContent = 'Solo ' + formatearNumero(cant) + ' disponibles';
+  }
+
+  // ------------------------------------------------------------
+  // INTERRUPTORES (estrella depende del sello; aviso revela nº)
+  // ------------------------------------------------------------
+  function cablearInterruptores() {
+    const sello = $('cm-sello');
+    const estrella = $('cm-estrella');
+    const filaEstrella = $('cm-fila-estrella');
+    const nota = $('cm-estrella-nota');
+
+    function sincronizarSello() {
+      const on = sello.checked;
+      estrella.disabled = !on;
+      filaEstrella.classList.toggle('desactivada', !on);
+      if (!on) {
+        estrella.checked = false;
+        nota.textContent = 'La estrella vive dentro del sello. Activa primero el sello para poder destacarlo.';
+      } else {
+        nota.textContent = 'Destaca este producto con una estrella dentro del sello.';
+      }
+      refrescarPreview();
+    }
+    sello.addEventListener('change', sincronizarSello);
+    estrella.addEventListener('change', refrescarPreview);
+
+    const aviso = $('cm-aviso');
+    const avisoSub = $('cm-aviso-sub');
+    aviso.addEventListener('change', () => {
+      avisoSub.hidden = !aviso.checked;
+      if (aviso.checked) $('cm-aviso-cantidad').focus();
+      refrescarPreview();
+    });
+    $('cm-aviso-cantidad').addEventListener('input', refrescarPreview);
+
+    ['cm-categoria', 'cm-nombre', 'cm-detalle', 'cm-hook-corto', 'cm-imagen-banner', 'cm-precio']
+      .forEach((id) => {
+        const el = $(id);
+        el.addEventListener('input', refrescarPreview);
+        el.addEventListener('change', refrescarPreview);
+      });
+  }
+
+  // ------------------------------------------------------------
+  // MENSAJES
+  // ------------------------------------------------------------
+  const msg = $('cm-msg');
+  function mostrarMsg(texto, tipo) {
+    msg.textContent = texto;
+    msg.className = 'cm-form-msg ' + (tipo || 'err');
+    msg.hidden = false;
+  }
+  function ocultarMsg() { msg.hidden = true; msg.textContent = ''; }
+
+  // ------------------------------------------------------------
+  // PRECARGA: lee la campana y rellena el formulario.
+  // Solo .select (lectura). Trae las etiquetas desde la tabla puente.
+  // ------------------------------------------------------------
+  function reflejarEstadoPublicado() {
+    const estadoTxt = $('cm-pub-estado');
+    const btnTxt = $('cm-pub-btn-txt');
+    const pvEstado = $('pv-estado');
+    if (publicadoActual) {
+      estadoTxt.textContent = 'Publicado en la tienda';
+      btnTxt.textContent = 'Despublicar';
+      pvEstado.textContent = 'Publicado';
+      pvEstado.className = 'cm-preview-estado publicado';
+    } else {
+      estadoTxt.textContent = 'En borrador (no visible)';
+      btnTxt.textContent = 'Publicar';
+      pvEstado.textContent = 'Borrador';
+      pvEstado.className = 'cm-preview-estado borrador';
+    }
+  }
+
+  async function precargar() {
+    const { data, error } = await supabase
+      .from('campana_producto')
+      .select('id, nombre, categoria_codigo, detalle_presentacion, hook_corto, imagen_banner_path, ' +
+              'caracteristica_adicional, precio_venta, hook_largo, por_que_magandhi, sobre_este_producto, ' +
+              'ficha_tecnica, imagenes, sello_elegido, estrella, stock_disponible, ' +
+              'aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, ' +
+              'campana_producto_etiqueta ( etiqueta_codigo )')
+      .eq('id', campanaId)
+      .maybeSingle();
+
+    if (error) {
+      mostrarMsg('No se pudo cargar la campaña: ' + (error.message || 'error.'));
+      return null;
+    }
+    if (!data) {
+      mostrarMsg('La campaña no existe o no tienes acceso a ella.');
+      return null;
+    }
+
+    $('cm-categoria').value = data.categoria_codigo || '';
+    $('cm-nombre').value = data.nombre || '';
+    $('cm-detalle').value = data.detalle_presentacion || '';
+    $('cm-hook-corto').value = data.hook_corto || '';
+    $('cm-imagen-banner').value = data.imagen_banner_path || '';
+    $('cm-caracteristica').value = data.caracteristica_adicional || '';
+    $('cm-precio').value = (data.precio_venta === null || data.precio_venta === undefined) ? '' : String(data.precio_venta);
+    $('cm-hook-largo').value = data.hook_largo || '';
+    $('cm-por-que').value = data.por_que_magandhi || '';
+    $('cm-sobre').value = data.sobre_este_producto || '';
+    $('cm-stock').value = String(data.stock_disponible ?? 0);
+
+    // Ficha tecnica (arreglo de {clave,valor}).
+    fichaCont.innerHTML = '';
+    const ficha = Array.isArray(data.ficha_tecnica) ? data.ficha_tecnica : [];
+    if (ficha.length) ficha.forEach((p) => agregarFilaFicha(p?.clave || '', p?.valor || ''));
+    else agregarFilaFicha();
+
+    // Galeria (arreglo de paths).
+    imgsCont.innerHTML = '';
+    const imgs = Array.isArray(data.imagenes) ? data.imagenes : [];
+    if (imgs.length) imgs.forEach((p) => agregarFilaImg(typeof p === 'string' ? p : ''));
+    else agregarFilaImg();
+
+    // Sello + estrella.
+    $('cm-sello').checked = !!data.sello_elegido;
+    $('cm-estrella').disabled = !data.sello_elegido;
+    $('cm-estrella').checked = !!data.estrella && !!data.sello_elegido;
+    $('cm-fila-estrella').classList.toggle('desactivada', !data.sello_elegido);
+    if (data.sello_elegido) {
+      $('cm-estrella-nota').textContent = 'Destaca este producto con una estrella dentro del sello.';
+    }
+
+    // Aviso de urgencia.
+    $('cm-aviso').checked = !!data.aviso_urgencia_activo;
+    $('cm-aviso-sub').hidden = !data.aviso_urgencia_activo;
+    $('cm-aviso-cantidad').value = (data.aviso_urgencia_cantidad === null || data.aviso_urgencia_cantidad === undefined)
+      ? '' : String(data.aviso_urgencia_cantidad);
+
+    // Estado de publicacion.
+    publicadoActual = !!data.publicado;
+
+    // Etiquetas seleccionadas (desde el puente).
+    const puente = Array.isArray(data.campana_producto_etiqueta) ? data.campana_producto_etiqueta : [];
+    return puente.map((r) => r.etiqueta_codigo);
+  }
+
+  // ------------------------------------------------------------
+  // GUARDAR CAMBIOS -> cm_editar_campana (nombres de parametro EXACTOS)
+  // ------------------------------------------------------------
+  async function guardar(e) {
+    e.preventDefault();
+    ocultarMsg();
+
+    const nombre = $('cm-nombre').value.trim();
+    if (!nombre) {
+      mostrarMsg('El nombre del producto es obligatorio.');
+      $('cm-nombre').focus();
+      return;
+    }
+
+    let precio = null;
+    const precioRaw = $('cm-precio').value.trim();
+    if (precioRaw !== '') {
+      precio = Math.trunc(Number(precioRaw));
+      if (Number.isNaN(precio) || precio < 0) {
+        mostrarMsg('El precio debe ser un número entero mayor o igual que cero.');
+        $('cm-precio').focus();
+        return;
+      }
+    }
+
+    const avisoActivo = $('cm-aviso').checked;
+    let avisoCant = null;
+    if (avisoActivo) {
+      avisoCant = Math.trunc(Number($('cm-aviso-cantidad').value));
+      if (Number.isNaN(avisoCant) || avisoCant <= 0) {
+        mostrarMsg('Con el aviso de urgencia activo debes indicar una cantidad mayor que cero (“Solo X disponibles”).');
+        $('cm-aviso-cantidad').focus();
+        return;
+      }
+    }
+
+    let stock = Math.trunc(Number($('cm-stock').value));
+    if (Number.isNaN(stock) || stock < 0) stock = 0;
+
+    const btn = $('cm-guardar');
+    btn.disabled = true;
+
+    const { error } = await supabase.rpc('cm_editar_campana', {
+      p_id: campanaId,
+      p_nombre: nombre,
+      p_categoria_codigo: $('cm-categoria').value || null,
+      p_detalle_presentacion: $('cm-detalle').value.trim() || null,
+      p_hook_corto: $('cm-hook-corto').value.trim() || null,
+      p_imagen_banner_path: $('cm-imagen-banner').value.trim() || null,
+      p_caracteristica_adicional: $('cm-caracteristica').value.trim() || null,
+      p_precio_venta: precio,
+      p_hook_largo: $('cm-hook-largo').value.trim() || null,
+      p_por_que_magandhi: $('cm-por-que').value.trim() || null,
+      p_sobre_este_producto: $('cm-sobre').value.trim() || null,
+      p_ficha_tecnica: recolectarFicha(),
+      p_imagenes: recolectarImgs(),
+      p_sello_elegido: $('cm-sello').checked,
+      p_estrella: $('cm-sello').checked && $('cm-estrella').checked,
+      p_stock_disponible: stock,
+      p_aviso_urgencia_activo: avisoActivo,
+      p_aviso_urgencia_cantidad: avisoCant,
+      p_etiquetas: recolectarEtiquetas()
+    });
+
+    if (error) {
+      btn.disabled = false;
+      mostrarMsg('No se pudo guardar: ' + (error.message || 'error desconocido.'));
+      return;
+    }
+
+    mostrarMsg('Cambios guardados. Redirigiendo…', 'ok');
+    window.location.href = 'index.html';
+  }
+
+  // ------------------------------------------------------------
+  // PUBLICAR / DESPUBLICAR -> cm_publicar_campana
+  // ------------------------------------------------------------
+  function cablearPublicar() {
+    const btn = $('cm-pub-btn');
+    const pubMsg = $('cm-pub-msg');
+    btn.addEventListener('click', async () => {
+      pubMsg.hidden = true;
+      btn.disabled = true;
+      const nuevo = !publicadoActual;
+      const { error } = await supabase.rpc('cm_publicar_campana', {
+        p_id: campanaId,
+        p_publicado: nuevo
+      });
+      if (error) {
+        btn.disabled = false;
+        pubMsg.textContent = 'No se pudo actualizar la publicación: ' + (error.message || 'error.');
+        pubMsg.className = 'cm-form-msg err';
+        pubMsg.hidden = false;
+        return;
+      }
+      publicadoActual = nuevo;
+      reflejarEstadoPublicado();
+      btn.disabled = false;
+      pubMsg.textContent = nuevo ? 'Producto publicado en la tienda.' : 'Producto retirado de la tienda (la ficha sigue viva).';
+      pubMsg.className = 'cm-form-msg ok';
+      pubMsg.hidden = false;
+    });
+  }
+
+  // ------------------------------------------------------------
+  // ARRANQUE
+  // ------------------------------------------------------------
+  (async () => {
+    const main = $('cm-main');
+    const acceso = await asegurarAcceso(document.body, '../index.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Editar campaña',
+      kicker: 'AJUSTAR PRESENTACIÓN',
+      lead: 'Ajusta el banner hook, la ficha del producto y sus interruptores. Publica o despublica cuando quieras: nada se borra nunca.',
+      sesion: acceso.sesion,
+      areaLabel: 'ÁREA DE MARKETING',
+      volverHref: 'index.html',
+      volverTexto: 'Campañas'
+    });
+
+    document.querySelectorAll('[data-ico]').forEach((el) => {
+      el.innerHTML = ICONOS[el.dataset.ico] || '';
+    });
+
+    // id de la campana desde la URL.
+    campanaId = new URLSearchParams(window.location.search).get('id');
+    if (!campanaId) {
+      main.hidden = false;
+      mostrarMsg('Falta el identificador de la campaña (?id=...). Vuelve a la lista y elige “Editar”.');
+      return;
+    }
+
+    // Cargar catalogos y la campana en paralelo.
+    const [catRes, tagRes] = await Promise.all([
+      supabase.from('campana_categoria')
+        .select('codigo, nombre, color_fuerte, color_claro, color_sombra, orden')
+        .order('orden', { ascending: true }),
+      supabase.from('campana_etiqueta')
+        .select('codigo, nombre, orden')
+        .eq('activo', true)
+        .order('orden', { ascending: true })
+    ]);
+
+    if (!catRes.error) {
+      categorias = catRes.data || [];
+      const sel = $('cm-categoria');
+      for (const c of categorias) {
+        const opt = document.createElement('option');
+        opt.value = c.codigo;
+        opt.textContent = c.nombre;
+        sel.appendChild(opt);
+      }
+    }
+
+    // Precargar la campana (rellena campos + estado de publicado) y recuperar
+    // las etiquetas seleccionadas para pintarlas ya marcadas.
+    const seleccionadas = await precargar();
+    pintarEtiquetas(tagRes.error ? [] : (tagRes.data || []), seleccionadas || []);
+
+    cablearInterruptores();
+    cablearPublicar();
+    reflejarEstadoPublicado();
+    $('cm-pub-btn').disabled = !campanaId || seleccionadas === null;
+    refrescarPreview();
+
+    $('cm-form').addEventListener('submit', guardar);
+    main.hidden = false;
+  })();
+</script>
+
+</body>
+</html>

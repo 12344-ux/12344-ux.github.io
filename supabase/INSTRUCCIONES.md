@@ -1159,3 +1159,173 @@ queda pendiente a proposito, para no dejar cosas a medias:
   `web`, listo para que un checkout futuro (Wompi) invoque el MISMO nucleo
   `crear_pedido` con `canal=web`. Hoy todos los pedidos entran `manual`; la
   superficie publica de compra no se construye esta vuelta.
+
+---
+
+# CAMPANAS (Area Marketing) · Producto vestido para la tienda publica
+
+Esta seccion aplica el cimiento de datos de CAMPANAS: el software con el que se
+"viste" un producto (dos secciones: BANNER HOOK y PRODUCTO) y se PUBLICA en la
+tienda publica (magandhi.com). CAMPANAS es una ISLA: NO se cruza con la tabla
+`productos` de Inventario, NO lee stock real y NO usa su product_id. Tiene su
+propia identidad y deja un enchufe apagado (`product_id_ref` uuid NULL SIN FK)
+para conectar Inventario despues sin cirugia.
+
+La tienda publica lee EN VIVO una VISTA segura, `catalogo_publico`, que solo
+expone productos publicados y solo campos publicos. JAMAS expone costo,
+proveedor, stock interno, `product_id_ref`, `creado_por` ni las etiquetas de
+segmentacion (internas).
+
+**Requisito previo:** deben estar aplicadas la migracion de perfiles y roles
+(`20250101000000_crear_perfiles_y_roles.sql`, de alli sale `tiene_modulo`) y el
+puente de lectura de Marketing (`20250301000600_inventario_marketing_lectura.sql`,
+de alli sale `tiene_acceso_marketing()`, que usan la RLS y las RPC de Campanas).
+
+## C1. Orden EXACTO de ejecucion en el SQL Editor
+
+Abre el **SQL Editor** y ejecuta, EN ESTE ORDEN, el contenido completo de cada
+archivo (cada uno con su propio **Run**):
+
+1. `supabase/migrations/20250501000000_campanas_producto.sql`
+   Crea `campana_producto` con las DOS secciones (banner hook + producto), los
+   interruptores (sello_elegido, estrella, stock_disponible, aviso_urgencia_activo,
+   aviso_urgencia_cantidad, publicado) y el enchufe apagado `product_id_ref`
+   (uuid NULL SIN FK). Montos en bigint. Indices por publicado/categoria/orden.
+2. `supabase/migrations/20250501000100_campanas_categorias.sql`
+   Crea y siembra `campana_categoria` (catalogo controlado) con la paleta EXACTA
+   de 7 categorias (color_fuerte / color_claro / color_sombra). El color del
+   producto es AUTOMATICO segun su categoria. Enciende la FK
+   `campana_producto.categoria_codigo -> campana_categoria(codigo)` con guard
+   idempotente sobre `pg_constraint`.
+3. `supabase/migrations/20250501000200_campanas_etiquetas.sql`
+   Crea `campana_etiqueta` (catalogo controlado de segmentacion INTERNA) + la
+   tabla puente `campana_producto_etiqueta`, y siembra un set inicial de
+   etiquetas. Estas etiquetas NUNCA salen a la tienda.
+4. `supabase/migrations/20250501000300_campanas_vista_publica.sql`
+   Crea la vista SEGURA `catalogo_publico` (WHERE publicado=true AND activo=true,
+   solo campos publicos + colores por join a categoria). No incluye la tabla de
+   etiquetas ni campos internos.
+5. `supabase/migrations/20250501000400_campanas_rls.sql`
+   Activa RLS en las 4 tablas base con `SELECT ... using (tiene_acceso_marketing())`.
+   Sin INSERT/UPDATE/DELETE directo. CERO policy para anon sobre las tablas base.
+6. `supabase/migrations/20250501000500_campanas_funciones.sql`
+   Crea las RPC security definer `cm_crear_campana`, `cm_editar_campana` y
+   `cm_publicar_campana` (unica via de escritura). Validan `tiene_acceso_marketing()`,
+   precio_venta >= 0 (bigint) y, si el aviso de urgencia esta activo, exigen
+   cantidad > 0. Nada se borra (despublicar).
+7. `supabase/migrations/20250501000600_campanas_grants.sql`
+   Capa 1 de GRANT: `select` de las 4 tablas base a `authenticated` (el panel las
+   lee) y `select` de la VISTA `catalogo_publico` a `anon, authenticated` (la
+   tienda publica la lee sin login). NO grant a anon sobre las tablas base.
+8. `supabase/migrations/20250501000700_campanas_seed.sql`
+   Siembra los 5 productos actuales del home (Grisi real + 4 de ejemplo) con ids
+   fijos e idempotencia (`on conflict (id) do update`), y asigna etiquetas de
+   segmentacion por producto. Todos con `publicado=true`.
+
+Los archivos son idempotentes (`create ... if not exists`, `create or replace`,
+`drop policy if exists`, `on conflict do update`, guard sobre `pg_constraint`):
+si algo falla a mitad, puedes re-ejecutar sin duplicar nada.
+
+## C2. Imagenes de Campanas (Storage) · opcional
+
+Si en el panel (FEAT-003) decides subir imagenes de banner/galeria desde el
+navegador, crea en **Storage** un bucket llamado `campanas`:
+
+1. En el menu lateral abre **Storage** y pulsa **New bucket**.
+2. Nombre: `campanas`. Marca **Public bucket** (lectura publica: la tienda debe
+   poder mostrar las imagenes sin login).
+3. Para la ESCRITURA (subir/borrar), agrega una policy que exija acceso de
+   Marketing, por ejemplo (Storage usa la tabla `storage.objects`):
+
+   ```sql
+   -- Lectura publica de las imagenes de campanas
+   create policy "campanas_lectura_publica" on storage.objects
+     for select to anon, authenticated
+     using (bucket_id = 'campanas');
+
+   -- Escritura solo para quien tiene acceso al Area de Marketing
+   create policy "campanas_escritura_marketing" on storage.objects
+     for insert to authenticated
+     with check (bucket_id = 'campanas' and tiene_acceso_marketing());
+   ```
+
+   Mientras no se suban imagenes desde el panel, los campos `imagen_banner_path`
+   e `imagenes` pueden apuntar a rutas del repo de la tienda (como el Grisi).
+
+## C3. Como verificar que quedo bien
+
+Ejecuta estas consultas en el SQL Editor:
+
+1. **Productos sembrados** (debe devolver 5):
+
+   ```sql
+   select count(*) from campana_producto;
+   ```
+
+2. **La vista publica solo trae lo publicado y publico** (5 filas, con nombre,
+   precio y colores; SIN costo/proveedor/product_id_ref/etiquetas/creado_por):
+
+   ```sql
+   select id, nombre, categoria_codigo, color_fuerte, precio_venta,
+          sello_elegido, estrella, aviso_urgencia_activo, aviso_urgencia_cantidad
+     from catalogo_publico
+    order by orden;
+   ```
+
+3. **anon NO puede leer las tablas base, pero SI la vista.** En **SQL Editor**
+   puedes simular el rol anon dentro de una transaccion:
+
+   ```sql
+   begin;
+   set local role anon;
+   -- Esto DEBE fallar (permission denied): las tablas base no tienen grant a anon
+   select * from campana_producto limit 1;
+   rollback;
+
+   begin;
+   set local role anon;
+   -- Esto DEBE funcionar (la unica superficie publica)
+   select nombre, precio_venta from catalogo_publico limit 1;
+   rollback;
+   ```
+
+   (Tambien puedes probar en vivo desde la tienda con la publishable key: leer
+   `catalogo_publico` responde; leer `campana_producto` da error de permiso.)
+
+4. **La vista NO expone campos internos** (esta consulta DEBE fallar con
+   "column ... does not exist", porque no estan en la vista):
+
+   ```sql
+   select product_id_ref from catalogo_publico limit 1;   -- error esperado
+   select creado_por     from catalogo_publico limit 1;   -- error esperado
+   ```
+
+5. **Escribir sin acceso de marketing es RECHAZADO** (con un rol/usuario sin la
+   clave de Marketing, esto DEBE dar error "Acceso denegado: se requiere el
+   modulo marketing."):
+
+   ```sql
+   select cm_crear_campana('Prueba sin acceso');
+   ```
+
+6. **El aviso de urgencia exige cantidad > 0** (esto DEBE fallar por la
+   validacion del aviso manual y honesto):
+
+   ```sql
+   -- aviso activo pero sin cantidad -> error esperado
+   select cm_crear_campana(
+     'Prueba aviso', 'cabello', null, null, null, null, 1000, null, null, null,
+     '[]'::jsonb, '[]'::jsonb, false, false, 3, true, null, '{}'
+   );
+   ```
+
+7. **Las etiquetas de segmentacion son INTERNAS** (existen para el panel, pero
+   la tienda no las ve porque no estan en la vista):
+
+   ```sql
+   select count(*) from campana_producto_etiqueta;   -- > 0 (asignadas en el seed)
+   ```
+
+Como las RPC usan `create or replace` y las tablas/vista son idempotentes, si
+mas adelante ajustas algo basta con **volver a ejecutar solo el archivo que
+cambio**, sin tocar los demas.

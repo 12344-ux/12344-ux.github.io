@@ -1,0 +1,471 @@
+/* ============================================================
+   MAGANDHI · AREA DE MARKETING · Sub-area CAMPANAS · Estilos
+   ------------------------------------------------------------
+   Se carga DESPUES de marca.css y de ../marketing.css (Campanas es sub-area
+   de Marketing y HEREDA su header institucional azul marino #101C33, el
+   wordmark MAGANDHI, el menu de perfil, el estado denegado y el sello
+   "Con tecnologia Impulse"). Aqui SOLO viven los estilos propios de la lista
+   de campanas.
+
+   IDENTIDAD DE CAMPANAS (decision del dueno):
+   · Sigue el azul marino del back-office (NADA de color nuevo de area).
+   · La DIFERENCIA es que cada tarjeta se "viste" con el COLOR DE SU CATEGORIA
+     (la misma familia calida del home de la tienda) via variables inline
+     --cm-acento / --cm-acento-cl / --cm-acento-sombra, igual que --acento en
+     la tienda. Asi el panel se ve "coleccion curada", nunca un arcoiris.
+   · Diseno nivel Finanzas: es PILAR INNEGOCIABLE.
+
+   Prefijo de clase: cm-
+   ============================================================ */
+
+/* Tono neutro de respaldo cuando una campana no tiene categoria asignada. */
+:root{
+  --cm-acento:#6E6A66;
+  --cm-acento-cl:#A8A29C;
+  --cm-acento-sombra:rgba(110,106,102,.15);
+}
+
+/* ============================================================
+   BARRA DE ACCION (titulo de seccion + boton "Agregar campana")
+   ============================================================ */
+.cm-barra{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  flex-wrap:wrap;margin:4px 0 18px;
+}
+.cm-barra-titulo{
+  margin:0;font-size:12px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--mk-gris);
+}
+/* Boton primario azul marino, espejo de .mk-btn de Marketing. */
+.cm-btn-primario{
+  display:inline-flex;align-items:center;gap:9px;
+  font-family:inherit;font-size:14.5px;font-weight:600;letter-spacing:.02em;
+  color:#fff;background:var(--mk-marino);border:0;border-radius:11px;
+  padding:12px 22px;cursor:pointer;text-decoration:none;
+  transition:background-color .15s ease, transform .1s ease;
+}
+.cm-btn-primario:hover{background:var(--mk-marino-2);transform:translateY(-1px)}
+.cm-btn-primario svg{width:18px;height:18px;flex:none}
+
+/* ============================================================
+   LISTA DE CAMPANAS (tarjetas)
+   ============================================================ */
+.cm-lista{
+  display:grid;gap:18px;
+  grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+}
+
+/* Tarjeta de campana: banner arriba (color de categoria) + cuerpo + acciones.
+   Cada tarjeta recibe sus variables --cm-acento* inline segun su categoria. */
+.cm-card{
+  display:flex;flex-direction:column;
+  background:var(--mk-tarjeta);border:1px solid var(--mk-linea);
+  border-radius:var(--mk-radio);overflow:hidden;
+  box-shadow:0 1px 2px rgba(16,28,51,.04);
+  transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.cm-card:hover{
+  transform:translateY(-2px);box-shadow:0 10px 26px rgba(16,28,51,.12);
+  border-color:var(--cm-acento-cl);
+}
+
+/* ------------------------------------------------------------
+   PREVISUALIZACION DEL BANNER-HOOK (vestido con el color de categoria)
+   Espejo del sentir de la tarjeta de la tienda: fondo calido de la categoria,
+   nombre grande, hook corto. Enlaza a editar.html?id=... (toda la tarjeta).
+   ------------------------------------------------------------ */
+.cm-banner{
+  display:block;text-decoration:none;color:inherit;
+  position:relative;padding:20px;
+  background:linear-gradient(135deg, var(--cm-acento-sombra), rgba(255,255,255,0) 70%);
+  border-bottom:1px solid var(--mk-linea);
+  border-left:5px solid var(--cm-acento);
+  min-height:132px;
+}
+.cm-banner-imagen{
+  position:absolute;inset:0;background-size:cover;background-position:center;
+  opacity:.14;
+}
+.cm-banner-cont{position:relative;display:flex;flex-direction:column;gap:8px}
+/* Chip de categoria: relleno con el color fuerte de la categoria. */
+.cm-cat{
+  align-self:flex-start;display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:#fff;background:var(--cm-acento);border-radius:999px;padding:4px 11px;
+}
+.cm-nombre{
+  margin:0;font-size:17px;font-weight:600;line-height:1.25;color:var(--mk-marino);
+}
+.cm-hook{
+  margin:0;font-size:12.5px;line-height:1.4;color:var(--mk-gris);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+
+/* ------------------------------------------------------------
+   CUERPO: precio + estados (publicado/borrador, estrella, aviso urgencia)
+   ------------------------------------------------------------ */
+.cm-cuerpo{display:flex;flex-direction:column;gap:12px;padding:16px 20px}
+.cm-precio-fila{display:flex;align-items:baseline;gap:8px}
+.cm-precio{
+  font-size:20px;font-weight:700;color:var(--mk-marino);
+  font-variant-numeric:tabular-nums;
+}
+.cm-precio-moneda{font-size:13px;font-weight:600;color:var(--mk-gris)}
+.cm-precio-vacio{font-size:13.5px;color:var(--mk-gris);font-style:italic}
+
+/* Fila de chips de estado (envuelven en movil). */
+.cm-chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cm-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+  border-radius:999px;padding:4px 11px;
+}
+.cm-chip svg{width:13px;height:13px;flex:none}
+/* Publicado = verde discreto (esta EN la tienda). */
+.cm-chip.publicado{color:#2F6E4E;background:rgba(47,110,78,.12)}
+/* Borrador = gris marino (todavia NO sale). */
+.cm-chip.borrador{color:var(--mk-marino-2);background:rgba(27,42,71,.10)}
+/* Estrella = producto destacado del home. */
+.cm-chip.estrella{color:#9A6B12;background:rgba(201,150,46,.16)}
+/* Aviso de urgencia MANUAL y HONESTO: "Solo X disponibles". Terracota de
+   marca; solo aparece cuando el dueno lo activo con una cantidad real. */
+.cm-chip.urgencia{color:var(--mk-acento);background:rgba(166,51,46,.10)}
+
+/* ------------------------------------------------------------
+   ACCIONES POR TARJETA (Editar + Publicar/Despublicar)
+   ------------------------------------------------------------ */
+.cm-acciones{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:14px 20px;border-top:1px solid var(--mk-linea);
+  background:rgba(16,28,51,.02);
+}
+.cm-accion{
+  display:inline-flex;align-items:center;gap:7px;
+  font-family:inherit;font-size:13px;font-weight:600;letter-spacing:.02em;
+  border-radius:9px;padding:9px 14px;cursor:pointer;text-decoration:none;
+  border:1px solid transparent;transition:background-color .15s ease, border-color .15s ease, opacity .15s ease;
+}
+.cm-accion svg{width:15px;height:15px;flex:none}
+/* Editar: enlace sobrio al formulario. */
+.cm-accion.editar{color:var(--mk-marino);background:transparent;border-color:var(--mk-linea)}
+.cm-accion.editar:hover{background:rgba(16,28,51,.05);border-color:var(--mk-azul-cl)}
+/* Publicar (cuando esta en borrador): accion afirmativa azul marino. */
+.cm-accion.publicar{color:#fff;background:var(--mk-marino)}
+.cm-accion.publicar:hover{background:var(--mk-marino-2)}
+/* Despublicar (cuando ya esta publicado): sobrio, retira de la tienda. */
+.cm-accion.despublicar{color:var(--mk-acento);background:transparent;border-color:rgba(166,51,46,.35)}
+.cm-accion.despublicar:hover{background:rgba(166,51,46,.08)}
+.cm-accion:disabled{opacity:.5;cursor:not-allowed}
+.cm-accion.editar{margin-right:auto}   /* empuja Publicar/Despublicar a la derecha */
+
+/* Mensaje de error por tarjeta (si falla la RPC de publicar). */
+.cm-card-msg{
+  padding:0 20px 14px;font-size:12.5px;color:var(--mk-acento);
+}
+.cm-card-msg[hidden]{display:none}
+
+/* ============================================================
+   ESTADO VACIO / DE CARGA (sobrio, estilo .mk-empty de Marketing)
+   ============================================================ */
+.cm-empty{
+  color:var(--mk-gris);font-size:14px;padding:40px 24px;text-align:center;
+  background:var(--mk-tarjeta);border:1px dashed var(--mk-linea);
+  border-radius:var(--mk-radio);margin-top:8px;
+}
+.cm-empty strong{color:var(--mk-carbon);display:block;margin-bottom:6px;font-size:15px}
+.cm-empty.err{border-color:rgba(166,51,46,.35);color:var(--mk-acento)}
+
+@media (max-width:560px){
+  .cm-lista{grid-template-columns:1fr}
+  .cm-barra{align-items:stretch}
+  .cm-btn-primario{justify-content:center}
+}
+
+/* ============================================================
+   FORMULARIO DE CAMPANA (agregar.html / editar.html)
+   ------------------------------------------------------------
+   Un producto se "viste" aqui: DOS secciones (Banner hook + Producto) con
+   todos sus campos, mas los INTERRUPTORES por producto (sello, estrella,
+   aviso de urgencia manual, stock, publicar). A la derecha, una VISTA PREVIA
+   en vivo del banner-hook que toma el color de la categoria elegida.
+
+   Diseno nivel Finanzas (PILAR INNEGOCIABLE): campos limpios, switches
+   pulcros tipo toggle, chips seleccionables sobrios, azul marino heredado.
+   Prefijo de clase: cm-  (los tokens --mk-* vienen de ../marketing.css).
+   ============================================================ */
+
+/* Rejilla general: formulario a la izquierda, vista previa pegajosa a la
+   derecha. En movil, la vista previa pasa arriba (order) para que el dueno la
+   vea mientras llena; en escritorio se queda fija al hacer scroll. */
+.cm-form-layout{
+  display:grid;gap:24px;align-items:start;
+  grid-template-columns:minmax(0,1fr) minmax(300px,380px);
+}
+.cm-form{display:flex;flex-direction:column;gap:22px;min-width:0}
+
+/* ------------------------------------------------------------
+   SECCION (tarjeta blanca con titulo + subtitulo + campos)
+   ------------------------------------------------------------ */
+.cm-seccion{
+  background:var(--mk-tarjeta);border:1px solid var(--mk-linea);
+  border-radius:var(--mk-radio);padding:22px 24px;
+  box-shadow:0 1px 2px rgba(16,28,51,.04);
+}
+.cm-seccion-cab{
+  display:flex;align-items:flex-start;gap:12px;margin-bottom:18px;
+  padding-bottom:14px;border-bottom:1px solid var(--mk-linea);
+}
+.cm-seccion-num{
+  flex:none;width:30px;height:30px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;
+  color:#fff;background:var(--mk-marino);
+}
+.cm-seccion-tit{margin:0;font-size:16px;font-weight:600;color:var(--mk-marino)}
+.cm-seccion-sub{margin:2px 0 0;font-size:12.5px;color:var(--mk-gris);line-height:1.4}
+
+/* ------------------------------------------------------------
+   CAMPOS (label + control), reutilizan .mk-input/.mk-select de marketing.css
+   ------------------------------------------------------------ */
+.cm-campos{display:grid;gap:16px}
+.cm-campos.dos{grid-template-columns:1fr 1fr}
+.cm-campo{display:flex;flex-direction:column;gap:6px;min-width:0}
+.cm-campo > label,.cm-campo-lbl{
+  font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--mk-gris);
+}
+.cm-campo textarea.mk-input{resize:vertical;min-height:88px;line-height:1.5}
+.cm-campo-ayuda{font-size:11.5px;line-height:1.4;color:var(--mk-gris)}
+/* Prefijo de moneda para el precio (pesos enteros). */
+.cm-precio-input{position:relative;display:flex;align-items:center}
+.cm-precio-input .cm-signo{
+  position:absolute;left:12px;font-size:14px;font-weight:600;color:var(--mk-gris);
+  pointer-events:none;
+}
+.cm-precio-input .mk-input{padding-left:26px;font-variant-numeric:tabular-nums}
+
+/* ------------------------------------------------------------
+   SWITCH tipo toggle (interruptores pulcros). Se apoya en un checkbox real
+   oculto por accesibilidad; el "riel" es el <label>.
+   ------------------------------------------------------------ */
+.cm-switch-fila{
+  display:flex;align-items:flex-start;gap:14px;
+  padding:14px 0;border-top:1px solid var(--mk-linea);
+}
+.cm-switch-fila:first-of-type{border-top:0}
+.cm-switch-texto{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.cm-switch-texto b{font-size:14px;font-weight:600;color:var(--mk-marino)}
+.cm-switch-texto span{font-size:12px;color:var(--mk-gris);line-height:1.4}
+.cm-switch{
+  position:relative;flex:none;width:46px;height:26px;cursor:pointer;
+  display:inline-block;
+}
+.cm-switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.cm-switch .cm-riel{
+  position:absolute;inset:0;border-radius:999px;background:rgba(16,28,51,.18);
+  transition:background-color .18s ease;
+}
+.cm-switch .cm-perilla{
+  position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 3px rgba(16,28,51,.35);
+  transition:transform .18s ease;
+}
+.cm-switch input:checked ~ .cm-riel{background:var(--mk-marino)}
+.cm-switch input:checked ~ .cm-perilla{transform:translateX(20px)}
+.cm-switch input:focus-visible ~ .cm-riel{box-shadow:0 0 0 3px rgba(143,163,196,.55)}
+.cm-switch input:disabled ~ .cm-riel{background:rgba(16,28,51,.10)}
+.cm-switch input:disabled{cursor:not-allowed}
+/* Fila deshabilitada (ej. estrella cuando el sello esta apagado). */
+.cm-switch-fila.desactivada{opacity:.55}
+.cm-switch-fila.desactivada .cm-switch{cursor:not-allowed}
+
+/* Sub-bloque que se revela bajo un switch (ej. cantidad del aviso de urgencia,
+   sub-controles del sello). Sangrado para dejar claro que "cuelga" del switch. */
+.cm-sub{
+  margin:10px 0 2px;padding:14px 16px;border-radius:11px;
+  background:rgba(16,28,51,.03);border:1px solid var(--mk-linea);
+}
+.cm-sub[hidden]{display:none}
+.cm-sub .mk-input{max-width:180px}
+
+/* Grupo visual de interruptores (encapsula sello + estrella + aviso + stock). */
+.cm-controles-caja{display:flex;flex-direction:column}
+
+/* ------------------------------------------------------------
+   CHIPS DE ETIQUETAS (catalogo controlado, multiseleccion)
+   Cada chip es un <label> con checkbox oculto; seleccionado = azul marino.
+   ------------------------------------------------------------ */
+.cm-tags{display:flex;flex-wrap:wrap;gap:9px}
+.cm-tag{
+  position:relative;display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+  font-size:13px;font-weight:600;letter-spacing:.01em;color:var(--mk-marino);
+  background:var(--mk-tarjeta);border:1px solid var(--mk-linea);
+  border-radius:999px;padding:8px 14px;
+  transition:background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+.cm-tag input{position:absolute;opacity:0;width:0;height:0;margin:0}
+.cm-tag:hover{border-color:var(--mk-azul-cl)}
+.cm-tag .cm-tag-check{
+  width:15px;height:15px;flex:none;border-radius:5px;
+  border:1.6px solid var(--mk-linea);
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:background-color .15s ease, border-color .15s ease;
+}
+.cm-tag .cm-tag-check svg{width:11px;height:11px;color:#fff;opacity:0;transition:opacity .15s ease}
+.cm-tag input:checked ~ .cm-tag-check{background:var(--mk-marino);border-color:var(--mk-marino)}
+.cm-tag input:checked ~ .cm-tag-check svg{opacity:1}
+.cm-tag:has(input:checked){background:rgba(16,28,51,.06);border-color:var(--mk-marino)}
+.cm-tag input:focus-visible ~ .cm-tag-check{box-shadow:0 0 0 3px rgba(143,163,196,.55)}
+
+/* ------------------------------------------------------------
+   EDITOR DE FICHA TECNICA (filas clave/valor que se agregan y quitan)
+   ------------------------------------------------------------ */
+.cm-ficha-filas{display:flex;flex-direction:column;gap:10px}
+.cm-ficha-fila{display:grid;grid-template-columns:1fr 1.4fr auto;gap:10px;align-items:center}
+.cm-ficha-fila .mk-input{font-size:13.5px}
+/* Boton pequeno para quitar una fila / imagen. */
+.cm-quitar{
+  flex:none;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;
+  color:var(--mk-acento);background:transparent;border:1px solid rgba(166,51,46,.30);
+  transition:background-color .15s ease;
+}
+.cm-quitar:hover{background:rgba(166,51,46,.08)}
+.cm-quitar svg{width:16px;height:16px}
+/* Boton "agregar fila / imagen": sobrio, con borde punteado. */
+.cm-agregar{
+  align-self:flex-start;margin-top:4px;
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:inherit;font-size:13px;font-weight:600;color:var(--mk-marino);
+  background:transparent;border:1px dashed var(--mk-linea);border-radius:10px;
+  padding:9px 15px;cursor:pointer;transition:background-color .15s ease, border-color .15s ease;
+}
+.cm-agregar:hover{background:rgba(16,28,51,.04);border-color:var(--mk-azul-cl)}
+.cm-agregar svg{width:15px;height:15px}
+
+/* ------------------------------------------------------------
+   EDITOR DE IMAGENES DE GALERIA (lista de paths/URL)
+   ------------------------------------------------------------ */
+.cm-img-filas{display:flex;flex-direction:column;gap:10px}
+.cm-img-fila{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+.cm-img-fila .mk-input{font-size:13.5px}
+
+/* ------------------------------------------------------------
+   VISTA PREVIA DEL BANNER-HOOK (columna derecha, pegajosa)
+   Espejo de la tarjeta de la tienda: color de categoria en vivo via
+   --cm-acento*. Refleja imagen/nombre/detalle/hook/sello/estrella/aviso.
+   ------------------------------------------------------------ */
+.cm-preview-col{position:sticky;top:84px;display:flex;flex-direction:column;gap:10px}
+.cm-preview-lbl{
+  font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--mk-gris);
+}
+.cm-preview-card{
+  background:var(--mk-tarjeta);border:1px solid var(--mk-linea);
+  border-radius:var(--mk-radio);overflow:hidden;
+  box-shadow:0 6px 20px rgba(16,28,51,.08);
+}
+.cm-preview-banner{
+  position:relative;padding:22px 20px;min-height:150px;
+  display:flex;flex-direction:column;gap:9px;justify-content:flex-end;
+  background:linear-gradient(135deg, var(--cm-acento-sombra), rgba(255,255,255,0) 72%);
+  border-left:5px solid var(--cm-acento);
+}
+.cm-preview-img{
+  position:absolute;inset:0;background-size:cover;background-position:center;
+  opacity:.16;
+}
+.cm-preview-banner > *{position:relative}
+.cm-preview-cat{
+  align-self:flex-start;display:inline-flex;align-items:center;
+  font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:#fff;background:var(--cm-acento);border-radius:999px;padding:4px 11px;
+}
+.cm-preview-nombre{margin:0;font-size:19px;font-weight:600;line-height:1.2;color:var(--mk-marino)}
+.cm-preview-detalle{margin:0;font-size:12px;color:var(--mk-gris)}
+.cm-preview-hook{margin:0;font-size:13px;line-height:1.45;color:var(--mk-carbon)}
+.cm-preview-cuerpo{padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+/* Sello "Elegido por MAGANDHI" en la vista previa (con estrella opcional dentro). */
+.cm-preview-sello{
+  display:inline-flex;align-items:center;gap:8px;align-self:flex-start;
+  font-size:11.5px;font-weight:600;letter-spacing:.04em;
+  color:#8a6a1f;background:rgba(201,150,46,.14);
+  border:1px solid rgba(201,150,46,.35);border-radius:999px;padding:5px 12px;
+}
+.cm-preview-sello svg{width:14px;height:14px;flex:none}
+.cm-preview-sello .cm-preview-estrella{color:#C9962E}
+.cm-preview-sello[hidden]{display:none}
+.cm-preview-precio{display:flex;align-items:baseline;gap:7px}
+.cm-preview-precio .n{font-size:22px;font-weight:700;color:var(--mk-marino);font-variant-numeric:tabular-nums}
+.cm-preview-precio .m{font-size:12px;font-weight:600;color:var(--mk-gris)}
+.cm-preview-precio .vacio{font-size:13px;color:var(--mk-gris);font-style:italic}
+/* Aviso de urgencia en la vista previa (terracota, honesto). */
+.cm-preview-aviso{
+  display:inline-flex;align-items:center;gap:7px;align-self:flex-start;
+  font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--mk-acento);background:rgba(166,51,46,.10);border-radius:999px;padding:5px 12px;
+}
+.cm-preview-aviso svg{width:13px;height:13px;flex:none}
+.cm-preview-aviso[hidden]{display:none}
+.cm-preview-estado{
+  display:inline-flex;align-items:center;gap:6px;align-self:flex-start;
+  font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+  border-radius:999px;padding:4px 11px;
+}
+.cm-preview-estado.publicado{color:#2F6E4E;background:rgba(47,110,78,.12)}
+.cm-preview-estado.borrador{color:var(--mk-marino-2);background:rgba(27,42,71,.10)}
+
+/* ------------------------------------------------------------
+   BARRA DE GUARDAR (acciones del formulario) + aviso de "nada se borra"
+   ------------------------------------------------------------ */
+.cm-guardar-barra{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:16px 0 4px;
+}
+.cm-guardar-barra .cm-btn-primario{padding:13px 26px;font-size:15px}
+.cm-cancelar{
+  font-family:inherit;font-size:14px;font-weight:600;color:var(--mk-gris);
+  text-decoration:none;padding:12px 16px;border-radius:10px;
+  transition:background-color .15s ease, color .15s ease;
+}
+.cm-cancelar:hover{background:rgba(16,28,51,.05);color:var(--mk-marino)}
+
+/* Mensaje de error/exito del formulario. */
+.cm-form-msg{
+  font-size:13.5px;padding:12px 15px;border-radius:10px;margin:6px 0 0;
+}
+.cm-form-msg[hidden]{display:none}
+.cm-form-msg.err{color:var(--mk-acento);background:rgba(166,51,46,.08)}
+.cm-form-msg.ok{color:#2F6E4E;background:rgba(47,110,78,.10)}
+
+/* Aviso sobrio: despublicar/inactivar NO borra (la ficha sigue viva). */
+.cm-aviso-vida{
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:12.5px;line-height:1.5;color:var(--mk-gris);
+  background:rgba(16,28,51,.03);border:1px solid var(--mk-linea);
+  border-radius:11px;padding:13px 15px;margin-top:2px;
+}
+.cm-aviso-vida svg{width:17px;height:17px;flex:none;color:var(--mk-marino);margin-top:1px}
+.cm-aviso-vida b{color:var(--mk-marino);font-weight:600}
+
+/* Bloque Publicar/Despublicar dentro de editar.html. */
+.cm-publicar-caja{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:16px 18px;border-radius:12px;
+  background:rgba(16,28,51,.03);border:1px solid var(--mk-linea);
+}
+.cm-publicar-caja .cm-pub-texto{flex:1;min-width:160px}
+.cm-publicar-caja .cm-pub-texto b{display:block;font-size:14px;color:var(--mk-marino)}
+.cm-publicar-caja .cm-pub-texto span{font-size:12.5px;color:var(--mk-gris)}
+
+/* ------------------------------------------------------------
+   RESPONSIVE
+   ------------------------------------------------------------ */
+@media (max-width:900px){
+  .cm-form-layout{grid-template-columns:1fr}
+  .cm-preview-col{position:static;order:-1}   /* vista previa arriba en movil */
+}
+@media (max-width:560px){
+  .cm-campos.dos{grid-template-columns:1fr}
+  .cm-ficha-fila{grid-template-columns:1fr auto}
+}
