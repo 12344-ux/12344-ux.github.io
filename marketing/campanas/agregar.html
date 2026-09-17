@@ -30,13 +30,20 @@
   y el nucleo compartido se importa como '../marketing-core.js' (el core
   resuelve sus propios imports relativos a SI MISMO).
 
-  ISLA (nota de arquitectura): Campanas NO lee Inventario hoy. Por eso el
-  STOCK y el AVISO DE URGENCIA son MANUALES (el dueno los define). El estado
-  "Agotado" queda preparado en el diseno del modelo pero NO se dispara solo
-  todavia (no hay stock real conectado). El aviso de urgencia es REAL y
-  honesto: se activa en el momento adecuado (por ejemplo cuando de verdad
-  quedan 3 unidades), nada de escasez fabricada; por eso, si el switch esta
-  activo, la cantidad "Solo X disponibles" es obligatoria (> 0).
+  CONEXION CON INVENTARIO (Tanda 2 · la incision): Campanas YA se liga a
+  Inventario por product_id_ref (el <select id="cm-producto"> guarda el id del
+  producto de Inventario via la RPC). El estado "Agotado" YA NO es manual: se
+  deriva SOLO del stock REAL de Inventario (catalogo_publico.agotado =
+  existencias <= 0 leido de stock_actual) y la tienda deshabilita la compra por
+  si sola cuando llega a cero. El numero exacto de existencias NUNCA se expone a
+  la tienda; aqui el campo stock_disponible sigue siendo un dato MANUAL de la
+  tabla campana_producto (no alimenta el Agotado real; se conserva por
+  compatibilidad). El AVISO DE URGENCIA sigue siendo MANUAL y honesto: se activa
+  en el momento adecuado (por ejemplo cuando de verdad quedan 3 unidades), nada
+  de escasez fabricada; por eso, si el switch esta activo, la cantidad "Solo X
+  disponibles" es obligatoria (> 0). Nota: el ligado a Inventario vive en la
+  vista publica y en la tienda; este panel solo elige el producto y guarda
+  product_id_ref.
 
   El color del banner es AUTOMATICO segun la categoria: no hay selector de
   color manual; al elegir la categoria, la vista previa toma su terna de color
@@ -70,6 +77,13 @@
               <option value="">Sin categoría</option>
             </select>
             <span class="cm-campo-ayuda">El color del banner es automático según la categoría (se ve en la vista previa). No hay color manual.</span>
+          </div>
+          <div class="cm-campo">
+            <label for="cm-producto" class="cm-campo-lbl">Producto de Inventario</label>
+            <select id="cm-producto" class="mk-select">
+              <option value="">Sin producto de inventario (se puede ligar luego)</option>
+            </select>
+            <span class="cm-campo-ayuda">Elige el producto ya registrado en Inventario. Primero se crea el producto en Inventario; aquí aparece por su SKU y nombre. El stock y el estado Agotado se toman automáticamente de Inventario.</span>
           </div>
           <div class="cm-campo">
             <label for="cm-nombre" class="cm-campo-lbl">Nombre del producto *</label>
@@ -317,6 +331,7 @@
     Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
 
   let categorias = [];   // [{codigo,nombre,color_fuerte,color_claro,color_sombra}]
+  let productos = [];    // [{id,sku,nombre,precio_venta,activo}] de Inventario
 
   // Blob optimizado del banner pendiente de subir (o null).
   let bannerPend = null; // { blob, ext, tipo, url }
@@ -687,6 +702,29 @@
         el.addEventListener('input', refrescarPreview);
         el.addEventListener('change', refrescarPreview);
       });
+
+    // Producto de Inventario: al elegirlo, AUTO-SUGERIR nombre y precio SOLO si
+    // esos campos estan vacios. Campanas manda en la presentacion: nunca se
+    // pisa lo que el operador ya escribio. Tras autocompletar, refrescar la
+    // vista previa para reflejar los valores sugeridos.
+    $('cm-producto').addEventListener('change', () => {
+      const prod = productos.find((p) => p.id === $('cm-producto').value);
+      if (prod) {
+        const campoNombre = $('cm-nombre');
+        if (!campoNombre.value.trim() && prod.nombre) campoNombre.value = prod.nombre;
+        const campoPrecio = $('cm-precio');
+        if (!campoPrecio.value.trim() && prod.precio_venta != null) {
+          // prod.precio_venta es un ENTERO CRUDO (bigint, pesos enteros) de
+          // Inventario: se asigna tal cual, SIN separadores de miles. El input
+          // es type=number y guardar() lo re-parsea con Math.trunc(Number(...)),
+          // asi que el valor que viaja a la RPC es exactamente el mismo bigint
+          // (no se altera). El formateo con separadores solo ocurre en la vista
+          // previa (formatearNumero), nunca en el input ni en el guardado.
+          campoPrecio.value = prod.precio_venta;
+        }
+      }
+      refrescarPreview();
+    });
   }
 
   // ------------------------------------------------------------
@@ -796,7 +834,9 @@
       p_stock_disponible: stock,
       p_aviso_urgencia_activo: avisoActivo,
       p_aviso_urgencia_cantidad: avisoCant,
-      p_etiquetas: recolectarEtiquetas()
+      p_etiquetas: recolectarEtiquetas(),
+      // Producto de Inventario ligado (uuid) o null si aun no se liga.
+      p_product_id_ref: $('cm-producto').value || null
     });
 
     if (error) {
@@ -841,15 +881,21 @@
       el.innerHTML = ICONOS[el.dataset.ico] || '';
     });
 
-    // Cargar categorias (para el select + colores de la vista previa).
-    const [catRes, tagRes] = await Promise.all([
+    // Cargar categorias (select + colores de la vista previa), etiquetas y
+    // los productos de Inventario (para el desplegable de ligado). La lectura
+    // de productos la permite la policy productos_select_marketing.
+    const [catRes, tagRes, prodRes] = await Promise.all([
       supabase.from('campana_categoria')
         .select('codigo, nombre, color_fuerte, color_claro, color_sombra, orden')
         .order('orden', { ascending: true }),
       supabase.from('campana_etiqueta')
         .select('codigo, nombre, orden')
         .eq('activo', true)
-        .order('orden', { ascending: true })
+        .order('orden', { ascending: true }),
+      supabase.from('productos')
+        .select('id, sku, nombre, precio_venta, activo')
+        .eq('activo', true)
+        .order('nombre', { ascending: true })
     ]);
 
     if (catRes.error) {
@@ -869,6 +915,28 @@
       tagsCont.innerHTML = '<span class="cm-campo-ayuda">No se pudieron cargar las etiquetas.</span>';
     } else {
       pintarEtiquetas(tagRes.data || []);
+    }
+
+    // Productos de Inventario para el desplegable. Se guardan en memoria para
+    // poder auto-sugerir nombre/precio al elegir. Un fallo de carga NO rompe el
+    // form: solo se avisa y el operador puede ligar el producto luego.
+    if (prodRes.error) {
+      const sel = $('cm-producto');
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'No se pudieron cargar los productos de Inventario';
+      opt.disabled = true;
+      sel.appendChild(opt);
+    } else {
+      productos = prodRes.data || [];
+      const sel = $('cm-producto');
+      for (const p of productos) {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        // Texto SKU - nombre (textContent escapa solo; sin HTML interpretado).
+        opt.textContent = (p.sku || 's/sku') + ' - ' + (p.nombre || 'sin nombre');
+        sel.appendChild(opt);
+      }
     }
 
     // Una fila inicial para la ficha (comodidad). La galeria arranca vacia:

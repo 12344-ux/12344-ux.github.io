@@ -27,11 +27,16 @@
   insert/update directo a las tablas (solo .select para leer y .rpc para
   escribir).
 
-  ISLA (nota de arquitectura): Campanas NO lee Inventario hoy. El STOCK y el
-  AVISO DE URGENCIA son MANUALES. El estado "Agotado" queda preparado en el
-  diseno del modelo pero NO se dispara solo todavia. El aviso de urgencia es
-  REAL y honesto (por ejemplo, cuando de verdad quedan 3 unidades); por eso, si
-  el switch esta activo, la cantidad es obligatoria (> 0).
+  CONEXION CON INVENTARIO (Tanda 2 · la incision): Campanas YA se liga a
+  Inventario por product_id_ref (el <select id="cm-producto"> lo precarga y lo
+  guarda via la RPC). El estado "Agotado" YA NO es manual: se deriva SOLO del
+  stock REAL de Inventario (catalogo_publico.agotado = existencias <= 0) y la
+  tienda deshabilita la compra por si sola al llegar a cero. El campo
+  stock_disponible que se edita aqui sigue siendo un dato MANUAL de la tabla
+  campana_producto (lectura/escritura autenticada directa; NO alimenta el
+  Agotado real, se conserva por compatibilidad). El AVISO DE URGENCIA sigue
+  siendo MANUAL y honesto (por ejemplo, cuando de verdad quedan 3 unidades); por
+  eso, si el switch esta activo, la cantidad es obligatoria (> 0).
 
   NADA SE BORRA: despublicar NO borra la ficha (solo la saca de la tienda);
   inactivar seria baja logica. La informacion siempre queda viva.
@@ -66,6 +71,13 @@
               <option value="">Sin categoría</option>
             </select>
             <span class="cm-campo-ayuda">El color del banner es automático según la categoría (se ve en la vista previa). No hay color manual.</span>
+          </div>
+          <div class="cm-campo">
+            <label for="cm-producto" class="cm-campo-lbl">Producto de Inventario</label>
+            <select id="cm-producto" class="mk-select">
+              <option value="">Sin producto de inventario (se puede ligar luego)</option>
+            </select>
+            <span class="cm-campo-ayuda">Elige el producto ya registrado en Inventario. Primero se crea el producto en Inventario; aquí aparece por su SKU y nombre. El stock y el estado Agotado se toman automáticamente de Inventario.</span>
           </div>
           <div class="cm-campo">
             <label for="cm-nombre" class="cm-campo-lbl">Nombre del producto *</label>
@@ -323,6 +335,7 @@
     Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
 
   let categorias = [];
+  let productos = [];        // [{id,sku,nombre,precio_venta,activo}] de Inventario
   let campanaId = null;      // uuid de la campana en edicion (?id=...)
   let publicadoActual = false;
 
@@ -699,6 +712,28 @@
         el.addEventListener('input', refrescarPreview);
         el.addEventListener('change', refrescarPreview);
       });
+
+    // Producto de Inventario: al elegirlo, AUTO-SUGERIR nombre y precio SOLO si
+    // esos campos estan vacios. Campanas manda en la presentacion: nunca se
+    // pisa lo que el operador ya escribio (ni lo que ya venia precargado).
+    $('cm-producto').addEventListener('change', () => {
+      const prod = productos.find((p) => p.id === $('cm-producto').value);
+      if (prod) {
+        const campoNombre = $('cm-nombre');
+        if (!campoNombre.value.trim() && prod.nombre) campoNombre.value = prod.nombre;
+        const campoPrecio = $('cm-precio');
+        if (!campoPrecio.value.trim() && prod.precio_venta != null) {
+          // prod.precio_venta es un ENTERO CRUDO (bigint, pesos enteros) de
+          // Inventario: se asigna tal cual, SIN separadores de miles. El input
+          // es type=number y guardar() lo re-parsea con Math.trunc(Number(...)),
+          // asi que el valor que viaja a la RPC es exactamente el mismo bigint
+          // (no se altera). El formateo con separadores solo ocurre en la vista
+          // previa (formatearNumero), nunca en el input ni en el guardado.
+          campoPrecio.value = prod.precio_venta;
+        }
+      }
+      refrescarPreview();
+    });
   }
 
   // ------------------------------------------------------------
@@ -733,13 +768,50 @@
     }
   }
 
+  // Garantiza que el producto ligado (product_id_ref) tenga una <option> en el
+  // desplegable, aunque este INACTIVO (baja logica) y por eso no venga en la
+  // lista de activos del ARRANQUE. Sin esto, el value quedaria vacio y guardar
+  // des-ligaria la campana en silencio. Si el id no viene, o ya tiene opcion, no
+  // hace nada. Si la consulta falla, inyecta una opcion generica con el propio
+  // id para NO perder el enlace (guardar reenvia el mismo uuid).
+  async function asegurarOpcionProductoLigado(idLigado) {
+    if (!idLigado) return;
+    const sel = $('cm-producto');
+    // Ya representado por una opcion (producto activo cargado en el ARRANQUE).
+    if (productos.some((p) => p.id === idLigado)) return;
+    if (sel.querySelector('option[value="' + idLigado + '"]')) return;
+
+    let etiqueta = null;
+    try {
+      const { data: prod, error } = await supabase
+        .from('productos')
+        .select('id, sku, nombre, precio_venta, activo')
+        .eq('id', idLigado)
+        .maybeSingle();
+      if (!error && prod) {
+        // Lo sumamos a la lista en memoria para que la auto-sugerencia de
+        // nombre/precio tambien lo encuentre por id.
+        productos.push(prod);
+        etiqueta = (prod.sku || 's/sku') + ' - ' + (prod.nombre || 'sin nombre') +
+          (prod.activo ? '' : ' (inactivo)');
+      }
+    } catch (_) { /* sin red: caemos al texto generico de abajo */ }
+
+    const opt = document.createElement('option');
+    opt.value = idLigado;
+    // textContent escapa solo; nunca interpreta HTML. Si no pudimos leer el
+    // producto, mostramos el id para dejar claro que el enlace se conserva.
+    opt.textContent = etiqueta || ('Producto ligado (inactivo) · ' + idLigado);
+    sel.appendChild(opt);
+  }
+
   async function precargar() {
     const { data, error } = await supabase
       .from('campana_producto')
       .select('id, nombre, categoria_codigo, detalle_presentacion, hook_corto, imagen_banner_path, ' +
               'caracteristica_adicional, precio_venta, hook_largo, por_que_magandhi, sobre_este_producto, ' +
               'ficha_tecnica, imagenes, sello_elegido, estrella, stock_disponible, ' +
-              'aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, ' +
+              'aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, product_id_ref, ' +
               'campana_producto_etiqueta ( etiqueta_codigo )')
       .eq('id', campanaId)
       .maybeSingle();
@@ -754,6 +826,22 @@
     }
 
     $('cm-categoria').value = data.categoria_codigo || '';
+    // Preseleccionar el producto de Inventario ligado (si lo hay). El <select>
+    // ya viene lleno del ARRANQUE solo con productos activos.
+    //
+    // OJO (des-ligado silencioso): un producto puede estar en BAJA LOGICA
+    // (activo=false) y SEGUIR ligado a esta campana; eso es un estado normal del
+    // ecosistema (nada se borra). Ese producto NO aparece en el desplegable, asi
+    // que si solo hicieramos `value = product_id_ref`, el <select> quedaria vacio
+    // y, como cm_editar_campana asigna `product_id_ref = p_product_id_ref` de
+    // forma incondicional, el siguiente guardado BORRARIA el enlace sin que el
+    // operador lo tocara. Para preservar SIEMPRE el enlace precargado, si el id
+    // ligado no tiene opcion en la lista, inyectamos una opcion para ese producto
+    // (consultado aparte por id) marcada como "inactivo" y la seleccionamos, de
+    // modo que guardar reenvie el mismo id y el enlace NO se pierda. El operador
+    // solo lo cambia si elige otro producto o "Sin producto de inventario".
+    await asegurarOpcionProductoLigado(data.product_id_ref || null);
+    $('cm-producto').value = data.product_id_ref || '';
     $('cm-nombre').value = data.nombre || '';
     $('cm-detalle').value = data.detalle_presentacion || '';
     $('cm-hook-corto').value = data.hook_corto || '';
@@ -891,7 +979,9 @@
       p_stock_disponible: stock,
       p_aviso_urgencia_activo: avisoActivo,
       p_aviso_urgencia_cantidad: avisoCant,
-      p_etiquetas: recolectarEtiquetas()
+      p_etiquetas: recolectarEtiquetas(),
+      // Producto de Inventario ligado (uuid) o null si aun no se liga.
+      p_product_id_ref: $('cm-producto').value || null
     });
 
     if (error) {
@@ -970,15 +1060,20 @@
       return;
     }
 
-    // Cargar catalogos y la campana en paralelo.
-    const [catRes, tagRes] = await Promise.all([
+    // Cargar catalogos, etiquetas y los productos de Inventario en paralelo.
+    // La lectura de productos la permite la policy productos_select_marketing.
+    const [catRes, tagRes, prodRes] = await Promise.all([
       supabase.from('campana_categoria')
         .select('codigo, nombre, color_fuerte, color_claro, color_sombra, orden')
         .order('orden', { ascending: true }),
       supabase.from('campana_etiqueta')
         .select('codigo, nombre, orden')
         .eq('activo', true)
-        .order('orden', { ascending: true })
+        .order('orden', { ascending: true }),
+      supabase.from('productos')
+        .select('id, sku, nombre, precio_venta, activo')
+        .eq('activo', true)
+        .order('nombre', { ascending: true })
     ]);
 
     if (!catRes.error) {
@@ -988,6 +1083,28 @@
         const opt = document.createElement('option');
         opt.value = c.codigo;
         opt.textContent = c.nombre;
+        sel.appendChild(opt);
+      }
+    }
+
+    // Llenar el desplegable de productos ANTES de precargar (asi la preseleccion
+    // por product_id_ref encuentra su opcion). Un fallo de carga NO rompe el
+    // form: solo se avisa en una opcion deshabilitada.
+    if (prodRes.error) {
+      const sel = $('cm-producto');
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'No se pudieron cargar los productos de Inventario';
+      opt.disabled = true;
+      sel.appendChild(opt);
+    } else {
+      productos = prodRes.data || [];
+      const sel = $('cm-producto');
+      for (const p of productos) {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        // Texto SKU - nombre (textContent escapa solo; sin HTML interpretado).
+        opt.textContent = (p.sku || 's/sku') + ' - ' + (p.nombre || 'sin nombre');
         sel.appendChild(opt);
       }
     }

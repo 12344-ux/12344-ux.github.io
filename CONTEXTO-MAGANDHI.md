@@ -229,6 +229,24 @@ precio real (el Ranking deja de estimar — actualizar su marcador CONEXION FUTU
 correo normalizado → Email Marketing futuro, dirección → Mapas/Rutas futuro. Finanzas
 sigue DESCONECTADA (cita a ciegas).
 
+## 🩹 TANDA 2 — La incisión: Campañas ↔ Inventario (aplicada en código)
+
+**Estado:** la incisión que conecta el Área de Campañas (aprobada) con Inventario
+está **aplicada en código**, **pendiente de que el dueño corra el SQL**
+`supabase/migrations/20250503000000_campanas_incision_inventario.sql` en el SQL
+Editor y lo verifique. Qué enciende, en corto: FK `campana_producto.product_id_ref
+→ productos.id`; siembra de los 5 productos de Campañas en Inventario con **stock 0
+y CERO movimientos** (existen para que la tienda los muestre, sin tocar
+Contabilidad); `catalogo_publico` expone el booleano derivado **`agotado`** (del
+stock real) en vez de `stock_disponible`; desplegable de producto en el panel de
+Campañas; y la tienda muestra **Agotado** y **deshabilita la compra** sola cuando
+el stock llega a 0. Finanzas sigue DESCONECTADA a propósito. El aviso "Solo X
+disponibles" sigue siendo MANUAL.
+
+- **Mapa completo de tapetes (encendido / preparado / desconectado / línea roja):**
+  `docs/MAPA-CONEXIONES-TANDA2.md`.
+- **SQL y verificación:** `supabase/INSTRUCCIONES.md` → subsección **C4. Tanda 2**.
+
 ## Próximos pasos posibles (decidir con el dueño)
 
 - **CONSTRUIR VENTAS** (lo inmediato): mergear PR #183 y construir las 2 sub-áreas
