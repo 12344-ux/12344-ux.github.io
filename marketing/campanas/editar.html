@@ -68,6 +68,13 @@
             <span class="cm-campo-ayuda">El color del banner es automático según la categoría (se ve en la vista previa). No hay color manual.</span>
           </div>
           <div class="cm-campo">
+            <label for="cm-producto" class="cm-campo-lbl">Producto de Inventario</label>
+            <select id="cm-producto" class="mk-select">
+              <option value="">Sin producto de inventario (se puede ligar luego)</option>
+            </select>
+            <span class="cm-campo-ayuda">Elige el producto ya registrado en Inventario. Primero se crea el producto en Inventario; aquí aparece por su SKU y nombre. El stock y el estado Agotado se toman automáticamente de Inventario.</span>
+          </div>
+          <div class="cm-campo">
             <label for="cm-nombre" class="cm-campo-lbl">Nombre del producto *</label>
             <input id="cm-nombre" class="mk-input" type="text" maxlength="160" placeholder="Ej. Grisi Manzanilla Gold" required>
           </div>
@@ -323,6 +330,7 @@
     Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
 
   let categorias = [];
+  let productos = [];        // [{id,sku,nombre,precio_venta,activo}] de Inventario
   let campanaId = null;      // uuid de la campana en edicion (?id=...)
   let publicadoActual = false;
 
@@ -699,6 +707,22 @@
         el.addEventListener('input', refrescarPreview);
         el.addEventListener('change', refrescarPreview);
       });
+
+    // Producto de Inventario: al elegirlo, AUTO-SUGERIR nombre y precio SOLO si
+    // esos campos estan vacios. Campanas manda en la presentacion: nunca se
+    // pisa lo que el operador ya escribio (ni lo que ya venia precargado).
+    $('cm-producto').addEventListener('change', () => {
+      const prod = productos.find((p) => p.id === $('cm-producto').value);
+      if (prod) {
+        const campoNombre = $('cm-nombre');
+        if (!campoNombre.value.trim() && prod.nombre) campoNombre.value = prod.nombre;
+        const campoPrecio = $('cm-precio');
+        if (!campoPrecio.value.trim() && prod.precio_venta != null) {
+          campoPrecio.value = prod.precio_venta;
+        }
+      }
+      refrescarPreview();
+    });
   }
 
   // ------------------------------------------------------------
@@ -739,7 +763,7 @@
       .select('id, nombre, categoria_codigo, detalle_presentacion, hook_corto, imagen_banner_path, ' +
               'caracteristica_adicional, precio_venta, hook_largo, por_que_magandhi, sobre_este_producto, ' +
               'ficha_tecnica, imagenes, sello_elegido, estrella, stock_disponible, ' +
-              'aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, ' +
+              'aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, product_id_ref, ' +
               'campana_producto_etiqueta ( etiqueta_codigo )')
       .eq('id', campanaId)
       .maybeSingle();
@@ -754,6 +778,10 @@
     }
 
     $('cm-categoria').value = data.categoria_codigo || '';
+    // Preseleccionar el producto de Inventario ligado (si lo hay). El <select>
+    // ya viene lleno del ARRANQUE; si el product_id_ref no esta en la lista
+    // (producto inactivo, por ejemplo) el value queda vacio sin romper nada.
+    $('cm-producto').value = data.product_id_ref || '';
     $('cm-nombre').value = data.nombre || '';
     $('cm-detalle').value = data.detalle_presentacion || '';
     $('cm-hook-corto').value = data.hook_corto || '';
@@ -891,7 +919,9 @@
       p_stock_disponible: stock,
       p_aviso_urgencia_activo: avisoActivo,
       p_aviso_urgencia_cantidad: avisoCant,
-      p_etiquetas: recolectarEtiquetas()
+      p_etiquetas: recolectarEtiquetas(),
+      // Producto de Inventario ligado (uuid) o null si aun no se liga.
+      p_product_id_ref: $('cm-producto').value || null
     });
 
     if (error) {
@@ -970,15 +1000,20 @@
       return;
     }
 
-    // Cargar catalogos y la campana en paralelo.
-    const [catRes, tagRes] = await Promise.all([
+    // Cargar catalogos, etiquetas y los productos de Inventario en paralelo.
+    // La lectura de productos la permite la policy productos_select_marketing.
+    const [catRes, tagRes, prodRes] = await Promise.all([
       supabase.from('campana_categoria')
         .select('codigo, nombre, color_fuerte, color_claro, color_sombra, orden')
         .order('orden', { ascending: true }),
       supabase.from('campana_etiqueta')
         .select('codigo, nombre, orden')
         .eq('activo', true)
-        .order('orden', { ascending: true })
+        .order('orden', { ascending: true }),
+      supabase.from('productos')
+        .select('id, sku, nombre, precio_venta, activo')
+        .eq('activo', true)
+        .order('nombre', { ascending: true })
     ]);
 
     if (!catRes.error) {
@@ -988,6 +1023,28 @@
         const opt = document.createElement('option');
         opt.value = c.codigo;
         opt.textContent = c.nombre;
+        sel.appendChild(opt);
+      }
+    }
+
+    // Llenar el desplegable de productos ANTES de precargar (asi la preseleccion
+    // por product_id_ref encuentra su opcion). Un fallo de carga NO rompe el
+    // form: solo se avisa en una opcion deshabilitada.
+    if (prodRes.error) {
+      const sel = $('cm-producto');
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'No se pudieron cargar los productos de Inventario';
+      opt.disabled = true;
+      sel.appendChild(opt);
+    } else {
+      productos = prodRes.data || [];
+      const sel = $('cm-producto');
+      for (const p of productos) {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        // Texto SKU - nombre (textContent escapa solo; sin HTML interpretado).
+        opt.textContent = (p.sku || 's/sku') + ' - ' + (p.nombre || 'sin nombre');
         sel.appendChild(opt);
       }
     }
