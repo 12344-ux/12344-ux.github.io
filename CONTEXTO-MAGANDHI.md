@@ -403,17 +403,28 @@ gestionables, slug, es_placeholder), `20250503000000` (Tanda 2: la incisión con
   stock exacto, product_id_ref, es_placeholder, ni etiquetas. Candado doble (tablas base
   sin grant a anon + lista blanca de columnas).
 
-### 4. LA INCISIÓN (Tanda 2) — Campañas ↔ Inventario conectado
-Ver `docs/MAPA-CONEXIONES-TANDA2.md` (mapa completo de tapetes). Migración `20250503000000`.
+### 4. LA INCISIÓN (Tanda 2) — Campañas ↔ Inventario conectado ✅ APLICADO Y VERIFICADO
+Ver `docs/MAPA-CONEXIONES-TANDA2.md` (mapa completo de tapetes). Migración `20250503000000`
+**ya aplicada por el dueño y verificada con evidencia** (los 5 ligados, 0 movimientos, la
+vista expone `agotado` sin stock exacto).
 - Los 5 productos (Grisi + 4 ejemplos) SEMBRADOS en Inventario con **stock 0 y CERO
-  movimientos** (`inv_crear_producto` con cantidad_inicial=0 no toca el libro) → NO afecta
-  Contabilidad. Marcados con `productos.es_placeholder`.
+  movimientos** → NO afecta Contabilidad (verificado: la consulta de movimientos dio 0).
+  Marcados con `productos.es_placeholder`.
+- ⚠️ LECCIÓN TÉCNICA: la siembra al principio llamaba a `inv_crear_producto`, pero esa
+  función valida `tiene_acceso_inventario()` que resuelve por `auth.uid()`; en el SQL
+  Editor `auth.uid()` es NULL → rechazó con **P0001 "Acceso denegado"**. Fix (PR #191): la
+  siembra INSERTA DIRECTO en `productos` (operación de administración que corre el dueño),
+  replicando la generación de SKU, sin debilitar el guardia de la función. REGLA para el
+  próximo Kiro: cualquier migración que el dueño corra en el SQL Editor y llame una RPC con
+  guardia `tiene_acceso_*()` FALLARÁ (no hay usuario logueado); usa insert/operación directa
+  en esos seeds de administración.
 - FK `campana_producto.product_id_ref → productos(id)` ENCENDIDA.
 - **Desplegable** en el panel: primero registras el producto en Inventario → aparece en
   el select → lo eliges al crear/editar la campaña.
 - **Agotado automático:** `catalogo_publico` expone booleano derivado `agotado`
   (existencias<=0 del stock REAL), NUNCA el número exacto. Stock 0 → sello Agotado +
-  botón compra deshabilitado. Sube el stock → se reactiva solo.
+  botón compra deshabilitado. Sube el stock → se reactiva solo. (Hoy los 5 salen Agotado
+  porque tienen stock 0 — es correcto y esperado hasta que el dueño cargue unidades reales.)
 - Triángulo **Campaña ↔ Producto ↔ Venta** cerrado sobre `productos.id`.
 
 ## DECISIÓN DE ORO del dueño (grábala): productos ficticios NO se editan, se REEMPLAZAN
@@ -425,9 +436,10 @@ un producto NUEVO con su cédula limpia** cuando llegue el real. Por eso existe 
 `campana_producto` Y en `productos`. El dueño pidió orientación para hacerlo cuando toque.
 
 ## PENDIENTES / PRÓXIMOS PASOS (lo que sigue)
-- **Aplicar en Supabase (el dueño, a mano):** migración `20250503000000` (Tanda 2), ver
-  `supabase/INSTRUCCIONES.md` subsección C4. Las de Ventas, Campañas cimiento y Tanda 1
-  YA están aplicadas y verificadas.
+- **TODO EL SQL DE ESTA SESIÓN YA ESTÁ APLICADO Y VERIFICADO** (Ventas, Campañas cimiento,
+  Tanda 1, Tanda 2/incisión). No queda SQL pendiente de esta sesión. El ecosistema está
+  completo y en producción: la tienda lee de Campañas en vivo, conectada a Inventario, con
+  Agotado real. Todos los PRs (#185-#191 back-office, #16-#35 tienda) MERGEADOS.
 - **Reemplazar los 4 placeholders por productos reales** cuando el dueño haga su análisis
   de mercado (retirar + crear nuevos, NO editar). Orientarlo en el proceso.
 - **Más etiquetas de segmentación con criterio** (definir con el dueño el catálogo, pensado
@@ -451,8 +463,11 @@ despliega. (d) "Hacer las cosas bien", sin afán. (e) Verificar con evidencia, n
 papel. (f) Montos bigint; nada se borra; seguridad = línea roja (RLS + RPC security
 definer + vista pública con lista blanca; cero service_role en repos).
 
-_Sesión CAMPAÑAS: se construyó Ventas, se rediseñó la tienda (grid color=categoría +
-masonry móvil), y se creó el software Campañas completo (isla → Tanda 1 → incisión con
-Inventario). PRs de la sesión: Ventas #185; tienda #16-#35; back-office #186-#189. La
-sesión más importante del proyecto — marcó el rumbo de cómo se vestirá y venderá cada
-producto._
+_Sesión CAMPAÑAS (CERRADA, todo en producción): se construyó Ventas, se rediseñó la tienda
+(grid color=categoría + masonry móvil), y se creó el software Campañas completo (isla →
+Tanda 1 → incisión con Inventario), TODO aplicado en Supabase y verificado con evidencia.
+PRs de la sesión, TODOS MERGEADOS: back-office #185-#191; tienda #16-#35. Estado final: la
+tienda pública lee de Campañas en vivo, conectada a Inventario, con Agotado automático desde
+el stock real, y datos de clientes/seguridad intactos (Contabilidad no se tocó: 0 movimientos
+en la siembra). La sesión más importante del proyecto — marcó el rumbo de cómo se viste y se
+vende cada producto. El próximo Kiro retoma desde "PENDIENTES / PRÓXIMOS PASOS" arriba._
