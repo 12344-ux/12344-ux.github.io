@@ -1221,21 +1221,33 @@ archivo (cada uno con su propio **Run**):
    Siembra los 5 productos actuales del home (Grisi real + 4 de ejemplo) con ids
    fijos e idempotencia (`on conflict (id) do update`), y asigna etiquetas de
    segmentacion por producto. Todos con `publicado=true`.
+9. `supabase/migrations/20250502000000_campanas_placeholder_slug.sql` **(Tanda 1)**
+   Anade a `campana_producto` la columna INTERNA `es_placeholder` (marca true los
+   4 productos ficticios de ejemplo ...0c0002..0c0005 y false el Grisi ...0c0001)
+   y la columna PUBLICA `slug` (con indice unico parcial e slugs legibles para los
+   5 seeds). REDEFINE la vista `catalogo_publico` agregando SOLO `slug` a la lista
+   blanca (NUNCA `es_placeholder` ni columnas internas), conservando el WHERE y el
+   resto de columnas EXACTO. Crea las RPC security definer `cm_crear_etiqueta`
+   (normaliza el codigo, rechaza duplicados) y `cm_editar_etiqueta` (edita/desactiva
+   por baja logica, sin cambiar el codigo). No necesita GRANT nuevo (el grant de
+   tabla cubre las columnas nuevas; las funciones ya otorgan EXECUTE a PUBLIC).
 
 Los archivos son idempotentes (`create ... if not exists`, `create or replace`,
 `drop policy if exists`, `on conflict do update`, guard sobre `pg_constraint`):
 si algo falla a mitad, puedes re-ejecutar sin duplicar nada.
 
-## C2. Imagenes de Campanas (Storage) · opcional
+## C2. Imagenes de Campanas (Storage) · REQUERIDO (Tanda 1)
 
-Si en el panel (FEAT-003) decides subir imagenes de banner/galeria desde el
-navegador, crea en **Storage** un bucket llamado `campanas`:
+El panel de Campanas (FEAT-002) sube imagenes de banner/galeria desde el
+navegador con la SESION del usuario (nunca service_role), asi que el bucket
+`campanas` es un **paso requerido**: crealo en **Storage** antes de usar el
+cargador de imagenes.
 
 1. En el menu lateral abre **Storage** y pulsa **New bucket**.
 2. Nombre: `campanas`. Marca **Public bucket** (lectura publica: la tienda debe
    poder mostrar las imagenes sin login).
-3. Para la ESCRITURA (subir/borrar), agrega una policy que exija acceso de
-   Marketing, por ejemplo (Storage usa la tabla `storage.objects`):
+3. Para la ESCRITURA (subir/borrar), agrega estas policies que exijan acceso de
+   Marketing (Storage usa la tabla `storage.objects`):
 
    ```sql
    -- Lectura publica de las imagenes de campanas
@@ -1249,8 +1261,10 @@ navegador, crea en **Storage** un bucket llamado `campanas`:
      with check (bucket_id = 'campanas' and tiene_acceso_marketing());
    ```
 
-   Mientras no se suban imagenes desde el panel, los campos `imagen_banner_path`
-   e `imagenes` pueden apuntar a rutas del repo de la tienda (como el Grisi).
+   El Grisi puede seguir apuntando a una ruta del repo de la tienda en
+   `imagen_banner_path`; los productos nuevos que se creen desde el panel usaran
+   este bucket. Sin el bucket creado, el cargador de imagenes de FEAT-002 fallara
+   al subir.
 
 ## C3. Como verificar que quedo bien
 
@@ -1325,6 +1339,51 @@ Ejecuta estas consultas en el SQL Editor:
    ```sql
    select count(*) from campana_producto_etiqueta;   -- > 0 (asignadas en el seed)
    ```
+
+### Verificaciones de la Tanda 1 (es_placeholder, slug y RPC de etiquetas)
+
+8. **La vista publica ahora trae `slug` pero NO `es_placeholder`.** La primera
+   consulta funciona (slug es publico); la segunda DEBE fallar con "column ...
+   does not exist" porque `es_placeholder` es interno y no entra en la vista:
+
+   ```sql
+   select id, nombre, slug from catalogo_publico order by orden;  -- funciona (5 filas)
+   select es_placeholder from catalogo_publico limit 1;           -- error esperado
+   ```
+
+9. **Los 4 ficticios quedan marcados y el Grisi no.** Debe devolver 4 filas true
+   (los de ejemplo) y el Grisi ...0c0001 en false:
+
+   ```sql
+   select id, nombre, es_placeholder, slug
+     from campana_producto
+    order by orden;
+   ```
+
+10. **`cm_crear_etiqueta` normaliza el codigo y rechaza duplicados.** El primer
+    llamado inserta y devuelve `{"codigo": "regalo_premium"}` (minusculas, sin
+    acentos, espacio -> guion_bajo); el segundo DEBE fallar por duplicado:
+
+    ```sql
+    select cm_crear_etiqueta('Regalo Premium', 'Regalo premium', 'Set de regalo de mayor valor.', 10);
+    select cm_crear_etiqueta('regalo premium', 'Otro');   -- error esperado (ya existe)
+    ```
+
+11. **`cm_editar_etiqueta` puede DESACTIVAR (baja logica, sin borrar).** Al
+    desactivar, la etiqueta sigue existiendo con `activo=false`:
+
+    ```sql
+    select cm_editar_etiqueta('regalo_premium', 'Regalo premium', null, 10, false);
+    select codigo, activo from campana_etiqueta where codigo = 'regalo_premium';  -- activo=false
+    ```
+
+12. **Escribir etiquetas sin acceso de marketing es RECHAZADO** (con un
+    rol/usuario sin la clave de Marketing, DEBE dar "Acceso denegado: se requiere
+    el modulo marketing."):
+
+    ```sql
+    select cm_crear_etiqueta('prueba', 'Prueba sin acceso');
+    ```
 
 Como las RPC usan `create or replace` y las tablas/vista son idempotentes, si
 mas adelante ajustas algo basta con **volver a ejecutar solo el archivo que

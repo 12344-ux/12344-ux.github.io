@@ -46,6 +46,19 @@
 }
 .cm-btn-primario:hover{background:var(--mk-marino-2);transform:translateY(-1px)}
 .cm-btn-primario svg{width:18px;height:18px;flex:none}
+/* Grupo de acciones de la barra (Gestionar etiquetas + Agregar campana). */
+.cm-barra-acciones{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* Boton secundario sobrio (borde), para acciones no primarias como
+   "Gestionar etiquetas". Mismo tamano y forma que el primario. */
+.cm-btn-secundario{
+  display:inline-flex;align-items:center;gap:9px;
+  font-family:inherit;font-size:14.5px;font-weight:600;letter-spacing:.02em;
+  color:var(--mk-marino);background:transparent;border:1px solid var(--mk-linea);
+  border-radius:11px;padding:11px 20px;cursor:pointer;text-decoration:none;
+  transition:background-color .15s ease, border-color .15s ease, transform .1s ease;
+}
+.cm-btn-secundario:hover{background:rgba(16,28,51,.05);border-color:var(--mk-azul-cl);transform:translateY(-1px)}
+.cm-btn-secundario svg{width:18px;height:18px;flex:none}
 
 /* ============================================================
    LISTA DE CAMPANAS (tarjetas)
@@ -458,6 +471,148 @@
 .cm-publicar-caja .cm-pub-texto b{display:block;font-size:14px;color:var(--mk-marino)}
 .cm-publicar-caja .cm-pub-texto span{font-size:12.5px;color:var(--mk-gris)}
 
+/* ============================================================
+   CARGADOR DE IMAGENES (banner + galeria): boton explorador + drag & drop
+   ------------------------------------------------------------
+   Reemplaza los antiguos campos de "pegar path/URL". La imagen se optimiza en
+   el navegador (marketing-core.js optimizarImagen/optimizarDosTamanos, WebP con
+   fallback a JPEG) y se sube al bucket 'campanas' con la SESION del usuario.
+   ============================================================ */
+
+/* Zona de arrastrar y soltar (comun a banner y galeria). */
+.cm-drop{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;text-align:center;
+  border:1.6px dashed var(--mk-linea);border-radius:12px;
+  padding:20px 18px;background:rgba(16,28,51,.02);
+  transition:border-color .15s ease, background-color .15s ease;
+}
+.cm-drop.arrastrando{
+  border-color:var(--mk-marino);background:rgba(16,28,51,.06);
+}
+.cm-drop-ico{width:30px;height:30px;color:var(--mk-marino);opacity:.8}
+.cm-drop-ico svg{width:100%;height:100%}
+.cm-drop-txt{font-size:13px;color:var(--mk-gris);line-height:1.4}
+.cm-drop-txt b{color:var(--mk-marino);font-weight:600}
+/* Boton "Elegir archivo(s)" (dispara el input file oculto). */
+.cm-elegir{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:inherit;font-size:13px;font-weight:600;color:var(--mk-marino);
+  background:var(--mk-tarjeta);border:1px solid var(--mk-linea);border-radius:10px;
+  padding:9px 16px;cursor:pointer;transition:background-color .15s ease, border-color .15s ease;
+}
+.cm-elegir:hover{background:rgba(16,28,51,.05);border-color:var(--mk-azul-cl)}
+.cm-elegir svg{width:15px;height:15px;flex:none}
+/* Input file real: oculto por accesibilidad (se dispara con el boton/zona). */
+.cm-file-oculto{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* Previsualizacion del banner (una sola imagen). */
+.cm-banner-carga{display:flex;flex-direction:column;gap:12px}
+.cm-banner-prev{
+  position:relative;border-radius:12px;overflow:hidden;
+  border:1px solid var(--mk-linea);background:rgba(16,28,51,.03);
+  aspect-ratio:16/9;display:none;
+}
+.cm-banner-prev.tiene{display:block}
+.cm-banner-prev img{width:100%;height:100%;object-fit:cover;display:block}
+.cm-banner-prev .cm-prev-quitar{
+  position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:8px;
+  display:inline-flex;align-items:center;justify-content:center;cursor:pointer;
+  color:#fff;background:rgba(16,28,51,.72);border:0;
+}
+.cm-banner-prev .cm-prev-quitar:hover{background:rgba(166,51,46,.9)}
+.cm-banner-prev .cm-prev-quitar svg{width:16px;height:16px}
+.cm-carga-info{font-size:11.5px;color:var(--mk-gris)}
+
+/* ------------------------------------------------------------
+   GALERIA · miniaturas reordenables tipo Spotify (drag & drop nativo)
+   El PRIMER elemento del arreglo es la imagen PRINCIPAL (etiqueta visible).
+   El orden del DOM = orden del arreglo que se guarda en imagenes jsonb.
+   ------------------------------------------------------------ */
+.cm-galeria{
+  display:grid;gap:12px;margin-top:12px;
+  grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+}
+.cm-galeria-item{
+  position:relative;border-radius:12px;overflow:hidden;
+  border:1px solid var(--mk-linea);background:var(--mk-tarjeta);
+  box-shadow:0 1px 2px rgba(16,28,51,.05);
+  transition:box-shadow .12s ease, border-color .12s ease, opacity .12s ease;
+}
+.cm-galeria-item:hover{box-shadow:0 6px 16px rgba(16,28,51,.12)}
+/* Estado mientras se arrastra esta miniatura. */
+.cm-galeria-item.arrastrando{opacity:.4;border-color:var(--mk-marino)}
+/* Marca de destino donde se soltara (linea de insercion). */
+.cm-galeria-item.sobre{border-color:var(--mk-marino);box-shadow:0 0 0 2px rgba(16,28,51,.25)}
+.cm-galeria-foto{aspect-ratio:1/1;background:rgba(16,28,51,.03)}
+.cm-galeria-foto img{width:100%;height:100%;object-fit:cover;display:block}
+/* Etiqueta "Principal" sobre la primera miniatura del arreglo. */
+.cm-galeria-item .cm-principal{
+  position:absolute;top:8px;left:8px;display:none;
+  font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+  color:#fff;background:var(--mk-marino);border-radius:999px;padding:3px 9px;
+}
+.cm-galeria-item.es-principal .cm-principal{display:inline-flex}
+.cm-galeria-item.es-principal{border-color:var(--mk-marino)}
+/* Asa de arrastre (manija): area para tomar y reordenar. */
+.cm-galeria-asa{
+  position:absolute;top:8px;right:38px;width:28px;height:28px;border-radius:8px;
+  display:inline-flex;align-items:center;justify-content:center;cursor:grab;
+  color:#fff;background:rgba(16,28,51,.6);
+}
+.cm-galeria-asa:active{cursor:grabbing}
+.cm-galeria-asa svg{width:16px;height:16px}
+/* Boton quitar miniatura. */
+.cm-galeria-quitar{
+  position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:8px;
+  display:inline-flex;align-items:center;justify-content:center;cursor:pointer;
+  color:#fff;background:rgba(16,28,51,.6);border:0;
+}
+.cm-galeria-quitar:hover{background:rgba(166,51,46,.9)}
+.cm-galeria-quitar svg{width:15px;height:15px}
+/* Pie de la miniatura: numero de orden. */
+.cm-galeria-pie{
+  display:flex;align-items:center;justify-content:space-between;gap:6px;
+  padding:6px 9px;font-size:11px;color:var(--mk-gris);
+  border-top:1px solid var(--mk-linea);
+}
+.cm-galeria-pie .cm-galeria-num{font-weight:600;color:var(--mk-marino);font-variant-numeric:tabular-nums}
+
+/* ============================================================
+   PANTALLA DE ETIQUETAS (etiquetas.html)
+   ============================================================ */
+/* Icono de cabecera de seccion (cuando no lleva numero). */
+.cm-seccion-num{flex:none}
+.cm-seccion-ico{flex:none;width:30px;height:30px;color:var(--mk-marino)}
+.cm-seccion-ico svg{width:100%;height:100%}
+/* Codigo sugerido en vivo (monoespaciado sobrio). */
+.cm-codigo-sug{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color:var(--mk-marino);
+}
+/* Lista de etiquetas del catalogo. */
+.cm-et-lista{display:flex;flex-direction:column;gap:14px}
+.cm-et-item{
+  border:1px solid var(--mk-linea);border-radius:12px;padding:16px 18px;
+  background:var(--mk-tarjeta);display:flex;flex-direction:column;gap:12px;
+}
+.cm-et-item.inactiva{opacity:.72;background:rgba(16,28,51,.02)}
+.cm-et-cab{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.cm-et-ids{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.cm-et-nombre{font-size:15px;font-weight:600;color:var(--mk-marino)}
+.cm-et-codigo{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:12px;color:var(--mk-gris);background:rgba(16,28,51,.05);
+  border-radius:6px;padding:2px 8px;
+}
+.cm-et-campos{display:grid;gap:12px;grid-template-columns:1fr 1.4fr auto;align-items:end}
+.cm-et-campos .cm-campo{gap:5px}
+.cm-et-acciones{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cm-et-fila-msg{font-size:12.5px}
+.cm-et-fila-msg[hidden]{display:none}
+.cm-et-fila-msg.err{color:var(--mk-acento)}
+.cm-et-fila-msg.ok{color:#2F6E4E}
+
 /* ------------------------------------------------------------
    RESPONSIVE
    ------------------------------------------------------------ */
@@ -468,4 +623,7 @@
 @media (max-width:560px){
   .cm-campos.dos{grid-template-columns:1fr}
   .cm-ficha-fila{grid-template-columns:1fr auto}
+  .cm-et-campos{grid-template-columns:1fr}
+  .cm-barra-acciones{width:100%}
+  .cm-barra-acciones a{flex:1;justify-content:center}
 }

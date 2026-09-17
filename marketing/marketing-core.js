@@ -143,6 +143,16 @@ export const ICONOS = {
 // Iconos extra para navegacion / perfil (flecha de retroceso, salir).
 ICONOS.flecha = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>';
 ICONOS.salir = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>';
+// upload: subir/elegir imagen (mismo trazo que el set de Produccion).
+ICONOS.upload = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/></svg>';
+// imagen: marcador de banner sin foto.
+ICONOS.imagen = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.5-3.5a2 2 0 0 0-2.8 0L4 22"/></svg>';
+// mas: agregar (boton "Agregar imagenes").
+ICONOS.mas = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>';
+// equis: quitar una miniatura de la galeria.
+ICONOS.equis = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+// asa: manija de arrastre (reorden tipo Spotify de la galeria).
+ICONOS.asa = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg>';
 
 // ------------------------------------------------------------
 // HEADER INSTITUCIONAL
@@ -324,6 +334,162 @@ export function formatearFecha(iso) {
   if (!y || !m || !d) return String(iso);
   const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
   return `${String(d).padStart(2, '0')} ${meses[m - 1]} ${y}`;
+}
+
+// ============================================================
+//  IMAGENES · optimizacion en el navegador antes de subir
+//  ------------------------------------------------------------
+//  Espejo de produccion/inventario-core.js (optimizarImagen: createImageBitmap
+//  + canvas + toBlob, urlPublicaImagen, BUCKET_*). Se replica aqui con
+//  atribucion para que Campanas no dependa de Produccion (cada area es
+//  clonable por separado; el ecosistema Impulse valora eso).
+//
+//  MEJORA de CALIDAD BOUTIQUE (decision del dueno: paga Storage con tal de que
+//  las fotos se vean de lujo, sobre todo para Ventas): se prefiere WebP cuando
+//  el navegador sabe generarlo (mejor relacion calidad/peso) con FALLBACK a
+//  JPEG; y se generan DOS tamanos: uno GRANDE (~1600px, calidad ~0.85) para la
+//  pagina de producto y uno LIVIANO (~800px, calidad ~0.8) para las tarjetas
+//  del grid, para no penalizar la carga del listado.
+//
+//  SEGURIDAD (no negociable): la subida es SIEMPRE con la SESION del usuario
+//  autenticado (supabase.storage.from(BUCKET_CAMPANAS).upload(...)); NUNCA con
+//  service_role. El bucket 'campanas' (publico solo lectura; escritura por
+//  policy de marketing) lo crea el DUENO en el dashboard de Supabase
+//  (documentado en supabase/INSTRUCCIONES.md, seccion CAMPANAS C2).
+// ============================================================
+
+/**
+ * Nombre del bucket de Storage donde viven las imagenes de campana (banner y
+ * galeria del producto). El bucket y sus policies los crea el DUENO en el
+ * dashboard de Supabase (INSTRUCCIONES.md C2). El cliente solo sube con la
+ * SESION del usuario autenticado; NUNCA con service_role.
+ */
+export const BUCKET_CAMPANAS = 'campanas';
+
+/**
+ * URL publica de una imagen de campana a partir de su path guardado
+ * (imagen_banner_path o cada entrada del arreglo imagenes). Si no hay path,
+ * devuelve ''. Usa el bucket publico 'campanas'.
+ * @param {string} path path guardado en Storage (sin prefijo del bucket)
+ * @returns {string} URL publica o ''
+ */
+export function urlPublicaImagen(path) {
+  if (!path) return '';
+  try {
+    const { data } = supabase.storage.from(BUCKET_CAMPANAS).getPublicUrl(path);
+    return data?.publicUrl || '';
+  } catch (_) {
+    return '';
+  }
+}
+
+/**
+ * True si el navegador sabe CODIFICAR WebP con canvas.toBlob. Se prueba una
+ * sola vez (cache) generando un canvas 1x1 y mirando el data URL resultante.
+ * @returns {boolean}
+ */
+let _soportaWebp = null;
+export function soportaWebP() {
+  if (_soportaWebp !== null) return _soportaWebp;
+  try {
+    const c = document.createElement('canvas');
+    c.width = 1; c.height = 1;
+    _soportaWebp = c.toDataURL('image/webp').startsWith('data:image/webp');
+  } catch (_) {
+    _soportaWebp = false;
+  }
+  return _soportaWebp;
+}
+
+/**
+ * Optimiza una imagen EN EL NAVEGADOR antes de subirla (decision explicita del
+ * dueno: que el sistema ajuste las fotos para que no pesen tanto SIN perder
+ * calidad boutique). Redimensiona al borde mayor ~maxBorde px, re-codifica al
+ * mejor formato disponible (WebP si el navegador lo soporta; si toBlob de WebP
+ * devuelve null, cae a JPEG) y devuelve un Blob. No sube nada: solo procesa.
+ *
+ * Tecnica identica a inventario-core.js: createImageBitmap decodifica sin
+ * insertar la imagen en el DOM (rapido) con fallback a Image().
+ *
+ * @param {File|Blob} archivo imagen original elegida por el usuario
+ * @param {object} [opts]
+ * @param {number} [opts.maxBorde=1600] borde mayor maximo en px
+ * @param {number} [opts.calidad=0.85] calidad de codificacion (0..1)
+ * @param {boolean} [opts.preferirWebp=true] usar WebP si el navegador lo soporta
+ * @returns {Promise<{blob:Blob, ancho:number, alto:number, tipo:string, ext:string}>}
+ */
+export async function optimizarImagen(archivo, opts) {
+  const maxBorde = (opts && opts.maxBorde) || 1600;
+  const calidad = (opts && typeof opts.calidad === 'number') ? opts.calidad : 0.85;
+  const preferirWebp = !opts || opts.preferirWebp !== false;
+
+  let bitmap;
+  if (typeof createImageBitmap === 'function') {
+    bitmap = await createImageBitmap(archivo);
+  } else {
+    bitmap = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = URL.createObjectURL(archivo);
+    });
+  }
+
+  const anchoOrig = bitmap.width;
+  const altoOrig = bitmap.height;
+  const borde = Math.max(anchoOrig, altoOrig);
+  const escala = borde > maxBorde ? maxBorde / borde : 1;
+  const ancho = Math.max(1, Math.round(anchoOrig * escala));
+  const alto = Math.max(1, Math.round(altoOrig * escala));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = ancho;
+  canvas.height = alto;
+  const ctx = canvas.getContext('2d');
+  // Fondo blanco por si la imagen trae transparencia (JPEG no tiene alpha; y
+  // en WebP mantiene un fondo consistente para fotos de producto).
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, ancho, alto);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(bitmap, 0, 0, ancho, alto);
+  if (bitmap.close) bitmap.close();
+
+  // Intento 1: WebP (mejor calidad/peso) si el navegador lo soporta.
+  const usarWebp = preferirWebp && soportaWebP();
+  let tipo = usarWebp ? 'image/webp' : 'image/jpeg';
+  let ext = usarWebp ? 'webp' : 'jpg';
+
+  let blob = await new Promise((resolve) => {
+    canvas.toBlob((b) => resolve(b), tipo, calidad);
+  });
+
+  // Fallback a JPEG si WebP no produjo blob (algunos navegadores devuelven null).
+  if (!blob && usarWebp) {
+    tipo = 'image/jpeg';
+    ext = 'jpg';
+    blob = await new Promise((resolve) => {
+      canvas.toBlob((b) => resolve(b), tipo, calidad);
+    });
+  }
+
+  if (!blob) throw new Error('No se pudo procesar la imagen.');
+  return { blob, ancho, alto, tipo, ext };
+}
+
+/**
+ * Genera DOS tamanos de una misma imagen para no penalizar la carga del grid:
+ *   · grande  (~1600px, calidad ~0.85): la pagina de producto (calidad boutique).
+ *   · liviana (~800px, calidad ~0.8): las tarjetas del grid / miniaturas.
+ * Ambos prefieren WebP con fallback a JPEG (misma extension en las dos, la que
+ * el navegador haya podido generar). Devuelve los blobs listos para subir.
+ *
+ * @param {File|Blob} archivo imagen original
+ * @returns {Promise<{grande:{blob:Blob,tipo:string,ext:string,ancho:number,alto:number}, liviana:{blob:Blob,tipo:string,ext:string,ancho:number,alto:number}}>}
+ */
+export async function optimizarDosTamanos(archivo) {
+  const grande = await optimizarImagen(archivo, { maxBorde: 1600, calidad: 0.85 });
+  const liviana = await optimizarImagen(archivo, { maxBorde: 800, calidad: 0.8 });
+  return { grande, liviana };
 }
 
 // ============================================================
