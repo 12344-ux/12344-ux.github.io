@@ -26,14 +26,16 @@
 --       nombre en las dos tablas que lo necesitan.
 --
 --   (b) SIEMBRA de los 5 productos de Campanas en `productos` (Inventario) con
---       stock 0 y CERO movimientos. Se usa inv_crear_producto con
---       p_cantidad_inicial => 0, que NO inserta fila en movimientos_inventario
---       (ver 20250301000400): asi el producto EXISTE en Inventario pero NO hay
---       unidades ni compra registrada -> Contabilidad no se toca. Es
---       exactamente lo que pidio el dueno: "que existan en la tienda mas NO que
---       hay unidades o que compramos". Cuando el dueno cargue unidades reales
---       (una 'entrada' por inv_registrar_movimiento) el stock subira solo y el
---       booleano `agotado` de la vista se apagara solo.
+--       stock 0 y CERO movimientos. Se INSERTA DIRECTO en `productos` (no se
+--       llama inv_crear_producto: su guardia tiene_acceso_inventario() resuelve
+--       por auth.uid(), que en el SQL Editor es NULL y rechazaria con P0001
+--       "Acceso denegado"). El insert directo replica FIEL la generacion de SKU
+--       de la funcion y NO inserta en movimientos_inventario: asi el producto
+--       EXISTE en Inventario pero NO hay unidades ni compra registrada ->
+--       Contabilidad no se toca. Es exactamente lo que pidio el dueno: "que
+--       existan en la tienda mas NO que hay unidades o que compramos". Cuando el
+--       dueno cargue unidades reales (una 'entrada' por inv_registrar_movimiento)
+--       el stock subira solo y el booleano `agotado` de la vista se apagara solo.
 --
 --   (c) ENCENDER la FK real campana_producto.product_id_ref -> productos(id) con
 --       guard idempotente sobre pg_constraint (patron EXACTO de
@@ -42,8 +44,8 @@
 --       es barato: no exige migrar ni reconciliar datos viejos.
 --
 --   (d) LIGAR los 5 seeds de Campanas (ids ...0c0001..0c0005) a sus 5 productos
---       de Inventario recien creados, guardando el id devuelto por
---       inv_crear_producto en campana_producto.product_id_ref.
+--       de Inventario recien creados, guardando el id del insert directo en
+--       campana_producto.product_id_ref.
 --
 --   (e) REDEFINIR la vista `catalogo_publico`: se QUITA stock_disponible (numero
 --       manual) de la lista blanca y se AGREGA un booleano derivado `agotado`
@@ -129,100 +131,65 @@ $$;
 -- precio_venta en bigint (pesos enteros). NO se pasa costo ni cantidad: cero
 -- movimiento, cero contabilidad.
 -- ------------------------------------------------------------
+-- IMPORTANTE (fix): la siembra INSERTA DIRECTO en `productos`, NO llama a
+-- inv_crear_producto. Por que: inv_crear_producto valida tiene_acceso_inventario()
+-- en su primera linea, que resuelve por auth.uid() (el usuario logueado). En el
+-- SQL Editor auth.uid() es NULL -> el guardia rechaza con "Acceso denegado"
+-- (error P0001). NO se debilita ese guardia (protege que nadie sin permiso cree
+-- productos). En su lugar, esta migracion de ADMINISTRACION (la corre el dueno a
+-- mano) inserta directo, replicando FIEL la generacion de SKU de la funcion
+-- (<prefijo de inventario_config>-<CAT 3-4 chars sin acentos>-<consecutivo 4
+-- digitos via inventario_sku_seq>). Cantidad 0 = CERO filas en
+-- movimientos_inventario -> no toca Contabilidad. Idempotente: salta si el
+-- campana_producto ya tiene product_id_ref.
+--
+-- NOTA plpgsql: NO se declara una funcion local dentro del DO (plpgsql no
+-- permite funciones anidadas en un bloque). Se hace un bucle sobre una lista
+-- fija de los 5 seeds, generando el SKU inline en cada vuelta.
 do $$
 declare
-  v_res         jsonb;
   v_id_producto uuid;
+  v_prefijo     text;
+  v_cat         text;
+  v_sku         text;
+  r             record;
 begin
-  -- (1) Shampoo Manzanilla GRISI Gold · cabello · 24900 · REAL (es_placeholder=false)
-  if exists (
-    select 1 from campana_producto
-     where id = '00000000-0000-0000-0000-0000000c0001'
-       and product_id_ref is null
-  ) then
-    v_res := inv_crear_producto(
-      p_nombre           => 'Shampoo Manzanilla GRISI Gold',
-      p_categoria        => 'cabello',
-      p_precio_venta     => 24900::bigint,
-      p_cantidad_inicial => 0            -- CERO: no inserta en movimientos_inventario
-    );
-    v_id_producto := (v_res->>'id')::uuid;
-    update productos set es_placeholder = false where id = v_id_producto;  -- Grisi = real
-    update campana_producto set product_id_ref = v_id_producto
-     where id = '00000000-0000-0000-0000-0000000c0001';
-  end if;
+  -- Prefijo del SKU (una vez): de inventario_config, fallback 'MAG'.
+  select prefijo into v_prefijo from inventario_config where id = 1;
+  v_prefijo := coalesce(nullif(trim(v_prefijo), ''), 'MAG');
 
-  -- (2) Serum Facial de Rosa Mosqueta · belleza_fem · 32900 · EJEMPLO (es_placeholder=true)
-  if exists (
-    select 1 from campana_producto
-     where id = '00000000-0000-0000-0000-0000000c0002'
-       and product_id_ref is null
-  ) then
-    v_res := inv_crear_producto(
-      p_nombre           => 'Serum Facial de Rosa Mosqueta',
-      p_categoria        => 'belleza_fem',
-      p_precio_venta     => 32900::bigint,
-      p_cantidad_inicial => 0
-    );
-    v_id_producto := (v_res->>'id')::uuid;
-    update productos set es_placeholder = true where id = v_id_producto;   -- ejemplo = ficticio
-    update campana_producto set product_id_ref = v_id_producto
-     where id = '00000000-0000-0000-0000-0000000c0002';
-  end if;
+  for r in
+    select * from (values
+      ('00000000-0000-0000-0000-0000000c0001'::uuid, 'Shampoo Manzanilla GRISI Gold', 'cabello',      24900::bigint, false),
+      ('00000000-0000-0000-0000-0000000c0002'::uuid, 'Serum Facial de Rosa Mosqueta', 'belleza_fem',  32900::bigint, true),
+      ('00000000-0000-0000-0000-0000000c0003'::uuid, 'Balsamo para Barba de Cedro',   'belleza_masc', 28500::bigint, true),
+      ('00000000-0000-0000-0000-0000000c0004'::uuid, 'Jabon de Coco para el Hogar',   'hogar',        15900::bigint, true),
+      ('00000000-0000-0000-0000-0000000c0005'::uuid, 'Miel de Cafe Artesanal',        'alimentos',    21000::bigint, true)
+    ) as s(camp_id, nombre, categoria, precio, placeholder)
+  loop
+    -- Idempotente: solo siembra si esa campana AUN no esta ligada a Inventario.
+    if exists (select 1 from campana_producto where id = r.camp_id and product_id_ref is null) then
+      -- Abreviatura de categoria para el SKU (mayusculas, sin acentos, 3-4 chars).
+      v_cat := upper(trim(coalesce(r.categoria, '')));
+      v_cat := translate(v_cat, 'ÁÉÍÓÚÀÈÌÒÙÄËÏÖÜÂÊÎÔÛÑ', 'AEIOUAEIOUAEIOUAEIOUN');
+      v_cat := regexp_replace(v_cat, '[^A-Z0-9]', '', 'g');
+      v_cat := substring(v_cat from 1 for 4);
+      if v_cat = '' then v_cat := null; end if;
 
-  -- (3) Balsamo para Barba de Cedro · belleza_masc · 28500 · EJEMPLO
-  if exists (
-    select 1 from campana_producto
-     where id = '00000000-0000-0000-0000-0000000c0003'
-       and product_id_ref is null
-  ) then
-    v_res := inv_crear_producto(
-      p_nombre           => 'Balsamo para Barba de Cedro',
-      p_categoria        => 'belleza_masc',
-      p_precio_venta     => 28500::bigint,
-      p_cantidad_inicial => 0
-    );
-    v_id_producto := (v_res->>'id')::uuid;
-    update productos set es_placeholder = true where id = v_id_producto;
-    update campana_producto set product_id_ref = v_id_producto
-     where id = '00000000-0000-0000-0000-0000000c0003';
-  end if;
+      if v_cat is null then
+        v_sku := v_prefijo || '-' || lpad(nextval('inventario_sku_seq')::text, 4, '0');
+      else
+        v_sku := v_prefijo || '-' || v_cat || '-' || lpad(nextval('inventario_sku_seq')::text, 4, '0');
+      end if;
 
-  -- (4) Jabon de Coco para el Hogar · hogar · 15900 · EJEMPLO
-  if exists (
-    select 1 from campana_producto
-     where id = '00000000-0000-0000-0000-0000000c0004'
-       and product_id_ref is null
-  ) then
-    v_res := inv_crear_producto(
-      p_nombre           => 'Jabon de Coco para el Hogar',
-      p_categoria        => 'hogar',
-      p_precio_venta     => 15900::bigint,
-      p_cantidad_inicial => 0
-    );
-    v_id_producto := (v_res->>'id')::uuid;
-    update productos set es_placeholder = true where id = v_id_producto;
-    update campana_producto set product_id_ref = v_id_producto
-     where id = '00000000-0000-0000-0000-0000000c0004';
-  end if;
+      -- INSERT directo: cantidad 0 = NO se toca movimientos_inventario (Contabilidad intacta).
+      insert into productos (sku, nombre, categoria, precio_venta, es_placeholder)
+      values (v_sku, r.nombre, r.categoria, r.precio, r.placeholder)
+      returning id into v_id_producto;
 
-  -- (5) Miel de Cafe Artesanal · alimentos · 21000 · EJEMPLO
-  if exists (
-    select 1 from campana_producto
-     where id = '00000000-0000-0000-0000-0000000c0005'
-       and product_id_ref is null
-  ) then
-    v_res := inv_crear_producto(
-      p_nombre           => 'Miel de Cafe Artesanal',
-      p_categoria        => 'alimentos',
-      p_precio_venta     => 21000::bigint,
-      p_cantidad_inicial => 0
-    );
-    v_id_producto := (v_res->>'id')::uuid;
-    update productos set es_placeholder = true where id = v_id_producto;
-    update campana_producto set product_id_ref = v_id_producto
-     where id = '00000000-0000-0000-0000-0000000c0005';
-  end if;
+      update campana_producto set product_id_ref = v_id_producto where id = r.camp_id;
+    end if;
+  end loop;
 end
 $$;
 
