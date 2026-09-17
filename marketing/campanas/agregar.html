@@ -30,13 +30,20 @@
   y el nucleo compartido se importa como '../marketing-core.js' (el core
   resuelve sus propios imports relativos a SI MISMO).
 
-  ISLA (nota de arquitectura): Campanas NO lee Inventario hoy. Por eso el
-  STOCK y el AVISO DE URGENCIA son MANUALES (el dueno los define). El estado
-  "Agotado" queda preparado en el diseno del modelo pero NO se dispara solo
-  todavia (no hay stock real conectado). El aviso de urgencia es REAL y
-  honesto: se activa en el momento adecuado (por ejemplo cuando de verdad
-  quedan 3 unidades), nada de escasez fabricada; por eso, si el switch esta
-  activo, la cantidad "Solo X disponibles" es obligatoria (> 0).
+  CONEXION CON INVENTARIO (Tanda 2 · la incision): Campanas YA se liga a
+  Inventario por product_id_ref (el <select id="cm-producto"> guarda el id del
+  producto de Inventario via la RPC). El estado "Agotado" YA NO es manual: se
+  deriva SOLO del stock REAL de Inventario (catalogo_publico.agotado =
+  existencias <= 0 leido de stock_actual) y la tienda deshabilita la compra por
+  si sola cuando llega a cero. El numero exacto de existencias NUNCA se expone a
+  la tienda; aqui el campo stock_disponible sigue siendo un dato MANUAL de la
+  tabla campana_producto (no alimenta el Agotado real; se conserva por
+  compatibilidad). El AVISO DE URGENCIA sigue siendo MANUAL y honesto: se activa
+  en el momento adecuado (por ejemplo cuando de verdad quedan 3 unidades), nada
+  de escasez fabricada; por eso, si el switch esta activo, la cantidad "Solo X
+  disponibles" es obligatoria (> 0). Nota: el ligado a Inventario vive en la
+  vista publica y en la tienda; este panel solo elige el producto y guarda
+  product_id_ref.
 
   El color del banner es AUTOMATICO segun la categoria: no hay selector de
   color manual; al elegir la categoria, la vista previa toma su terna de color

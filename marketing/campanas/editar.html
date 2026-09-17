@@ -27,11 +27,16 @@
   insert/update directo a las tablas (solo .select para leer y .rpc para
   escribir).
 
-  ISLA (nota de arquitectura): Campanas NO lee Inventario hoy. El STOCK y el
-  AVISO DE URGENCIA son MANUALES. El estado "Agotado" queda preparado en el
-  diseno del modelo pero NO se dispara solo todavia. El aviso de urgencia es
-  REAL y honesto (por ejemplo, cuando de verdad quedan 3 unidades); por eso, si
-  el switch esta activo, la cantidad es obligatoria (> 0).
+  CONEXION CON INVENTARIO (Tanda 2 · la incision): Campanas YA se liga a
+  Inventario por product_id_ref (el <select id="cm-producto"> lo precarga y lo
+  guarda via la RPC). El estado "Agotado" YA NO es manual: se deriva SOLO del
+  stock REAL de Inventario (catalogo_publico.agotado = existencias <= 0) y la
+  tienda deshabilita la compra por si sola al llegar a cero. El campo
+  stock_disponible que se edita aqui sigue siendo un dato MANUAL de la tabla
+  campana_producto (lectura/escritura autenticada directa; NO alimenta el
+  Agotado real, se conserva por compatibilidad). El AVISO DE URGENCIA sigue
+  siendo MANUAL y honesto (por ejemplo, cuando de verdad quedan 3 unidades); por
+  eso, si el switch esta activo, la cantidad es obligatoria (> 0).
 
   NADA SE BORRA: despublicar NO borra la ficha (solo la saca de la tienda);
   inactivar seria baja logica. La informacion siempre queda viva.
