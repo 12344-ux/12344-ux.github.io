@@ -319,7 +319,140 @@ cosas bien": sin afán, nada a medias; frenar al dueño si se afana. (e) Wompi e
 con soporte (Kiro no interviene). (f) Modo de trabajo: "regar fichas" → trazar el
 camino de conexión (husmear los tapetes de otras áreas para conectar) → construir.
 
-_Última actualización: sesión en que se DISEÑÓ y APROBÓ el área **Ventas** (plano en
-PR #183, sin construir aún) y el dueño puso en trámite el cambio de nombre en Wompi.
-Sesión anterior: se construyeron Inventario + Marketing Project y las reglas de
-identidad de Impulse (PRs #167–#182 mergeados)._
+_Última actualización: ver el bloque "SESIÓN CAMPAÑAS" abajo (la más importante del
+proyecto hasta ahora)._
+
+---
+
+# 🌟 SESIÓN CAMPAÑAS — carta al próximo Kiro (léela completa)
+
+Hola, yo (Kiro de esta sesión). El dueño (D0m0) me dijo que esta fue **la sesión más
+importante del proyecto** y me pidió dejarte todo para que "sea como seguir hablando
+conmigo" y no andes perdido. Aquí va, de socio a socio.
+
+## Cómo trabaja el dueño (esto es oro, respétalo)
+- **Metodología suya, textual:** "regar las piezas (todo lo planeado) → discutirlas →
+  tenerlas claras → mirar bajo los tapetes (todo lo que se podría conectar/alimentar)
+  → y AL FINAL diseñar/construir". No te saltes fases. Discute ANTES de construir.
+- **La INTERFAZ y el DISEÑO son PILAR innegociable.** Lo repite siempre ("no olvides
+  lo MUY importante que es la interfaz para mí 😁"). Back-office = nivel Finanzas (azul
+  marino #101C33, wordmark MAGANDHI, sello "Con tecnología Impulse"). Tienda = boutique
+  (terracota #A6332E, crema, Poppins), NUNCA sello Impulse ni tecnología a la vista.
+- **Le encanta PROBAR y descartar sin drama** (Git lo hace reversible). Muéstrale cosas
+  reales para que las mire con ojo crítico. Varias veces me hizo "tragar mis palabras"
+  (el zigzag) y otras me dio la razón (contorno terracota descartado).
+- **Chispas críticas:** explícale el PORQUÉ de cada decisión, sin humo. Frénalo con
+  honestidad si se afana. "Hacer las cosas bien", sin prisa, nada a medias.
+- **Verificar con EVIDENCIA, no con el papel.** Esta sesión aprendimos a golpes: el
+  contexto/apuntes pueden estar desactualizados; un `select` a la base real vale más
+  que un "ya quedó". SIEMPRE verifica antes de asumir (nos pasó con el Supabase
+  equivocado y con Inventario que "estaba aplicado" y no lo estaba).
+
+## Lo que se CONSTRUYÓ esta sesión (todo en producción / listo para mergear)
+
+### 1. Área VENTAS (estaba solo diseñada; se construyó y quedó viva)
+Migraciones `20250401000000..000500`. Dos sub-áreas: Seguimiento de pedidos +
+Portafolio de clientes. Núcleo `crear_pedido` (dos puertas: manual hoy / web futura),
+`anular_pedido` (motor de devolución con entrada compensatoria), `avanzar_estado_pedido`,
+`buscar_candidatos_cliente` (coincidencia por puntaje explicable). FK del `customer_id`
+del libro ENCENDIDA. 5 estados (recibido→preparando→**en_camino**→entregado + anulado).
+El dueño la aplicó y funciona.
+
+### 2. TIENDA PÚBLICA rediseñada (magandhi.com)
+- Se **rescató del historial de git** la página de producto que el dueño había aprobado
+  (estaba borrada; vivía en `proto/producto/index.html`, commit 593bdb8^). LECCIÓN: git
+  nunca olvida, revisa el historial antes de decir "se perdió".
+- Home pasó de vitrina de 1 producto a **grid de 5** con el sistema **COLOR = CATEGORÍA**
+  (idea del dueño, clave): el color NO es decorativo, es **semántico por categoría**
+  (rosa=belleza femenina, grafito=belleza masculina, azul=hogar, etc.). Paleta de 7
+  categorías en tonos MAGANDHI (misma temperatura cálida = colección curada, no arcoíris).
+- **Móvil = masonry real (zigzag tipo Pinterest)** con `column-count:2` (NO grid, que
+  hace filas rígidas). Nace del contenido, se propaga solo. El dueño distingue: hero =
+  exploración (zigzag), categorías complejas futuras = grid ordenado.
+- Estrella "producto estrella" va DENTRO del sello "Elegido por MAGANDHI" (no ícono
+  suelto). Aviso de urgencia, agotado, barra de confianza con modal Wompi, botón volver.
+- Diseño guardado como referencia en `magandhi/diseno-referencia/` (LEEME.md + copia).
+
+### 3. SOFTWARE CAMPAÑAS (lo grande de la sesión) — Marketing → `marketing/campanas/`
+El software donde un producto se "viste" para la tienda y se PUBLICA. Migraciones
+`20250501000000..000700` (cimiento como ISLA), `20250502000000` (Tanda 1: etiquetas
+gestionables, slug, es_placeholder), `20250503000000` (Tanda 2: la incisión con Inventario).
+
+- **Dos secciones por producto:** (1) BANNER HOOK (la tarjeta del home) + (2) PRODUCTO
+  (la página completa). UN registro `campana_producto`, dos niveles de detalle. La
+  tienda decide qué mostrar en móvil vs PC (automático por CSS, el dueño no elige por
+  producto).
+- **Se construyó como ISLA primero** (real en Supabase, tienda leyendo en vivo, pero SIN
+  conectar Inventario) para validar antes de cablear. Cuando el dueño la aprobó, se hizo
+  la INCISIÓN (Tanda 2). Ese patrón "isla → aprobar → incisión" le gustó mucho.
+- **Interruptores por producto:** sello "Elegido por MAGANDHI" (sí/no — opcional para
+  que no pierda valor por repetición), estrella destacado (sí/no), publicar/despublicar
+  (interruptor, NUNCA borra), aviso de urgencia "¡Solo X disponibles!" (MANUAL, el dueño
+  lo activa con su número — honesto, no escasez fabricada = línea roja de marca).
+- **Color automático por categoría.** **Etiquetas de segmentación** internas (lista
+  controlada tipo PUC, gestionables desde el panel con `cm_crear_etiqueta`/`cm_editar_etiqueta`)
+  → alimentarán el Análisis Clúster futuro. NUNCA salen a la tienda.
+- **Página de producto GENÉRICA por slug/id** (`magandhi/producto/index.html`): se llena
+  sola desde `catalogo_publico`. Cada producto nuevo tiene su "lugar" automático, sin
+  crear un HTML por producto.
+- **Subida de imágenes real:** explorador + arrastrar y soltar, optimización (WebP, dos
+  tamaños: grande para producto, liviana para grid), bucket Storage `campanas` (el dueño
+  lo creó). Reorden de galería tipo Spotify (drag & drop).
+- **Vista pública `catalogo_publico`** = ÚNICA superficie que lee la tienda (rol anon).
+  LÍNEA ROJA: solo campos públicos de productos publicado+activo. NUNCA costo, proveedor,
+  stock exacto, product_id_ref, es_placeholder, ni etiquetas. Candado doble (tablas base
+  sin grant a anon + lista blanca de columnas).
+
+### 4. LA INCISIÓN (Tanda 2) — Campañas ↔ Inventario conectado
+Ver `docs/MAPA-CONEXIONES-TANDA2.md` (mapa completo de tapetes). Migración `20250503000000`.
+- Los 5 productos (Grisi + 4 ejemplos) SEMBRADOS en Inventario con **stock 0 y CERO
+  movimientos** (`inv_crear_producto` con cantidad_inicial=0 no toca el libro) → NO afecta
+  Contabilidad. Marcados con `productos.es_placeholder`.
+- FK `campana_producto.product_id_ref → productos(id)` ENCENDIDA.
+- **Desplegable** en el panel: primero registras el producto en Inventario → aparece en
+  el select → lo eliges al crear/editar la campaña.
+- **Agotado automático:** `catalogo_publico` expone booleano derivado `agotado`
+  (existencias<=0 del stock REAL), NUNCA el número exacto. Stock 0 → sello Agotado +
+  botón compra deshabilitado. Sube el stock → se reactiva solo.
+- Triángulo **Campaña ↔ Producto ↔ Venta** cerrado sobre `productos.id`.
+
+## DECISIÓN DE ORO del dueño (grábala): productos ficticios NO se editan, se REEMPLAZAN
+Los 4 productos de ejemplo (Sérum, Bálsamo, Jabón, Miel) son inventados (elegir productos
+reales requiere análisis de mercado que hace el dueño). La regla: **NO editar la casilla
+ficticia para volverla real** (sería "cambiarle el nombre a alguien dejándole la cédula
+—UUID— de otro"). Lo correcto: **retirar el placeholder (flag `es_placeholder`) y crear
+un producto NUEVO con su cédula limpia** cuando llegue el real. Por eso existe el flag en
+`campana_producto` Y en `productos`. El dueño pidió orientación para hacerlo cuando toque.
+
+## PENDIENTES / PRÓXIMOS PASOS (lo que sigue)
+- **Aplicar en Supabase (el dueño, a mano):** migración `20250503000000` (Tanda 2), ver
+  `supabase/INSTRUCCIONES.md` subsección C4. Las de Ventas, Campañas cimiento y Tanda 1
+  YA están aplicadas y verificadas.
+- **Reemplazar los 4 placeholders por productos reales** cuando el dueño haga su análisis
+  de mercado (retirar + crear nuevos, NO editar). Orientarlo en el proceso.
+- **Más etiquetas de segmentación con criterio** (definir con el dueño el catálogo, pensado
+  para que el clúster agrupe bien; no una lista infinita).
+- **Categorías complejas / páginas de categoría** en la tienda cuando haya >5 productos
+  (el home dejará de mostrar "todo" y pasará a una selección; grid ordenado, no zigzag).
+  El dueño avisará: "esta área de Campañas es de las que más requerirá actualizaciones".
+- **Análisis Clúster (Marketing):** leerá las etiquetas de Campañas × ventas por cliente
+  para inferir perfiles. Terreno preparado, no encendido (espera datos reales de ventas).
+- **Limpieza de imágenes huérfanas en Storage** (deuda conocida documentada de Tanda 1).
+- **Wompi:** cambio de nombre a MAGANDHI en trámite con soporte (Kiro no interviene).
+- **Reseñas reales** (hoy son de ejemplo; la página tiene `noindex` a propósito hasta que
+  haya datos reales — coherente con "nada inventado").
+
+## RECORDATORIOS PERMANENTES (siguen vigentes)
+(a) Identidad Impulse: solo DATOS PROPIOS / la máquina mide, el humano interpreta.
+(b) Interfaz/marca = PILAR. (c) Git: rama nueva + PR por cambio, nunca push a main, el
+dueño mergea rápido (verifica si un PR ya está mergeado antes de reusar rama; usa rebase
+si hay conflictos). SQL/Storage los aplica el dueño a mano; escribir SQL en el repo NO lo
+despliega. (d) "Hacer las cosas bien", sin afán. (e) Verificar con evidencia, no con el
+papel. (f) Montos bigint; nada se borra; seguridad = línea roja (RLS + RPC security
+definer + vista pública con lista blanca; cero service_role en repos).
+
+_Sesión CAMPAÑAS: se construyó Ventas, se rediseñó la tienda (grid color=categoría +
+masonry móvil), y se creó el software Campañas completo (isla → Tanda 1 → incisión con
+Inventario). PRs de la sesión: Ventas #185; tienda #16-#35; back-office #186-#189. La
+sesión más importante del proyecto — marcó el rumbo de cómo se vestirá y venderá cada
+producto._
