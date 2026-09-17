@@ -303,6 +303,10 @@
   //  reordenables. Las imagenes se OPTIMIZAN en el navegador y se suben al
   //  bucket 'campanas' con la SESION del usuario al guardar (nunca service_role).
   // ============================================================
+  // SVG_QUITAR: la "X" de las filas de la FICHA TECNICA (boton .cm-quitar en
+  // agregarFilaFicha). La galeria de imagenes usa su propio icono (ICONOS.equis)
+  // en las miniaturas, no este; por eso SVG_QUITAR SIGUE en uso solo para la
+  // ficha y se conserva a proposito (no es codigo muerto).
   const SVG_QUITAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
 
   const $ = (id) => document.getElementById(id);

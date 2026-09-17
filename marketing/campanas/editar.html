@@ -310,6 +310,10 @@
     optimizarImagen, optimizarDosTamanos, urlPublicaImagen, BUCKET_CAMPANAS
   } from '../marketing-core.js';
 
+  // SVG_QUITAR: la "X" de las filas de la FICHA TECNICA (boton .cm-quitar en
+  // agregarFilaFicha). La galeria de imagenes usa su propio icono (ICONOS.equis)
+  // en las miniaturas, no este; por eso SVG_QUITAR SIGUE en uso solo para la
+  // ficha y se conserva a proposito (no es codigo muerto).
   const SVG_QUITAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
   const SVG_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
 
@@ -328,6 +332,14 @@
   //     elige uno nuevo ni se quita).
   //   galeria: arreglo ORDENADO; cada item es NUEVO { id, url, grande, liviana }
   //     o PREEXISTENTE { id, path } (se conserva su path si no se quita).
+  //
+  // DEUDA CONOCIDA (Tanda 1, aceptable): al REEMPLAZAR el banner o QUITAR una
+  // imagen de la galeria, el objeto viejo (y su version -sm) NO se borra del
+  // bucket 'campanas'; solo deja de referenciarse en imagen_banner_path/imagenes.
+  // Es coherente con "nada se borra" y evita romper una URL que alguien tuviera
+  // abierta, pero acumula basura en Storage con el tiempo. La limpieza (barrido
+  // de objetos huerfanos, idealmente server-side con la policy de marketing) se
+  // aborda en una tanda posterior; se documenta aqui para no perderla de vista.
   let bannerPend = null;
   let bannerPathExistente = null;
   let galeria = [];
