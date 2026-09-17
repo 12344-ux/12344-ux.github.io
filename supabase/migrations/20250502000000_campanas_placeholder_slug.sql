@@ -115,7 +115,14 @@ update campana_producto set slug = 'miel-cafe-artesanal'
 --     despues de nombre). Resto de columnas y el WHERE quedan EXACTO. NO se
 --     agrega es_placeholder ni ninguna otra columna interna: LINEA ROJA.
 -- ------------------------------------------------------------
-create or replace view catalogo_publico as
+-- NOTA: se usa DROP + CREATE (no create or replace) porque Postgres no permite
+-- insertar una columna nueva (slug) EN MEDIO de una vista existente con
+-- 'create or replace view' (solo deja agregar columnas AL FINAL o mantener el
+-- mismo orden). Recrear la vista es seguro: es una ventana sin datos y el
+-- drop+create corren en el mismo lote. El grant a anon/authenticated se re-otorga
+-- abajo porque el drop se lo lleva.
+drop view if exists catalogo_publico;
+create view catalogo_publico as
 select
   cp.id,
   cp.nombre,
@@ -147,6 +154,11 @@ where cp.publicado = true
   and cp.activo = true;
 
 comment on view catalogo_publico is 'CAMPANAS · vista publica SEGURA que lee la tienda (magandhi.com) sin login. SOLO expone productos con publicado=true y activo=true, y SOLO campos publicos (nombre, slug para la URL, categoria + colores, presentacion, hooks, precio_venta, textos, ficha, imagenes, sello, estrella, stock, aviso de urgencia). Ahora tambien expone slug (publico, para la URL legible). JAMAS expone es_placeholder ni ninguna columna interna: costo/proveedor/stock interno, product_id_ref, creado_por, ni las etiquetas de segmentacion. El candado es doble: tablas base sin grant/policy para anon + la vista solo trae filas publicadas y columnas publicas. Grant select a anon: ver 20250501000600_campanas_grants.sql.';
+
+-- RE-OTORGAR el grant: el DROP VIEW de arriba se lleva el grant que 20250501000600
+-- le habia dado a la vista, asi que hay que volver a concederlo o la tienda
+-- (rol anon) y el panel (authenticated) perderian el acceso de lectura.
+grant select on catalogo_publico to anon, authenticated;
 
 -- ------------------------------------------------------------
 -- (6) RPC cm_crear_etiqueta: agrega una etiqueta al catalogo campana_etiqueta
