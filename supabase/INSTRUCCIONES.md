@@ -1388,3 +1388,163 @@ Ejecuta estas consultas en el SQL Editor:
 Como las RPC usan `create or replace` y las tablas/vista son idempotentes, si
 mas adelante ajustas algo basta con **volver a ejecutar solo el archivo que
 cambio**, sin tocar los demas.
+
+## C4. Tanda 2 · La incision: conectar Campanas con Inventario
+
+Esta es la **incision**: se encienden las tuberias que estaban debajo del
+tapete. Hasta la Tanda 1, Campanas era una ISLA (`product_id_ref` NULL sin FK y
+la tienda usaba el numero MANUAL `stock_disponible`). Ahora que el Area de
+Campanas esta aprobada, se conecta con Inventario para que:
+
+- Los 5 productos del home EXISTAN tambien en Inventario, pero **con stock 0 y
+  CERO movimientos**: existen para que la pagina los muestre, mas NO hay
+  unidades ni compra registrada, asi **no se toca Contabilidad**. Cuando el
+  dueno cargue unidades reales (una `entrada` desde el modulo de Inventario), el
+  stock sube solo y el estado "Agotado" se apaga solo.
+- La tienda muestre **Agotado** (y deshabilite el boton de compra) leyendo el
+  stock REAL de Inventario, sin exponer nunca el numero exacto.
+- El flujo futuro sea: primero se ingresa el producto a Inventario (para que su
+  id aparezca en el desplegable), y al crear/editar la campana se elige ese
+  producto del desplegable; a partir de ahi Inventario y Campanas quedan ligados
+  por `product_id_ref` y el "Agotado" es automatico al llegar a cero.
+
+**Requisito previo:** deben estar aplicadas TODAS las migraciones de Inventario
+(`202503*`: productos, movimientos, `stock_actual`, `inv_crear_producto`), las
+de Campanas (`202505*`) y la Tanda 1 (`20250502000000`).
+
+### C4.1. Orden EXACTO de ejecucion en el SQL Editor
+
+Continua la numeracion de C1 (los pasos 1..9 ya estan aplicados):
+
+10. `supabase/migrations/20250503000000_campanas_incision_inventario.sql` **(Tanda 2)**
+    Hace, en un solo archivo idempotente:
+    - **(a)** agrega el flag INTERNO `productos.es_placeholder`
+      (`boolean not null default false`, espejo del de `campana_producto`) para
+      distinguir/retirar los ejemplos sin manchar Inventario. NUNCA se expone al
+      publico.
+    - **(c)** enciende la FK real `campana_producto_product_id_ref_fkey`
+      (`product_id_ref -> productos(id)`) con guard idempotente sobre
+      `pg_constraint` (mismo patron que la FK de Ventas en 20250401000300).
+    - **(b)** siembra los 5 productos en `productos` llamando
+      `inv_crear_producto(..., p_cantidad_inicial => 0)`, que **NO inserta en
+      `movimientos_inventario`**: quedan con stock 0 y cero movimientos. El Grisi
+      con `es_placeholder=false` (real); los 4 ejemplos con `es_placeholder=true`.
+    - **(d)** liga los 5 seeds de Campanas (`...0c0001..0c0005`) a esos 5
+      productos guardando su id en `product_id_ref`. Idempotente: el bloque SALTA
+      la creacion si el `campana_producto` ya tiene `product_id_ref` no nulo
+      (para no crear productos duplicados en Inventario al re-ejecutar).
+    - **(e)** redefine la vista `catalogo_publico` con **DROP VIEW + CREATE
+      VIEW + re-grant** a `anon, authenticated` (nunca `create or replace`:
+      Postgres 42P16 al cambiar la lista de columnas). Se **quita**
+      `stock_disponible` (numero manual) y se **agrega** el booleano derivado
+      `agotado` leido del stock REAL (`stock_actual.existencias <= 0` via
+      `product_id_ref`).
+    - **(f)** recrea `cm_crear_campana` y `cm_editar_campana` con
+      **`drop function if exists <firma vieja>` + `create`** para agregarles el
+      parametro nuevo `p_product_id_ref uuid default null` AL FINAL de la firma
+      (ver nota abajo). NO se edita `20250501000500`.
+
+> **Por que drop+create de las RPC (no `create or replace`):** agregar un
+> parametro cambia la LISTA DE TIPOS de argumentos, asi que un `create or
+> replace` dejaria conviviendo la firma VIEJA (18 args en crear / 19 en editar)
+> con la NUEVA (una mas), creando una **sobrecarga** ambigua. El archivo hace
+> `drop function if exists` de la firma vieja EXACTA y luego `create` con la
+> nueva, dejando una sola version de cada RPC. Es idempotente: al re-ejecutar,
+> el `drop` de la firma vieja simplemente no encuentra nada y sigue.
+
+> **DECISION de criterio (Agotado y stock):** el booleano `agotado` se deriva
+> del stock REAL de Inventario (`stock_actual`, que a su vez se deriva del libro
+> de movimientos), pero en la vista SOLO sale como booleano: **el numero exacto
+> de existencias NUNCA se expone**. Si `product_id_ref` es null (una campana aun
+> no ligada a Inventario), `agotado = false` (no se marca agotado algo que
+> todavia no tiene inventario conectado, para no romper el catalogo mientras el
+> dueno migra). El aviso "Solo X disponibles" sigue siendo el numero MANUAL
+> `aviso_urgencia_cantidad`, independiente del stock real.
+
+El archivo es idempotente (add column if not exists, guard sobre
+`pg_constraint`, siembra con guard de `product_id_ref` nulo, drop view + create
+view, drop function if exists + create): si algo falla a mitad, puedes
+re-ejecutarlo sin duplicar nada.
+
+### C4.2. Como verificar que quedo bien (Tanda 2)
+
+Ejecuta estas consultas en el SQL Editor:
+
+1. **CERO movimientos por la siembra** (la prueba de que Contabilidad no se
+   toco): ningun producto ligado a una campana tiene filas en el libro. Debe
+   devolver **0**:
+
+   ```sql
+   select count(*)
+     from movimientos_inventario m
+     join campana_producto cp on cp.product_id_ref = m.product_id;
+   -- Esperado: 0 (los 5 productos sembrados entraron con stock 0 y sin movimiento)
+   ```
+
+   (Equivalente directo: `select count(*) from stock_actual sa
+   join campana_producto cp on cp.product_id_ref = sa.product_id
+   where sa.existencias <> 0;` tambien debe dar 0.)
+
+2. **Los 5 campana_producto quedaron ligados** (`product_id_ref` no nulo). Debe
+   devolver **5**:
+
+   ```sql
+   select count(*) from campana_producto where product_id_ref is not null;
+   -- (y los 5 productos existen en Inventario con su SKU generado)
+   select cp.nombre, p.sku, p.es_placeholder
+     from campana_producto cp
+     join productos p on p.id = cp.product_id_ref
+    order by cp.orden;
+   -- Esperado: 5 filas; el Grisi con es_placeholder=false, los 4 ejemplos en true.
+   ```
+
+3. **La vista trae `agotado` y NO trae el stock exacto ni columnas internas.**
+   La primera consulta funciona (los 5 en `true` porque hoy existencias=0); las
+   demas DEBEN fallar con "column ... does not exist":
+
+   ```sql
+   select id, nombre, agotado from catalogo_publico order by orden;  -- funciona (5 filas, agotado=true)
+   select existencias      from catalogo_publico limit 1;            -- error esperado
+   select product_id_ref   from catalogo_publico limit 1;            -- error esperado
+   select stock_disponible from catalogo_publico limit 1;            -- error esperado
+   ```
+
+4. **Simular el rol anon: ve el booleano `agotado` pero NO el stock real.** La
+   lectura de la vista funciona; leer `stock_actual` directo DEBE fallar
+   (permission denied / no visible), porque el join se resuelve con los
+   privilegios del dueno de la vista (security definer), no con los de anon:
+
+   ```sql
+   begin;
+   set local role anon;
+   select nombre, agotado from catalogo_publico limit 1;  -- DEBE funcionar (solo el booleano)
+   rollback;
+
+   begin;
+   set local role anon;
+   select existencias from stock_actual limit 1;          -- DEBE fallar (anon no ve el stock)
+   rollback;
+   ```
+
+5. **La FK del enchufe existe** (`campana_producto_product_id_ref_fkey` en
+   `pg_constraint`). Debe devolver **1**:
+
+   ```sql
+   select count(*)
+     from pg_constraint
+    where conname = 'campana_producto_product_id_ref_fkey'
+      and conrelid = 'campana_producto'::regclass;
+   -- Esperado: 1
+   ```
+
+6. **El "Agotado" se apaga solo al cargar stock REAL** (opcional, prueba viva):
+   registra una `entrada` de unidades para uno de los 5 productos desde el
+   modulo de Inventario (o con `inv_registrar_movimiento`) y vuelve a consultar
+   `select nombre, agotado from catalogo_publico where nombre ilike '%grisi%';`
+   -> `agotado` pasa a `false`. Al volver a cero, regresa a `true`. Todo
+   automatico, sin tocar la campana.
+
+> Como el archivo 10 es idempotente (con guard de `product_id_ref` nulo en la
+> siembra), si mas adelante ajustas algo basta con **volver a ejecutar solo el
+> archivo 10** (`20250503000000_campanas_incision_inventario.sql`), sin tocar
+> los demas ni duplicar productos en Inventario.
