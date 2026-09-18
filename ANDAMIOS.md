@@ -17,7 +17,7 @@
 > **Repos:** back-office = `12344-ux/12344-ux.github.io` (montaguth.institute) ·
 > tienda = `12344-ux/magandhi` (magandhi.com).
 >
-> _Última actualización: **Fases A, B, C, D y E COMPLETAS y en producción** (D3 pospuesto por decisión del dueño). Todos los PRs mergeados a main y el dueño ya corrió el SQL correspondiente (contabilidad_config + pagos_config, slug/placeholder de Campañas, tope de escaparate migración 20250602000000, pedido_bitacora migración 20250603000000). **SIGUIENTE: FASE F (Wompi)**, dejada a propósito para una sesión fresca por ser la ficha más grande: Edge Functions que despliega el dueño + webhook + firma server-side + asiento contable automático + interruptor sandbox↔prod. El primer tramo ⬜ del tablero es F1._
+> _Última actualización: **Fases A–E COMPLETAS y F1 (Wompi · intención de pago) ✅ TERMINADO Y VERIFICADO** (D3 ⏸️ pospuesto por decisión del dueño). La tienda ya llega al **checkout REAL de Wompi en sandbox**: formulario del comprador → Edge Function `crear-intencion-pago` → precio releído de la BD server-side → firma de integridad → checkout con métodos de pago cargados. El dueño desplegó la primera Edge Function del proyecto, puso el secret `WOMPI_INTEGRITY_SANDBOX`, pegó la llave pública sandbox y corrió los grants. **SIGUIENTE: TRAMO F2 (webhook + idempotencia + estados)** — es ahí donde un pago APPROVED por fin crea el pedido, baja el stock y habilita el asiento. Antes de tocar Edge Functions, LEER las "LECCIONES DE F1" al final de este archivo (los grants a `service_role`, la vista que pierde grants al recrearse, y por qué la config se lee por RPC security definer)._
 
 ---
 
@@ -459,7 +459,7 @@ _TODAS las fichas técnicas 1-9 que el dueño aprobó viven aquí._
 | D4 | Ranking vs anulaciones | ✅ | [#204](https://github.com/12344-ux/12344-ux.github.io/pull/204) | solo frontend |
 | D5 | Truncamiento/paginación | ✅ | [#205](https://github.com/12344-ux/12344-ux.github.io/pull/205) | Diario paginado + avisos en 5 pantallas |
 | E1 | Impulse: serie temporal + paginación | ✅ | [#206](https://github.com/12344-ux/12344-ux.github.io/pull/206) | identidad Impulse · solo frontend |
-| F1 | Wompi: intención de pago | ⬜ | — | Edge Fn + SQL |
+| F1 | Wompi: intención de pago | ✅ | back-office [#208](https://github.com/12344-ux/12344-ux.github.io/pull/208) [#209](https://github.com/12344-ux/12344-ux.github.io/pull/209) [#210](https://github.com/12344-ux/12344-ux.github.io/pull/210) [#211](https://github.com/12344-ux/12344-ux.github.io/pull/211) [#212](https://github.com/12344-ux/12344-ux.github.io/pull/212) · tienda [#38](https://github.com/12344-ux/magandhi/pull/38) [#39](https://github.com/12344-ux/magandhi/pull/39) | **VERIFICADO con evidencia:** checkout REAL de Wompi alcanzado en sandbox (métodos de pago cargados). Edge Fn desplegada + secret + llave pública + grants |
 | F2 | Wompi: webhook + idempotencia | ⬜ | — | Edge Fn + SQL |
 | F3 | Wompi: asiento automático | ⬜ | — | SQL dueño |
 | F4 | Wompi: sandbox→prod | ⬜ | — | interruptor |
@@ -473,8 +473,32 @@ _TODAS las fichas técnicas 1-9 que el dueño aprobó viven aquí._
 
 1. **Lee este archivo entero primero**, luego `CONTEXTO-MAGANDHI.md`.
 2. Mira el **TABLERO DE ESTADO**: el primer tramo ⬜ (o 🔨) es donde retomas.
-   **Hoy ese punto de retorno es F1 (Wompi: intención de pago)** — las Fases A–E
-   están ✅ (con D3 ⏸️ pospuesto), así que se retoma directamente en la FASE F.
+   **Hoy ese punto de retorno es F2 (Wompi: webhook + idempotencia)** — las Fases
+   A–E están ✅ (con D3 ⏸️ pospuesto) y **F1 quedó ✅ y VERIFICADO**: la tienda ya
+   llega al checkout real de Wompi en sandbox. Lo que F1 NO hace (a propósito) es
+   crear el pedido: eso es exactamente F2.
+
+   ### ⚠️ LECCIONES DE F1 (leerlas antes de tocar Edge Functions · costaron horas)
+   - **`service_role` tiene BYPASSRLS pero NO se salta los GRANTS.** Son dos capas
+     distintas. Una Edge Function puede tener la RLS a favor y aun así recibir
+     `permission denied` por faltarle el `grant select`. En este proyecto
+     "auto-expose new tables" está en **OFF**, así que **todo grant se da a mano y
+     a propósito** (ya versionados en `20250605000000`).
+   - **Trampa de `catalogo_publico`:** es una VISTA que varias migraciones recrean
+     con `drop view` + `create view`, y el DROP **borra sus grants**. Toda
+     migración futura que la recree debe re-otorgar también a `service_role`, o la
+     intención de pago se rompe con `42501`.
+   - **PostgREST degrada el rol:** aunque el cliente use la SERVICE_ROLE_KEY, la
+     petición del navegador lleva `apikey=anon` y PostgREST resuelve el rol
+     efectivo como anon. Por eso la config de pagos se lee por **RPC security
+     definer** (`pagos_config_para_intencion`), no por lectura directa de tabla.
+   - **Depurar a ciegas cuesta carísimo:** el 500 llegaba con un mensaje genérico
+     y el motivo real (`permission denied for view catalogo_publico`) solo
+     apareció al **loguear el error** (ver F1.9 de INSTRUCCIONES.md). Si algo falla
+     en una Edge Function, **lo primero es hacer que escupa el error real**.
+   - **Sandbox y producción de Wompi son perfiles de comercio SEPARADOS.** El
+     checkout de sandbox puede mostrar datos viejos del comercio aunque el
+     dashboard ya muestre los nuevos. Confirmar el nombre/datos reales en F4.
 3. **Respeta el orden de fases** (A→B→C→D→E→F→G): las de arriba son cimiento de
    las de abajo. No saltes a Wompi (F) si B (parsearMonto, config) no está ✅.
 4. **Un tramo = una rama = un PR.** Nunca push a main. El dueño mergea.
