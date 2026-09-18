@@ -311,10 +311,22 @@
     // (formatearMomento(ev.cuando)); NO se fabrican pasos intermedios. Un pedido
     // con solo el evento 'crear' (backfill) muestra unicamente esa linea. El
     // ultimo evento en el tiempo se marca .actual; los anteriores .hecho.
+    // Prioridad logica por accion para desempatar eventos con el MISMO 'cuando'
+    // (el backfill masivo estampa todos los 'crear' en pedidos.creado, y un
+    // crear + primer avance pueden caer en el mismo milisegundo). 'crear'
+    // siempre va primero y 'anular' es terminal, de modo que el evento
+    // genuinamente mas reciente queda al final y se marca .actual correctamente.
+    const PRIORIDAD_ACCION = { crear: 0, cambio_estado: 1, anular: 2 };
     const eventos = [...(p.bitacora || [])].sort((a, b) => {
       const ta = a.cuando ? Date.parse(a.cuando) : 0;
       const tb = b.cuando ? Date.parse(b.cuando) : 0;
-      return ta - tb;
+      if (ta !== tb) return ta - tb;
+      // Timestamps iguales: ordenar por la secuencia real del ciclo de vida.
+      const pa = PRIORIDAD_ACCION[a.accion] ?? 1;
+      const pb = PRIORIDAD_ACCION[b.accion] ?? 1;
+      if (pa !== pb) return pa - pb;
+      // Ultimo desempate estable por id (p. ej. dos cambio_estado simultaneos).
+      return String(a.id ?? '').localeCompare(String(b.id ?? ''));
     });
 
     // Etiqueta humana de un evento de la bitacora segun su accion.
