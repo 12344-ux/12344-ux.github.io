@@ -1548,3 +1548,132 @@ Ejecuta estas consultas en el SQL Editor:
 > siembra), si mas adelante ajustas algo basta con **volver a ejecutar solo el
 > archivo 10** (`20250503000000_campanas_incision_inventario.sql`), sin tocar
 > los demas ni duplicar productos en Inventario.
+
+---
+
+# Configuracion contable y de pagos (B3 · cimiento para Wompi)
+
+Esta seccion crea DOS tablas de configuracion, una sola fila cada una (mismo
+molde que `inventario_config`), que preparan la conexion futura con la pasarela
+de pagos Wompi (fase F). **En B3 no se construye Wompi ni ninguna pantalla:**
+solo quedan las tablas listas, con sus valores por defecto para MAGANDHI, para
+que el asiento automatico de la venta web las LEA manana en vez de tener los
+codigos y el entorno escritos a fuego en el codigo.
+
+- `contabilidad_config` guarda los 5 CODIGOS de cuenta PUC del asiento
+  automatico (banco, ingreso, comision, costo, inventario). Se leen de aqui, NO
+  se hardcodean, para que otra organizacion Impulse los cambie en un solo lugar.
+- `pagos_config` es el **interruptor sandbox <-> prod** de Wompi: guarda el
+  entorno actual y las llaves PUBLICAS por entorno. Cambiar de pruebas a real es
+  editar una fila.
+
+## ⚠️ B3.0. LINEA ROJA · Los secretos de Wompi NUNCA van en la base
+
+Orden permanente del dueno, **no negociable**:
+
+- Los **SECRETOS** de Wompi (secreto de **integridad** y secreto de
+  **eventos/webhook**) **NO van en `pagos_config`** ni en ninguna tabla, ni en
+  texto plano ni cifrados. Van como **secrets de la Edge Function** en el
+  dashboard de Supabase (**Edge Functions > Secrets**), donde solo los pone el
+  dueno y solo los ve el runtime del servidor.
+- En `pagos_config` viven **solo**: el `entorno` (`sandbox`|`prod`) y las
+  **llaves PUBLICAS** (publishable keys). Las llaves publicas de Wompi **no son
+  secretas por diseno**: viajan al navegador del comprador de todas formas para
+  inicializar el widget, asi que guardarlas en una tabla de solo-lectura no las
+  expone mas de lo que ya lo estan.
+- Este es el motivo de fondo de por que B3 se hace asi: separar "que entorno +
+  lo publico" (la tabla, versionable y auditable) de "los secretos" (fuera del
+  repo y fuera de la base).
+
+## B3.1. Orden EXACTO de ejecucion en el SQL Editor
+
+Ejecuta estos DOS archivos, en este orden (dependen de que ya exista la funcion
+central `tiene_modulo()` del archivo de perfiles y del catalogo PUC, ambos ya
+aplicados en las secciones anteriores):
+
+1. `supabase/migrations/20250601000000_contabilidad_config.sql`
+   Crea `contabilidad_config` (una fila), la siembra con los 5 codigos de
+   MAGANDHI (1110 / 4135 / 5305 / 6135 / 1435), activa RLS (SELECT solo para
+   `authenticated` con `tiene_modulo('finanzas')`) y da el `grant select` a
+   `authenticated`.
+2. `supabase/migrations/20250601000100_pagos_config.sql`
+   Crea `pagos_config` (una fila), la siembra en `entorno='sandbox'` con las
+   llaves publicas vacias, activa la misma RLS y da el `grant select`.
+
+Ambos son **idempotentes** (`create table if not exists`, seed
+`on conflict do nothing`, `drop policy if exists` + `create policy`, `grant`):
+puedes re-ejecutarlos sin duplicar nada y **sin pisar** una fila que ya hayas
+editado (por ejemplo, no revierten un `entorno='prod'` ya activado).
+
+## B3.2. Como sembrar / cambiar los valores (a mano, solo el dueno)
+
+Ninguna de las dos tablas tiene policy de escritura para `authenticated`: la
+escritura la haces **tu, a mano**, desde el SQL Editor (rol `service_role`).
+Ejemplos:
+
+```sql
+-- Ajustar un codigo de cuenta si tu organizacion lo reclasifica:
+update contabilidad_config set cuenta_comision = '5305' where id = 1;
+
+-- Pegar las llaves PUBLICAS de Wompi (NO las secretas):
+update pagos_config
+   set llave_publica_sandbox = 'pub_test_xxxxxxxx',
+       llave_publica_prod    = 'pub_prod_xxxxxxxx'
+ where id = 1;
+
+-- Cuando llegue el dia de pasar a real, mover el interruptor:
+update pagos_config set entorno = 'prod' where id = 1;
+```
+
+Recuerda: los **secretos** de integridad y de eventos se ponen como *secrets*
+de la Edge Function en el dashboard, **nunca** con un `update` aqui.
+
+## B3.3. Como verificar que quedo bien
+
+Ejecuta estas consultas en el SQL Editor:
+
+1. **`contabilidad_config` tiene 1 fila con los 5 codigos.** Debe devolver
+   exactamente **una** fila con `1110 / 4135 / 5305 / 6135 / 1435`:
+
+   ```sql
+   select * from contabilidad_config;
+   -- Esperado: 1 fila; cuenta_banco=1110, cuenta_ingreso=4135,
+   --           cuenta_comision=5305, cuenta_costo=6135, cuenta_inventario=1435.
+   ```
+
+2. **`pagos_config` arranca en sandbox.** Debe devolver `sandbox`:
+
+   ```sql
+   select entorno from pagos_config;
+   -- Esperado: sandbox
+   ```
+
+3. **La llave publica publishable (rol `anon`) NO puede leer estas tablas.**
+   Coherente con que solo `authenticated` con el modulo finanzas las lee. Cada
+   consulta DEBE fallar con "permission denied" (o devolver 0 filas si el grant
+   a `anon` estuviera ausente, que es el caso):
+
+   ```sql
+   begin;
+   set local role anon;
+   select * from contabilidad_config;  -- DEBE fallar (anon no tiene grant)
+   rollback;
+
+   begin;
+   set local role anon;
+   select entorno from pagos_config;   -- DEBE fallar (anon no tiene grant)
+   rollback;
+   ```
+
+4. **El candado de fila unica funciona** (opcional): intentar meter una segunda
+   fila DEBE fallar por el `check (id = 1)`:
+
+   ```sql
+   insert into contabilidad_config (id) values (2);  -- DEBE fallar (fila_unica)
+   insert into pagos_config (id) values (2);         -- DEBE fallar (fila_unica)
+   ```
+
+> Estas tablas son el **cimiento** de la fase F (asiento automatico de Wompi).
+> En B3 quedan solo listas: sembradas, con RLS y con su valor por defecto. No
+> hay pantalla de configuracion todavia (nadie la pidio); cuando llegue, leera
+> de aqui.
