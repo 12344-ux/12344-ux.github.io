@@ -191,8 +191,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
       cors,
     );
   }
+  // Se fuerza la SERVICE_ROLE en las cabeceras globales del cliente. Sin esto,
+  // supabase-js hereda el JWT anon (publishable key) que llega en el header
+  // Authorization de la peticion del navegador y lo usa en las consultas, de
+  // modo que RLS bloquearia la lectura de pagos_config (solo authenticated con
+  // tiene_modulo('finanzas'), sin grant a anon) y la funcion responderia 500.
+  // Con la service_role en Authorization se salta RLS en TODAS las consultas.
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${serviceRoleKey}` } },
   });
 
   // --- (1) Releer el producto de catalogo_publico server-side ---------------
