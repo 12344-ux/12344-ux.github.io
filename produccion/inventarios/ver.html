@@ -99,6 +99,22 @@
   let itemsCargados = [];    // ultimos items traidos de la BD (para re-filtrar sin re-consultar)
   let filtroActivo = 'todos'; // 'todos' | 'agotados' | 'mas' | 'menos'
 
+  // ============================================================
+  // PATRON N+1 (deteccion de truncamiento) — mismo patron que el
+  // Libro Diario en este tramo (D5). A cada consulta acotada le
+  // pedimos SIEMPRE una fila extra (N + 1). Si vuelve esa fila de
+  // mas, HAY mas registros de los que mostramos: renderizamos SOLO
+  // las primeras N y pintamos un aviso sobrio y honesto. Si vuelven
+  // <= N filas, NO hay mas y NO se pinta ningun aviso (jamas uno
+  // permanente que mienta). Es una sola llamada (no un count aparte
+  // que pueda fallar/divergir por RLS o latencia) y degrada con
+  // gracia: ante error de la consulta se muestra el mensaje existente
+  // y NUNCA un aviso. El aviso solo se evalua sobre datos traidos.
+  // ============================================================
+  const VITRINA_N = 300;      // productos que se muestran en la vitrina
+  const MOV_N = 200;          // movimientos por producto en el historial
+  let hayMasVitrina = false;  // true si la vitrina se trunco (llegaron VITRINA_N+1)
+
   // ----------------------------------------------------------
   // VITRINA (listado)
   // ----------------------------------------------------------
@@ -177,9 +193,15 @@
       const patron = '%' + termino + '%';
       stockQ = stockQ.or('sku.ilike.' + patron + ',nombre.ilike.' + patron);
     }
-    const { data: stock, error: e1 } = await stockQ.order('nombre', { ascending: true }).limit(300);
+    // N+1: se piden VITRINA_N+1 filas; la fila extra revela si hay mas.
+    const { data: stockRaw, error: e1 } = await stockQ.order('nombre', { ascending: true }).limit(VITRINA_N + 1);
     if (e1) { cont.innerHTML = '<div class="pr-empty">No se pudo cargar el inventario.</div>'; return; }
-    if (!stock || stock.length === 0) { pintar([]); return; }
+    if (!stockRaw || stockRaw.length === 0) { hayMasVitrina = false; pintar([]); return; }
+
+    // Si llego la fila extra, hay mas productos: nos quedamos con los
+    // primeros VITRINA_N y marcamos el flag para pintar el aviso tras filtrar.
+    hayMasVitrina = stockRaw.length > VITRINA_N;
+    const stock = hayMasVitrina ? stockRaw.slice(0, VITRINA_N) : stockRaw;
 
     // 2) Ficha (categoria, precio, imagen, minimo) desde productos activos.
     const ids = stock.map((s) => s.product_id);
@@ -233,6 +255,16 @@
         break;
     }
     pintar(items);
+    // Aviso de truncamiento (patron N+1): SOLO si la ultima carga trajo mas
+    // de VITRINA_N productos. El buscador (parametro q) acota server-side, asi
+    // que es la via natural para llegar al resto. Se pinta al pie de la vitrina.
+    if (hayMasVitrina && items.length) {
+      cont.insertAdjacentHTML('beforeend',
+        '<div class="pr-truncado">' + ICONOS.info +
+          '<span>Mostrando los primeros ' + VITRINA_N + ' productos por nombre. ' +
+          'Hay más: usa el buscador por SKU o nombre para encontrar uno puntual.</span>' +
+        '</div>');
+    }
   }
 
   let t;
@@ -689,14 +721,17 @@
       .eq('product_id', id)
       .order('fecha', { ascending: false })
       .order('creado', { ascending: false })
-      .limit(200);
+      .limit(MOV_N + 1); // N+1: la fila extra revela si hay mas movimientos
     if (error) { lista.innerHTML = '<p class="pr-empty">No se pudo cargar el historial.</p>'; return; }
     if (!data || data.length === 0) {
       lista.innerHTML = '<p class="pr-empty">Sin movimientos registrados todavía.</p>';
       return;
     }
+    // Si llego la fila extra, hay mas de MOV_N: mostramos MOV_N y avisamos.
+    const hayMasMov = data.length > MOV_N;
+    const movs = hayMasMov ? data.slice(0, MOV_N) : data;
     const suma = new Set(['entrada', 'ajuste_entrada']);
-    lista.innerHTML = '<ul class="pr-timeline">' + data.map((m) => {
+    lista.innerHTML = '<ul class="pr-timeline">' + movs.map((m) => {
       const signo = suma.has(m.tipo) ? '+' : '−';
       const det = [];
       if (m.motivo) det.push(escaparHTML(m.motivo));
@@ -715,6 +750,15 @@
         '</li>'
       );
     }).join('') + '</ul>';
+    // Aviso de truncamiento (patron N+1): SOLO si este producto tiene mas de
+    // MOV_N movimientos. Se anade bajo la lista .pr-timeline.
+    if (hayMasMov) {
+      lista.insertAdjacentHTML('beforeend',
+        '<div class="pr-truncado">' + ICONOS.info +
+          '<span>Mostrando los ' + MOV_N + ' movimientos más recientes de este producto. ' +
+          'Hay más en la bitácora global.</span>' +
+        '</div>');
+    }
   }
 
   async function registrarMovimiento(e) {

@@ -246,6 +246,22 @@ body.pr-body{
 .pr-aviso-vacio svg{width:20px;height:20px;color:var(--pr-marino);flex:none;margin-top:1px}
 .pr-aviso-vacio strong{color:var(--pr-marino)}
 
+/* Aviso de truncamiento (patron N+1): mismo look sobrio que .pr-aviso-vacio
+   pero como PIE de una lista ya pintada (vitrina, timeline, bitacora). SOLO
+   se pinta cuando hay mas registros que los mostrados; nunca de forma
+   permanente. Reutiliza la caja y el icono; solo ajusta el margen para que
+   lea como pie (no centrado con margen automatico) y ocupe el ancho. */
+.pr-truncado{
+  display:flex;align-items:flex-start;gap:12px;
+  margin:18px 0 4px;max-width:none;
+  font-size:13px;color:var(--pr-gris);
+  background:rgba(16,28,51,.04);border:1px solid var(--pr-linea);
+  border-radius:var(--pr-radio);padding:14px 18px;
+}
+.pr-truncado svg{width:18px;height:18px;color:var(--pr-marino);flex:none;margin-top:1px}
+/* Cuando se combina con .pr-aviso-vacio (bitacora global), .pr-truncado gana
+   los overrides de margen/ancho por venir despues en la cascada. */
+
 /* ============================================================
    VITRINA DE FICHAS (Ver inventario) · LAYOUT que diferencia el area:
    la IMAGEN del producto manda; los numeros son secundarios.

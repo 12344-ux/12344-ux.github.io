@@ -104,6 +104,20 @@
   // Tipos que SUMAN al stock (signo +); el resto resta (signo −).
   const SUMA = new Set(['entrada', 'ajuste_entrada']);
 
+  // ============================================================
+  // PATRON N+1 (deteccion de truncamiento) — mismo patron que el
+  // Libro Diario y ver.html en este tramo (D5). A la consulta le
+  // pedimos SIEMPRE una fila extra (MOV_GLOBAL_N + 1). Si vuelve esa
+  // fila de mas, HAY mas movimientos de los que mostramos: pintamos
+  // SOLO los primeros MOV_GLOBAL_N y un aviso sobrio que apunta a los
+  // filtros de arriba. Si vuelven <= MOV_GLOBAL_N filas, NO hay mas y
+  // NO se pinta aviso. Es una sola llamada (no un count aparte que
+  // pueda fallar por RLS/latencia) y degrada con gracia: ante error se
+  // muestra el mensaje existente y NUNCA un aviso. El aviso solo se
+  // evalua sobre datos traidos.
+  // ============================================================
+  const MOV_GLOBAL_N = 500; // movimientos que se muestran en la bitacora global
+
   // Cache de productos por id (para mostrar sku + nombre junto a cada
   // movimiento sin re-consultar). Se llena una vez al arrancar.
   let productosPorId = new Map();
@@ -156,16 +170,20 @@
     const { data, error } = await q
       .order('fecha', { ascending: false })
       .order('creado', { ascending: false })
-      .limit(500);
+      .limit(MOV_GLOBAL_N + 1); // N+1: la fila extra revela si hay mas
 
     if (error) {
       lista.innerHTML = '<p class="pr-empty">No se pudieron cargar los movimientos.</p>';
       return;
     }
-    pintar(data || []);
+    // Si llego la fila extra, hay mas de MOV_GLOBAL_N: mostramos MOV_GLOBAL_N
+    // y avisamos apuntando a los filtros de arriba.
+    const filas = data || [];
+    const hayMas = filas.length > MOV_GLOBAL_N;
+    pintar(hayMas ? filas.slice(0, MOV_GLOBAL_N) : filas, hayMas);
   }
 
-  function pintar(movs) {
+  function pintar(movs, hayMas) {
     if (!movs || movs.length === 0) {
       // Estado vacio honesto y sobrio: distingue "aun no hay nada" de "el
       // filtro no arroja resultados", sin bloquear.
@@ -212,6 +230,17 @@
         '</li>'
       );
     }).join('') + '</ul>';
+
+    // Aviso de truncamiento (patron N+1): SOLO cuando llegaron mas de
+    // MOV_GLOBAL_N. Coherente con el estado vacio (.pr-aviso-vacio + ICONOS.info)
+    // y apunta a los filtros producto/tipo/desde/hasta de arriba.
+    if (hayMas) {
+      lista.insertAdjacentHTML('beforeend',
+        '<div class="pr-aviso-vacio pr-truncado">' + ICONOS.info +
+          '<span>Mostrando los ' + MOV_GLOBAL_N + ' movimientos más recientes. ' +
+          'Hay más: acota por producto, tipo o periodo con los filtros de arriba.</span>' +
+        '</div>');
+    }
   }
 
   // Recalcula el texto de ayuda segun los filtros activos.
