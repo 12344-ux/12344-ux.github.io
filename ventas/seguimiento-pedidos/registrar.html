@@ -105,7 +105,10 @@
     <div class="vt-subhead" style="border-top:0;padding-top:0;margin-top:0">Cliente</div>
     <div class="vt-form-grid">
       <label class="vt-campo"><span>Nombre</span>
-        <input class="vt-input" id="vt-nombre" type="text" placeholder="Nombre y apellido" required>
+        <!-- Sin `required` nativo a proposito: si se marca un candidato existente
+             (identificado por correo/telefono/id), el pedido puede ir sin nombre
+             nuevo. La validacion coherente vive en el submit (JS). D1.1. -->
+        <input class="vt-input" id="vt-nombre" type="text" placeholder="Nombre y apellido">
       </label>
       <label class="vt-campo"><span>Correo</span>
         <input class="vt-input" id="vt-correo" type="email" placeholder="correo@ejemplo.com">
@@ -253,16 +256,37 @@
     const quitar = tr.querySelector('.vt-it-quitar');
     quitar.innerHTML = ICONOS.equis;
 
-    // Al elegir producto, sugerir su precio_venta (editable).
+    // Al CAMBIAR de producto se re-sugiere el precio_venta del NUEVO producto,
+    // para no arrastrar el precio del producto anterior (D1.2). Pero se respeta
+    // el precio que el operador escribio A MANO: si edito el precio, no se pisa
+    // en silencio; se le avisa que revise el precio del nuevo producto.
+    // `precio.dataset.editadoManual` distingue "sugerencia previa" de "manual".
+    precio.addEventListener('input', () => {
+      precio.dataset.editadoManual = '1';
+      recalcular();
+    });
+
     sel.addEventListener('change', () => {
       const p = productos.find((x) => x.id === sel.value);
-      if (p && (parsearMonto(precio.value) === 0)) {
-        precio.value = formatearCOP(p.precio_venta || 0);
+      const sugerido = p ? (p.precio_venta || 0) : 0;
+      if (precio.dataset.editadoManual === '1') {
+        // El operador escribio un precio propio: no lo pisamos, pero avisamos
+        // para que confirme que corresponde al producto que acaba de elegir.
+        if (p) {
+          msg.className = 'vt-msg';
+          msg.textContent = 'Cambiaste el producto pero conservaste el precio que escribiste (' +
+            formatearCOP(parsearMonto(precio.value)) + '). El precio sugerido de "' +
+            (p.nombre || 'este producto') + '" es ' + formatearCOP(sugerido) +
+            '. Revisa que sea el correcto.';
+        }
+      } else {
+        // El precio venia de una sugerencia (o del 0 inicial): se re-sugiere el
+        // del nuevo producto, sobrescribiendo la sugerencia anterior.
+        precio.value = formatearCOP(sugerido);
       }
       recalcular();
     });
     cant.addEventListener('input', recalcular);
-    precio.addEventListener('input', recalcular);
     quitar.addEventListener('click', () => { tr.remove(); recalcular(); });
 
     recalcular();
@@ -281,7 +305,9 @@
     totalEl.textContent = formatearCOP(total);
   }
 
-  // Reune los items validos (producto elegido, cantidad > 0) como jsonb.
+  // Reune los items con producto elegido y cantidad > 0 como jsonb. NO filtra
+  // por precio: la validacion de precio 0 se hace aparte (D1.3) para poder dar
+  // un mensaje honesto y especifico en vez de descartar la linea en silencio.
   function reunirItems() {
     const items = [];
     itemsBody.querySelectorAll('tr').forEach((tr) => {
@@ -289,7 +315,9 @@
       const cantidad = parsearCantidad(tr.querySelector('.vt-it-cant').value);
       const precio_unitario = parsearMonto(tr.querySelector('.vt-it-precio').value);
       if (product_id && cantidad > 0) {
-        items.push({ product_id, cantidad, precio_unitario });
+        const p = productos.find((x) => x.id === product_id);
+        const nombre = p ? (p.nombre || 'producto sin nombre') : 'producto';
+        items.push({ product_id, cantidad, precio_unitario, nombre });
       }
     });
     return items;
@@ -393,15 +421,32 @@
     const items = reunirItems();
     if (!items.length) {
       msg.className = 'vt-msg err';
-      msg.textContent = 'Agrega al menos un producto con cantidad y precio.';
+      // Mensaje honesto: aqui solo se exige producto + cantidad. El precio se
+      // valida enseguida con su propio mensaje especifico (D1.3).
+      msg.textContent = 'Agrega al menos un producto con una cantidad mayor que cero.';
       return;
     }
-    // Para cliente nuevo, el nombre es obligatorio (lo exige la RPC).
+    // D1.3: para una VENTA, un precio 0 casi siempre es un olvido de captura, no
+    // un regalo intencional. Se bloquea con un mensaje HONESTO y especifico que
+    // nombra el producto, en vez de dejar pasar la venta a precio 0 en silencio.
+    const sinPrecio = items.find((it) => !(it.precio_unitario > 0));
+    if (sinPrecio) {
+      msg.className = 'vt-msg err';
+      msg.textContent = 'El producto "' + sinPrecio.nombre + '" tiene precio 0: ' +
+        'escribe el precio real de la venta.';
+      return;
+    }
+    // Para cliente nuevo, el nombre es obligatorio (lo exige la RPC). Si se marco
+    // un candidato existente (clienteElegidoId), el pedido puede ir sin nombre. D1.1.
     if (!clienteElegidoId && !inNombre.value.trim()) {
       msg.className = 'vt-msg err';
       msg.textContent = 'El nombre del cliente es obligatorio para un cliente nuevo.';
       return;
     }
+    // El campo `nombre` de cada item es solo ayuda para los mensajes de arriba;
+    // la RPC crear_pedido no lo espera, se envia solo product_id/cantidad/precio.
+    const itemsParaRpc = items.map(({ product_id, cantidad, precio_unitario }) =>
+      ({ product_id, cantidad, precio_unitario }));
 
     guardar.disabled = true;
     const guardarLabel = guardar.innerHTML;
@@ -420,7 +465,7 @@
         p_canal: 'manual',
         p_fecha_orden: inFecha.value || hoyISO(),
         p_notas_pedido: inNotasPedido.value.trim() || null,
-        p_items: items
+        p_items: itemsParaRpc
       });
       if (error) throw error;
 
