@@ -50,6 +50,13 @@
   fallback (esas filas se marcan con "≈"), con una nota sobria de transparencia.
   Ver leerIngresoRealPorProducto y la mezcla real/fallback en agregarRanking.
 
+  PEDIDOS ANULADOS (arreglo D4): un pedido anulado NO cuenta ni unidades ni
+  ingreso. anular_pedido no borra la 'salida' original del libro (solo inserta
+  una 'entrada' compensatoria), asi que el ranking descarta en memoria las
+  salidas cuya referencia = pedido_id esta anulado, con el MISMO criterio
+  anulado=false que ya usa el ingreso real. Ver leerPedidosAnulados y la nota de
+  anulacion en agregarRanking.
+
   CASOS LIMITE (con honestidad, sin bloquear):
     · Sin ventas en el rango -> estado vacio sobrio (estilo Balance General).
     · Productos sin ventas en el rango -> NO aparecen (un ranking es de lo que
@@ -145,11 +152,17 @@
   // LECTURA DE SALIDAS DEL LIBRO — mismo enfoque que leerSalidas de las otras
   // categorias, pero SIN filtrar por product_id y TRAYENDO product_id en el
   // select: aqui comparamos TODOS los productos, no analizamos uno.
+  //
+  // Tambien trae 'referencia' porque las salidas nacidas de un pedido guardan
+  // referencia = pedido_id::text (ver crear_pedido). Con ese dato agregarRanking
+  // puede EXCLUIR las salidas cuyo pedido quedo ANULADO, usando el MISMO
+  // criterio anulado=false que ya aplica leerIngresoRealPorProducto (ver
+  // leerPedidosAnulados y la nota de anulacion en agregarRanking).
   // ----------------------------------------------------------
   async function leerSalidas(desde, hasta) {
     let q = supabase
       .from('movimientos_inventario')
-      .select('product_id, cantidad, fecha')
+      .select('product_id, cantidad, fecha, referencia')
       .eq('tipo', 'salida');         // SOLO ventas/salidas: es lo que se movio
     if (desde) q = q.gte('fecha', desde);
     if (hasta) q = q.lte('fecha', hasta);
@@ -157,7 +170,10 @@
     if (error) throw error;
     return (data || []).map((m) => ({
       product_id: m.product_id,
-      cantidad: Math.trunc(Number(m.cantidad) || 0)
+      cantidad: Math.trunc(Number(m.cantidad) || 0),
+      // referencia = pedido_id::text para salidas de Ventas; null/'' para
+      // salidas sin pedido (ventas viejas / ajustes de inventario).
+      referencia: (m.referencia == null) ? '' : String(m.referencia)
     }));
   }
 
@@ -237,6 +253,44 @@
   }
 
   // ----------------------------------------------------------
+  // CONJUNTO DE PEDIDOS ANULADOS EN EL RANGO — la clave del arreglo D4. Cuando
+  // se anula un pedido, anular_pedido NO borra la 'salida' original del libro:
+  // solo inserta una 'entrada' compensatoria (motivo='Anulacion de venta') que
+  // devuelve el stock. Como el ranking solo lee salidas, esas unidades anuladas
+  // seguian contadas; y como leerIngresoRealPorProducto ya excluye anulados
+  // (anulado=false), esas unidades fantasma caian al fallback precio_venta,
+  // inflando tambien el ingreso estimado.
+  //
+  // Aqui traemos el conjunto de pedido_id ANULADOS acotado por el MISMO rango de
+  // fechas (fecha_orden, la misma fecha con la que crear_pedido estampa la
+  // salida). agregarRanking usa este set para descartar las salidas cuya
+  // referencia = pedido_id anulado: asi las UNIDADES quedan alineadas con el
+  // mismo criterio anulado=false del ingreso real, por CONSTRUCCION, y no se
+  // acopla al string fragil del motivo de la entrada compensatoria.
+  //
+  // Solo LEE, bajo la misma RLS de Ventas: si el analista no tiene acceso o la
+  // tabla no existe, devolvemos un set VACIO y degradamos con gracia (igual que
+  // leerIngresoRealPorProducto): sin acceso a Ventas no se puede saber que
+  // pedido esta anulado, asi que no se excluye nada y el ranking se comporta
+  // como antes de D4 para ese usuario, sin romper la pantalla.
+  // ----------------------------------------------------------
+  async function leerPedidosAnulados(desde, hasta) {
+    let q = supabase
+      .from('pedidos')
+      .select('id')
+      .eq('anulado', true);
+    if (desde) q = q.gte('fecha_orden', desde);
+    if (hasta) q = q.lte('fecha_orden', hasta);
+    const { data, error } = await q;
+    if (error) return new Set();
+    const set = new Set();
+    for (const p of (data || [])) {
+      if (p && p.id != null) set.add(String(p.id));
+    }
+    return set;
+  }
+
+  // ----------------------------------------------------------
   // AGREGACION EN MEMORIA — por cada product_id, suma las unidades vendidas del
   // libro en el rango y arma el ingreso mezclando real + estimado POR UNIDAD (no
   // por producto). El defecto anterior era decidir la fuente del ingreso por
@@ -256,14 +310,25 @@
   // cayo al fallback, es decir si unidades > unidadesConPedido (o no hubo pedido).
   // Solo es "real pura" cuando TODAS sus unidades vinieron de un pedido.
   //
+  // ANULACIONES (arreglo D4): antes de acumular, se DESCARTAN las salidas cuya
+  // referencia = pedido_id pertenece a un pedido ANULADO (pedidosAnulados, ver
+  // leerPedidosAnulados). Es el criterio robusto elegido: alinea las UNIDADES
+  // con el MISMO anulado=false que ya usa leerIngresoRealPorProducto, por
+  // CONSTRUCCION, en lugar de netear contra el string fragil del motivo de la
+  // entrada compensatoria. Efecto: anular un pedido descuenta SUS unidades del
+  // ranking y, como esas unidades ya no existen, tampoco caen al fallback
+  // precio_venta, asi que tampoco inflan el ingreso. Las salidas SIN pedido
+  // (referencia vacia: ventas viejas / ajustes) nunca estan en el set de
+  // anulados, asi que su fallback de precio_venta sigue intacto.
+  //
   // Verificacion a mano (ejemplo pequeno):
   //   salidas = [
-  //     { product_id: 'A', cantidad: 3 },
-  //     { product_id: 'B', cantidad: 5 },
-  //     { product_id: 'A', cantidad: 2 },
+  //     { product_id: 'A', cantidad: 3, referencia: 'ped-1' },
+  //     { product_id: 'B', cantidad: 5, referencia: '' },
+  //     { product_id: 'A', cantidad: 2, referencia: 'ped-2' },
   //   ]
   //   productos: A -> precio_venta 1000 ; B -> precio_venta 2000
-  //   Caso 1 (sin Ventas / mapas vacios): todo por fallback:
+  //   Caso 1 (sin Ventas / mapas y set vacios): todo por fallback:
   //     A: unidades = 3 + 2 = 5 ; conPedido = 0 ; ingreso = 5 * 1000 = 5.000  (estimado)
   //     B: unidades = 5         ; conPedido = 0 ; ingreso = 5 * 2000 = 10.000 (estimado)
   //     Totales: unidades = 10 ; ingreso = 15.000 ; productos movidos = 2
@@ -274,16 +339,42 @@
   //     A: real 2.400 + fallback (5 − 3) * 1000 = 2.400 + 2.000 = 4.400 (mixta, "≈")
   //     B: sin real -> fallback -> 5 * 2000 = 10.000 (estimada, "≈")
   //     Totales: unidades = 10 ; ingreso = 14.400
-  //   (Antes, el caso 2 daba A=2.400 ignorando 2 unidades: subestimaba en 2.000.)
-  //   Orden por unidades desc -> [A(5), B(5)] empatan; por ingreso desc, caso 1
-  //   -> [B, A]; caso 2 -> [B(10.000), A(4.400)].
+  //   (Antes de la mezcla por unidad, el caso 2 daba A=2.400 ignorando 2
+  //   unidades: subestimaba en 2.000.)
+  //   Caso 3 (ANULACION, arreglo D4): un producto C vendio 5 unidades en dos
+  //   pedidos y luego se ANULO uno de 2 unidades:
+  //     salidas de C = [
+  //       { product_id: 'C', cantidad: 3, referencia: 'ped-10' },  // vigente
+  //       { product_id: 'C', cantidad: 2, referencia: 'ped-11' },  // ANULADO
+  //     ]
+  //     pedidosAnulados = { 'ped-11' }
+  //     ingresoReal (solo pedidos no anulados) para ped-10 a 900 c/u:
+  //       ingresoReal.ingreso = { C: 3 * 900 = 2.700 } ; ingresoReal.unidades = { C: 3 }
+  //     Al agregar, la salida de 'ped-11' se DESCARTA por anulada:
+  //       C: unidades = 3 (no 5) ; conPedido = 3 ; sinPedido = 0
+  //          ingreso = 2.700 + 0 * precio = 2.700 (real pura)  -> rankea 3 unidades
+  //     Coherencia unidades↔ingreso: 3 unidades, ingreso solo de esas 3 reales.
+  //     Si en vez de netear se hubiera dejado la salida anulada, C mostraria 5
+  //     unidades y 2 caerian al fallback precio_venta (ingreso inflado).
+  //   Caso 4 (anulacion total -> no aparece): si el UNICO pedido de un producto
+  //   D (4 unidades) se anula, su salida se descarta, D queda en 0 unidades y
+  //   generar() lo filtra con filas.filter(f => f.unidades > 0): no rankea.
+  //   Orden por unidades desc en el caso 1/2 -> [A(5), B(5)] empatan; por
+  //   ingreso desc, caso 1 -> [B, A]; caso 2 -> [B(10.000), A(4.400)].
   // ----------------------------------------------------------
-  function agregarRanking(salidas, productos, ingresoReal) {
+  function agregarRanking(salidas, productos, ingresoReal, pedidosAnulados) {
     const real = (ingresoReal && ingresoReal.ingreso) || new Map();
     const realUnidades = (ingresoReal && ingresoReal.unidades) || new Map();
+    const anulados = (pedidosAnulados instanceof Set) ? pedidosAnulados : new Set();
     const acum = new Map(); // product_id -> unidades
     for (const s of salidas) {
       if (!s.product_id) continue;
+      // ARREGLO D4: descartar las salidas de pedidos anulados. La referencia de
+      // una salida de Ventas es su pedido_id; si ese pedido esta en el set de
+      // anulados, la unidad no cuenta (ni en unidades ni, por tanto, en el
+      // fallback de ingreso). Las salidas sin pedido (referencia vacia) nunca
+      // estan en el set, asi que su fallback de precio_venta queda intacto.
+      if (s.referencia && anulados.has(s.referencia)) continue;
       acum.set(s.product_id, (acum.get(s.product_id) || 0) + s.cantidad);
     }
 
@@ -476,12 +567,13 @@
     btnGenerar.disabled = true;
     resultado.innerHTML = '<div class="mk-empty">Leyendo las ventas del periodo…</div>';
 
-    let salidas, productos, ingresoReal;
+    let salidas, productos, ingresoReal, pedidosAnulados;
     try {
-      [salidas, productos, ingresoReal] = await Promise.all([
+      [salidas, productos, ingresoReal, pedidosAnulados] = await Promise.all([
         leerSalidas(desde, hasta),
         leerProductos(),
-        leerIngresoRealPorProducto(desde, hasta)
+        leerIngresoRealPorProducto(desde, hasta),
+        leerPedidosAnulados(desde, hasta)
       ]);
     } catch (err) {
       resultado.innerHTML = '';
@@ -491,7 +583,7 @@
     }
     btnGenerar.disabled = false;
 
-    let filas = agregarRanking(salidas, productos, ingresoReal);
+    let filas = agregarRanking(salidas, productos, ingresoReal, pedidosAnulados);
     // Un ranking es de lo que se MOVIO: productos con 0 unidades no entran.
     filas = filas.filter((f) => f.unidades > 0);
 
