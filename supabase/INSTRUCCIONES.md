@@ -2251,7 +2251,7 @@ Respuesta esperada (200), un JSON como:
 ```json
 {
   "referencia": "MAG-xxxxxxxx-1730000000000-abcdef012345",
-  "monto_en_centavos": 12345600,
+  "monto_en_centavos": "12345600",
   "moneda": "COP",
   "firma_integridad": "…64 hex…",
   "llave_publica": "pub_test_…",
@@ -2261,6 +2261,14 @@ Respuesta esperada (200), un JSON como:
 ```
 
 Fijate que **NO** aparece el secreto ni la service_role.
+
+> **`monto_en_centavos` se devuelve como STRING** (texto entre comillas), no como
+> numero. Es **exactamente la misma cadena** sobre la que se calcula la firma, y
+> la tienda la reenvia a Wompi (`amount-in-cents`) **tal cual**, sin convertir a
+> Number. Asi, lo firmado y lo enviado son identicos byte a byte, aun para
+> montos por encima del entero seguro de JavaScript (2^53). Wompi acepta
+> `amount-in-cents` como texto. Al recalcular la firma en el paso 2 usa ese
+> mismo string de `monto_en_centavos`.
 
 **2) Recalcular la firma a mano y confirmar que coincide.** La firma es
 `sha256( referencia + monto_en_centavos + 'COP' + secreto_integridad )` (sin
@@ -2312,6 +2320,31 @@ curl -sS -X POST \
 # Esperado: HTTP 404 con {"error":"Producto no encontrado."}
 ```
 
+**6) Confirmar el CORS del origen real de la tienda (al desplegar).** La tienda
+llama la funcion con `supabase.functions.invoke(...)`, que fija el `Origin` del
+navegador. La funcion solo refleja los origenes de su **lista blanca** (en
+`index.ts`, `ORIGENES_PERMITIDOS`): hoy `https://magandhi.com`,
+`https://www.magandhi.com` y `https://12344-ux.github.io`. Si el origen no esta
+en la lista, el preflight cae al dominio canonico `https://magandhi.com` y el
+navegador **bloqueara** la respuesta por CORS. Al desplegar:
+
+- Confirma que el `Origin` **real** desde el que vas a probar/servir la tienda
+  esta en la lista blanca. Verifica el preflight:
+
+  ```bash
+  curl -sS -i -X OPTIONS \
+    'https://bxlzipwxyxdtffnuizbz.supabase.co/functions/v1/crear-intencion-pago' \
+    -H 'Origin: https://magandhi.com' \
+    -H 'Access-Control-Request-Method: POST'
+  # Esperado: 204 y 'Access-Control-Allow-Origin: https://magandhi.com'
+  #           (el MISMO origen que enviaste, no otro).
+  ```
+
+- Si vas a probar desde otro origen (p.ej. un subdominio de pruebas o un puerto
+  local con https), **agregalo** a `ORIGENES_PERMITIDOS` en `index.ts` y vuelve a
+  desplegar. No uses `*`: la funcion envia credenciales (`apikey`) y el comodin
+  no es valido con credenciales.
+
 ## F1.6. FRONTERA F1 / F2 (trazada · respetar)
 
 F1 **solo** crea la intencion de pago (firma + datos de pago) y la devuelve al
@@ -2334,3 +2367,23 @@ soportada por Wompi).
 > Nota sobre `url_redireccion`: hoy apunta a la pagina del producto con
 > `?ref=<referencia>` como **PROVISIONAL**. La pagina de gracias definitiva
 > (`/gracias/`) es de **F2.3**; cuando exista, se cambia aqui la URL.
+
+## F1.7. Riesgo aceptado en F1: funcion invocable sin limite de tasa
+
+Con "Verify JWT" activado (F1.2), la primera barrera es la **anon key**, que es
+**publica por definicion** (viaja al navegador). Es decir: cualquiera con la anon
+key puede invocar `crear-intencion-pago` y obtener referencias y firmas validas,
+y **no hay limite de tasa (rate-limiting) ni validacion del comprador**.
+
+**Por que se acepta en F1:** el impacto es **acotado**. F1 **no persiste nada**
+(no escribe `pagos_wompi`), **no baja stock** y **no crea pedido**; solo firma y
+devuelve datos de pago. Generar intenciones "al aire" no mueve inventario ni
+dinero: sin un pago APPROVED confirmado por el webhook, no pasa nada. Montar
+throttling/captcha ahora seria **adelantar alcance de F2** sin beneficio real en
+F1.
+
+**Que se hace en F2 (seguimiento, no olvidar):** el endurecimiento vive en F2,
+donde el webhook `wompi-webhook` es la fuente de verdad: **idempotencia** por
+referencia en `pagos_wompi` (una referencia solo se procesa una vez) y, si se ve
+necesario, **rate-limiting/captcha** o validacion del comprador antes de emitir
+la intencion. Queda **mapeado** aqui como riesgo aceptado en F1.

@@ -313,10 +313,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   // --- Respuesta 200: SOLO datos publicos -----------------------------------
   // NUNCA se incluye el secreto de integridad ni la service_role.
+  // monto_en_centavos se devuelve como STRING: es EXACTAMENTE la misma cadena
+  // sobre la que se calculo la firma (montoEnCentavosBig.toString()). Asi se
+  // elimina toda asimetria entre lo firmado y lo enviado a Wompi: no pasa por
+  // Number(), que podria redondear montos por encima de 2^53 centavos y hacer
+  // que la firma que rehashea Wompi no coincida con la firmada aqui. Wompi
+  // acepta amount-in-cents como texto.
   return json(
     {
       referencia,
-      monto_en_centavos: Number(montoEnCentavos),
+      monto_en_centavos: montoEnCentavos,
       moneda,
       firma_integridad: firmaIntegridad,
       llave_publica: llavePublica,
