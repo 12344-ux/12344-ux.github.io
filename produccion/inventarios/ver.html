@@ -563,7 +563,12 @@
     const p_categoria = mCuerpo.querySelector('#pr-ed-categoria').value.trim() || null;
     const p_unidad_medida = mCuerpo.querySelector('#pr-ed-unidad').value.trim() || 'unidad';
     const p_contenido = mCuerpo.querySelector('#pr-ed-contenido').value.trim() || null;
-    const p_costo_unitario = parsearMonto(mCuerpo.querySelector('#pr-ed-costo').value) || null;
+    // Costo unitario: distinguir campo VACIO (costo desconocido -> null) de un
+    // CERO legitimo (costo = 0 -> 0). Para el asiento contable de Wompi, "costo 0"
+    // y "costo desconocido" NO son lo mismo, asi que NO usamos `|| null` (que
+    // colapsaria 0 a null). Solo el campo vacio se guarda como null.
+    const rawCosto = mCuerpo.querySelector('#pr-ed-costo').value;
+    const p_costo_unitario = rawCosto.trim() === '' ? null : parsearMonto(rawCosto);
     const p_stock_minimo = parsearCantidad(mCuerpo.querySelector('#pr-ed-minimo').value);
     const p_ubicacion = mCuerpo.querySelector('#pr-ed-ubicacion').value.trim() || null;
     const p_proveedor = mCuerpo.querySelector('#pr-ed-proveedor').value.trim() || null;
@@ -579,6 +584,9 @@
     }
 
     btn.disabled = true; btn.textContent = 'Guardando...';
+    // Declaradas fuera del try para que el catch pueda compensar la imagen huerfana.
+    const teniaImagenPrevia = !!(p.imagen_path);
+    let imagenSubidaNueva = null; // key recien subida (para compensar si la RPC falla)
     try {
       // Imagen: si el usuario eligio una nueva, se sube a Storage con la SESION
       // del usuario (key '<id>.jpg', upsert). Si NO eligio, se REENVIA el
@@ -596,6 +604,7 @@
           avisoImagen = 'La imagen no se pudo subir (' + (eUp.message || 'error de Storage') + '); se conservó la imagen anterior. El resto de los cambios sí se guardaron.';
         } else {
           imagenPath = keyImagen;
+          imagenSubidaNueva = keyImagen;
         }
       }
 
@@ -622,6 +631,9 @@
         p_publicado
       });
       if (eEdit) throw eEdit;
+      // La RPC persistio: la imagen recien subida (si la hubo) quedo enlazada;
+      // ya no hay riesgo de huerfano, asi que anulamos la compensacion pendiente.
+      imagenSubidaNueva = null;
 
       // Actualizar productoActivo con los valores guardados y volver al detalle.
       Object.assign(productoActivo, {
@@ -648,6 +660,20 @@
         }
       }
     } catch (err) {
+      // Compensacion best-effort (misma familia C2.1, mismo espiritu que agregar.html
+      // paso 4): si la RPC fallo y acabamos de subir una imagen NUEVA para un
+      // producto que NO tenia imagen previa, el objeto '<id>.jpg' quedaria huerfano
+      // en Storage sin ninguna ficha que lo referencie. Lo borramos. Si el producto
+      // ya tenia imagen previa (misma key '<id>.jpg'), NO borramos: la ficha sigue
+      // apuntando a esa key y el fallo no debe dejar al producto sin imagen.
+      if (imagenSubidaNueva && !teniaImagenPrevia) {
+        try {
+          const { error: eDel } = await supabase.storage.from(BUCKET_PRODUCTOS).remove([imagenSubidaNueva]);
+          if (eDel) console.warn('No se pudo limpiar la imagen huérfana:', eDel.message || eDel);
+        } catch (errDel) {
+          console.warn('No se pudo limpiar la imagen huérfana:', errDel?.message || errDel);
+        }
+      }
       msg.className = 'pr-msg err';
       msg.textContent = err?.message || 'No se pudo guardar la ficha.';
       btn.disabled = false; btn.textContent = 'Guardar cambios';
