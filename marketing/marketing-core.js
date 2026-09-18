@@ -598,6 +598,26 @@ export function regresionLineal(serie, horizonte) {
 // ------------------------------------------------------------
 
 /**
+ * Clave de semana ISO 8601 a partir de una fecha UTC: el jueves de la misma
+ * semana define el ano y el numero de semana. Devuelve 'YYYY-Www'. Se comparte
+ * entre clavePeriodo (bucketing) y la iteracion de relleno de ceros para que
+ * las claves generadas coincidan byte a byte (no duplicar el calculo ISO).
+ * @param {Date} fecha  fecha en UTC (se clona internamente, no se muta)
+ * @returns {string} 'YYYY-Www'
+ */
+function claveSemanaISO(fecha) {
+  // Trabajamos sobre una copia para no mutar la fecha del llamador.
+  const jueves = new Date(Date.UTC(
+    fecha.getUTCFullYear(), fecha.getUTCMonth(), fecha.getUTCDate(),
+  ));
+  const dia = jueves.getUTCDay() || 7; // domingo(0) -> 7
+  jueves.setUTCDate(jueves.getUTCDate() + 4 - dia);
+  const inicioAnio = new Date(Date.UTC(jueves.getUTCFullYear(), 0, 1));
+  const semana = Math.ceil((((jueves - inicioAnio) / 86400000) + 1) / 7);
+  return `${jueves.getUTCFullYear()}-W${String(semana).padStart(2, '0')}`;
+}
+
+/**
  * Devuelve la clave de periodo de una fecha ISO segun la granularidad:
  *   'dia'    -> 'YYYY-MM-DD'
  *   'semana' -> 'YYYY-Www' (semana ISO, lunes como inicio)
@@ -615,37 +635,118 @@ export function clavePeriodo(iso, granularidad) {
   }
   if (granularidad === 'semana') {
     // Semana ISO 8601: jueves de la misma semana define el ano/semana.
-    const fecha = new Date(Date.UTC(y, m - 1, d));
-    const dia = fecha.getUTCDay() || 7; // domingo(0) -> 7
-    fecha.setUTCDate(fecha.getUTCDate() + 4 - dia);
-    const inicioAnio = new Date(Date.UTC(fecha.getUTCFullYear(), 0, 1));
-    const semana = Math.ceil((((fecha - inicioAnio) / 86400000) + 1) / 7);
-    return `${fecha.getUTCFullYear()}-W${String(semana).padStart(2, '0')}`;
+    return claveSemanaISO(new Date(Date.UTC(y, m - 1, d)));
   }
   // dia (default)
   return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
 /**
+ * Parsea 'YYYY-MM-DD' a una fecha UTC a medianoche. Devuelve null si no es una
+ * fecha valida. Se usa para anclar la iteracion de calendario en fechas reales.
+ * @param {string} iso
+ * @returns {Date|null}
+ */
+function isoAFechaUTC(iso) {
+  const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+/**
+ * Genera la secuencia COMPLETA de claves de periodo consecutivas entre dos
+ * fechas ISO (inclusive), incrementando FECHAS REALES de calendario segun la
+ * granularidad (no strings). Reutiliza claveSemanaISO para que las claves
+ * coincidan byte a byte con clavePeriodo. El limite se compara por clave
+ * generada (no por fecha), de modo que los bordes de anno (dic->ene), los meses
+ * de 28/29/30/31 dias y los anos con semana 53 se cubren de forma natural.
+ * @param {string} isoDesde  fecha ancla inicial 'YYYY-MM-DD'
+ * @param {string} isoHasta  fecha ancla final 'YYYY-MM-DD'
+ * @param {'dia'|'semana'|'mes'} granularidad
+ * @returns {string[]} claves en orden cronologico, ambos extremos incluidos
+ */
+function secuenciaClaves(isoDesde, isoHasta, granularidad) {
+  const claveDe = (fecha) => {
+    if (granularidad === 'mes') {
+      return `${fecha.getUTCFullYear()}-${String(fecha.getUTCMonth() + 1).padStart(2, '0')}`;
+    }
+    if (granularidad === 'semana') {
+      return claveSemanaISO(fecha);
+    }
+    return `${fecha.getUTCFullYear()}-${String(fecha.getUTCMonth() + 1).padStart(2, '0')}-${String(fecha.getUTCDate()).padStart(2, '0')}`;
+  };
+  const avanzar = (fecha) => {
+    if (granularidad === 'mes') {
+      // Mes a mes; setUTCMonth maneja dic(11)->ene del anno siguiente solo.
+      fecha.setUTCDate(1); // evitar desbordes (p.ej. 31 -> mes con 30 dias)
+      fecha.setUTCMonth(fecha.getUTCMonth() + 1);
+    } else if (granularidad === 'semana') {
+      fecha.setUTCDate(fecha.getUTCDate() + 7); // 7 dias reales
+    } else {
+      fecha.setUTCDate(fecha.getUTCDate() + 1); // 1 dia real
+    }
+  };
+  const inicio = isoAFechaUTC(isoDesde);
+  const fin = isoAFechaUTC(isoHasta);
+  if (!inicio || !fin) return [];
+  const claveFin = claveDe(fin);
+  const claves = [];
+  const cursor = new Date(inicio.getTime());
+  // Guarda de seguridad: cota holgada para no ciclar si algo va mal.
+  let guarda = 0;
+  const MAX = 500000;
+  let claveActual = claveDe(cursor);
+  while (guarda++ < MAX) {
+    claves.push(claveActual);
+    if (claveActual >= claveFin) break;
+    avanzar(cursor);
+    claveActual = claveDe(cursor);
+  }
+  return claves;
+}
+
+/**
  * Agrupa un arreglo de movimientos {fecha, cantidad} en buckets cronologicos
- * segun la granularidad, sumando cantidades por periodo. Devuelve un arreglo
- * ordenado de { clave, cantidad } donde cantidad es la suma de unidades del
- * periodo. NO rellena periodos sin ventas con ceros (solo periodos con
- * movimiento real); es la serie que alimentan los tres metodos.
+ * segun la granularidad, sumando cantidades por periodo, y RELLENA CON CERO los
+ * periodos sin movimiento a lo largo del rango real de calendario. Devuelve un
+ * arreglo ordenado de { clave, cantidad }; los tres metodos y los graficos lo
+ * consumen igual (serie = buckets.map(b => b.cantidad)), ahora con los ceros
+ * incluidos para que el eje X sea tiempo real y la media no se infle.
+ *
+ * RANGO A RELLENAR (precedencia):
+ *   - extremo inicial = `desde` si viene, si no la fecha del primer movimiento;
+ *   - extremo final   = `hasta` si viene, si no la fecha del ultimo movimiento.
+ * Si el usuario fijo Desde/Hasta, se rellena TODO ese rango (los extremos sin
+ * ventas son periodos reales sin ventas = dato valido). Si NO se paso rango, se
+ * rellena entre el primer y el ultimo movimiento observado (no se inventan
+ * ceros antes de que el producto existiera ni despues del ultimo dato). Sin
+ * movimientos y sin rango -> devuelve [] (para que pintarVacio siga funcionando).
+ *
  * @param {Array<{fecha:string, cantidad:number}>} movimientos
  * @param {'dia'|'semana'|'mes'} granularidad
+ * @param {string} [desde] fecha ISO 'YYYY-MM-DD' del extremo inicial (opcional)
+ * @param {string} [hasta] fecha ISO 'YYYY-MM-DD' del extremo final (opcional)
  * @returns {Array<{clave:string, cantidad:number}>}
  */
-export function agruparPorPeriodo(movimientos, granularidad) {
+export function agruparPorPeriodo(movimientos, granularidad, desde, hasta) {
   const mapa = new Map();
+  let isoMin = null;
+  let isoMax = null;
   for (const mv of (movimientos || [])) {
+    const iso = String(mv.fecha).slice(0, 10);
     const clave = clavePeriodo(mv.fecha, granularidad);
     const cant = Math.trunc(Number(mv.cantidad) || 0);
     mapa.set(clave, (mapa.get(clave) || 0) + cant);
+    if (isoMin === null || iso < isoMin) isoMin = iso;
+    if (isoMax === null || iso > isoMax) isoMax = iso;
   }
-  return [...mapa.entries()]
-    .map(([clave, cantidad]) => ({ clave, cantidad }))
-    .sort((a, b) => (a.clave < b.clave ? -1 : a.clave > b.clave ? 1 : 0));
+  // Precedencia del rango: rango de usuario si viene, si no rango de datos.
+  const isoInicio = (desde && String(desde).slice(0, 10)) || isoMin;
+  const isoFinal = (hasta && String(hasta).slice(0, 10)) || isoMax;
+  // Sin datos ni rango: nada que rellenar.
+  if (!isoInicio || !isoFinal) return [];
+  return secuenciaClaves(isoInicio, isoFinal, granularidad)
+    .map((clave) => ({ clave, cantidad: mapa.get(clave) || 0 }));
 }
 
 // ------------------------------------------------------------
@@ -731,6 +832,39 @@ export async function traerTodo(construirConsulta, tamBloque = 1000) {
 //    promedioMovil([10,20,30,40], 2, 3)              -> [35, 35, 35]
 //    suavizacionExponencial([10,20,30,40], 0.5, 3)   -> proyeccion [31.25,...]
 //    regresionLineal([10,20,30,40], 3)               -> proyeccion [50, 60, 70]
+// ============================================================
+
+// ============================================================
+//  AUTO-CHEQUEO DEL RELLENO DE CEROS (agruparPorPeriodo) — verificacion a mano
+//  ------------------------------------------------------------
+//  agruparPorPeriodo genera TODOS los periodos consecutivos del rango y pone 0
+//  donde no hubo movimiento; asi el eje X es tiempo real y la media no se infla.
+//
+//  Ejemplo con un periodo en cero INTERCALADO (granularidad 'dia'):
+//    movimientos = [ {fecha:'2025-01-01', cantidad:10},
+//                    {fecha:'2025-01-03', cantidad:30} ]
+//    agruparPorPeriodo(movimientos, 'dia', '2025-01-01', '2025-01-03')
+//      -> [ {clave:'2025-01-01', cantidad:10},
+//           {clave:'2025-01-02', cantidad:0},   // dia real SIN ventas
+//           {clave:'2025-01-03', cantidad:30} ]
+//    serie = [10, 0, 30]  (NO [10, 30])
+//    media = (10 + 0 + 30) / 3 = 40/3 = 13.33   (con el cero real)
+//    contraste: antes 20 (inflado: (10+30)/2, ignorando el dia sin ventas)
+//                ahora 13.33 (con el cero real: (10+0+30)/3)
+//
+//  Casos de calendario (claves = las de clavePeriodo, byte a byte):
+//    borde de anno, DIA:    agruparPorPeriodo([], 'dia', '2024-12-30','2025-01-02')
+//      -> ['2024-12-30','2024-12-31','2025-01-01','2025-01-02'] (todas cantidad 0)
+//    borde de anno, MES:    agruparPorPeriodo([], 'mes', '2024-11-15','2025-02-10')
+//      -> ['2024-11','2024-12','2025-01','2025-02']
+//    febrero 28/29 (mes):   agruparPorPeriodo([], 'dia', '2024-02-27','2024-03-01')
+//      -> ['2024-02-27','2024-02-28','2024-02-29','2024-03-01'] (2024 bisiesto)
+//    semana 53 (semana):    agruparPorPeriodo([], 'semana','2020-12-28','2021-01-11')
+//      -> ['2020-W53','2021-W01','2021-W02']  (2020 tiene semana ISO 53)
+//
+//  Se puede re-ejecutar en node importando este modulo:
+//    agruparPorPeriodo([{fecha:'2025-01-01',cantidad:10},{fecha:'2025-01-03',cantidad:30}],'dia','2025-01-01','2025-01-03')
+//      .map(b=>b.cantidad)  -> [10, 0, 30]
 // ============================================================
 
 // ============================================================

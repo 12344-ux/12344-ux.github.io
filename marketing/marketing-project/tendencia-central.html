@@ -358,8 +358,11 @@
     btnCalcular.disabled = false;
 
     // Agrupar por periodo: la serie de totales por periodo es la base de las
-    // tres medidas. Mismo agruparPorPeriodo que proyeccion (dia/semana/mes).
-    const buckets = agruparPorPeriodo(salidas, granularidad);
+    // tres medidas. Mismo agruparPorPeriodo que proyeccion (dia/semana/mes),
+    // RELLENANDO los periodos en cero a lo largo del rango real con los mismos
+    // desde/hasta de la consulta (rango de usuario si viene, si no rango de
+    // datos), para que la media no se infle al omitir periodos sin ventas.
+    const buckets = agruparPorPeriodo(salidas, granularidad, desde, hasta);
 
     // Estado vacio sobrio: NO bloquea controles, solo informa.
     if (!buckets.length) { pintarVacio(nombreProducto); return; }

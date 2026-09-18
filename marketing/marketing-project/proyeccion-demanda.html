@@ -481,9 +481,12 @@
     }
     btnProyectar.disabled = false;
 
-    // Agrupar por periodo segun granularidad. El historial que entra ya viene
-    // recortado por el rango Desde/Hasta de la consulta; no hay slice extra.
-    const buckets = agruparPorPeriodo(salidas, granularidad);
+    // Agrupar por periodo segun granularidad, RELLENANDO los periodos en cero a
+    // lo largo del rango real. Se pasan los MISMOS desde/hasta de la consulta:
+    // si el usuario fijo rango, se rellena todo ese rango (los extremos sin
+    // ventas son periodos reales sin ventas); si no, se rellena entre el primer
+    // y el ultimo movimiento observado.
+    const buckets = agruparPorPeriodo(salidas, granularidad, desde, hasta);
 
     // Estado vacio sobrio: NO bloquea controles, solo informa.
     if (!buckets.length) { pintarVacio(nombreProducto); return; }
