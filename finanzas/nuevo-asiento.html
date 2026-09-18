@@ -82,7 +82,7 @@
 <script type="module">
   import {
     supabase, asegurarAcceso, montarHeader, ICONOS,
-    formatearCOP, parsearMonto, hoyISO, formatearFecha, TOPE_MONTO_LINEA
+    formatearCOP, parsearMonto, analizarMonto, hoyISO, formatearFecha, TOPE_MONTO_LINEA
   } from './finanzas-core.js';
 
   const NIVEL_TXT = { 1: 'Clase', 2: 'Grupo', 3: 'Cuenta', 4: 'Subcuenta' };
@@ -187,8 +187,18 @@
 
     // --- Montos: mutuamente excluyentes, formateo en vivo con enteros ---
     function normalizarMonto(el, otro) {
-      const entero = parsearMonto(el.value);
+      // analizarMonto no se traga los centavos en silencio: si el usuario
+      // escribio un decimal (coma o punto decimal), lo avisamos en vez de
+      // pegarlo a los pesos. El sistema maneja pesos enteros, sin centavos.
+      const { valor: entero, tieneDecimal } = analizarMonto(el.value);
       el.value = entero > 0 ? formatearCOP(entero) : '';
+      if (tieneDecimal) {
+        msgEl.className = 'fz-msg err';
+        msgEl.textContent = 'Los montos son pesos enteros, sin centavos. Se detecto un decimal y se ignoro: revisa el valor (quedo en ' + formatearCOP(entero) + ').';
+      } else if (msgEl.dataset.aviso === 'decimal') {
+        msgEl.textContent = ''; msgEl.className = 'fz-msg';
+      }
+      msgEl.dataset.aviso = tieneDecimal ? 'decimal' : '';
       if (entero > 0 && parsearMonto(otro.value) > 0) {
         otro.value = ''; // una linea es DEBE o HABER, no ambos
       }

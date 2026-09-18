@@ -98,13 +98,27 @@
 
     const movs = movRes.data || [];
     if (movRes.error) { detalle.innerHTML = '<div class="fz-empty">No se pudieron cargar los movimientos.</div>'; return; }
+    // B1.2: el saldo final y los totales vienen de saldos_cuenta (autoritativo).
+    // Si esa consulta falla o no devuelve fila, NO inventamos ceros ni pintamos
+    // el corrido del cliente como si fuera saldo real: en un libro contable un
+    // cero falso miente peor que un error. Avisamos y no dibujamos la tabla.
+    if (saldoRes.error || !saldoRes.data) {
+      detalle.innerHTML =
+        '<div class="fz-empty">No se pudo obtener el saldo de la cuenta <strong>' +
+        escaparHTML(codigo) + '</strong>. No se muestran totales para no presentar cifras erroneas. ' +
+        'Intenta de nuevo en un momento.' +
+        (saldoRes.error && saldoRes.error.message ? '<br><small>' + escaparHTML(saldoRes.error.message) + '</small>' : '') +
+        '</div>';
+      return;
+    }
     if (!movs.length) {
       detalle.innerHTML = '<div class="fz-empty">La cuenta <strong>' + escaparHTML(codigo) + '</strong> aun no tiene movimientos.</div>';
       return;
     }
 
     // Saldo acumulado corrido segun la naturaleza de la cuenta (enteros).
-    const nat = (saldoRes.data && saldoRes.data.naturaleza) || naturaleza || 'debito';
+    const s = saldoRes.data;
+    const nat = s.naturaleza || naturaleza || 'debito';
     let corrido = 0;
     const filas = movs.map((m) => {
       const d = Number(m.debe) || 0, h = Number(m.haber) || 0;
@@ -119,8 +133,6 @@
         '</tr>'
       );
     }).join('');
-
-    const s = saldoRes.data || { total_debe: 0, total_haber: 0, saldo: corrido };
 
     detalle.innerHTML =
       '<h2 class="fz-title" style="font-size:20px;margin:22px 0 4px">' +

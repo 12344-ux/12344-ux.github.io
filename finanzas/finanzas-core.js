@@ -46,19 +46,82 @@ export function formatearCOP(entero) {
 }
 
 /**
+ * Analiza lo que el usuario escribe en un campo de monto SIN tragarse los
+ * centavos en silencio. Los montos son ENTEROS de pesos COP (sin centavos);
+ * el punto es separador de MILES, la coma seria separador decimal.
+ *
+ * El bug historico (B1.1): un simple replace(/[^\d]/g,'') convertia "1.200,50"
+ * en "120050" (borra la coma y pega los centavos), guardando un valor 100x
+ * mayor sin avisar. Aqui, en cambio:
+ *   · El punto se trata como separador de miles: "1.200.000" -> 1200000.
+ *   · Si aparece una coma, o un punto que NO agrupa de a tres digitos (p.ej.
+ *     "1.200,50" o el punto final de "1200.50"), se interpreta como parte
+ *     DECIMAL: se descarta (el sistema no maneja centavos) y se avisa via
+ *     `tieneDecimal` para que la UI lo advierta o lo rechace, nunca lo cuele.
+ *   · Campo vacio -> 0.
+ *
+ * Devuelve el ENTERO de pesos (parte entera, ignorando cualquier decimal) y
+ * banderas para que la capa de UX decida. El candado autoritativo del monto
+ * sigue viviendo server-side en fz_validar_lineas; esto es solo la capa de UX.
+ *
+ * @param {string} texto
+ * @returns {{ valor:number, tieneDecimal:boolean, invalido:boolean }}
+ *   valor: entero de pesos (>= 0) con la parte decimal descartada.
+ *   tieneDecimal: true si se detecto una parte decimal (coma o punto decimal).
+ *   invalido: true si el texto tiene digitos pero no se pudo parsear a numero.
+ */
+export function analizarMonto(texto) {
+  if (texto == null) return { valor: 0, tieneDecimal: false, invalido: false };
+  // Quita todo lo que no sea digito, punto o coma (espacios, $, letras, signos).
+  let limpio = String(texto).replace(/[^\d.,]/g, '');
+  if (limpio === '') return { valor: 0, tieneDecimal: false, invalido: false };
+
+  let tieneDecimal = false;
+
+  // Una coma siempre marca la parte decimal (centavos): la separamos.
+  const coma = limpio.indexOf(',');
+  if (coma !== -1) {
+    const decimales = limpio.slice(coma + 1).replace(/[.,]/g, '');
+    if (decimales !== '') tieneDecimal = true;
+    limpio = limpio.slice(0, coma);
+  }
+
+  // Ya sin coma: quedan solo digitos y puntos (candidatos a miles). Un punto
+  // es separador de miles solo si agrupa de a TRES digitos. Si el ultimo grupo
+  // tras un punto no tiene 3 digitos (p.ej. "1200.50" o "12.5"), ese punto es
+  // decimal: descartamos ese ultimo grupo y avisamos.
+  if (limpio.indexOf('.') !== -1) {
+    const grupos = limpio.split('.');
+    const ultimo = grupos[grupos.length - 1];
+    // Con mas de un grupo, todos menos el primero deben tener 3 digitos para
+    // ser miles legitimos. Si el ultimo no los tiene, es una parte decimal.
+    if (grupos.length > 1 && ultimo.length !== 3) {
+      const dec = grupos.pop().replace(/\D/g, '');
+      if (dec !== '') tieneDecimal = true;
+      limpio = grupos.join('.');
+    }
+  }
+
+  const soloDigitos = limpio.replace(/\D/g, '');
+  if (soloDigitos === '') return { valor: 0, tieneDecimal, invalido: false };
+  const n = parseInt(soloDigitos, 10);
+  if (!Number.isFinite(n)) return { valor: 0, tieneDecimal, invalido: true };
+  return { valor: n, tieneDecimal, invalido: false };
+}
+
+/**
  * Convierte lo que el usuario escribe en un campo de monto a un ENTERO de
- * pesos. Quita todo lo que no sea digito (puntos de miles, espacios, $, y
- * cualquier coma/decimal: los montos son enteros de pesos, sin centavos).
- * Un campo vacio -> 0.
+ * pesos (los montos son enteros de pesos, sin centavos). El punto es separador
+ * de miles ("1.200.000" -> 1200000); cualquier parte decimal se DESCARTA (no
+ * se pega a los pesos como hacia el bug historico). Un campo vacio -> 0.
+ *
+ * Devuelve solo el entero (firma retrocompatible). Para AVISARLE al usuario que
+ * escribio un decimal, usa `analizarMonto`, que expone la bandera `tieneDecimal`.
  * @param {string} texto
  * @returns {number} entero de pesos (>= 0)
  */
 export function parsearMonto(texto) {
-  if (texto == null) return 0;
-  const soloDigitos = String(texto).replace(/[^\d]/g, '');
-  if (soloDigitos === '') return 0;
-  const n = parseInt(soloDigitos, 10);
-  return Number.isFinite(n) ? n : 0;
+  return analizarMonto(texto).valor;
 }
 
 /**

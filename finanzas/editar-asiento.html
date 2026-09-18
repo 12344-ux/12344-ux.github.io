@@ -113,7 +113,7 @@
 <script type="module">
   import {
     supabase, asegurarAcceso, montarHeader, ICONOS,
-    formatearCOP, parsearMonto, hoyISO, formatearFecha, formatearMomento,
+    formatearCOP, parsearMonto, analizarMonto, hoyISO, formatearFecha, formatearMomento,
     ACCIONES_BITACORA, cargarBitacora, escaparHTML, TOPE_MONTO_LINEA
   } from './finanzas-core.js';
 
@@ -240,8 +240,17 @@
     cuentaInput.addEventListener('blur', () => { setTimeout(() => sug.classList.remove('open'), 120); });
 
     function normalizarMonto(el, otro) {
-      const entero = parsearMonto(el.value);
+      // analizarMonto no se traga los centavos en silencio: avisa si el
+      // usuario escribio un decimal en vez de pegarlo a los pesos.
+      const { valor: entero, tieneDecimal } = analizarMonto(el.value);
       el.value = entero > 0 ? formatearCOP(entero) : '';
+      if (tieneDecimal) {
+        msgEl.className = 'fz-msg err';
+        msgEl.textContent = 'Los montos son pesos enteros, sin centavos. Se detecto un decimal y se ignoro: revisa el valor (quedo en ' + formatearCOP(entero) + ').';
+      } else if (msgEl.dataset.aviso === 'decimal') {
+        msgEl.textContent = ''; msgEl.className = 'fz-msg';
+      }
+      msgEl.dataset.aviso = tieneDecimal ? 'decimal' : '';
       if (entero > 0 && parsearMonto(otro.value) > 0) { otro.value = ''; }
       recalcular();
     }
