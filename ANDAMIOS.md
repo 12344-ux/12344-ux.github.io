@@ -284,9 +284,19 @@ _Lo que Wompi va a tocar (Ventas) debe estar sólido ANTES de conectarlo._
 - [ ] **D2.2** — Guardar la dirección de entrega EN EL PEDIDO (hoy usa la del
   cliente al momento, y cambiarla reescribe el histórico de envíos).
 
-## TRAMO D3 — Roles reales (granularidad de acceso) ⬜
+## TRAMO D3 — Roles reales (granularidad de acceso) ⏸️
 **Repo:** `12344-ux.github.io` · **Rama:** `sec/roles-granularidad`
 **⚠️ SQL (RLS/funciones) — el dueño lo corre.**
+
+> ⏸️ **POSPUESTO POR DECISIÓN DEL DUEÑO.** Motivo: hoy el único usuario es admin
+> (ve todo por diseño, vía `tiene_modulo`), así que los sub-bugs D3.1–D3.4 no
+> tienen víctima todavía. **CONDICIÓN DE REACTIVACIÓN (requisito bloqueante):**
+> retomar D3 **ANTES** de crear el primer usuario con rol reducido (p.ej. el
+> hermano "solo pedidos" o un analista "solo ver números"), idealmente junto con
+> el panel de gestión de accesos (otorgar/quitar categorías). El riesgo (leer PII
+> de clientes / publicar sin permiso) está latente mientras solo exista admin; se
+> activa en cuanto exista otro usuario. Los sub-puntos D3.1–D3.4 siguen siendo el
+> trabajo pendiente cuando se reactive.
 
 - [ ] **D3.1 — `tiene_acceso_marketing()` deja a un analista PUBLICAR productos.**
   Acepta 'marketing' o 'marketing-project' indistintamente. Separar: ver números
@@ -443,7 +453,7 @@ _TODAS las fichas técnicas 1-9 que el dueño aprobó viven aquí._
 | C2 | Campañas: imágenes atómicas | ⬜ | — | — |
 | D1 | Ventas: bugs registro | ⬜ | — | — |
 | D2 | Ventas: bitácora pedidos | ⬜ | — | SQL dueño · req. Wompi |
-| D3 | Roles granularidad | ⬜ | — | SQL dueño |
+| D3 | Roles granularidad | ⏸️ | — | pospuesto: reactivar antes del 1er usuario con rol reducido / panel de accesos |
 | D4 | Ranking vs anulaciones | ⬜ | — | — |
 | D5 | Truncamiento/paginación | ⬜ | — | — |
 | E1 | Impulse: serie temporal + paginación | ⬜ | — | identidad Impulse |
@@ -453,7 +463,7 @@ _TODAS las fichas técnicas 1-9 que el dueño aprobó viven aquí._
 | F4 | Wompi: sandbox→prod | ⬜ | — | interruptor |
 | G1 | Sellado + docs | ⬜ | — | — |
 
-**Leyenda:** ⬜ pendiente · 🔨 en curso · ✅ mergeado · ⏸️ bloqueado (esperando dueño)
+**Leyenda:** ⬜ pendiente · 🔨 en curso · ✅ mergeado · ⏸️ bloqueado (esperando dueño) o pospuesto por decisión
 
 ---
 
