@@ -598,6 +598,8 @@
   }
   async function subirItemGaleria(item) {
     // La key liviana comparte base con la grande (sufijo -sm) para trazabilidad.
+    // Devolvemos AMBAS keys (grande y, si subio, la liviana) para poder limpiar
+    // huerfanos en Storage si la RPC de creacion falla despues (compensacion).
     const base = claveAleatoria();
     const keyGrande = base + '.' + item.grande.ext;
     const { error: e1 } = await supabase.storage
@@ -605,13 +607,15 @@
       .upload(keyGrande, item.grande.blob, { contentType: item.grande.tipo, upsert: true });
     if (e1) throw e1;
     // La liviana es best-effort (no aborta si falla): mejora la carga del grid.
+    let keySm = null;
     try {
-      const keySm = base + '-sm.' + item.liviana.ext;
+      const kSm = base + '-sm.' + item.liviana.ext;
       await supabase.storage
         .from(BUCKET_CAMPANAS)
-        .upload(keySm, item.liviana.blob, { contentType: item.liviana.tipo, upsert: true });
+        .upload(kSm, item.liviana.blob, { contentType: item.liviana.tipo, upsert: true });
+      keySm = kSm; // solo se registra si subio de verdad
     } catch (_) { /* la liviana es opcional */ }
-    return keyGrande;
+    return { keyGrande, keySm };
   }
 
   // ------------------------------------------------------------
@@ -844,13 +848,24 @@
     // SUBIR IMAGENES A STORAGE (bucket 'campanas', SESION del usuario) ANTES de
     // crear la campana, con keys aleatorias unicas (no dependen del id). Asi le
     // pasamos a cm_crear_campana los paths ya resueltos, en el ORDEN elegido.
-    // Un fallo de subida NO aborta todo: se avisa y se guarda lo que se pudo.
+    //
+    // ATOMICIDAD POR COMPENSACION: navegador -> Storage y navegador -> RPC son
+    // operaciones SEPARADAS; no hay transaccion distribuida que las una. La
+    // estrategia correcta es subir primero y, si la creacion FALLA, revertir
+    // (remove) las subidas de ESTE intento para no dejar imagenes huerfanas en
+    // el bucket. Por eso vamos juntando en `keysSubidas` cada key que sube de
+    // verdad (banner + grande y liviana '-sm' de cada item de galeria).
+    //
+    // Un fallo de SUBIDA (no de la RPC) NO aborta todo: se marca huboFalloImagen
+    // y se guarda lo que se pudo; el dueno reintenta las imagenes al editar.
     // ------------------------------------------------------------
     let bannerPath = null;
     let huboFalloImagen = false;
+    const keysSubidas = []; // keys realmente subidas en ESTE intento (para limpiar)
     try {
       if (bannerPend) {
         bannerPath = await subirBlob(bannerPend.blob, bannerPend.ext, bannerPend.tipo);
+        keysSubidas.push(bannerPath);
       }
     } catch (_) {
       huboFalloImagen = true;
@@ -861,7 +876,10 @@
       if (item.path) { imagenesPaths.push(item.path); continue; } // preexistente
       if (!item.grande) continue;
       try {
-        imagenesPaths.push(await subirItemGaleria(item));
+        const { keyGrande, keySm } = await subirItemGaleria(item);
+        imagenesPaths.push(keyGrande);
+        keysSubidas.push(keyGrande);
+        if (keySm) keysSubidas.push(keySm); // liviana subida -> tambien se limpia
       } catch (_) {
         huboFalloImagen = true;
       }
@@ -892,24 +910,49 @@
       p_slug: slugificar($('cm-slug').value) || null
     });
 
+    // FALLO REAL: la campana NO se creo. Nadie referencia las imagenes que
+    // acabamos de subir en este intento -> quedarian HUERFANAS en el bucket.
+    // Compensamos borrandolas (best-effort: si el remove falla, no rompemos el
+    // flujo del mensaje de error; solo lo registramos en consola).
     if (error) {
+      await limpiarHuerfanos(keysSubidas);
       btn.disabled = false;
       mostrarMsg('No se pudo guardar: ' + (error.message || 'error desconocido.'));
       return;
     }
 
+    // A partir de aqui la campana SI se creo. Distinguimos dos estados de EXITO
+    // (nunca rojo de error, para no mostrar "exito y error" a la vez):
     if (huboFalloImagen) {
-      // La campana se creo, pero alguna imagen no subio. Avisamos sin abortar
-      // (el dueno puede reintentar las imagenes editando la campana).
-      mostrarMsg('Campaña creada, pero alguna imagen no se pudo subir. Reintenta las imágenes editándola.', 'err');
-      setTimeout(() => { window.location.href = 'index.html'; }, 2200);
+      // Exito CON imagen(es) que no subieron: advertencia honesta (ambar), no
+      // error. La campana existe; el dueno reintenta las imagenes al editarla.
+      mostrarMsg('Campaña creada. Algunas imágenes no se pudieron subir; reintenta esas imágenes editando la campaña.', 'aviso');
+      setTimeout(() => { window.location.href = 'index.html'; }, 2600);
       void data;
       return;
     }
 
+    // Exito total.
     mostrarMsg('Campaña creada. Redirigiendo…', 'ok');
     window.location.href = 'index.html';
     void data;
+  }
+
+  // ------------------------------------------------------------
+  // COMPENSACION: borra del bucket 'campanas' las keys subidas en un intento
+  // fallido (la RPC no creo la campana). Best-effort: cualquier error del
+  // remove se registra pero NO interrumpe el flujo (el estado que importa ya
+  // es "no se pudo guardar"). Sin transaccion distribuida, esta es la unica
+  // forma de dejar Storage limpio.
+  // ------------------------------------------------------------
+  async function limpiarHuerfanos(keys) {
+    if (!keys || !keys.length) return;
+    try {
+      const { error } = await supabase.storage.from(BUCKET_CAMPANAS).remove(keys);
+      if (error) console.warn('No se pudieron limpiar imágenes huérfanas:', error.message || error);
+    } catch (err) {
+      console.warn('No se pudieron limpiar imágenes huérfanas:', err?.message || err);
+    }
   }
 
   // ------------------------------------------------------------

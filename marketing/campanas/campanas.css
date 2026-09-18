@@ -468,6 +468,9 @@
 .cm-form-msg[hidden]{display:none}
 .cm-form-msg.err{color:var(--mk-acento);background:rgba(166,51,46,.08)}
 .cm-form-msg.ok{color:#2F6E4E;background:rgba(47,110,78,.10)}
+/* Advertencia honesta: la campana SI se guardo, pero alguna imagen no subio.
+   No es un error (ambar sobrio), para no mostrar "exito y error" a la vez. */
+.cm-form-msg.aviso{color:#8A5A00;background:rgba(191,124,0,.10)}
 
 /* Aviso sobrio: despublicar/inactivar NO borra (la ficha sigue viva). */
 .cm-aviso-vida{

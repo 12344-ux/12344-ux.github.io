@@ -235,20 +235,30 @@
       //     ya se llama 'productos', asi que anteponer 'productos/' generaria
       //     una carpeta anidada redundante (productos/productos/...). La misma
       //     key se guarda en imagen_path y la lee getPublicUrl -> consistentes.
+      //
+      //     ATOMICIDAD POR COMPENSACION: aqui el producto YA existe (paso 2), y
+      //     la subida a Storage y la RPC que persiste imagen_path (paso 4) son
+      //     operaciones SEPARADAS sin transaccion. Si la imagen sube pero luego
+      //     el paso 4 falla, ese '<id>.jpg' queda HUERFANO (no lo referencia la
+      //     ficha). En ese caso lo borramos (compensacion best-effort) para no
+      //     dejar basura en el bucket; el dueno reintenta la imagen al editar.
+      //     Distinguimos estados: exito total (ok), exito con imagen que no
+      //     subio/no se enlazo (advertencia ambar, NO error), sin mezclar señales.
       let imagenPath = null;
+      let avisoImagen = null; // texto de advertencia honesta si la imagen falla
       if (blobOptimizado) {
-        imagenPath = id + '.jpg';
+        const keyImagen = id + '.jpg';
         const { error: eUp } = await supabase.storage
           .from(BUCKET_PRODUCTOS)
-          .upload(imagenPath, blobOptimizado, {
+          .upload(keyImagen, blobOptimizado, {
             contentType: 'image/jpeg',
             upsert: true
           });
         if (eUp) {
-          // El producto ya existe; avisamos que la imagen no subio, sin abortar.
-          msgEl.className = 'pr-msg err';
-          msgEl.textContent = 'Producto creado (' + (sku || id) + '), pero la imagen no se pudo subir: ' + (eUp.message || 'error de Storage') + '. Puedes reintentar la imagen editando el producto.';
-          imagenPath = null;
+          // El producto ya existe; la imagen no subio (nada que limpiar aun).
+          avisoImagen = 'Producto creado (' + (sku || id) + '), pero la imagen no se pudo subir: ' + (eUp.message || 'error de Storage') + '. Puedes reintentar la imagen editando el producto.';
+        } else {
+          imagenPath = keyImagen;
         }
       }
 
@@ -264,15 +274,30 @@
           p_publicado: false
         });
         if (eEdit) {
-          msgEl.className = 'pr-msg err';
-          msgEl.textContent = 'Producto creado (' + (sku || id) + '), pero no se guardó la ruta de la imagen: ' + (eEdit.message || 'error');
+          // La ruta no se guardo -> la imagen recien subida queda huerfana.
+          // Compensamos borrandola del bucket (best-effort: si el remove falla,
+          // no rompemos el flujo; solo lo registramos en consola).
+          try {
+            const { error: eDel } = await supabase.storage.from(BUCKET_PRODUCTOS).remove([imagenPath]);
+            if (eDel) console.warn('No se pudo limpiar la imagen huérfana:', eDel.message || eDel);
+          } catch (errDel) {
+            console.warn('No se pudo limpiar la imagen huérfana:', errDel?.message || errDel);
+          }
+          imagenPath = null;
+          avisoImagen = 'Producto creado (' + (sku || id) + '), pero no se guardó la ruta de la imagen: ' + (eEdit.message || 'error') + '. Puedes reintentar la imagen editando el producto.';
         }
       }
 
       // Confirmacion: mostrar el SKU generado.
       skuGen.textContent = sku || '(SKU generado)';
       altaOk.hidden = false;
-      if (!msgEl.textContent) {
+      if (avisoImagen) {
+        // Exito CON imagen que no subio/no se enlazo: advertencia honesta
+        // (ambar), NO error rojo. El producto SI quedo creado.
+        msgEl.className = 'pr-msg aviso';
+        msgEl.textContent = avisoImagen;
+      } else {
+        // Exito total.
         msgEl.className = 'pr-msg ok';
         msgEl.textContent = '✓ Producto agregado al inventario.';
       }

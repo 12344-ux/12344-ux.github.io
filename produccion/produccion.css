@@ -392,6 +392,9 @@ body.pr-body{
 .pr-msg{font-size:13px}
 .pr-msg.ok{color:var(--pr-salvia)}
 .pr-msg.err{color:var(--pr-terracota)}
+/* Advertencia honesta: el producto SI se creo, pero la imagen no subio.
+   No es un error (ambar sobrio): evita mostrar "exito y error" a la vez. */
+.pr-msg.aviso{color:#8A5A00}
 
 /* Confirmacion de alta: muestra el SKU generado */
 .pr-alta-ok[hidden]{display:none}   /* respeta el atributo hidden: no mostrar hasta guardar */

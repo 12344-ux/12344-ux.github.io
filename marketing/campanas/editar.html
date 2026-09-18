@@ -614,19 +614,23 @@
     return key;
   }
   async function subirItemGaleria(item) {
+    // Devolvemos AMBAS keys (grande y, si subio, la liviana '-sm') para poder
+    // limpiar huerfanos en Storage si la RPC de edicion falla (compensacion).
     const base = claveAleatoria();
     const keyGrande = base + '.' + item.grande.ext;
     const { error: e1 } = await supabase.storage
       .from(BUCKET_CAMPANAS)
       .upload(keyGrande, item.grande.blob, { contentType: item.grande.tipo, upsert: true });
     if (e1) throw e1;
+    let keySm = null;
     try {
-      const keySm = base + '-sm.' + item.liviana.ext;
+      const kSm = base + '-sm.' + item.liviana.ext;
       await supabase.storage
         .from(BUCKET_CAMPANAS)
-        .upload(keySm, item.liviana.blob, { contentType: item.liviana.tipo, upsert: true });
+        .upload(kSm, item.liviana.blob, { contentType: item.liviana.tipo, upsert: true });
+      keySm = kSm; // solo se registra si subio de verdad
     } catch (_) { /* la liviana es opcional */ }
-    return keyGrande;
+    return { keyGrande, keySm };
   }
 
   // ------------------------------------------------------------
@@ -991,12 +995,21 @@
     // IMAGENES: subir SOLO los blobs nuevos (banner y galeria); conservar los
     // paths preexistentes que no se cambiaron; respetar el NUEVO orden. Un fallo
     // de subida NO aborta el guardado (se avisa para reintentar).
+    //
+    // ATOMICIDAD POR COMPENSACION (igual que en agregar.html): Storage y la RPC
+    // son operaciones separadas sin transaccion distribuida. Si la edicion FALLA
+    // tras haber subido imagenes NUEVAS, esas quedarian huerfanas. Por eso
+    // recolectamos en `keysSubidas` SOLO las keys NUEVAS de este intento (nunca
+    // las preexistentes, que la campana sigue referenciando) y las borramos si
+    // la RPC falla.
     // ------------------------------------------------------------
     let bannerPath = bannerPathExistente; // conservar si no se cambio ni quito
     let huboFalloImagen = false;
+    const keysSubidas = []; // keys NUEVAS subidas en ESTE intento (para limpiar)
     try {
       if (bannerPend) {
         bannerPath = await subirBlob(bannerPend.blob, bannerPend.ext, bannerPend.tipo);
+        keysSubidas.push(bannerPath);
       }
     } catch (_) {
       huboFalloImagen = true;
@@ -1007,7 +1020,10 @@
       if (item.path) { imagenesPaths.push(item.path); continue; } // preexistente
       if (!item.grande) continue;
       try {
-        imagenesPaths.push(await subirItemGaleria(item));
+        const { keyGrande, keySm } = await subirItemGaleria(item);
+        imagenesPaths.push(keyGrande);
+        keysSubidas.push(keyGrande);
+        if (keySm) keysSubidas.push(keySm); // liviana subida -> tambien se limpia
       } catch (_) {
         huboFalloImagen = true;
       }
@@ -1039,20 +1055,45 @@
       p_slug: slugificar($('cm-slug').value) || null
     });
 
+    // FALLO REAL: la edicion NO se guardo. Las imagenes NUEVAS que acabamos de
+    // subir en este intento no las referencia nadie -> se limpian del bucket
+    // (compensacion best-effort). Las preexistentes NO se tocan.
     if (error) {
+      await limpiarHuerfanos(keysSubidas);
       btn.disabled = false;
       mostrarMsg('No se pudo guardar: ' + (error.message || 'error desconocido.'));
       return;
     }
 
+    // A partir de aqui los cambios SI se guardaron. Dos estados de EXITO
+    // (nunca rojo de error, para no mostrar "exito y error" a la vez):
     if (huboFalloImagen) {
-      mostrarMsg('Cambios guardados, pero alguna imagen no se pudo subir. Reintenta las imágenes.', 'err');
-      setTimeout(() => { window.location.href = 'index.html'; }, 2200);
+      // Exito CON imagen(es) que no subieron: advertencia honesta (ambar).
+      mostrarMsg('Cambios guardados. Algunas imágenes no se pudieron subir; reintenta esas imágenes.', 'aviso');
+      setTimeout(() => { window.location.href = 'index.html'; }, 2600);
       return;
     }
 
+    // Exito total.
     mostrarMsg('Cambios guardados. Redirigiendo…', 'ok');
     window.location.href = 'index.html';
+  }
+
+  // ------------------------------------------------------------
+  // COMPENSACION: borra del bucket 'campanas' las keys NUEVAS subidas en un
+  // intento fallido (la RPC no guardo la edicion). Best-effort: cualquier error
+  // del remove se registra pero NO interrumpe el flujo. Sin transaccion
+  // distribuida entre navegador-Storage-RPC, esta es la forma de dejar Storage
+  // limpio. Nunca recibe keys preexistentes (la campana las sigue usando).
+  // ------------------------------------------------------------
+  async function limpiarHuerfanos(keys) {
+    if (!keys || !keys.length) return;
+    try {
+      const { error } = await supabase.storage.from(BUCKET_CAMPANAS).remove(keys);
+      if (error) console.warn('No se pudieron limpiar imágenes huérfanas:', error.message || error);
+    } catch (err) {
+      console.warn('No se pudieron limpiar imágenes huérfanas:', err?.message || err);
+    }
   }
 
   // ------------------------------------------------------------
