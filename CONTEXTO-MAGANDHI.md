@@ -280,10 +280,25 @@ Posible que pidan RUT para el cambio aunque se haya registrado con cédula (a
 confirmar con soporte). NO borrar/recrear la cuenta (perdería aprobación + llaves de
 integración). Postura del dueño sobre formalización (Cámara de Comercio/RUT): no
 hacerla A MEDIAS ni sobre-formalizar antes de validar ventas, pero sí tener el piso
-mínimo cuando entre dinero real. **ESTADO ACTUAL:** el dueño YA CONTACTÓ al equipo de
-soporte de Wompi y el cambio de nombre está en trámite ("pronto quedará solucionado").
+mínimo cuando entre dinero real.
+
+**✅ ESTADO ACTUAL (actualizado): EL CAMBIO DE NOMBRE YA SE APLICÓ.** El dashboard de
+Wompi muestra la cuenta como **"Magandhi"**. OJO con un matiz que confundió en su
+momento: el **checkout de SANDBOX sigue mostrando "montaguth institute"** porque
+sandbox y producción son **perfiles de comercio SEPARADOS** en Wompi; el nombre nuevo
+se verá en el checkout real al pasar a producción (F4). Ningún cliente ve el checkout
+de sandbox.
+
+**PENDIENTE MENOR (decisión del dueño: lo gestiona él, NO urgente):** los DATOS DE
+CONTACTO del comercio que Wompi muestra al cliente en el panel "Información del
+comercio" del checkout siguen siendo los viejos — correo `contacto@montaguth.institute`
+y un teléfono personal. Lo coherente con la marca sería `contacto@magandhi.com` (ya
+montado en Zoho) y el WhatsApp Business **+57 313 245 1188**. Se le señaló al dueño que
+eso lo VE el cliente al pagar; él decidió dejarlo así por ahora (con cero clientes
+reales no es urgente). NO insistir; retomar si él lo pide o al acercarse F4.
+
 Kiro NO interviene en Wompi (no tiene acceso); acompaña con capturas/redacción si el
-dueño lo pide. Retomar solo si el dueño trae novedad de soporte.
+dueño lo pide.
 
 ## Flujo de trabajo Git
 - Rama nueva + PR por cada cambio. NUNCA push directo a main. El dueño mergea rápido.
@@ -315,8 +330,8 @@ NO interpreta (el humano decide/lee). (b) La INTERFAZ y la coherencia de marca s
 FUNDAMENTALES para el dueño (nivel Finanzas, azul marino, sin color nuevo, sello
 Impulse, wordmark MAGANDHI). (c) Flujo Git: rama nueva + PR por cada cambio, nunca push
 a main, el dueño mergea; SQL/Edge/Storage los aplica el dueño a mano. (d) "Hacer las
-cosas bien": sin afán, nada a medias; frenar al dueño si se afana. (e) Wompi en trámite
-con soporte (Kiro no interviene). (f) Modo de trabajo: "regar fichas" → trazar el
+cosas bien": sin afán, nada a medias; frenar al dueño si se afana. (e) Wompi: nombre del
+comercio ya cambiado a MAGANDHI (Kiro no interviene en Wompi). (f) Modo de trabajo: "regar fichas" → trazar el
 camino de conexión (husmear los tapetes de otras áreas para conectar) → construir.
 
 _Última actualización: ver el bloque "SESIÓN CAMPAÑAS" abajo (la más importante del
@@ -450,7 +465,11 @@ un producto NUEVO con su cédula limpia** cuando llegue el real. Por eso existe 
 - **Análisis Clúster (Marketing):** leerá las etiquetas de Campañas × ventas por cliente
   para inferir perfiles. Terreno preparado, no encendido (espera datos reales de ventas).
 - **Limpieza de imágenes huérfanas en Storage** (deuda conocida documentada de Tanda 1).
-- **Wompi:** cambio de nombre a MAGANDHI en trámite con soporte (Kiro no interviene).
+- **Wompi:** cambio de nombre a MAGANDHI ✅ YA APLICADO (el dashboard dice "Magandhi").
+  Queda un pendiente MENOR que el dueño gestionará cuando quiera: los datos de contacto
+  del comercio que el cliente ve en el checkout siguen siendo los viejos
+  (`contacto@montaguth.institute` y teléfono personal) en vez de
+  `contacto@magandhi.com` + WhatsApp +57 313 245 1188.
 - **Reseñas reales** (hoy son de ejemplo; la página tiene `noindex` a propósito hasta que
   haya datos reales — coherente con "nada inventado").
 
