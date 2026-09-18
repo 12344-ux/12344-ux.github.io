@@ -167,6 +167,19 @@
   // Flujo normal (sin anulado): el orden en que avanza un pedido.
   const FLUJO = ['recibido', 'preparando', 'en_camino', 'entregado'];
 
+  // ============================================================
+  // PATRON N+1 (deteccion de truncamiento) — mismo patron que el Libro
+  // Diario e Inventario en este tramo (D5). A la consulta le pedimos SIEMPRE
+  // una fila extra (PEDIDOS_N + 1). Si vuelve esa fila de mas, HAY mas pedidos
+  // de los que mostramos: pintamos SOLO los primeros PEDIDOS_N y un aviso
+  // sobrio que apunta a los filtros de arriba. Si vuelven <= PEDIDOS_N filas,
+  // NO hay mas y NO se pinta aviso. Es una sola llamada (no un count aparte
+  // que pueda fallar por RLS/latencia) y degrada con gracia: ante error se
+  // muestra el mensaje existente y NUNCA un aviso. El aviso solo se evalua
+  // sobre datos traidos.
+  // ============================================================
+  const PEDIDOS_N = 500; // pedidos que se muestran en el tablero
+
   // Cache de pedidos cargados (por id) para abrir el detalle sin re-consultar.
   let pedidosPorId = new Map();
 
@@ -214,7 +227,7 @@
     const { data, error } = await q
       .order('fecha_orden', { ascending: false })
       .order('creado', { ascending: false })
-      .limit(500);
+      .limit(PEDIDOS_N + 1); // N+1: la fila extra revela si hay mas
 
     if (error) {
       lista.innerHTML = '<div class="vt-empty">No se pudieron cargar los pedidos. ' +
@@ -222,11 +235,17 @@
       return;
     }
 
-    pedidosPorId = new Map((data || []).map((p) => [p.id, p]));
-    pintar(data || []);
+    // Si llego la fila extra, hay mas de PEDIDOS_N: mostramos PEDIDOS_N y
+    // avisamos apuntando a los filtros de arriba.
+    const todos = data || [];
+    const hayMas = todos.length > PEDIDOS_N;
+    const pedidos = hayMas ? todos.slice(0, PEDIDOS_N) : todos;
+
+    pedidosPorId = new Map(pedidos.map((p) => [p.id, p]));
+    pintar(pedidos, hayMas);
   }
 
-  function pintar(pedidos) {
+  function pintar(pedidos, hayMas) {
     if (!pedidos.length) {
       const hayFiltro = fEstado.value || fDesde.value || fHasta.value;
       lista.innerHTML = hayFiltro
@@ -264,6 +283,16 @@
         '</tr></thead>' +
         '<tbody>' + filas + '</tbody>' +
       '</table></div>';
+
+    // Aviso de truncamiento (patron N+1): SOLO cuando llegaron mas de PEDIDOS_N.
+    // Apunta a los filtros de estado/periodo de arriba, que ya existen.
+    if (hayMas) {
+      lista.insertAdjacentHTML('beforeend',
+        '<div class="vt-truncado">' + (ICONOS.info || '') +
+          '<span>Mostrando los ' + PEDIDOS_N + ' pedidos más recientes. ' +
+          'Hay más: acota por estado o periodo con los filtros de arriba.</span>' +
+        '</div>');
+    }
 
     lista.querySelectorAll('tr[data-id]').forEach((tr) => {
       const abrir = () => abrirDetalle(tr.dataset.id);

@@ -469,6 +469,25 @@ body.fz-body{
 .fz-tabla .cod{font-variant-numeric:tabular-nums;color:var(--fz-marino);font-weight:600}
 .fz-tabla tfoot td{font-weight:600;border-top:2px solid var(--fz-linea)}
 
+/* Aviso de truncamiento (patron N+1): caja discreta que SOLO se pinta
+   cuando hay mas asientos que los mostrados. Mismo espiritu sobrio que
+   .fz-empty / .fz-mayor-nota, dentro de la paleta de Finanzas. */
+.fz-truncado{
+  display:flex;flex-wrap:wrap;align-items:center;gap:12px;
+  background:rgba(16,28,51,.04);border:1px solid var(--fz-linea);
+  border-radius:var(--fz-radio);padding:14px 18px;margin-top:4px;
+}
+.fz-truncado-texto{margin:0;flex:1;min-width:220px;font-size:13px;color:var(--fz-gris)}
+.fz-truncado-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:inherit;font-size:13px;font-weight:600;
+  color:var(--fz-marino);background:var(--fz-tarjeta);
+  border:1px solid var(--fz-linea);border-radius:10px;padding:9px 16px;
+  cursor:pointer;transition:background-color .15s ease, border-color .15s ease, opacity .15s ease;
+}
+.fz-truncado-btn:hover:not(:disabled){background:rgba(16,28,51,.06);border-color:var(--fz-azul-cl)}
+.fz-truncado-btn:disabled{opacity:.45;cursor:not-allowed}
+
 /* ============================================================
    LIBRO MAYOR
    ============================================================ */
@@ -776,6 +795,9 @@ body.fz-body{
      todo el ancho y se apilan comodos en pantallas estrechas. */
   .fz-bc-fecha{width:100%}
   .fz-bc-fecha .fz-input{max-width:none}
+  /* Aviso de truncamiento: el boton 'Cargar mas' ocupa todo el ancho para
+     ser comodo de tocar en movil. */
+  .fz-truncado-btn{width:100%;justify-content:center}
   .fz-er-resultado .val{margin-left:0;width:100%}
   /* Balance general: los dos bloques (Activo | Pasivo + Patrimonio) se
      apilan en una sola columna en pantallas estrechas. */

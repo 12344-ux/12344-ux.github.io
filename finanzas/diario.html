@@ -32,6 +32,22 @@
 <script type="module" src="../auth-guard.js"></script>
 
 <main class="fz-wrap" id="fz-main" hidden>
+  <!-- Barra de filtros de fecha (opcionales): acotar el conjunto que se lee.
+       Reutiliza el patron de controles del Balance de comprobacion
+       (fz-bc-controles / fz-bc-fecha / fz-input / fz-btn-guardar). Vacio =
+       sin filtro. Ver finanzas/balance-comprobacion.html. -->
+  <div class="fz-bc-controles">
+    <label class="fz-bc-fecha">
+      <span>Desde</span>
+      <input class="fz-input" id="fz-desde" type="date">
+    </label>
+    <label class="fz-bc-fecha">
+      <span>Hasta</span>
+      <input class="fz-input" id="fz-hasta" type="date">
+    </label>
+    <button class="fz-btn-guardar" id="fz-aplicar" type="button">Aplicar</button>
+  </div>
+
   <div id="fz-diario"></div>
 </main>
 
@@ -59,7 +75,37 @@
   const cont = document.getElementById('fz-diario');
   const modalEl = document.getElementById('fz-modal-anular');
   const motivoEl = document.getElementById('fz-motivo');
+  const desdeEl = document.getElementById('fz-desde');
+  const hastaEl = document.getElementById('fz-hasta');
+  const aplicarEl = document.getElementById('fz-aplicar');
   let asientoAAnular = null;
+
+  // ============================================================
+  // PATRON N+1 (deteccion de truncamiento) — establecido aqui y
+  // reutilizado por Produccion y Ventas en este mismo tramo (D5).
+  // ------------------------------------------------------------
+  // PAGINA es cuanto MOSTRAMOS por bloque. A la consulta le pedimos
+  // SIEMPRE una fila extra (PAGINA + 1). Si la consulta devuelve esa
+  // fila de mas, sabemos que HAY mas registros de los que mostramos:
+  // renderizamos SOLO las primeras (mostrar) filas y pintamos el aviso
+  // de truncamiento + boton 'Cargar mas'. Si vuelven <= mostrar filas,
+  // no hay mas: NO se pinta ningun aviso (jamas un aviso permanente que
+  // mienta).
+  //
+  // Por que N+1 y no una segunda consulta count:'exact':
+  //   · Es una sola llamada: no hay una segunda que pueda fallar o
+  //     divergir por RLS/latencia y dejar el aviso mintiendo.
+  //   · Degrada con gracia: si la consulta falla, se muestra el error
+  //     existente ('No se pudo cargar el diario.') y NUNCA un aviso.
+  //   · Es mas barato: no obliga al servidor a contar todo el conjunto.
+  //
+  // El aviso solo se evalua sobre datos EFECTIVAMENTE traidos.
+  // ============================================================
+  const PAGINA = 200;
+
+  // Cuantas filas se pretenden mostrar en total ahora mismo. 'Cargar mas'
+  // aumenta este tope en PAGINA y vuelve a cargar (re-render completo).
+  let mostrar = PAGINA;
 
   function asientoHTML(a) {
     const anulado = a.estado === 'anulado';
@@ -188,18 +234,77 @@
     if (histBtn) { toggleHistorial(histBtn.dataset.hist); return; }
   });
 
+  // Pie de aviso de truncamiento. SOLO se llama cuando el patron N+1
+  // detecto que hay mas registros que los mostrados. El texto es honesto y
+  // menciona los filtros de fecha (y si ya hay un rango activo, sugiere
+  // afinarlo). El boton 'Cargar mas' sube el tope y recarga.
+  function avisoTruncadoHTML(nMostrados, hayFiltro) {
+    const acotar = hayFiltro
+      ? 'afina el rango de fechas para verlos'
+      : 'usa los filtros de fecha para acotar';
+    return (
+      '<div class="fz-truncado">' +
+        '<p class="fz-truncado-texto">Mostrando los ' + nMostrados +
+          ' asientos mas recientes. Hay mas registros: ' + acotar +
+          ', o pulsa Cargar mas.</p>' +
+        '<button class="fz-truncado-btn" type="button" id="fz-cargar-mas">Cargar mas</button>' +
+      '</div>'
+    );
+  }
+
   async function cargar() {
-    const { data, error } = await supabase
+    // Se piden SIEMPRE (mostrar + 1) filas: la fila extra es el "centinela"
+    // del patron N+1 que revela si hay mas de las que vamos a mostrar.
+    let consulta = supabase
       .from('asientos')
       .select('id, fecha, descripcion, estado, creado, asiento_lineas(cuenta_codigo, detalle, debe, haber, orden, puc_cuentas(nombre))')
       .order('fecha', { ascending: false })
-      .order('creado', { ascending: false })
-      .limit(200);
+      .order('creado', { ascending: false });
+
+    // Filtros de fecha OPCIONALES: solo se anaden si el input tiene valor.
+    const desde = desdeEl.value;
+    const hasta = hastaEl.value;
+    if (desde) consulta = consulta.gte('fecha', desde);
+    if (hasta) consulta = consulta.lte('fecha', hasta);
+
+    const { data, error } = await consulta.limit(mostrar + 1);
+
+    // Degradacion con gracia: ante error, el mensaje existente y NUNCA aviso.
     if (error) { cont.innerHTML = '<div class="fz-empty">No se pudo cargar el diario.</div>'; return; }
-    if (!data || !data.length) { cont.innerHTML = '<div class="fz-empty">Aun no hay asientos registrados. Crea el primero en <a href="nuevo-asiento.html">Nuevo asiento</a>.</div>'; return; }
-    cont.innerHTML = data.map(asientoHTML).join('');
+
+    const filas = data || [];
+    if (!filas.length) {
+      const vacio = (desde || hasta)
+        ? 'No hay asientos en el rango de fechas elegido. Ajusta o limpia los filtros.'
+        : 'Aun no hay asientos registrados. Crea el primero en <a href="nuevo-asiento.html">Nuevo asiento</a>.';
+      cont.innerHTML = '<div class="fz-empty">' + vacio + '</div>';
+      return;
+    }
+
+    // N+1: si llego la fila extra, hay mas de las que mostramos.
+    const hayMas = filas.length > mostrar;
+    const visibles = hayMas ? filas.slice(0, mostrar) : filas;
+
+    let html = visibles.map(asientoHTML).join('');
+    if (hayMas) html += avisoTruncadoHTML(visibles.length, Boolean(desde || hasta));
+    cont.innerHTML = html;
     cont.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    const btnMas = document.getElementById('fz-cargar-mas');
+    if (btnMas) {
+      btnMas.addEventListener('click', async () => {
+        btnMas.disabled = true; btnMas.textContent = 'Cargando...';
+        mostrar += PAGINA;
+        await cargar();
+      });
+    }
   }
+
+  // Aplicar filtros: se reinicia el tope de paginacion al primer bloque.
+  function aplicarFiltros() { mostrar = PAGINA; cargar(); }
+  aplicarEl.addEventListener('click', aplicarFiltros);
+  desdeEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') aplicarFiltros(); });
+  hastaEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') aplicarFiltros(); });
 
   (async () => {
     const acceso = await asegurarAcceso(document.body);
@@ -208,7 +313,7 @@
     montarHeader({
       titulo: 'Libro Diario',
       kicker: 'HISTORIAL CRONOLOGICO',
-      lead: 'Todos los asientos en orden cronologico. Los asientos anulados quedan marcados y dejan de contar para el Mayor y los saldos; nada se borra en silencio.',
+      lead: 'Asientos en orden cronológico (más recientes primero). Filtra por fecha para acotar; si hay más de los mostrados, aparece un aviso y puedes cargar más. Los asientos anulados quedan marcados y dejan de contar para el Mayor y los saldos; nada se borra en silencio.',
       sesion: acceso.sesion
     });
     document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
