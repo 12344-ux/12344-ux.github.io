@@ -36,6 +36,14 @@
   registran el plugin autoTable. Los defer garantizan que esten listos antes
   de que el usuario pulse "Descargar PDF".
 
+  SRI (Subresource Integrity): cada <script> lleva integrity="sha384-..." y
+  crossorigin="anonymous". El navegador solo ejecuta el archivo si su hash
+  coincide con el declarado; si el CDN fuera comprometido y sirviera codigo
+  alterado, el hash no cuadra y el navegador RECHAZA el script en vez de
+  correrlo con la sesion del usuario en todo el back-office. Los hashes
+  corresponden a las versiones fijas de arriba (2.5.1 / 3.8.2); si algun dia
+  se sube de version hay que recalcularlos o el PDF dejara de descargar.
+
   EXPORTACION A EXCEL: se genera un CSV con BOM UTF-8 ('\ufeff') y separador
   ';' (no ','), que es lo que Excel en configuracion regional de Colombia/
   Espana espera para abrir el archivo en columnas limpias sin pasar por el
@@ -44,8 +52,8 @@
   (1200000, sin separadores de miles ni simbolo) para que Excel los trate como
   numero y el dueno pueda seguir trabajando las cifras.
 -->
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" integrity="sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3" crossorigin="anonymous"></script>
 </head>
 <body class="fz-body">
 
