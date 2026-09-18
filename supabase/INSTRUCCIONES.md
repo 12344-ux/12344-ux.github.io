@@ -1776,3 +1776,180 @@ Ejecuta estas consultas en el **SQL Editor**:
 > sesion del usuario. `cm_normalizar_slug` si se puede probar en el editor (es
 > pura, no consulta la sesion). Aplicar la migracion (definir las funciones) es
 > seguro: definirlas no las ejecuta.
+
+---
+
+# CAMPANAS · TOPE DE ESCAPARATE (F-C2.2a)
+
+Este tramo agrega el **tope de escaparate**: una llave que el dueno decide
+**tras cortina** para cada campana ligada a Inventario. El tope limita cuantas
+unidades del stock REAL se ofrecen en la web **sin exponer numeros**: la tienda
+sigue viendo solo el booleano `agotado`, nunca las existencias, ni el tope, ni
+lo ofrecido.
+
+**La regla central (sellada, OPCION A):** `lo ofrecido = min(existencias_reales,
+tope)`. El tope solo puede **restar** exhibicion, NUNCA inventar unidades: si el
+tope es mayor que el stock real, manda el inventario real (no se puede ofrecer
+lo que no hay). "ofrecidas" es un valor INTERMEDIO de calculo que **jamas** se
+expone al publico.
+
+**Opcion A (que gobierna hoy el tope, y que no):** el tope **SOLO** afecta el
+booleano `agotado` de `catalogo_publico`. La lista de columnas publicas de la
+vista **no cambia**; solo cambia la expresion de `agotado`.
+
+**Matiz honesto (para no venderse una capacidad que hoy no existe):** hoy la
+venta fase 1 es **MANUAL** (no hay checkout ni carrito en la web). Por eso el
+tope gobierna **el ESCAPARATE** -lo que la tienda muestra como disponible o
+agotado-, **no bloquea la venta**. El candado REAL -"que no se venda la unidad
+26"- llegara con la pasarela de pago **Wompi (Fase F)**, donde el checkout
+consultara lo ofrecido antes de cobrar. El aviso "Solo X disponibles"
+(`aviso_urgencia_cantidad`) sigue siendo un numero **MANUAL, HONESTO e
+INDEPENDIENTE** del tope: esta migracion no toca su logica.
+
+## C2.a Orden EXACTO de ejecucion en el SQL Editor
+
+Abre el **SQL Editor** y ejecuta el contenido completo del archivo (su propio
+**Run**), continuando la numeracion (DESPUES de
+`20250504000000_campanas_slug_retirar_placeholder.sql`):
+
+1. `supabase/migrations/20250602000000_campanas_tope_escaparate.sql`
+   - **(a) Columna:** agrega `campana_producto.tope_escaparate integer null` con
+     un check idempotente (`tope_escaparate is null or tope_escaparate >= 0`) via
+     guard sobre `pg_constraint`. `null` = sin tope (ofrecer todo el stock real);
+     `0` = no exhibir ninguna unidad (agotado aunque haya stock); negativos
+     prohibidos.
+   - **(b) Vista:** redefine `catalogo_publico` con **DROP VIEW + CREATE VIEW +
+     re-grant** a `anon, authenticated` (nunca `create or replace`: Postgres
+     42P16 al tocar la lista de columnas). La **lista de columnas publicas es
+     IDENTICA** a la de hoy y en el mismo orden; el UNICO cambio es la expresion
+     del booleano `agotado`, que ahora aplica la regla con `least(existencias,
+     tope)`:
+     - `product_id_ref` null -> `false` (no agotar algo sin ligar).
+     - `tope_escaparate` no null -> `least(coalesce(existencias,0),
+       tope_escaparate) <= 0`.
+     - `tope_escaparate` null -> `coalesce(existencias,0) <= 0` (comportamiento
+       actual, sin tope).
+   - **(c) RPC:** hace `drop function if exists` de la firma VIVA de C1 (la que
+     termina en `..., text[], uuid, text`) y vuelve a crear `cm_crear_campana` y
+     `cm_editar_campana` con el parametro nuevo `p_tope_escaparate integer
+     default null` **al final** de la firma (despues de `p_slug`). Persiste el
+     tope en el INSERT/UPDATE y valida `null` o `>= 0`. Copia el cuerpo completo
+     y actual de ambas funciones (validaciones, `cm_normalizar_slug`, etiquetas,
+     `product_id_ref`) sin cambiarlo.
+
+   > El archivo es idempotente en TODO (`add column if not exists`, guard sobre
+   > `pg_constraint` para el check, `drop view if exists` + `create view`, `drop
+   > function if exists` + `create function`), se puede re-ejecutar entero sin
+   > duplicar nada.
+
+> **Firma nueva de las RPC** (lista de tipos completa, por si necesitas hacer
+> `drop` a mano en el futuro; ahora termina en `integer`):
+>
+> - `cm_crear_campana(text, text, text, text, text, text, bigint, text, text,
+>   text, jsonb, jsonb, boolean, boolean, integer, boolean, integer, text[],
+>   uuid, text, integer)`
+> - `cm_editar_campana(uuid, text, text, text, text, text, text, bigint, text,
+>   text, text, jsonb, jsonb, boolean, boolean, integer, boolean, integer,
+>   text[], uuid, text, integer)`
+
+## C2.b Como verificar que quedo bien
+
+Ejecuta estas consultas en el **SQL Editor**:
+
+1. **La columna `tope_escaparate` existe** (integer, nullable):
+
+   ```sql
+   select column_name, data_type, is_nullable
+     from information_schema.columns
+    where table_name = 'campana_producto' and column_name = 'tope_escaparate';
+   -- Esperado: 1 fila -> tope_escaparate | integer | YES
+   ```
+
+2. **Las RPC tienen la firma NUEVA (con el `integer` del tope al final).** Debe
+   listar `cm_crear_campana` y `cm_editar_campana`, cada una con el ultimo
+   argumento `p_tope_escaparate integer`:
+
+   ```sql
+   select proname, pg_get_function_identity_arguments(oid) as args
+     from pg_proc
+    where proname in ('cm_crear_campana','cm_editar_campana')
+    order by proname;
+   -- Esperado: cm_crear_campana ... , p_product_id_ref uuid, p_slug text, p_tope_escaparate integer
+   --           cm_editar_campana ... , p_product_id_ref uuid, p_slug text, p_tope_escaparate integer
+   ```
+
+3. **PRUEBA DE COMPORTAMIENTO viva (el tope apaga/enciende `agotado`).** Elige un
+   producto ligado (p.ej. el Grisi), registra una `entrada` de **10 unidades**
+   desde el modulo de Inventario (o con `inv_registrar_movimiento`) para que
+   tenga stock real, y luego mueve el tope con un **UPDATE directo de
+   administracion** sobre `campana_producto` (ver la nota de abajo: el tope NO se
+   puede tocar via RPC en el editor por el guardia). Sustituye `<id>` por el
+   `product_id_ref` del producto elegido:
+
+   ```sql
+   -- Caso A · tope 3 sobre stock 10: se ofrecen 3 (>0) -> NO agotado.
+   update campana_producto set tope_escaparate = 3 where product_id_ref = '<id>';
+   select nombre, agotado from catalogo_publico where nombre ilike '%grisi%';
+   -- Esperado: agotado = false  (least(10,3)=3 > 0)
+
+   -- Caso B · tope 25 (arriba del stock): manda el inventario real, no inventa.
+   update campana_producto set tope_escaparate = 25 where product_id_ref = '<id>';
+   -- Esperado: agotado = false  (least(10,25)=10 > 0; el tope no agrega unidades)
+
+   -- Caso C · tope 0: no exhibir ninguna unidad -> agotado AUNQUE haya stock.
+   update campana_producto set tope_escaparate = 0 where product_id_ref = '<id>';
+   -- Esperado: agotado = true   (least(10,0)=0 <= 0, aunque existencias=10)
+
+   -- Caso D · tope null: sin tope -> `agotado` vuelve a depender solo del stock.
+   update campana_producto set tope_escaparate = null where product_id_ref = '<id>';
+   -- Esperado: agotado = false  (coalesce(10,0)=10 > 0)
+   ```
+
+   > Como `catalogo_publico` no expone `product_id_ref`, tras cada `update`
+   > consulta el `agotado` por el nombre o el slug del producto, p.ej.
+   > `select nombre, agotado from catalogo_publico where nombre ilike '%grisi%';`.
+
+4. **LINEA ROJA · la vista trae `agotado` pero NO expone numeros.** La primera
+   consulta funciona; las otras tres DEBEN fallar con "column ... does not
+   exist" (la vista no agrega `existencias`, `tope_escaparate` ni lo ofrecido a
+   su lista de columnas: el tope solo vive DENTRO de la expresion `CASE` del
+   `agotado`):
+
+   ```sql
+   select id, nombre, agotado from catalogo_publico;      -- funciona
+   select existencias      from catalogo_publico limit 1; -- error esperado (column does not exist)
+   select tope_escaparate  from catalogo_publico limit 1; -- error esperado (column does not exist)
+   select product_id_ref   from catalogo_publico limit 1; -- error esperado (column does not exist)
+   ```
+
+5. **Simular el rol anon: ve el booleano `agotado` pero NO el stock real.** La
+   lectura de la vista funciona; leer `stock_actual` directo DEBE fallar
+   (permission denied / no visible), porque el join se resuelve con los
+   privilegios del dueno de la vista (security definer), no con los de anon:
+
+   ```sql
+   begin;
+   set local role anon;
+   select nombre, agotado from catalogo_publico limit 1;  -- DEBE funcionar (solo el booleano)
+   rollback;
+
+   begin;
+   set local role anon;
+   select existencias from stock_actual limit 1;          -- DEBE fallar (anon no ve el stock)
+   rollback;
+   ```
+
+> **Nota (guardia de las RPC en el editor):** `cm_crear_campana` y
+> `cm_editar_campana` validan `tiene_acceso_marketing()` / `auth.uid()`, que es
+> NULL en el SQL Editor. No las llames como seed desde el editor: se ejecutan
+> bien desde el panel, con la sesion del usuario. Por eso la prueba del tope
+> (paso 3) se hace con un **UPDATE directo** sobre `campana_producto`, que es una
+> operacion de **ADMINISTRACION** que corre el dueno a mano (no via RPC). Aplicar
+> la migracion -definir/recrear las funciones y la vista- es seguro: definirlas
+> no las ejecuta.
+
+> **Recordatorio del candado (doble):** la lista de columnas de la vista **no
+> cambio** (solo la expresion de `agotado`), y el numero de existencias, el tope
+> y lo ofrecido **NUNCA** se exponen. El candado es doble: las tablas base no
+> tienen grant a `anon` + `catalogo_publico` solo trae filas publicadas y una
+> lista blanca de columnas publicas.
