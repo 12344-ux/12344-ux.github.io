@@ -1953,3 +1953,166 @@ Ejecuta estas consultas en el **SQL Editor**:
 > y lo ofrecido **NUNCA** se exponen. El candado es doble: las tablas base no
 > tienen grant a `anon` + `catalogo_publico` solo trae filas publicadas y una
 > lista blanca de columnas publicas.
+
+# VENTAS · Bitacora de pedidos + direccion del pedido (D2)
+
+Este tramo (D2 del ANDAMIOS) le da al pedido **memoria real** y **direccion
+propia**:
+
+- **D2.1 · Bitacora de pedidos (`pedido_bitacora`).** Hasta hoy el tablero de
+  seguimiento **fabricaba** la linea de tiempo mapeando un arreglo fijo de
+  estados: daba por hecho que un pedido "paso por preparando" solo porque su
+  estado actual es posterior, aunque **nunca se registro** ese paso. Ahora cada
+  **crear / cambio de estado / anular** deja un **rastro real** (estado anterior,
+  estado nuevo, quien y cuando) en una tabla **append-only** espejo de
+  `asiento_bitacora` de Finanzas. Nada se borra en silencio.
+- **D2.2 · Direccion de entrega estampada en el pedido.** La direccion vivia solo
+  en la ficha del cliente; editar el cliente **reescribia historicamente** a
+  donde se envio un pedido viejo. Ahora `pedidos` guarda un **SNAPSHOT
+  INMUTABLE** (`direccion/ciudad/departamento/pais`) de a donde se envio **esa**
+  orden, independiente de ediciones posteriores del cliente.
+
+**Como se alimenta la bitacora (decision de criterio, sellada):** NO se usa un
+trigger, sino que las **tres RPC** de Ventas escriben el evento directamente. En
+Ventas toda ruta que cambia un pedido **ya es una RPC** security definer
+(`pedidos` es SELECT-only bajo RLS: no hay `UPDATE` directo posible desde el
+cliente), asi que no hay un `UPDATE` externo que un trigger deba atrapar, y cada
+RPC conoce el estado anterior y el nuevo con precision. Es el mismo espiritu que
+`asiento_bitacora`, donde el evento lo escribe la RPC como **fuente unica** para
+no duplicar la traza. Las firmas de las RPC **no cambian** (`create or replace`,
+sin `drop`): el frontend las sigue llamando igual.
+
+> **`actor` es NULLABLE a proposito.** Las RPC estampan `actor = auth.uid()`, que
+> es **NULL cuando corres seeds o el backfill desde el SQL Editor** (no hay
+> sesion de usuario). Por eso `pedido_bitacora.actor` permite NULL: un
+> `not null` haria fallar esas operaciones de administracion. Los eventos que
+> nazcan desde el panel (con sesion) si traeran el `actor` real.
+
+## D2.a Orden EXACTO de ejecucion en el SQL Editor
+
+Abre el **SQL Editor** y ejecuta el contenido completo del archivo (su propio
+**Run**), continuando la numeracion (DESPUES de
+`20250602000000_campanas_tope_escaparate.sql` y de las migraciones de Ventas
+`20250401000000..20250401000500`):
+
+1. `supabase/migrations/20250603000000_ventas_bitacora_pedidos.sql`
+   - **(A) Tabla `pedido_bitacora`** (append-only, espejo de `asiento_bitacora`):
+     columnas `id / pedido_id / accion (check crear|cambio_estado|anular) /
+     estado_anterior / estado_nuevo / detalle_cambio jsonb / actor (nullable,
+     default auth.uid()) / cuando`, mas indices en `(pedido_id)` y `(cuando
+     desc)`.
+   - **(B) Snapshot de direccion:** agrega a `pedidos` las columnas
+     `direccion / ciudad / departamento / pais` con guard idempotente sobre
+     `information_schema.columns` (solo si no existen).
+   - **(C) RPC** `crear_pedido / avanzar_estado_pedido / anular_pedido` via
+     `create or replace` **sin cambiar firmas**: `crear_pedido` estampa la
+     direccion snapshot y registra `crear` (`estado_nuevo='recibido'`);
+     `avanzar_estado_pedido` registra `cambio_estado` (estado anterior real ->
+     destino); `anular_pedido` registra `anular` (estado anterior real ->
+     `anulado`).
+   - **(D) Backfill embebido** (corre en el mismo Run del archivo): (D.1) inserta
+     un evento `crear` (`cuando = pedidos.creado`) para cada pedido que aun no lo
+     tenga, con `insert ... select ... where not exists` (idempotente); NO se
+     fabrican transiciones intermedias, solo el evento de creacion. (D.2) copia
+     la direccion ACTUAL del cliente al snapshot del pedido **solo** donde las
+     cuatro columnas siguen NULL (aproximado para ordenes viejas; idempotente).
+   - **(E) RLS + GRANT:** `enable row level security` + policy de SELECT con
+     `tiene_acceso_ventas()`, **sin** policy de INSERT/UPDATE/DELETE (append-only)
+     y `grant select ... to authenticated`. CERO grant a `anon`.
+
+   > El archivo es idempotente en TODO (`create table if not exists`, `create
+   > index if not exists`, `create or replace function`, do-block guard para el
+   > `ALTER ... ADD COLUMN`, `insert ... where not exists` y `UPDATE`
+   > guardado por NULL en los backfills): se puede re-ejecutar entero sin
+   > duplicar nada.
+
+## D2.b Como verificar que quedo bien
+
+Ejecuta estas consultas en el **SQL Editor** (sustituye `<pedido_id>` por un id
+real de `select id, estado from pedidos limit 5;`).
+
+1. **Un cambio de estado deja rastro real.** Avanza un pedido y mira su bitacora:
+
+   ```sql
+   select avanzar_estado_pedido('<pedido_id>', 'preparando');
+   select accion, estado_anterior, estado_nuevo, actor, cuando
+     from pedido_bitacora
+    where pedido_id = '<pedido_id>'
+    order by cuando;
+   -- Esperado: aparece una fila nueva accion='cambio_estado',
+   --           estado_anterior='recibido', estado_nuevo='preparando', con cuando.
+   ```
+
+   > OJO: `avanzar_estado_pedido` valida `tiene_acceso_ventas()`, que mira
+   > `auth.uid()` (NULL en el SQL Editor). Ejecuta esta prueba desde el panel con
+   > una sesion con acceso a Ventas, o simulando el rol; el `actor` de esa fila
+   > sera NULL si la corres como seed en el editor.
+
+2. **Crear un pedido deja un evento `crear`.** Tras crear un pedido (desde el
+   formulario de registro, o con `select crear_pedido(...);` con los parametros
+   de siempre), confirma:
+
+   ```sql
+   select accion, estado_nuevo, cuando
+     from pedido_bitacora
+    where pedido_id = '<pedido_id_del_nuevo>' and accion = 'crear';
+   -- Esperado: 1 fila accion='crear', estado_nuevo='recibido'.
+   ```
+
+3. **LINEA ROJA · la bitacora es append-only (no se puede borrar).** Un `delete`
+   desde `authenticated` o `anon` DEBE ser rechazado (no hay policy de DELETE):
+
+   ```sql
+   begin;
+   set local role authenticated;
+   delete from pedido_bitacora where id = '<algun_id>';  -- DEBE fallar / afectar 0 filas (sin policy de DELETE)
+   rollback;
+
+   begin;
+   set local role anon;
+   delete from pedido_bitacora where id = '<algun_id>';  -- DEBE fallar (anon no tiene grant ni policy)
+   rollback;
+   ```
+
+4. **La direccion queda ESTAMPADA en el pedido y NO cambia al editar el
+   cliente.** Confirma el snapshot y que editar la ficha del cliente no lo
+   reescribe:
+
+   ```sql
+   -- (a) El pedido trae su propia direccion (snapshot):
+   select direccion, ciudad, departamento, pais
+     from pedidos where id = '<pedido_id>';
+
+   -- (b) Cambia la direccion del cliente (operacion de administracion) y vuelve
+   --     a leer el pedido: el snapshot del pedido NO debe cambiar.
+   update clientes set direccion = 'OTRA DIRECCION DE PRUEBA'
+    where id = (select customer_id from pedidos where id = '<pedido_id>');
+   select direccion from pedidos where id = '<pedido_id>';
+   -- Esperado: sigue mostrando la direccion original del pedido, NO 'OTRA
+   --           DIRECCION DE PRUEBA' (el snapshot es inmutable).
+   ```
+
+5. **La tabla, el check y las columnas quedaron como se espera:**
+
+   ```sql
+   select column_name, is_nullable
+     from information_schema.columns
+    where table_name = 'pedido_bitacora'
+    order by ordinal_position;
+   -- Esperado: id, pedido_id, accion, estado_anterior, estado_nuevo,
+   --           detalle_cambio, actor (YES = nullable), cuando.
+
+   select column_name
+     from information_schema.columns
+    where table_name = 'pedidos'
+      and column_name in ('direccion','ciudad','departamento','pais')
+    order by column_name;
+   -- Esperado: las cuatro columnas del snapshot.
+   ```
+
+> **Recordatorio del candado:** `pedido_bitacora` NO tiene policy de
+> INSERT/UPDATE/DELETE para el cliente: la escritura ocurre SOLO dentro de las
+> RPC security definer (que saltan RLS). La lectura la abre `tiene_acceso_ventas()`
+> + el `grant select` a `authenticated`. CERO acceso para `anon` (datos
+> operativos tras login). Aplicar la migracion -crear la tabla, redefinir las
+> funciones- es seguro: definirlas no las ejecuta.
