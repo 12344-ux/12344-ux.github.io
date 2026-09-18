@@ -84,6 +84,11 @@
             <input id="cm-nombre" class="mk-input" type="text" maxlength="160" placeholder="Ej. Grisi Manzanilla Gold" required>
           </div>
           <div class="cm-campo">
+            <label for="cm-slug" class="cm-campo-lbl">Dirección web (slug)</label>
+            <input id="cm-slug" class="mk-input" type="text" maxlength="160" placeholder="Ej. grisi-manzanilla-gold" autocapitalize="off" autocorrect="off" spellcheck="false">
+            <span class="cm-campo-ayuda">Es la parte legible de la URL en la tienda (magandhi.com/producto/?slug=<b>esto</b>). Se sugiere sola desde el nombre; puedes editarla. Solo minúsculas, números y guiones.</span>
+          </div>
+          <div class="cm-campo">
             <label for="cm-detalle" class="cm-campo-lbl">Detalle de presentación</label>
             <input id="cm-detalle" class="mk-input" type="text" maxlength="200" placeholder="Ej. Con extracto de manzanilla · 400 mL">
           </div>
@@ -334,6 +339,22 @@
   const claveAleatoria = () =>
     Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
 
+  // Normaliza un texto a un slug de URL (mismo criterio que cm_normalizar_slug
+  // en el servidor): minusculas, sin acentos/enie, lo no [a-z0-9] -> guion,
+  // colapsa y recorta guiones. El servidor vuelve a normalizar por seguridad.
+  function slugificar(texto) {
+    return String(texto == null ? '' : texto)
+      .toLowerCase().trim()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quita acentos
+      .replace(/ñ/g, 'n')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+  // El slug se autosugiere desde el nombre SOLO mientras el usuario no lo haya
+  // tocado. Al editar, si la campana YA trae slug, se marca tocado (no pisar).
+  let slugTocado = false;
+
   let categorias = [];
   let productos = [];        // [{id,sku,nombre,precio_venta,activo}] de Inventario
   let campanaId = null;      // uuid de la campana en edicion (?id=...)
@@ -355,6 +376,9 @@
   // aborda en una tanda posterior; se documenta aqui para no perderla de vista.
   let bannerPend = null;
   let bannerPathExistente = null;
+  // Guardia: true mientras el BANNER se optimiza (igual que item.cargando de la
+  // galeria), para no guardar a medias y subir un banner vacio.
+  let bannerOptimizando = false;
   let galeria = [];
   let arrastrandoId = null;
 
@@ -409,6 +433,7 @@
     if (!file || !file.type.startsWith('image/')) return;
     bannerInfo.hidden = false;
     bannerInfo.textContent = 'Original: ' + kb(file.size) + ' · optimizando…';
+    bannerOptimizando = true;
     try {
       const { blob, ext, tipo } = await optimizarImagen(file, { maxBorde: 1600, calidad: 0.85 });
       if (bannerPend?.url) URL.revokeObjectURL(bannerPend.url);
@@ -420,6 +445,8 @@
       refrescarPreview();
     } catch (_) {
       bannerInfo.textContent = 'No se pudo procesar la imagen. Prueba con otra.';
+    } finally {
+      bannerOptimizando = false;
     }
   }
   function quitarBanner() {
@@ -713,6 +740,21 @@
         el.addEventListener('change', refrescarPreview);
       });
 
+    // SLUG: autosugerencia desde el nombre mientras el usuario no lo edite ni
+    // venga uno precargado. Si borra el slug, se reanuda la sugerencia.
+    const slugEl = $('cm-slug');
+    $('cm-nombre').addEventListener('input', () => {
+      if (!slugTocado) slugEl.value = slugificar($('cm-nombre').value);
+    });
+    slugEl.addEventListener('input', () => {
+      slugTocado = slugEl.value.trim().length > 0;
+    });
+    slugEl.addEventListener('blur', () => {
+      const limpio = slugificar(slugEl.value);
+      slugEl.value = limpio;
+      slugTocado = limpio.length > 0;
+    });
+
     // Producto de Inventario: al elegirlo, AUTO-SUGERIR nombre y precio SOLO si
     // esos campos estan vacios. Campanas manda en la presentacion: nunca se
     // pisa lo que el operador ya escribio (ni lo que ya venia precargado).
@@ -808,7 +850,7 @@
   async function precargar() {
     const { data, error } = await supabase
       .from('campana_producto')
-      .select('id, nombre, categoria_codigo, detalle_presentacion, hook_corto, imagen_banner_path, ' +
+      .select('id, nombre, slug, categoria_codigo, detalle_presentacion, hook_corto, imagen_banner_path, ' +
               'caracteristica_adicional, precio_venta, hook_largo, por_que_magandhi, sobre_este_producto, ' +
               'ficha_tecnica, imagenes, sello_elegido, estrella, stock_disponible, ' +
               'aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, product_id_ref, ' +
@@ -843,6 +885,10 @@
     await asegurarOpcionProductoLigado(data.product_id_ref || null);
     $('cm-producto').value = data.product_id_ref || '';
     $('cm-nombre').value = data.nombre || '';
+    // Slug precargado: si la campana ya tiene uno, se marca "tocado" para que la
+    // autosugerencia desde el nombre NO lo pise. El operador puede editarlo.
+    $('cm-slug').value = data.slug || '';
+    slugTocado = !!(data.slug && String(data.slug).trim().length > 0);
     $('cm-detalle').value = data.detalle_presentacion || '';
     $('cm-hook-corto').value = data.hook_corto || '';
     // Banner: mostrar el path preexistente (si lo hay) en el cargador.
@@ -931,6 +977,13 @@
       return;
     }
 
+    // Misma guardia para el BANNER: si aun se optimiza, guardar ahora subiria
+    // un banner vacio (bannerPend todavia null). Esperar a que termine.
+    if (bannerOptimizando) {
+      mostrarMsg('Espera a que termine de optimizarse la imagen del banner.');
+      return;
+    }
+
     const btn = $('cm-guardar');
     btn.disabled = true;
 
@@ -981,7 +1034,9 @@
       p_aviso_urgencia_cantidad: avisoCant,
       p_etiquetas: recolectarEtiquetas(),
       // Producto de Inventario ligado (uuid) o null si aun no se liga.
-      p_product_id_ref: $('cm-producto').value || null
+      p_product_id_ref: $('cm-producto').value || null,
+      // Direccion web legible (slug). El servidor la re-normaliza; vacio -> null.
+      p_slug: slugificar($('cm-slug').value) || null
     });
 
     if (error) {

@@ -1677,3 +1677,102 @@ Ejecuta estas consultas en el SQL Editor:
 > En B3 quedan solo listas: sembradas, con RLS y con su valor por defecto. No
 > hay pantalla de configuracion todavia (nadie la pidio); cuando llegue, leera
 > de aqui.
+
+---
+
+# Campanas C1 · slug + es_placeholder + banner (tramo C1 del ANDAMIOS)
+
+Este tramo (del plan maestro `ANDAMIOS.md`) hace el slug **editable** desde el
+panel de Campanas, permite **retirar un producto de ejemplo** desde la UI (sin
+SQL manual) y arregla el banner del listado (usa la URL publica y consume la
+version liviana `-sm`). Casi todo es frontend; lo unico que corres a mano en
+Supabase es **una** migracion nueva que extiende las RPC y agrega la RPC de
+retiro.
+
+## C1.a Orden EXACTO de ejecucion en el SQL Editor
+
+Abre el **SQL Editor** y ejecuta el contenido completo del archivo (su propio
+**Run**):
+
+1. `supabase/migrations/20250504000000_campanas_slug_retirar_placeholder.sql`
+   - Crea el helper `cm_normalizar_slug(text)` (minusculas, sin acentos/enie, lo
+     no `[a-z0-9]` -> guion, colapsa y recorta; vacio -> NULL).
+   - **Reemplaza** `cm_crear_campana` y `cm_editar_campana` para agregar el
+     parametro nuevo `p_slug text default null` **al final** de la firma (despues
+     de `p_product_id_ref`). Hace `drop function if exists` de la firma VIVA
+     actual (la de `20250503000000`, con `p_product_id_ref uuid` al final) y las
+     vuelve a crear con el slug. Persiste el slug (normalizado) en el
+     INSERT/UPDATE. Mantiene TODAS las validaciones y la logica de etiquetas y
+     `product_id_ref` intactas.
+   - Crea la RPC `cm_retirar_placeholder(p_id uuid)`: baja logica de un producto
+     de ejemplo (`publicado=false` + `activo=false`), y si el producto de
+     Inventario ligado tambien es placeholder, lo desactiva; un producto real
+     ligado NO se toca. Solo opera sobre campanas con `es_placeholder=true`.
+
+   > No recrea `slug`, su indice unico parcial ni `es_placeholder`: esos ya
+   > existen (`20250502000000` / `20250503000000`). El archivo es idempotente
+   > (`drop function if exists` + `create`, `create or replace`), se puede
+   > re-ejecutar sin duplicar nada.
+
+> **Firma nueva de las RPC** (lista de tipos completa, por si necesitas hacer
+> `drop` a mano en el futuro):
+>
+> - `cm_crear_campana(text, text, text, text, text, text, bigint, text, text,
+>   text, jsonb, jsonb, boolean, boolean, integer, boolean, integer, text[],
+>   uuid, text)`
+> - `cm_editar_campana(uuid, text, text, text, text, text, text, bigint, text,
+>   text, text, jsonb, jsonb, boolean, boolean, integer, boolean, integer,
+>   text[], uuid, text)`
+> - `cm_retirar_placeholder(uuid)`
+> - `cm_normalizar_slug(text)`
+
+## C1.b Como verificar que quedo bien
+
+Ejecuta estas consultas en el **SQL Editor**:
+
+1. **Las RPC tienen la firma NUEVA (con el `text` del slug al final).** Debe
+   listar `cm_crear_campana` y `cm_editar_campana`, cada una con el ultimo
+   argumento `text`:
+
+   ```sql
+   select proname, pg_get_function_identity_arguments(oid) as args
+     from pg_proc
+    where proname in ('cm_crear_campana','cm_editar_campana',
+                      'cm_retirar_placeholder','cm_normalizar_slug')
+    order by proname;
+   -- Esperado: cm_crear_campana ... , p_product_id_ref uuid, p_slug text
+   --           cm_editar_campana ... , p_product_id_ref uuid, p_slug text
+   ```
+
+2. **El normalizador limpia bien** (no requiere sesion; es una funcion pura):
+
+   ```sql
+   select cm_normalizar_slug('  Áéí Ñoño  Prod!! 2024 ') as slug;
+   -- Esperado: aei-nono-prod-2024
+   select cm_normalizar_slug('   ') as slug;
+   -- Esperado: (NULL)
+   ```
+
+3. **El indice unico parcial del slug sigue vivo** (permite muchos NULL, pero no
+   dos slugs iguales no nulos):
+
+   ```sql
+   select indexname from pg_indexes
+    where tablename = 'campana_producto' and indexname = 'campana_producto_slug_key';
+   -- Esperado: 1 fila
+   ```
+
+4. **La vista publica sigue exponiendo `slug`** (y NO expone `es_placeholder`):
+
+   ```sql
+   select slug from catalogo_publico limit 1;             -- OK
+   select es_placeholder from catalogo_publico limit 1;   -- DEBE fallar
+   ```
+
+> **Nota (guardia de las RPC en el editor):** `cm_crear_campana`,
+> `cm_editar_campana` y `cm_retirar_placeholder` validan
+> `tiene_acceso_marketing()` / `auth.uid()`, que es NULL en el SQL Editor. No las
+> llames como seed desde el editor: se ejecutan bien desde el panel, con la
+> sesion del usuario. `cm_normalizar_slug` si se puede probar en el editor (es
+> pura, no consulta la sesion). Aplicar la migracion (definir las funciones) es
+> seguro: definirlas no las ejecuta.
