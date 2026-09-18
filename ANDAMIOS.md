@@ -17,7 +17,7 @@
 > **Repos:** back-office = `12344-ux/12344-ux.github.io` (montaguth.institute) ·
 > tienda = `12344-ux/magandhi` (magandhi.com).
 >
-> _Última actualización: A1 subido en PR #36 (⏳ merge pendiente del dueño). **SIGUIENTE: TRAMO B1** (parsearMonto seguro), en el repo 12344-ux.github.io. NO empezar B1 hasta que #36 esté mergeado, para no cruzar ramas de repos distintos sin necesidad._
+> _Última actualización: **Fases A, B, C, D y E COMPLETAS y en producción** (D3 pospuesto por decisión del dueño). Todos los PRs mergeados a main y el dueño ya corrió el SQL correspondiente (contabilidad_config + pagos_config, slug/placeholder de Campañas, tope de escaparate migración 20250602000000, pedido_bitacora migración 20250603000000). **SIGUIENTE: FASE F (Wompi)**, dejada a propósito para una sesión fresca por ser la ficha más grande: Edge Functions que despliega el dueño + webhook + firma server-side + asiento contable automático + interruptor sandbox↔prod. El primer tramo ⬜ del tablero es F1._
 
 ---
 
@@ -445,18 +445,20 @@ _TODAS las fichas técnicas 1-9 que el dueño aprobó viven aquí._
 
 | Tramo | Descripción | Estado | PR | Notas |
 |---|---|---|---|---|
-| A1 | Tienda: limpieza + heridas | ✅ | [#36](https://github.com/12344-ux/magandhi/pull/36) | ⏳ esperando merge del dueño |
-| B1 | parsearMonto + mayor ceros | ⬜ | — | crítico pre-Wompi |
-| B2 | SRI + versión CDN | ⬜ | — | — |
-| B3 | Tablas de config (contable+pagos) | ⬜ | — | SQL dueño |
-| C1 | Campañas: slug/placeholder/banner | ⬜ | — | SQL dueño |
-| C2 | Campañas: imágenes atómicas | ⬜ | — | — |
-| D1 | Ventas: bugs registro | ⬜ | — | — |
-| D2 | Ventas: bitácora pedidos | ⬜ | — | SQL dueño · req. Wompi |
-| D3 | Roles granularidad | ⏸️ | — | pospuesto: reactivar antes del 1er usuario con rol reducido / panel de accesos |
-| D4 | Ranking vs anulaciones | ⬜ | — | — |
-| D5 | Truncamiento/paginación | ⬜ | — | — |
-| E1 | Impulse: serie temporal + paginación | ⬜ | — | identidad Impulse |
+| A1 | Tienda: limpieza + heridas | ✅ | [#36](https://github.com/12344-ux/magandhi/pull/36) | mergeado (repo magandhi) |
+| B1 | parsearMonto + mayor ceros | ✅ | [#194](https://github.com/12344-ux/12344-ux.github.io/pull/194) | crítico pre-Wompi · mergeado |
+| B2 | SRI + versión CDN | ✅ | [#195](https://github.com/12344-ux/12344-ux.github.io/pull/195) · [#37](https://github.com/12344-ux/magandhi/pull/37) | supabase-js pineado @2.116.0 en ambos repos |
+| B3 | Tablas de config (contable+pagos) | ✅ | [#196](https://github.com/12344-ux/12344-ux.github.io/pull/196) | SQL corrido por el dueño (5 cuentas · entorno=sandbox) |
+| C1 | Campañas: slug/placeholder/banner + -sm | ✅ | [#197](https://github.com/12344-ux/12344-ux.github.io/pull/197) | SQL corrido por el dueño |
+| C2.1 | Campañas: imágenes atómicas | ✅ | [#198](https://github.com/12344-ux/12344-ux.github.io/pull/198) | solo frontend |
+| C2.2 | Inventario: editar ficha en modal + filtros + cortar herencia de precio | ✅ | [#199](https://github.com/12344-ux/12344-ux.github.io/pull/199) | sin SQL |
+| F-C2.2a | Tope de escaparate (opción A: solo booleano agotado) | ✅ | [#200](https://github.com/12344-ux/12344-ux.github.io/pull/200) | derivada de C2.2 · SQL corrido (migración 20250602000000) |
+| D1 | Ventas: bugs registro | ✅ | [#201](https://github.com/12344-ux/12344-ux.github.io/pull/201) | solo frontend |
+| D2 | Ventas: bitácora pedidos | ✅ | [#202](https://github.com/12344-ux/12344-ux.github.io/pull/202) | SQL corrido (migración 20250603000000) · req. Wompi |
+| D3 | Roles granularidad | ⏸️ | [#203](https://github.com/12344-ux/12344-ux.github.io/pull/203) | pospuesto: reactivar antes del 1er usuario con rol reducido / panel de accesos |
+| D4 | Ranking vs anulaciones | ✅ | [#204](https://github.com/12344-ux/12344-ux.github.io/pull/204) | solo frontend |
+| D5 | Truncamiento/paginación | ✅ | [#205](https://github.com/12344-ux/12344-ux.github.io/pull/205) | Diario paginado + avisos en 5 pantallas |
+| E1 | Impulse: serie temporal + paginación | ✅ | [#206](https://github.com/12344-ux/12344-ux.github.io/pull/206) | identidad Impulse · solo frontend |
 | F1 | Wompi: intención de pago | ⬜ | — | Edge Fn + SQL |
 | F2 | Wompi: webhook + idempotencia | ⬜ | — | Edge Fn + SQL |
 | F3 | Wompi: asiento automático | ⬜ | — | SQL dueño |
@@ -471,6 +473,8 @@ _TODAS las fichas técnicas 1-9 que el dueño aprobó viven aquí._
 
 1. **Lee este archivo entero primero**, luego `CONTEXTO-MAGANDHI.md`.
 2. Mira el **TABLERO DE ESTADO**: el primer tramo ⬜ (o 🔨) es donde retomas.
+   **Hoy ese punto de retorno es F1 (Wompi: intención de pago)** — las Fases A–E
+   están ✅ (con D3 ⏸️ pospuesto), así que se retoma directamente en la FASE F.
 3. **Respeta el orden de fases** (A→B→C→D→E→F→G): las de arriba son cimiento de
    las de abajo. No saltes a Wompi (F) si B (parsearMonto, config) no está ✅.
 4. **Un tramo = una rama = un PR.** Nunca push a main. El dueño mergea.
