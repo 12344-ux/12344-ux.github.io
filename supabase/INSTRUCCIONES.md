@@ -2486,3 +2486,184 @@ variables y metadatos no sensibles.
 
 Este logging de diagnostico se puede **retirar** cuando el circuito de pago quede
 estable (F4), o dejarlo: no expone nada sensible y ayuda a operar.
+
+
+## F1.10. REMATE · Grants versionados, menor privilegio y campos del comprador
+
+Este tramo cierra F1: deja **escritos en el repo** los permisos que hasta ahora
+vivian solo en la cabeza del dueno, aprieta un permiso mas ancho de lo necesario
+y arregla el ultimo error del checkout (`shipping-address:region`).
+
+### F1.10.a Migracion NUEVA que el dueno debe correr
+
+```
+supabase/migrations/20250605000000_wompi_grants_service_role.sql
+```
+
+Se corre en el **SQL Editor** como las demas. Es **idempotente** (solo
+`grant`/`revoke`) y **NO** requiere re-desplegar la Edge Function: no cambia
+ningun contrato ni ningun mensaje, solo permisos.
+
+Contiene dos cosas:
+
+1. Los **tres `grant select` a `service_role`** sobre `pagos_config`,
+   `contabilidad_config` y `catalogo_publico`.
+2. El **endurecimiento** de la RPC `pagos_config_para_intencion()`: deja de ser
+   ejecutable por `public` (es decir, por `anon`) y queda con `EXECUTE` explicito
+   solo para `service_role` y `authenticated`.
+
+**Verificacion (correr despues, en el SQL Editor):**
+
+```sql
+-- a) Los tres grants de lectura existen para service_role
+select table_name, privilege_type
+  from information_schema.role_table_grants
+ where grantee = 'service_role'
+   and table_schema = 'public'
+   and table_name in ('pagos_config','contabilidad_config','catalogo_publico')
+ order by table_name;
+-- Esperado: 3 filas, todas con privilege_type = 'SELECT'.
+
+-- b) La RPC ya NO la puede ejecutar anon; si service_role y authenticated
+select has_function_privilege('anon',         'public.pagos_config_para_intencion()', 'EXECUTE') as anon,
+       has_function_privilege('authenticated','public.pagos_config_para_intencion()', 'EXECUTE') as autenticado,
+       has_function_privilege('service_role', 'public.pagos_config_para_intencion()', 'EXECUTE') as servicio;
+-- Esperado: anon = false, autenticado = true, servicio = true.
+
+-- c) La RPC sigue devolviendo SOLO datos publicos
+select * from pagos_config_para_intencion();
+-- Esperado: una fila con entorno ('sandbox'|'prod') y llave_publica. JAMAS secretos.
+```
+
+Cerrar con la **prueba de humo de F1.5** (invocar la funcion y comprobar que
+devuelve referencia, monto y firma): si sigue respondiendo bien, el
+endurecimiento no rompio nada. Y no deberia romper nada: la Edge Function invoca
+la RPC como **`service_role`**, que conserva su `EXECUTE`. El unico rol que
+pierde el permiso es `anon`, que **nunca la llamo**: el navegador de la tienda
+recibe la llave publica **dentro de la respuesta de la funcion**, no consultando
+la RPC.
+
+> **Por que revocar de `public` si no habia fuga.** Postgres otorga `EXECUTE` a
+> `public` por defecto al crear una funcion, asi que la RPC quedo invocable por
+> cualquiera, incluido `anon`. **No era una fuga de secretos:** la RPC devuelve
+> unicamente el entorno y la **llave publica** del entorno activo, y las llaves
+> publicas son publicas por diseno (viajan al navegador en cada checkout). Pero
+> no tiene sentido ofrecer superficie que nadie usa: se cierra por **menor
+> privilegio**.
+
+### F1.10.b Por que estos grants ESTABAN A MANO (y por que importa)
+
+Durante la puesta en marcha de F1 el dueno corrio estos tres comandos **a mano**
+en el SQL Editor para desatascar la Edge Function:
+
+```sql
+grant select on public.pagos_config to service_role;
+grant select on public.contabilidad_config to service_role;
+grant select on public.catalogo_publico to service_role;
+```
+
+Funcionaron, pero **no estaban en el repo**. Eso es una **deuda de
+clonabilidad**: si este back-office se clona a **otra organizacion**, correr
+todas las migraciones **no habria bastado** — la Edge Function fallaria con un
+`500` opaco y nadie sabria por que, porque el permiso que falta no esta escrito en
+ningun sitio. Con `20250605000000` los tres grants quedan versionados, explicados
+y repetibles.
+
+**Por que hacen falta grants explicitos** (dos motivos que se suman):
+
+- La Edge Function opera como **`service_role` a proposito** (se le fuerza el
+  header `Authorization: Bearer <SERVICE_ROLE_KEY>`) para leer lo que el navegador
+  **no debe** poder leer: la configuracion de pagos y el **precio real**.
+- En este proyecto **"auto-expose new tables" esta en OFF**: no se reparten
+  permisos automaticos al crear objetos. Es la postura deseada (nada queda
+  expuesto por accidente) y su contrapartida es que **cada permiso se otorga a
+  mano y a proposito**.
+
+Detalle que costo horas y conviene recordar: `service_role` tiene **BYPASSRLS**
+(se salta las *policies*) pero **NO se salta los GRANTS**. Por eso "tenia la RLS a
+favor" y aun asi recibia `permission denied`. El grant que destrabo todo fue el de
+`catalogo_publico`; el error real era:
+
+```
+permission denied for view catalogo_publico   -- SQLSTATE 42501
+```
+
+**⚠️ Trampa para el futuro:** `catalogo_publico` es una **vista** que varias
+migraciones **recrean** con `drop view if exists` + `create view` (20250502000000,
+20250503000000, 20250602000000). El `DROP` **borra todos sus grants**; por eso cada
+una vuelve a otorgar `to anon, authenticated`. **Toda migracion futura que recree
+la vista debe incluir tambien el grant a `service_role`**, o la intencion de pago
+se rompera otra vez con 42501.
+
+### F1.10.c Campos que la tienda envia a Wompi (mapeo exacto)
+
+El formulario de `producto/index.html` (repo de la tienda) crecio para pedir los
+datos que Wompi **exige** y algunos opcionales que ayudan a la entrega real. El
+mapeo a los parametros **oficiales** del Web Checkout es este — los nombres llevan
+**dos puntos y guiones**, y un solo caracter mal escrito hace que Wompi rechace el
+checkout:
+
+| Campo del formulario | Parametro de Wompi | Obligatorio |
+|---|---|---|
+| Nombre completo | `customer-data:full-name` y `shipping-address:name` | **Si** |
+| Correo | `customer-data:email` | **Si** |
+| Telefono | `customer-data:phone-number` (+ `customer-data:phone-number-prefix` = `+57`) y `shipping-address:phone-number` | **Si** (Wompi) |
+| Departamento (lista cerrada) | `shipping-address:region` | **Si** (Wompi) |
+| Ciudad o municipio | `shipping-address:city` | **Si** (Wompi) |
+| Direccion | `shipping-address:address-line-1` | **Si** (Wompi) |
+| Pais (fijo `CO`, no se pregunta) | `shipping-address:country` | **Si** (Wompi) |
+| Detalles de entrega | `shipping-address:address-line-2` | No |
+| Tipo de documento | `customer-data:legal-id-type` (`CC`,`CE`,`NIT`,`PP`,`TI`) | No |
+| Numero de documento | `customer-data:legal-id` | No |
+
+Los marcados **"Si (Wompi)"** no son un capricho de diseno: **cuando se envia
+`shipping-address`, Wompi exige** `address-line-1`, `country`, `city`,
+`phone-number` y **`region`**. Faltar `region` era exactamente el ultimo error del
+checkout:
+
+```
+Parámetro «shipping-address:region» no proveído.
+```
+
+Se arreglo **pidiendo el departamento** (no quitando el parametro): un `<select>`
+cerrado con los **32 departamentos + Bogota D.C.** en orden alfabetico. Lista
+cerrada a proposito: texto libre produce erratas y Wompi valida la region.
+
+Tres reglas de envio que el frontend respeta:
+
+- **Solo se envian campos con valor.** Un parametro vacio tambien hace fallar el
+  checkout.
+- **El documento va EN PAREJA.** Wompi exige `legal-id` y `legal-id-type` juntos:
+  se envian los dos o ninguno (el formulario lo valida antes de salir).
+- **Nada de esto toca la firma.** La firma cubre referencia + monto + moneda y
+  llega **ya calculada del servidor**; el precio se sigue releyendo de la base y
+  **nunca** sale del navegador.
+
+**Codigo postal: se decidio NO pedirlo.** Wompi lo marca opcional
+(`shipping-address:postal-code`), en Colombia casi nadie lo conoce de memoria y la
+entrega no depende de el; pedirlo solo agregaria friccion y datos erroneos. Si
+algun transportador lo llegara a exigir, se agrega como campo opcional y se mapea
+a ese parametro.
+
+### F1.10.d Los datos del comprador SI sobreviven a F2
+
+F1 **no persiste nada** (no crea pedido, no baja stock: eso es F2). Aun asi los
+datos no se pierden, porque **Wompi los devuelve** en el objeto de la transaccion
+del evento del webhook (`customer_data` y `shipping_address`). Cuando F2 reciba
+`transaction.updated` con estado **APPROVED**, tendra ahi el nombre, correo,
+telefono, documento y la direccion completa (incluido el departamento) para
+registrar el pedido.
+
+De esa dependencia sale la **regla de diseno del formulario**: en F1 **solo se
+piden campos que mapeen a un parametro oficial de Wompi**. Cualquier dato que
+Wompi **no transporte** (por ejemplo "notas del pedido", franja horaria de entrega
+o un segundo telefono) se **perderia** entre el checkout y el webhook, porque
+requeriria persistencia propia. Esos campos quedan como **ficha de F2**: cuando
+exista la tabla del pedido y el paso previo a redirigir, se pueden guardar del
+lado del servidor antes de mandar a Wompi.
+
+**Pendientes anotados para F2** (no se construyen aqui):
+
+- Notas/indicaciones libres del pedido que no caben en `address-line-2`.
+- Preferencia de horario de entrega.
+- Codigo postal, si algun transportador lo exige.
