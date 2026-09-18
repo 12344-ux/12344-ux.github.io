@@ -160,7 +160,7 @@
     supabase, asegurarAcceso, montarHeader, ICONOS,
     escaparHTML, formatearNumero, formatearFecha, hoyISO,
     promedioMovil, suavizacionExponencial, regresionLineal,
-    agruparPorPeriodo
+    agruparPorPeriodo, traerTodo
   } from '../marketing-core.js';
 
   const selProducto = document.getElementById('mk-producto');
@@ -239,18 +239,24 @@
   // LECTURA DE SALIDAS DEL LIBRO (movimientos_inventario tipo='salida')
   // ----------------------------------------------------------
   async function leerSalidas(productId, desde, hasta) {
-    let q = supabase
-      .from('movimientos_inventario')
-      .select('fecha, cantidad')
-      .eq('product_id', productId)
-      .eq('tipo', 'salida');         // SOLO ventas/salidas: es la demanda
-    // Rango Desde/Hasta opcional, mismo patron .gte/.lte sobre 'fecha' que
-    // usa movimientos.html. El recorte del historial vive aqui, en la consulta.
-    if (desde) q = q.gte('fecha', desde);
-    if (hasta) q = q.lte('fecha', hasta);
-    const { data, error } = await q.order('fecha', { ascending: true });
-    if (error) throw error;
-    return (data || []).map((m) => ({ fecha: m.fecha, cantidad: Math.trunc(Number(m.cantidad) || 0) }));
+    // Paginamos con traerTodo para NO quedarnos en las ~1000 filas que
+    // PostgREST devuelve por defecto: la proyeccion se calcula sobre el libro
+    // completo. Reconstruimos la consulta (filtros + order) por bloque y solo
+    // le anadimos .range(d, h), porque un query builder de supabase-js no es
+    // reutilizable tras await. Filtros/order/mapeo quedan identicos.
+    const filas = await traerTodo((d, h) => {
+      let q = supabase
+        .from('movimientos_inventario')
+        .select('fecha, cantidad')
+        .eq('product_id', productId)
+        .eq('tipo', 'salida');         // SOLO ventas/salidas: es la demanda
+      // Rango Desde/Hasta opcional, mismo patron .gte/.lte sobre 'fecha' que
+      // usa movimientos.html. El recorte del historial vive aqui, en la consulta.
+      if (desde) q = q.gte('fecha', desde);
+      if (hasta) q = q.lte('fecha', hasta);
+      return q.order('fecha', { ascending: true }).range(d, h);
+    });
+    return filas.map((m) => ({ fecha: m.fecha, cantidad: Math.trunc(Number(m.cantidad) || 0) }));
   }
 
   // ----------------------------------------------------------
@@ -475,9 +481,12 @@
     }
     btnProyectar.disabled = false;
 
-    // Agrupar por periodo segun granularidad. El historial que entra ya viene
-    // recortado por el rango Desde/Hasta de la consulta; no hay slice extra.
-    const buckets = agruparPorPeriodo(salidas, granularidad);
+    // Agrupar por periodo segun granularidad, RELLENANDO los periodos en cero a
+    // lo largo del rango real. Se pasan los MISMOS desde/hasta de la consulta:
+    // si el usuario fijo rango, se rellena todo ese rango (los extremos sin
+    // ventas son periodos reales sin ventas); si no, se rellena entre el primer
+    // y el ultimo movimiento observado.
+    const buckets = agruparPorPeriodo(salidas, granularidad, desde, hasta);
 
     // Estado vacio sobrio: NO bloquea controles, solo informa.
     if (!buckets.length) { pintarVacio(nombreProducto); return; }

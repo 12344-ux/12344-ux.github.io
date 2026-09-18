@@ -125,7 +125,7 @@
 <script type="module">
   import {
     supabase, asegurarAcceso, montarHeader, ICONOS,
-    escaparHTML, formatearNumero, formatearFecha
+    escaparHTML, formatearNumero, formatearFecha, traerTodo
   } from '../marketing-core.js';
 
   const inDesde = document.getElementById('mk-desde');
@@ -160,15 +160,23 @@
   // leerPedidosAnulados y la nota de anulacion en agregarRanking).
   // ----------------------------------------------------------
   async function leerSalidas(desde, hasta) {
-    let q = supabase
-      .from('movimientos_inventario')
-      .select('product_id, cantidad, fecha, referencia')
-      .eq('tipo', 'salida');         // SOLO ventas/salidas: es lo que se movio
-    if (desde) q = q.gte('fecha', desde);
-    if (hasta) q = q.lte('fecha', hasta);
-    const { data, error } = await q;
-    if (error) throw error;
-    return (data || []).map((m) => ({
+    // Esta es la lectura con MAS riesgo de superar 1000 filas: trae las salidas
+    // de TODOS los productos (no filtra por product_id). Paginamos con traerTodo
+    // para leer el libro completo; sin paginar, PostgREST truncaba en ~1000
+    // filas en silencio y el ranking se calculaba sobre datos incompletos.
+    // Reconstruimos la consulta por bloque y solo le anadimos .range(d, h); un
+    // query builder de supabase-js no es reutilizable tras await. Mapeo y
+    // criterio (tipo='salida' + rango de fecha opcional) quedan identicos.
+    const filas = await traerTodo((d, h) => {
+      let q = supabase
+        .from('movimientos_inventario')
+        .select('product_id, cantidad, fecha, referencia')
+        .eq('tipo', 'salida');         // SOLO ventas/salidas: es lo que se movio
+      if (desde) q = q.gte('fecha', desde);
+      if (hasta) q = q.lte('fecha', hasta);
+      return q.range(d, h);
+    });
+    return filas.map((m) => ({
       product_id: m.product_id,
       cantidad: Math.trunc(Number(m.cantidad) || 0),
       // referencia = pedido_id::text para salidas de Ventas; null/'' para
@@ -229,17 +237,28 @@
     // Traemos los items junto con el estado/fecha de su pedido en un solo select
     // con join implicito de PostgREST (pedidos!inner). El !inner descarta items
     // cuyo pedido no cumple el filtro (anulado o fuera de rango).
-    let q = supabase
-      .from('pedido_items')
-      .select('product_id, cantidad, precio_unitario, pedidos!inner(anulado, fecha_orden)')
-      .eq('pedidos.anulado', false);
-    if (desde) q = q.gte('pedidos.fecha_orden', desde);
-    if (hasta) q = q.lte('pedidos.fecha_orden', hasta);
-    const { data, error } = await q;
-    // Si el usuario no tiene acceso al Area de Ventas (RLS) o la tabla aun no
-    // existe, NO rompemos el ranking: devolvemos mapas vacios y todo cae al
-    // fallback de precio_venta. El ingreso volvera a ser estimado, con honestidad.
-    if (error) return { ingreso: new Map(), unidades: new Map() };
+    // Paginamos con traerTodo para leer TODOS los items no anulados del rango
+    // sin quedarnos en las ~1000 filas de PostgREST. Reconstruimos la consulta
+    // por bloque y le anadimos .range(d, h); un query builder no es reutilizable
+    // tras await. CLAVE D4: conservamos EXACTAMENTE el join pedidos!inner y el
+    // filtro .eq('pedidos.anulado', false) en cada bloque, sin cambios.
+    let data;
+    try {
+      data = await traerTodo((d, h) => {
+        let q = supabase
+          .from('pedido_items')
+          .select('product_id, cantidad, precio_unitario, pedidos!inner(anulado, fecha_orden)')
+          .eq('pedidos.anulado', false);
+        if (desde) q = q.gte('pedidos.fecha_orden', desde);
+        if (hasta) q = q.lte('pedidos.fecha_orden', hasta);
+        return q.range(d, h);
+      });
+    } catch (error) {
+      // Si el usuario no tiene acceso al Area de Ventas (RLS) o la tabla aun no
+      // existe, NO rompemos el ranking: devolvemos mapas vacios y todo cae al
+      // fallback de precio_venta. El ingreso volvera a ser estimado, con honestidad.
+      return { ingreso: new Map(), unidades: new Map() };
+    }
     const ingreso = new Map();
     const unidades = new Map();
     for (const it of (data || [])) {
@@ -275,14 +294,26 @@
   // como antes de D4 para ese usuario, sin romper la pantalla.
   // ----------------------------------------------------------
   async function leerPedidosAnulados(desde, hasta) {
-    let q = supabase
-      .from('pedidos')
-      .select('id')
-      .eq('anulado', true);
-    if (desde) q = q.gte('fecha_orden', desde);
-    if (hasta) q = q.lte('fecha_orden', hasta);
-    const { data, error } = await q;
-    if (error) return new Set();
+    // Paginamos con traerTodo para traer TODOS los pedidos anulados del rango
+    // sin truncar en ~1000: si el set quedara incompleto, agregarRanking dejaria
+    // colar salidas de pedidos anulados (romperia D4). Reconstruimos la consulta
+    // por bloque con .range(d, h); conservamos el criterio anulado=true intacto.
+    let data;
+    try {
+      data = await traerTodo((d, h) => {
+        let q = supabase
+          .from('pedidos')
+          .select('id')
+          .eq('anulado', true);
+        if (desde) q = q.gte('fecha_orden', desde);
+        if (hasta) q = q.lte('fecha_orden', hasta);
+        return q.range(d, h);
+      });
+    } catch (error) {
+      // Sin acceso a Ventas (RLS) o tabla ausente: Set vacio, degradamos con
+      // gracia (igual que leerIngresoRealPorProducto) sin romper la pantalla.
+      return new Set();
+    }
     const set = new Set();
     for (const p of (data || [])) {
       if (p && p.id != null) set.add(String(p.id));
