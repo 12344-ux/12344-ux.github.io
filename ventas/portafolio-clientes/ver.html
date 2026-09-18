@@ -67,6 +67,17 @@
     return p.get('id');
   }
 
+  // ============================================================
+  // PATRON N+1 (deteccion de truncamiento) — mismo patron que el Libro Diario
+  // e Inventario en este tramo (D5). Al historial de pedidos de ESTE cliente
+  // le pedimos SIEMPRE una fila extra (HIST_N + 1). Si vuelve esa fila de mas,
+  // HAY mas pedidos de los que mostramos: pintamos SOLO los primeros HIST_N y
+  // un aviso sobrio. Si vuelven <= HIST_N filas, NO hay mas y NO se pinta
+  // aviso. Es una sola llamada (no un count aparte) y degrada con gracia. El
+  // aviso solo se evalua sobre datos traidos.
+  // ============================================================
+  const HIST_N = 500; // pedidos del historial que se muestran en la ficha
+
   async function cargar(id) {
     // Datos del cliente.
     const { data: cliente, error: eCli } = await supabase
@@ -93,12 +104,16 @@
       .eq('customer_id', id)
       .order('fecha_orden', { ascending: false })
       .order('creado', { ascending: false })
-      .limit(500);
+      .limit(HIST_N + 1); // N+1: la fila extra revela si hay mas
 
-    pintar(cliente, metrica || {}, pedidos || []);
+    // Si llego la fila extra, hay mas de HIST_N: mostramos HIST_N y avisamos.
+    const historial = pedidos || [];
+    const hayMas = historial.length > HIST_N;
+
+    pintar(cliente, metrica || {}, hayMas ? historial.slice(0, HIST_N) : historial, hayMas);
   }
 
-  function pintar(cliente, metrica, pedidos) {
+  function pintar(cliente, metrica, pedidos, hayMas) {
     // Datos de contacto.
     const datos = [
       ['Correo', cliente.correo],
@@ -144,6 +159,15 @@
           '<thead><tr><th>Fecha</th><th>Productos</th><th>Estado</th><th class="num">Total</th></tr></thead>' +
           '<tbody>' + filas + '</tbody>' +
         '</table></div>';
+      // Aviso de truncamiento (patron N+1): SOLO cuando llegaron mas de HIST_N
+      // pedidos de este cliente.
+      if (hayMas) {
+        historialHtml +=
+          '<div class="vt-truncado">' + (ICONOS.info || '') +
+            '<span>Mostrando los ' + HIST_N + ' pedidos más recientes de este cliente. ' +
+            'Hay más en su historial.</span>' +
+          '</div>';
+      }
     }
 
     cont.innerHTML =

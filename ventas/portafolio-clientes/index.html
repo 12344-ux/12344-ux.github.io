@@ -64,32 +64,58 @@
   const buscar = document.getElementById('vt-buscar');
   const orden = document.getElementById('vt-orden');
 
+  // ============================================================
+  // PATRON N+1 (deteccion de truncamiento) — mismo patron que el Libro Diario
+  // e Inventario en este tramo (D5). La FUENTE DE VERDAD del listado (y del
+  // conteo) es portafolio_metricas: le pedimos SIEMPRE una fila extra
+  // (CLIENTES_N + 1). Si vuelve esa fila de mas, HAY mas clientes de los que
+  // mostramos: nos quedamos con CLIENTES_N y pintamos un aviso sobrio que
+  // apunta al buscador (el listado se ordena/filtra en cliente, asi que el
+  // buscador es la via honesta para llegar al resto). La consulta de contacto
+  // (clientes) mantiene un limite ALINEADO (CLIENTES_N) porque SOLO hidrata
+  // correo/telefono/ciudad por id; no manda en el conteo. Si esa consulta
+  // falla, ya se degrada hoy (contactoPorId queda vacio) y no se toca. El
+  // aviso solo se evalua sobre datos traidos.
+  // ============================================================
+  const CLIENTES_N = 2000; // clientes que se muestran en el portafolio
+
   // Datos en memoria: metricas del portafolio cruzadas con el contacto.
   let filas = [];
+  // Se pinta el aviso de truncamiento solo cuando la fuente (portafolio_metricas)
+  // devolvio mas de CLIENTES_N filas.
+  let hayMas = false;
 
   async function cargar() {
     lista.innerHTML = '<p class="vt-empty">Cargando clientes...</p>';
 
-    // Metricas objetivas (una fila por cliente).
+    // Metricas objetivas (una fila por cliente). FUENTE del listado: pedimos
+    // N+1 para saber si hay mas de los que mostramos.
     const { data: metricas, error: eM } = await supabase
       .from('portafolio_metricas')
       .select('customer_id, nombre, ultima_compra, num_pedidos, total_gastado')
-      .limit(2000);
+      .limit(CLIENTES_N + 1); // N+1: la fila extra revela si hay mas
     if (eM) {
       lista.innerHTML = '<div class="vt-empty">No se pudo cargar el portafolio. <strong>' +
         escaparHTML(eM.message || 'Error') + '</strong></div>';
       return;
     }
 
-    // Contacto de cada cliente (correo/telefono/ciudad) desde clientes.
+    // Si llego la fila extra, hay mas de CLIENTES_N: nos quedamos con CLIENTES_N.
+    const todas = metricas || [];
+    hayMas = todas.length > CLIENTES_N;
+    const metricasVis = hayMas ? todas.slice(0, CLIENTES_N) : todas;
+
+    // Contacto de cada cliente (correo/telefono/ciudad) desde clientes. Solo
+    // hidrata contacto por id: limite alineado (CLIENTES_N), no manda en el
+    // conteo. Si falla, contactoPorId queda vacio y se degrada con gracia.
     const { data: clientes, error: eC } = await supabase
       .from('clientes')
       .select('id, correo, telefono, ciudad')
-      .limit(2000);
+      .limit(CLIENTES_N);
     const contactoPorId = new Map();
     if (!eC && clientes) clientes.forEach((c) => contactoPorId.set(c.id, c));
 
-    filas = (metricas || []).map((m) => {
+    filas = metricasVis.map((m) => {
       const c = contactoPorId.get(m.customer_id) || {};
       return {
         id: m.customer_id,
@@ -166,6 +192,17 @@
         '</tr></thead>' +
         '<tbody>' + cuerpo + '</tbody>' +
       '</table></div>';
+
+    // Aviso de truncamiento (patron N+1): SOLO cuando portafolio_metricas
+    // devolvio mas de CLIENTES_N. El buscador (nombre/correo/telefono) filtra
+    // en cliente y es la via honesta para llegar a un cliente puntual del resto.
+    if (hayMas) {
+      lista.insertAdjacentHTML('beforeend',
+        '<div class="vt-truncado">' + (ICONOS.info || '') +
+          '<span>Mostrando ' + CLIENTES_N + ' clientes. Hay más en la cartera: ' +
+          'usa el buscador por nombre, correo o teléfono para encontrar uno puntual.</span>' +
+        '</div>');
+    }
   }
 
   buscar.addEventListener('input', pintar);

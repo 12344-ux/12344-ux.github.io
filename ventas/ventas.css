@@ -211,6 +211,21 @@ body.vt-body{
 }
 .vt-empty strong{color:var(--vt-carbon)}
 
+/* Aviso de truncamiento (patron N+1): mismo look sobrio que la nota
+   informativa, pero como PIE de una lista/tabla YA pintada (tablero de
+   pedidos, portafolio, historial de un cliente). SOLO se pinta cuando hay
+   mas registros que los mostrados; nunca de forma permanente. Reutiliza la
+   paleta de ventas y apunta a los filtros/buscador de arriba. */
+.vt-truncado{
+  display:flex;align-items:flex-start;gap:12px;
+  margin:18px 0 4px;
+  font-size:13px;color:var(--vt-gris);
+  background:rgba(16,28,51,.04);border:1px solid var(--vt-linea);
+  border-radius:var(--vt-radio);padding:14px 18px;
+}
+.vt-truncado svg{width:18px;height:18px;color:var(--vt-marino);flex:none;margin-top:1px}
+.vt-truncado strong{color:var(--vt-marino)}
+
 /* ============================================================
    BARRA DE ACCIONES / FILTROS (sobre el tablero de pedidos)
    ============================================================ */
