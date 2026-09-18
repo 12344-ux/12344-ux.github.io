@@ -523,6 +523,49 @@ body.pr-body{
 .pr-tl-det{margin:4px 0 0;font-size:12.5px;color:var(--pr-gris)}
 
 /* ============================================================
+   CHIPS DE FILTRO POR EXISTENCIAS (vitrina)
+   Paleta existente: marino para el chip activo, tarjeta/linea para el resto.
+   ============================================================ */
+.pr-chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.pr-chip{
+  font-family:inherit;font-size:12.5px;font-weight:600;letter-spacing:.02em;
+  color:var(--pr-marino);background:var(--pr-tarjeta);
+  border:1px solid var(--pr-linea);border-radius:999px;padding:7px 15px;
+  cursor:pointer;transition:background-color .15s ease,border-color .15s ease,color .15s ease;
+}
+.pr-chip:hover{background:rgba(16,28,51,.05);border-color:var(--pr-azul-cl)}
+.pr-chip.activo{background:var(--pr-marino);border-color:var(--pr-marino);color:#fff}
+.pr-chip:focus-visible{outline:0;box-shadow:0 0 0 3px rgba(16,28,51,.10)}
+
+/* ============================================================
+   MODO EDICION DE FICHA (dentro del modal)
+   ============================================================ */
+/* Cabecera del detalle: existencias a la izquierda, "Editar ficha" a la derecha */
+.pr-detalle-cab{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.pr-detalle-cab .pr-detalle-existencias{margin-bottom:0}
+#pr-editar-btn{flex:none;padding:9px 16px;font-size:13px}
+
+/* Contexto solo-lectura del modo edicion: SKU + existencias + nota */
+.pr-edit-ctx{
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px 24px;
+  background:rgba(16,28,51,.04);border:1px solid var(--pr-linea);
+  border-radius:10px;padding:12px 14px;margin-bottom:16px;
+}
+.pr-edit-ctx-nota{
+  display:flex;align-items:flex-start;gap:8px;flex:1;min-width:220px;
+  font-size:12px;color:var(--pr-gris);
+}
+.pr-edit-ctx-nota svg{width:15px;height:15px;flex:none;margin-top:1px;color:var(--pr-marino)}
+
+/* Interruptores de estado (publicado / activo) */
+.pr-edit-flags{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.pr-check{
+  display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--pr-carbon);
+  cursor:pointer;text-transform:none;letter-spacing:0;font-weight:400;
+}
+.pr-check input{width:auto;accent-color:var(--pr-marino);flex:none}
+
+/* ============================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width:720px){

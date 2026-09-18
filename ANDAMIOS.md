@@ -224,10 +224,32 @@ su banner se ve en la lista; retirar un placeholder desde la UI funciona.
 - [ ] **C2.1** — Subida no atómica (RPC→Storage→RPC): si falla el paso 2/3 quedan
   huérfanos en Storage y se muestran a la vez éxito y error. Ordenar el flujo y los
   mensajes; documentar/mitigar huérfanas. (También aplica a Inventario `agregar`.)
-- [ ] **C2.2** — La pantalla de EDICIÓN de producto de Inventario NO existe pese a
-  que `ver.html` la promete y `inv_editar_producto` está lista. Evaluar si se
-  construye aquí o se anota como ficha aparte (probablemente ficha aparte para no
-  inflar el tramo).
+- [x] **C2.2** — Edición de ficha de producto de Inventario. ABORDADA en la rama
+  `feat/inventario-editar-ficha-filtros`. La pantalla de edición se resolvió como
+  un **MODO EDICIÓN dentro del modal de detalle** de `produccion/inventarios/ver.html`
+  (no una página `editar.html` nueva): el modal ya mostraba la ficha completa y ya
+  alojaba "Registrar movimiento", así que un "modo editar" ahí es el patrón más
+  coherente. Consume `inv_editar_producto` (15 args) sin tocar `sku` ni existencias.
+  **Decisión de precio:** en Inventario NO se muestra ni edita `precio_venta`; se
+  edita el COSTO (`costo_unitario`). Al guardar se reenvía el `precio_venta` actual
+  sin modificar (borrar la columna del modelo es ficha futura, ver abajo). En el
+  mismo tramo: se cortó la herencia de precio Inventario→Campañas en
+  `marketing/campanas/agregar.html` y `editar.html` (ya no autocompleta el precio;
+  conserva la sugerencia de nombre) y se añadieron filtros por existencias en la
+  vitrina (Todos / Agotados / Con más unidades / Con menos unidades). Sin SQL nuevo.
+
+### Fichas futuras derivadas de C2.2 (NO construidas)
+- [ ] **F-C2.2a — TOPE DE ESCAPARATE en Campañas.** Una llave que limite cuántas
+  unidades del stock real se ofrecen en la web sin exceder el stock de Inventario
+  (para no vender más de lo que hay). Requiere **SQL propio** (columna/tabla del
+  tope por campaña o producto) + lógica de "no exceder el stock" al publicar/vender.
+  Toca Campañas y la vista pública.
+- [ ] **F-C2.2b — BORRAR `precio_venta` del modelo de `productos`.** Limpieza del
+  modelo: hoy `precio_venta` sigue en `productos` aunque Inventario ya no lo maneje
+  y Campañas escriba su propio precio. Antes de borrarla hay que resolver el
+  **Ranking de Marketing**, que hoy usa `precio_venta` como ingreso estimado
+  (fallback). Toca **RPC** (`inv_editar_producto`/`inv_crear_producto`), la **vista**
+  de ranking y **Marketing**. Ficha delicada: coordinar con D4 (ranking vs anulaciones).
 
 ---
 
