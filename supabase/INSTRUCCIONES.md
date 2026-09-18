@@ -2116,3 +2116,221 @@ real de `select id, estado from pedidos limit 5;`).
 > + el `grant select` a `authenticated`. CERO acceso para `anon` (datos
 > operativos tras login). Aplicar la migracion -crear la tabla, redefinir las
 > funciones- es seguro: definirlas no las ejecuta.
+
+---
+
+# WOMPI · INTENCION DE PAGO (Fase F · Tramo F1)
+
+Este tramo agrega la **PRIMERA Edge Function** del proyecto:
+`crear-intencion-pago`. La tienda publica (magandhi.com) la invoca cuando el
+comprador pulsa **Comprar**; la funcion **relee el precio** del producto
+server-side desde la base, calcula el **monto en centavos**, genera una
+**referencia unica** y calcula la **firma de integridad de Wompi** con el
+secreto (que vive solo en el servidor), y devuelve al navegador los datos
+publicos para abrir el checkout de Wompi.
+
+**Que hace F1 (y que NO):** F1 SOLO crea la **intencion** de pago (firma + datos
+de pago). **NO** baja stock, **NO** crea pedido y **NO** persiste la referencia
+en ninguna tabla. Ver la seccion **F1.5 (frontera F1/F2)** al final.
+
+## ⚠️ F1.0. LINEA ROJA · El secreto de Wompi NUNCA sale del servidor
+
+Orden permanente del dueno, **no negociable** (misma linea que B3.0):
+
+- El **SECRETO de integridad** de Wompi vive **solo** como *secret* de la Edge
+  Function en **Edge Functions > Secrets**, con los nombres EXACTOS
+  `WOMPI_INTEGRITY_SANDBOX` (y `WOMPI_INTEGRITY_PROD` para el futuro). **NUNCA**
+  en el repo, ni en `pagos_config` ni en ninguna tabla, ni en el frontend, ni en
+  logs.
+- El **precio NUNCA sale del navegador**: la funcion lo **relee** de
+  `catalogo_publico` server-side. Si el navegador manda un precio/monto en el
+  body, se **ignora a proposito**.
+- La **firma se calcula DENTRO de la funcion** (server-side), como recomienda la
+  doc oficial de Wompi.
+- La `SUPABASE_SERVICE_ROLE_KEY` la **inyecta el runtime** de Supabase en
+  `Deno.env`; jamas se hardcodea ni se devuelve al navegador. La funcion la usa
+  para leer `pagos_config` (cuyo RLS solo deja leer a `authenticated` con
+  `tiene_modulo('finanzas')`) y `catalogo_publico`.
+
+## F1.1. Que archivos entrega F1 (y que SQL, si hay)
+
+- **Codigo (repo, rama `feat/wompi-intencion-pago`):**
+  `supabase/functions/crear-intencion-pago/index.ts` (Edge Function Deno; usa
+  `@supabase/supabase-js@2.116.0` por URL, version EXACTA).
+- **SQL nuevo:** **NINGUNO.** F1 **no agrega migraciones**: usa `pagos_config`
+  de **B3** (`20250601000100_pagos_config.sql`, ya en produccion) y
+  `catalogo_publico` de **Campanas** (ya en produccion). No hay tabla nueva en
+  F1. La tabla de idempotencia `pagos_wompi` y el webhook son de **F2**.
+
+> Escribir el `index.ts` en el repo **NO lo despliega**. El despliegue lo hace el
+> dueno a mano (abajo).
+
+## F1.2. Como desplegar la Edge Function a mano
+
+**Opcion A · Dashboard de Supabase (sin CLI):**
+
+1. En el menu lateral, abre **Edge Functions**.
+2. Pulsa **Create a new function** (o **Deploy a new function**) y nombrala
+   EXACTAMENTE `crear-intencion-pago` (el nombre es la ruta del endpoint).
+3. Pega el contenido completo de
+   `supabase/functions/crear-intencion-pago/index.ts` y guarda / despliega.
+
+**Opcion B · Supabase CLI (si la tienes instalada):**
+
+```bash
+# Desde la raiz del repo back-office (12344-ux.github.io):
+supabase functions deploy crear-intencion-pago
+```
+
+**Nota sobre "Verify JWT":** la tienda invoca la funcion con
+`supabase.functions.invoke('crear-intencion-pago', ...)` usando la
+**publishable/anon key** del proyecto. Esa anon key **es un JWT valido de
+Supabase**, asi que puedes **dejar activado "Verify JWT"** (recomendado): la
+funcion se sigue pudiendo llamar desde la tienda sin sesion de usuario. Si
+prefieres **desactivar** "Verify JWT", la funcion quedaria abierta sin exigir
+ningun JWT de Supabase; solo hazlo si lo entiendes (la funcion ya valida el
+producto y el CORS, pero perderias esa primera barrera de Supabase). Para F1 se
+recomienda **dejarlo activado**.
+
+## F1.3. Que secrets poner y DONDE (Edge Functions > Secrets)
+
+En **Edge Functions > Secrets** del dashboard, agrega el secreto de integridad
+con el nombre EXACTO (el de sandbox basta para F1; el de prod se pone el dia que
+se pase a real):
+
+```
+WOMPI_INTEGRITY_SANDBOX = test_integrity_xxxxxxxxxxxxxxxxxx   (secreto de integridad SANDBOX de Wompi)
+WOMPI_INTEGRITY_PROD    = prod_integrity_xxxxxxxxxxxxxxxxxx   (para el futuro; opcional en F1)
+```
+
+- Estos valores los tomas del panel de comercios de Wompi (seccion de llaves).
+- **LINEA ROJA:** estos secretos van **SOLO aqui**, NUNCA en el repo, en
+  `pagos_config`, en otra tabla ni en el frontend.
+- `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` **NO** las agregas: el runtime de
+  Edge Functions ya las inyecta automaticamente.
+
+## F1.4. Pegar la llave PUBLICA sandbox en pagos_config
+
+La funcion elige la llave publica segun `pagos_config.entorno`. En **sandbox**
+usa `llave_publica_sandbox`. Pega la publishable key sandbox de Wompi (rol
+`service_role` / SQL Editor):
+
+```sql
+update pagos_config
+   set llave_publica_sandbox = 'pub_test_xxxxxxxxxxxxxxxxxx'
+ where id = 1;
+
+-- Confirmar (debe seguir en sandbox y ya con la llave publica puesta):
+select entorno, llave_publica_sandbox from pagos_config where id = 1;
+-- Esperado: entorno='sandbox', llave_publica_sandbox no vacia.
+```
+
+La llave PUBLICA (publishable key) **no es secreta** (viaja al navegador de
+todas formas): por eso vive en la tabla y NO en Secrets. El SECRETO de
+integridad, en cambio, va SOLO en Secrets (F1.3).
+
+## F1.5. Como VERIFICAR F1 con EVIDENCIA
+
+Sustituye `<slug>` por el slug real de un producto publicado y no agotado (mira
+`select slug, nombre, agotado from catalogo_publico where agotado = false limit
+5;`), y `<ANON_KEY>` por la publishable/anon key del proyecto.
+
+**1) Curl al endpoint sandbox: devuelve la firma y los datos publicos.**
+
+```bash
+curl -sS -X POST \
+  'https://bxlzipwxyxdtffnuizbz.supabase.co/functions/v1/crear-intencion-pago' \
+  -H "Content-Type: application/json" \
+  -H "apikey: <ANON_KEY>" \
+  -H "Authorization: Bearer <ANON_KEY>" \
+  -d '{"producto":"<slug>","cantidad":1}'
+```
+
+Respuesta esperada (200), un JSON como:
+
+```json
+{
+  "referencia": "MAG-xxxxxxxx-1730000000000-abcdef012345",
+  "monto_en_centavos": 12345600,
+  "moneda": "COP",
+  "firma_integridad": "…64 hex…",
+  "llave_publica": "pub_test_…",
+  "url_redireccion": "https://magandhi.com/producto/?slug=<slug>&ref=MAG-…",
+  "nombre_producto": "…"
+}
+```
+
+Fijate que **NO** aparece el secreto ni la service_role.
+
+**2) Recalcular la firma a mano y confirmar que coincide.** La firma es
+`sha256( referencia + monto_en_centavos + 'COP' + secreto_integridad )` (sin
+separadores). Toma los valores `referencia` y `monto_en_centavos` de la
+respuesta y tu `WOMPI_INTEGRITY_SANDBOX`:
+
+```bash
+REF='MAG-xxxxxxxx-1730000000000-abcdef012345'   # de la respuesta
+MONTO='12345600'                                  # monto_en_centavos de la respuesta
+SECRETO='test_integrity_xxxxxxxxxxxxxxxxxx'       # tu WOMPI_INTEGRITY_SANDBOX
+printf '%s' "${REF}${MONTO}COP${SECRETO}" | openssl dgst -sha256
+# El hex resultante DEBE ser identico a "firma_integridad" de la respuesta.
+```
+
+> Ejemplo oficial de Wompi para trazabilidad (misma formula):
+> `'sk8-438k4-xmxm392-sn2m' + '2490000' + 'COP' + 'prod_integrity_...'` -> sha256.
+
+**3) Prueba de que un precio falso en el body es IGNORADO.** Manda un precio
+inventado en el body y confirma que `monto_en_centavos` **NO** lo refleja (usa
+el `precio_venta` de la BD x cantidad x 100):
+
+```bash
+curl -sS -X POST \
+  'https://bxlzipwxyxdtffnuizbz.supabase.co/functions/v1/crear-intencion-pago' \
+  -H "Content-Type: application/json" \
+  -H "apikey: <ANON_KEY>" -H "Authorization: Bearer <ANON_KEY>" \
+  -d '{"producto":"<slug>","cantidad":1,"precio":1,"monto_en_centavos":1,"amount_in_cents":1}'
+# Esperado: monto_en_centavos = precio_venta_real * 1 * 100 (NO 1). El precio del
+#           body se ignora a proposito.
+```
+
+**4) Prueba de que un producto AGOTADO es rechazado.** Elige un slug con
+`agotado = true` (`select slug from catalogo_publico where agotado = true limit
+1;`) y llama:
+
+```bash
+curl -sS -X POST \
+  'https://bxlzipwxyxdtffnuizbz.supabase.co/functions/v1/crear-intencion-pago' \
+  -H "Content-Type: application/json" \
+  -H "apikey: <ANON_KEY>" -H "Authorization: Bearer <ANON_KEY>" \
+  -d '{"producto":"<slug_agotado>","cantidad":1}'
+# Esperado: HTTP 409 con {"error":"Producto agotado."} (no se emite intencion).
+```
+
+**5) Producto inexistente.** Un slug que no existe DEBE devolver 404:
+
+```bash
+# ... -d '{"producto":"no-existe-xyz","cantidad":1}'
+# Esperado: HTTP 404 con {"error":"Producto no encontrado."}
+```
+
+## F1.6. FRONTERA F1 / F2 (trazada · respetar)
+
+F1 **solo** crea la intencion de pago (firma + datos de pago) y la devuelve al
+navegador para abrir el checkout de Wompi. En F1, **a proposito**:
+
+- **NO** se llama a la RPC `crear_pedido`.
+- **NO** se baja stock (la regla dura del proyecto es "el stock baja solo **AL
+  PAGAR**").
+- **NO** se crea ni se escribe la tabla de idempotencia `pagos_wompi` (esa tabla
+  no existe todavia).
+
+Todo eso es **F2**: el webhook `wompi-webhook` recibira el evento
+`transaction.updated` de Wompi, y **SOLO** si el pago es **APPROVED** invocara
+`crear_pedido(canal='web')` (que baja el stock) y persistira la referencia en la
+tabla de idempotencia `pagos_wompi`. Por eso, en F1, **"el pago aun no crea
+pedido" es correcto y esperado**: la verdad del pago llega por el webhook en F2,
+no por el navegador (la consulta de transaccion desde el frontend ya no esta
+soportada por Wompi).
+
+> Nota sobre `url_redireccion`: hoy apunta a la pagina del producto con
+> `?ref=<referencia>` como **PROVISIONAL**. La pagina de gracias definitiva
+> (`/gracias/`) es de **F2.3**; cuando exista, se cambia aqui la URL.
