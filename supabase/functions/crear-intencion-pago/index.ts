@@ -180,6 +180,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // IMPORTANTE (linea roja): a proposito NO se lee ningun campo de precio/monto
   // del body. El precio NUNCA sale del navegador; se relee de la BD mas abajo.
 
+  // DIAGNOSTICO: marca de entrada para correlacionar la invocacion en los logs.
+  // Solo datos no sensibles (que producto se pidio y cuantas unidades).
+  console.log(
+    "[crear-intencion-pago] Intencion solicitada:",
+    JSON.stringify({ producto, cantidad }),
+  );
+
   // --- Cliente Supabase server-side (SERVICE_ROLE, inyectada por el runtime) -
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -214,6 +221,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
     .maybeSingle();
 
   if (errorCatalogo) {
+    // DIAGNOSTICO: detalle real del fallo de lectura del catalogo (sin secretos).
+    console.error(
+      "[crear-intencion-pago] Fallo lectura catalogo_publico:",
+      JSON.stringify({
+        message: errorCatalogo?.message ?? null,
+        code: (errorCatalogo as { code?: string } | null)?.code ?? null,
+        details: (errorCatalogo as { details?: string } | null)?.details ?? null,
+        hint: (errorCatalogo as { hint?: string } | null)?.hint ?? null,
+        columna,
+      }),
+    );
     return json(
       { error: "No se pudo consultar el catalogo." },
       500,
@@ -221,6 +239,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
     );
   }
   if (!fila) {
+    // DIAGNOSTICO: que se busco y por que columna (el identificador no es secreto).
+    console.error(
+      "[crear-intencion-pago] Producto no encontrado:",
+      JSON.stringify({ buscado: producto, columna }),
+    );
     return json({ error: "Producto no encontrado." }, 404, cors);
   }
 
@@ -259,6 +282,22 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // La RPC devuelve una tabla (0..n filas); tomamos la primera (id=1).
   const config = Array.isArray(configFilas) ? configFilas[0] : configFilas;
   if (errorConfig || !config) {
+    // DIAGNOSTICO: se loguea el detalle REAL del fallo para poder verlo en
+    // Edge Functions > Logs. Sin esto el 500 no dice por que fallo (el mensaje
+    // al navegador es generico a proposito). NUNCA se loguean secretos: solo
+    // mensajes de error y metadatos no sensibles.
+    console.error(
+      "[crear-intencion-pago] Fallo RPC pagos_config_para_intencion:",
+      JSON.stringify({
+        message: errorConfig?.message ?? null,
+        code: (errorConfig as { code?: string } | null)?.code ?? null,
+        details: (errorConfig as { details?: string } | null)?.details ?? null,
+        hint: (errorConfig as { hint?: string } | null)?.hint ?? null,
+        tipoConfigFilas: typeof configFilas,
+        esArray: Array.isArray(configFilas),
+        largo: Array.isArray(configFilas) ? configFilas.length : null,
+      }),
+    );
     // Mismo mensaje y contrato que antes (no se cambia la respuesta al cliente).
     return json(
       { error: "No se pudo leer la configuracion de pagos." },
@@ -291,6 +330,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
     : "WOMPI_INTEGRITY_SANDBOX";
   const secretoIntegridad = Deno.env.get(nombreSecreto);
   if (!secretoIntegridad) {
+    // DIAGNOSTICO: se loguea SOLO EL NOMBRE de la variable que se busco, nunca
+    // su valor (linea roja: el secreto jamas se escribe en un log).
+    console.error(
+      "[crear-intencion-pago] Secreto de integridad ausente. Variable esperada:",
+      nombreSecreto,
+      "| entorno:",
+      entorno,
+    );
     // No se filtra el valor ni el nombre exacto al navegador.
     return json(
       { error: "Secreto de integridad no configurado en el servidor." },

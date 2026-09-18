@@ -2439,3 +2439,50 @@ depende de como PostgREST resuelva el rol) y devuelve **SOLO** el entorno y la
 > vista** (no se convierte a RPC). El contrato de la respuesta al navegador **no
 > cambia**: mismo JSON y mismo mensaje de error 500 si la config no se puede
 > leer.
+
+
+## F1.9. DIAGNOSTICO · Ver el motivo REAL de un fallo en los logs
+
+Durante la puesta en marcha de F1 el `500` siempre llegaba al navegador con un
+mensaje **generico** (`"No se pudo leer la configuracion de pagos."`), lo cual es
+correcto de cara al cliente (no se filtran detalles internos) pero **deja a
+ciegas al diagnostico**: se descarto por evidencia que fuera la base de datos
+(la RPC `pagos_config_para_intencion()` respondia bien desde `service_role`,
+`anon` **y** `authenticated` en el SQL Editor) y aun asi la funcion fallaba.
+
+Por eso la Edge Function ahora **loguea el detalle real** de cada punto de fallo
+temprano, para poder leerlo en el dashboard sin cambiar lo que ve el comprador.
+
+**Que se loguea** (todos los mensajes empiezan con `[crear-intencion-pago]`):
+
+- La **entrada** de cada invocacion: que producto se pidio y la cantidad.
+- Fallo de la **RPC de configuracion**: `message`, `code`, `details` y `hint` que
+  devuelve PostgREST, mas el tipo/forma de lo que llego.
+- Fallo de lectura de **`catalogo_publico`**: mismos campos de error + la columna
+  usada (`slug` o `id`).
+- **Producto no encontrado**: que identificador se busco y por que columna.
+- **Secreto de integridad ausente**: SOLO el **nombre** de la variable esperada
+  (`WOMPI_INTEGRITY_SANDBOX` / `WOMPI_INTEGRITY_PROD`) y el entorno.
+
+**⚠️ LINEA ROJA (se mantiene):** los logs **NUNCA** contienen secretos. No se
+escribe el valor del secreto de integridad, ni la `SERVICE_ROLE_KEY`, ni la firma
+calculada, ni ningun valor de `Deno.env`. Solo mensajes de error, nombres de
+variables y metadatos no sensibles.
+
+**Como verlos:**
+
+1. Dashboard de Supabase > **Edge Functions** > **crear-intencion-pago**.
+2. Pestana **Logs** (no "Invocations": ahi solo se ve el codigo HTTP y las
+   cabeceras; el motivo esta en Logs).
+3. Filtro de tiempo en **Last hour** y **refrescar**.
+4. Buscar las lineas que empiezan por `[crear-intencion-pago]`. La linea de
+   `Intencion solicitada` permite correlacionar cada intento con su fallo.
+
+> **Pista util sin abrir los logs:** en **Invocations**, el campo
+> `response.headers.content_length` identifica el mensaje devuelto sin ambiguedad
+> (p.ej. **65** bytes = exactamente
+> `{"error":"No se pudo leer la configuracion de pagos."}`). Si ese numero
+> cambia, el punto de fallo cambio.
+
+Este logging de diagnostico se puede **retirar** cuando el circuito de pago quede
+estable (F4), o dejarlo: no expone nada sensible y ayuda a operar.
