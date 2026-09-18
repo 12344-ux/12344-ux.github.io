@@ -59,17 +59,59 @@ export function formatearCOP(entero) {
 }
 
 /**
+ * Analiza lo que el usuario escribe en un campo de monto SIN tragarse los
+ * centavos en silencio (mismo comportamiento que finanzas-core.js; replicado
+ * por clonabilidad). Los montos son ENTEROS de pesos COP (sin centavos): el
+ * punto es separador de MILES y la coma seria separador decimal.
+ *
+ * Antes un replace(/[^\d]/g,'') convertia "1.200,50" en 120050 (pegaba los
+ * centavos) sin avisar. Aqui el punto agrupa miles ("1.200.000" -> 1200000) y
+ * cualquier parte decimal (coma, o punto que no agrupa de a tres) se descarta
+ * y se avisa via `tieneDecimal`, nunca se cuela como pesos.
+ * @param {string} texto
+ * @returns {{ valor:number, tieneDecimal:boolean, invalido:boolean }}
+ */
+export function analizarMonto(texto) {
+  if (texto == null) return { valor: 0, tieneDecimal: false, invalido: false };
+  let limpio = String(texto).replace(/[^\d.,]/g, '');
+  if (limpio === '') return { valor: 0, tieneDecimal: false, invalido: false };
+
+  let tieneDecimal = false;
+
+  const coma = limpio.indexOf(',');
+  if (coma !== -1) {
+    const decimales = limpio.slice(coma + 1).replace(/[.,]/g, '');
+    if (decimales !== '') tieneDecimal = true;
+    limpio = limpio.slice(0, coma);
+  }
+
+  if (limpio.indexOf('.') !== -1) {
+    const grupos = limpio.split('.');
+    const ultimo = grupos[grupos.length - 1];
+    if (grupos.length > 1 && ultimo.length !== 3) {
+      const dec = grupos.pop().replace(/\D/g, '');
+      if (dec !== '') tieneDecimal = true;
+      limpio = grupos.join('.');
+    }
+  }
+
+  const soloDigitos = limpio.replace(/\D/g, '');
+  if (soloDigitos === '') return { valor: 0, tieneDecimal, invalido: false };
+  const n = parseInt(soloDigitos, 10);
+  if (!Number.isFinite(n)) return { valor: 0, tieneDecimal, invalido: true };
+  return { valor: n, tieneDecimal, invalido: false };
+}
+
+/**
  * Convierte lo que el usuario escribe en un campo de monto a un ENTERO de
- * pesos. Quita todo lo que no sea digito. Campo vacio -> 0.
+ * pesos (sin centavos). El punto es separador de miles; cualquier parte
+ * decimal se descarta. Campo vacio -> 0. Para avisar de un decimal, usa
+ * `analizarMonto` (bandera `tieneDecimal`). Firma retrocompatible.
  * @param {string} texto
  * @returns {number} entero de pesos (>= 0)
  */
 export function parsearMonto(texto) {
-  if (texto == null) return 0;
-  const soloDigitos = String(texto).replace(/[^\d]/g, '');
-  if (soloDigitos === '') return 0;
-  const n = parseInt(soloDigitos, 10);
-  return Number.isFinite(n) ? n : 0;
+  return analizarMonto(texto).valor;
 }
 
 /**
