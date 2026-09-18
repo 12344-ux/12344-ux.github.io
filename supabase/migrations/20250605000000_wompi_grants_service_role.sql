@@ -1,0 +1,145 @@
+-- ============================================================
+-- Magandhi Corporation · Wompi (F1 · remate) · GRANTS a service_role
+--                                              + menor privilegio en la RPC
+-- ------------------------------------------------------------
+-- POR QUE EXISTE ESTA MIGRACION (deuda de clonabilidad que se cierra aqui):
+--   Para que la Edge Function `crear-intencion-pago` funcionara, el dueno tuvo
+--   que correr TRES `grant select` A MANO en el SQL Editor. Funcionaron, pero
+--   NO quedaron versionados en el repo, y eso rompe la CLONABILIDAD: MAGANDHI es
+--   el caso piloto de este back-office, y si se clona a OTRA organizacion,
+--   correr todas las migraciones NO bastaria: la Edge Function fallaria con
+--   errores oscuros (500 / "permission denied") y nadie sabria por que, porque
+--   los grants solo vivian en la cabeza del dueno. Esta migracion los deja
+--   escritos, idempotentes y explicados.
+--
+--   POR QUE HACEN FALTA GRANTS EXPLICITOS A service_role (dos razones juntas):
+--     1) La Edge Function opera como service_role A PROPOSITO: se le fuerza el
+--        header `Authorization: Bearer <SERVICE_ROLE_KEY>` para leer datos que el
+--        navegador NO debe poder leer (configuracion de pagos, precio real).
+--     2) En este proyecto la opcion "auto-expose new tables" de Supabase esta en
+--        OFF, es decir NO se reparten grants automaticos al crear objetos. Es la
+--        postura deseada (nada queda expuesto por accidente), pero implica que
+--        cada permiso se otorga A MANO y A PROPOSITO, como aqui.
+--
+--   OJO: service_role tiene BYPASSRLS (se salta las POLICIES) pero NO se salta
+--   los GRANTS de tabla/vista. Por eso "tiene RLS a favor" y aun asi recibia
+--   `permission denied`: le faltaba el privilegio SELECT, que es otra capa.
+--
+-- ============================================================================
+-- LINEA ROJA (orden permanente del dueno · se respeta):
+--   Aqui NO se otorga NADA a `anon`, NADA de escritura (INSERT/UPDATE/DELETE) y
+--   NO se toca ninguna RLS ni ninguna policy existente. Solo SELECT de lectura
+--   para service_role (un rol que NUNCA llega al navegador: su llave vive solo
+--   como secret de la Edge Function) y EXECUTE acotado de una RPC.
+--   Los SECRETOS de Wompi (integridad, eventos) no estan en la base: viven solo
+--   como secrets de la Edge Function en Deno.env.
+--
+-- Idempotente: `grant`/`revoke` se pueden correr las veces que sea.
+-- NO modifica migraciones anteriores (20250601000100, 20250604000000, etc.).
+-- ============================================================
+
+-- ------------------------------------------------------------
+-- 1) pagos_config · SELECT a service_role
+--    La Edge Function necesita el entorno activo ('sandbox'|'prod') y la llave
+--    PUBLICA de ese entorno. Hoy los lee por la RPC security definer
+--    `pagos_config_para_intencion()` (ver 20250604000000), pero el grant sobre
+--    la tabla se versiona igual porque:
+--      · fue el primero que el dueno corrio a mano y debe quedar registrado, y
+--      · deja la lectura directa disponible para operacion/diagnostico como
+--        service_role sin volver a improvisar permisos en produccion.
+--    Solo SELECT. La RLS de la tabla (SELECT a authenticated con el modulo
+--    finanzas) queda intacta, y anon sigue sin ningun grant.
+-- ------------------------------------------------------------
+grant select on table public.pagos_config to service_role;
+
+-- ------------------------------------------------------------
+-- 2) contabilidad_config · SELECT a service_role
+--    Guarda los CODIGOS de cuenta PUC que usara el asiento automatico de la
+--    venta web. El circuito de pago los lee del servidor (nunca del navegador)
+--    para no escribir codigos a fuego en el codigo — precisamente lo que hace
+--    clonable el back-office a otra organizacion.
+--    Solo SELECT; la siembra/edicion sigue siendo a mano del dueno.
+-- ------------------------------------------------------------
+grant select on table public.contabilidad_config to service_role;
+
+-- ------------------------------------------------------------
+-- 3) catalogo_publico · SELECT a service_role   ← ESTE DESTRABO TODO
+--    La Edge Function RELEE el precio real del producto de esta vista (el
+--    navegador NUNCA manda el precio: regla dura del proyecto). Sin este grant
+--    la funcion fallaba con el error real:
+--        "permission denied for view catalogo_publico"  (SQLSTATE 42501)
+--    que llegaba al navegador disfrazado de 500 generico y costo horas de
+--    diagnostico.
+--
+--    ⚠️ AVISO PARA EL FUTURO (trampa real de este repo): `catalogo_publico` es
+--    una VISTA que varias migraciones RECREAN con `drop view if exists` +
+--    `create view` (p.ej. 20250502000000, 20250503000000, 20250602000000). Al
+--    hacer DROP se PIERDEN todos sus grants. Por eso cada una de esas
+--    migraciones vuelve a otorgar `to anon, authenticated`: TODA migracion futura
+--    que recree la vista debe incluir TAMBIEN este grant a service_role, o la
+--    intencion de pago se volvera a romper con 42501.
+--
+--    La vista expone solo campos publicos del producto y corre con los
+--    privilegios de su dueno (security_invoker OFF), asi que este grant no abre
+--    nada nuevo: anon y authenticated ya la leian.
+-- ------------------------------------------------------------
+grant select on catalogo_publico to service_role;
+
+-- ------------------------------------------------------------
+-- 4) ENDURECIMIENTO POR MENOR PRIVILEGIO ·
+--    pagos_config_para_intencion() deja de ser ejecutable por PUBLIC
+--
+--    Postgres otorga EXECUTE a PUBLIC por defecto al crear una funcion, asi que
+--    la RPC creada en 20250604000000 quedo invocable por CUALQUIER rol, incluido
+--    `anon` (es decir, cualquier visitante de la tienda podia llamarla).
+--
+--    NO ES UNA FUGA DE SECRETOS, y conviene dejarlo por escrito para no sembrar
+--    alarma: la RPC devuelve UNICAMENTE el entorno ('sandbox'|'prod') y la LLAVE
+--    PUBLICA del entorno activo. Las llaves publicas son publicas por diseno —
+--    viajan al navegador en cada checkout — y la RPC nunca devuelve la fila
+--    completa ni ningun secreto (los secretos no estan en la base).
+--
+--    Aun asi, lo correcto es no ofrecer superficie que nadie necesita: se revoca
+--    de PUBLIC y se otorga EXECUTE explicito solo a quien de verdad la usa.
+--
+--    ¿ROMPE LA EDGE FUNCTION? NO. La funcion invoca esta RPC con el cliente
+--    service_role (header Authorization forzado con la SERVICE_ROLE_KEY), y
+--    service_role conserva EXECUTE explicito abajo. `authenticated` tambien lo
+--    conserva (el back-office puede necesitar mostrar el entorno activo). El
+--    unico que pierde el permiso es `anon`, que nunca debio tenerlo: el navegador
+--    de la tienda NO llama esta RPC — recibe la llave publica dentro de la
+--    respuesta de la Edge Function.
+--
+--    Orden importante: primero REVOKE de public, luego los GRANT explicitos, para
+--    que el resultado sea el mismo aunque la migracion se corra dos veces.
+-- ------------------------------------------------------------
+revoke execute on function public.pagos_config_para_intencion() from public;
+
+grant execute on function public.pagos_config_para_intencion() to service_role;
+grant execute on function public.pagos_config_para_intencion() to authenticated;
+
+-- ============================================================
+-- VERIFICACION (correr en el SQL Editor despues de esta migracion):
+--
+--   -- a) Los tres grants de lectura existen para service_role:
+--   select table_name, privilege_type
+--     from information_schema.role_table_grants
+--    where grantee = 'service_role'
+--      and table_schema = 'public'
+--      and table_name in ('pagos_config','contabilidad_config','catalogo_publico')
+--    order by table_name;
+--   -- Esperado: 3 filas, todas con privilege_type = 'SELECT'.
+--
+--   -- b) La RPC ya NO es ejecutable por public/anon, si por service_role:
+--   select has_function_privilege('anon',         'public.pagos_config_para_intencion()', 'EXECUTE') as anon,
+--          has_function_privilege('authenticated','public.pagos_config_para_intencion()', 'EXECUTE') as autenticado,
+--          has_function_privilege('service_role', 'public.pagos_config_para_intencion()', 'EXECUTE') as servicio;
+--   -- Esperado: anon = false, autenticado = true, servicio = true.
+--
+--   -- c) La RPC sigue devolviendo solo datos publicos:
+--   select * from pagos_config_para_intencion();
+--   -- Esperado: una fila con entorno y llave_publica. JAMAS secretos.
+--
+-- Despues de correrla NO hace falta re-desplegar la Edge Function: no cambia
+-- ningun contrato, solo permisos. La prueba de humo sigue siendo la de F1.5.
+-- ============================================================
