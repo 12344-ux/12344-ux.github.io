@@ -648,6 +648,60 @@ export function agruparPorPeriodo(movimientos, granularidad) {
     .sort((a, b) => (a.clave < b.clave ? -1 : a.clave > b.clave ? 1 : 0));
 }
 
+// ------------------------------------------------------------
+// PAGINACION DE LECTURAS DEL LIBRO (traer TODAS las filas, sin truncar)
+// ------------------------------------------------------------
+
+/**
+ * Trae TODAS las filas de una consulta PostgREST recorriendola por bloques con
+ * .range(desde, hasta) en bucle, hasta que un bloque llegue incompleto o vacio.
+ *
+ * POR QUE ES NECESARIO: PostgREST corta las respuestas en ~1000 filas por
+ * defecto y EN SILENCIO (no devuelve error). Toda la matematica del Area de
+ * Marketing (proyeccion, tendencia central, ranking) se calcula sobre el LIBRO
+ * completo de salidas: si la consulta se trunca a 1000 filas, la media, la
+ * regresion, el ranking, etc. se calculan sobre datos incompletos sin que nadie
+ * lo note. Este helper garantiza que se leen todas las filas antes de agrupar.
+ *
+ * POR QUE RECIBE UNA FUNCION Y NO UN QUERY BUILDER: en supabase-js un query
+ * builder NO es reutilizable despues de un await (al resolverse deja de ser
+ * "thenable" reutilizable). Para reaplicar .range() en cada iteracion hay que
+ * RECONSTRUIR la consulta ya filtrada/ordenada por bloque. Por eso el helper
+ * recibe `construirConsulta(desde, hasta)`, que debe devolver una consulta
+ * PostgREST con TODOS sus filtros/order ya aplicados y con .range(desde, hasta)
+ * puesto, lista para await.
+ *
+ * DEGRADACION: si un bloque devuelve error, se PROPAGA con throw. NUNCA se
+ * devuelve el acumulado parcial como si fuera completo (seria peor que truncar:
+ * mentira silenciosa sobre datos incompletos). Los llamadores que hoy degradan
+ * con gracia (ranking bajo RLS de Ventas) capturan ese throw ellos mismos.
+ *
+ * @template T
+ * @param {(desde:number, hasta:number) => PromiseLike<{data:T[]|null, error:any}>} construirConsulta
+ *   Funcion que, dado el rango [desde, hasta] de filas (indices inclusivos),
+ *   devuelve la consulta PostgREST ya filtrada/ordenada con .range(desde, hasta).
+ * @param {number} [tamBloque=1000] Tamano de bloque a pedir en cada iteracion.
+ * @returns {Promise<T[]>} TODAS las filas acumuladas, en orden.
+ */
+export async function traerTodo(construirConsulta, tamBloque = 1000) {
+  const acumulado = [];
+  let desde = 0;
+  // Bucle hasta recibir un bloque INCOMPLETO (o vacio): si llega lleno
+  // (length === tamBloque) podria haber mas filas y pedimos el siguiente.
+  for (;;) {
+    const hasta = desde + tamBloque - 1;
+    const { data, error } = await construirConsulta(desde, hasta);
+    if (error) throw error; // propagar; NO devolver parciales
+    const bloque = data || [];
+    for (const fila of bloque) acumulado.push(fila);
+    // Bloque incompleto o vacio => ya no hay mas filas: terminamos SIN pedir
+    // un bloque de mas.
+    if (bloque.length < tamBloque) break;
+    desde += tamBloque;
+  }
+  return acumulado;
+}
+
 // ============================================================
 //  AUTO-CHEQUEO DE LOS TRES METODOS (verificacion a mano)
 //  ------------------------------------------------------------
@@ -677,4 +731,28 @@ export function agruparPorPeriodo(movimientos, granularidad) {
 //    promedioMovil([10,20,30,40], 2, 3)              -> [35, 35, 35]
 //    suavizacionExponencial([10,20,30,40], 0.5, 3)   -> proyeccion [31.25,...]
 //    regresionLineal([10,20,30,40], 3)               -> proyeccion [50, 60, 70]
+// ============================================================
+
+// ============================================================
+//  AUTO-CHEQUEO DE LA PAGINACION (traerTodo) — comportamiento esperado
+//  ------------------------------------------------------------
+//  Con un stub de consulta que sirva filas simuladas por rango [desde,hasta]
+//  y tamBloque=1000:
+//    - total < tamBloque (p.ej. 500): 1 llamada, devuelve las 500, se detiene
+//      (bloque incompleto). No pide un segundo bloque.
+//    - total = multiplo exacto (p.ej. 2000): pide 1000 + 1000 (ambos llenos) y
+//      luego un tercer bloque VACIO (0 filas) para confirmar el fin -> 3
+//      llamadas, 2000 filas. Es el precio de no truncar: un bloque vacio final.
+//    - total mayor no multiplo (p.ej. 2500): pide 1000 + 1000 + 500 -> 3
+//      llamadas, 2500 filas; el tercero llega incompleto y NO se pide un cuarto.
+//    - si un bloque devuelve { error }, traerTodo lanza (throw) y NO devuelve el
+//      acumulado parcial.
+//  Se puede re-ejecutar en node con un stub:
+//    let llamadas = 0;
+//    const total = 2500;
+//    const construir = (d,h) => { llamadas++; const filas = [];
+//      for (let i=d; i<=h && i<total; i++) filas.push({ i });
+//      return Promise.resolve({ data: filas, error: null }); };
+//    const todo = await traerTodo(construir, 1000);
+//    // todo.length === 2500 ; llamadas === 3
 // ============================================================

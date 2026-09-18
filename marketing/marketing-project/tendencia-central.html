@@ -101,7 +101,7 @@
 <script type="module">
   import {
     supabase, asegurarAcceso, montarHeader, ICONOS,
-    escaparHTML, formatearNumero, agruparPorPeriodo
+    escaparHTML, formatearNumero, agruparPorPeriodo, traerTodo
   } from '../marketing-core.js';
 
   const selProducto = document.getElementById('mk-producto');
@@ -212,16 +212,22 @@
   // LECTURA DE SALIDAS DEL LIBRO — mismo enfoque que leerSalidas de proyeccion
   // ----------------------------------------------------------
   async function leerSalidas(productId, desde, hasta) {
-    let q = supabase
-      .from('movimientos_inventario')
-      .select('fecha, cantidad')
-      .eq('product_id', productId)
-      .eq('tipo', 'salida');         // SOLO ventas/salidas: es la demanda
-    if (desde) q = q.gte('fecha', desde);
-    if (hasta) q = q.lte('fecha', hasta);
-    const { data, error } = await q.order('fecha', { ascending: true });
-    if (error) throw error;
-    return (data || []).map((m) => ({ fecha: m.fecha, cantidad: Math.trunc(Number(m.cantidad) || 0) }));
+    // Paginamos con traerTodo para NO quedarnos en las ~1000 filas que
+    // PostgREST devuelve por defecto: las medidas (media/mediana/moda) se
+    // calculan sobre el libro completo. Reconstruimos la consulta por bloque y
+    // le anadimos .range(d, h); un query builder no es reutilizable tras await.
+    // Filtros/order/mapeo quedan identicos.
+    const filas = await traerTodo((d, h) => {
+      let q = supabase
+        .from('movimientos_inventario')
+        .select('fecha, cantidad')
+        .eq('product_id', productId)
+        .eq('tipo', 'salida');         // SOLO ventas/salidas: es la demanda
+      if (desde) q = q.gte('fecha', desde);
+      if (hasta) q = q.lte('fecha', hasta);
+      return q.order('fecha', { ascending: true }).range(d, h);
+    });
+    return filas.map((m) => ({ fecha: m.fecha, cantidad: Math.trunc(Number(m.cantidad) || 0) }));
   }
 
   // ----------------------------------------------------------
