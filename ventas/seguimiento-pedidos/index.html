@@ -201,8 +201,10 @@
       .from('pedidos')
       .select(
         'id, fecha_orden, estado, canal, total, notas, anulado, motivo_anulacion, creado,' +
+        ' direccion, ciudad, departamento, pais,' +
         ' cliente:clientes ( id, nombre, correo, telefono, direccion, ciudad, departamento, pais ),' +
-        ' items:pedido_items ( id, cantidad, precio_unitario, subtotal, product_id, producto:productos ( nombre, sku ) )'
+        ' items:pedido_items ( id, cantidad, precio_unitario, subtotal, product_id, producto:productos ( nombre, sku ) ),' +
+        ' bitacora:pedido_bitacora ( id, accion, estado_anterior, estado_nuevo, detalle_cambio, actor, cuando )'
       );
 
     if (fEstado.value) q = q.eq('estado', fEstado.value);
@@ -287,7 +289,13 @@
     const contacto = [];
     if (c.correo) contacto.push({ k: 'Correo', v: c.correo });
     if (c.telefono) contacto.push({ k: 'Teléfono', v: c.telefono });
-    const dir = [c.direccion, c.ciudad, c.departamento, c.pais].filter(Boolean).join(', ');
+    // Direccion de ENTREGA: se prefiere el snapshot propio del pedido
+    // (p.direccion/ciudad/departamento/pais), que refleja donde se envio ESTE
+    // pedido y no cambia si luego se edita el cliente. Si el pedido no tiene
+    // snapshot (datos antiguos sin backfill), se cae a la direccion del cliente.
+    const dirPedido = [p.direccion, p.ciudad, p.departamento, p.pais].filter(Boolean).join(', ');
+    const dirCliente = [c.direccion, c.ciudad, c.departamento, c.pais].filter(Boolean).join(', ');
+    const dir = dirPedido || dirCliente;
     if (dir) contacto.push({ k: 'Entrega', v: dir });
 
     const itemsHtml = (p.items || []).map((it) => {
@@ -298,24 +306,55 @@
         ' = ' + formatearCOP(it.subtotal) + '</span></li>';
     }).join('');
 
-    // Linea de tiempo del ciclo de vida. Si el pedido esta anulado se muestra
-    // el flujo alcanzado + el terminal anulado.
-    const idxActual = FLUJO.indexOf(p.estado);
-    const timelineHtml = FLUJO.map((e, i) => {
-      let cls = '';
-      if (!p.anulado) {
-        if (i < idxActual) cls = 'hecho';
-        else if (i === idxActual) cls = 'actual';
-      } else if (i <= FLUJO.indexOf('recibido')) {
-        cls = 'hecho';
-      }
-      return '<li class="' + cls + '">' + escaparHTML(ESTADO_TXT[e]) + '</li>';
-    }).join('') + (p.anulado
-      ? '<li class="actual">' + escaparHTML(ESTADO_TXT.anulado) +
-        (p.motivo_anulacion ? '<span class="cuando">' + escaparHTML(p.motivo_anulacion) + '</span>' : '') + '</li>'
-      : '');
+    // Linea de tiempo del ciclo de vida: historia REAL leida de pedido_bitacora.
+    // Cada evento (crear / cambio_estado / anular) se dibuja con su fecha real
+    // (formatearMomento(ev.cuando)); NO se fabrican pasos intermedios. Un pedido
+    // con solo el evento 'crear' (backfill) muestra unicamente esa linea. El
+    // ultimo evento en el tiempo se marca .actual; los anteriores .hecho.
+    const eventos = [...(p.bitacora || [])].sort((a, b) => {
+      const ta = a.cuando ? Date.parse(a.cuando) : 0;
+      const tb = b.cuando ? Date.parse(b.cuando) : 0;
+      return ta - tb;
+    });
 
-    // Siguiente estado del flujo (para el boton de avance), si aplica.
+    // Etiqueta humana de un evento de la bitacora segun su accion.
+    const etiquetaEvento = (ev) => {
+      if (ev.accion === 'crear') return 'Recibido';
+      if (ev.accion === 'anular') return ESTADO_TXT.anulado;
+      // cambio_estado: el destino es lo relevante.
+      return ESTADO_TXT[ev.estado_nuevo] || ev.estado_nuevo || 'Cambio de estado';
+    };
+
+    // Motivo de anulacion: preferimos el guardado en detalle_cambio del evento;
+    // si no esta, caemos al motivo_anulacion del pedido.
+    const motivoDeEvento = (ev) => {
+      const d = ev.detalle_cambio;
+      if (d && typeof d === 'object' && d.motivo) return String(d.motivo);
+      if (ev.accion === 'anular' && p.motivo_anulacion) return p.motivo_anulacion;
+      return '';
+    };
+
+    let timelineHtml;
+    if (eventos.length) {
+      timelineHtml = eventos.map((ev, i) => {
+        const cls = (i === eventos.length - 1) ? 'actual' : 'hecho';
+        const motivo = (ev.accion === 'anular') ? motivoDeEvento(ev) : '';
+        return '<li class="' + cls + '">' + escaparHTML(etiquetaEvento(ev)) +
+          '<span class="cuando">' + escaparHTML(formatearMomento(ev.cuando)) + '</span>' +
+          (motivo ? '<span class="cuando">' + escaparHTML(motivo) + '</span>' : '') +
+        '</li>';
+      }).join('');
+    } else {
+      // Fallback honesto para pedidos sin bitacora (datos previos a D2): una
+      // sola linea con el estado actual y la fecha de creacion registrada.
+      timelineHtml = '<li class="actual">' + escaparHTML(ESTADO_TXT[p.estado] || p.estado) +
+        '<span class="cuando">' + escaparHTML(formatearMomento(p.creado)) + '</span></li>';
+    }
+
+    // Siguiente estado del flujo (para el boton de avance), si aplica. Esto
+    // depende del estado ACTUAL del pedido, no de la historia; por eso sigue
+    // usando el arreglo FLUJO y NO la bitacora.
+    const idxActual = FLUJO.indexOf(p.estado);
     const siguiente = (!p.anulado && idxActual >= 0 && idxActual < FLUJO.length - 1)
       ? FLUJO[idxActual + 1] : null;
 
