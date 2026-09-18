@@ -79,6 +79,20 @@
             </select>
             <span class="cm-campo-ayuda">Elige el producto ya registrado en Inventario. Primero se crea el producto en Inventario; aquí aparece por su SKU y nombre. El stock y el estado Agotado se toman automáticamente de Inventario.</span>
           </div>
+          <!--
+            TOPE DE ESCAPARATE (opción A del dueño). Este número decide "tras
+            cortina" cuántas unidades se OFRECEN en la web; NO se muestra ningún
+            número al cliente. HOY solo gobierna el ESCAPARATE (el estado
+            "Agotado" de la tienda): nunca se ofrecen más de las que hay en
+            Inventario, así que si el tope supera el stock manda el stock. El
+            candado de VENTA real (que impida cobrar de más) llega con Wompi
+            (Fase F). Es independiente del stock manual y del aviso de urgencia.
+          -->
+          <div class="cm-campo">
+            <label for="cm-tope" class="cm-campo-lbl">Tope de escaparate</label>
+            <input id="cm-tope" class="mk-input" type="number" min="0" step="1" inputmode="numeric" placeholder="">
+            <span class="cm-campo-ayuda">Máximo de unidades a ofrecer en la web. Déjalo vacío para ofrecer todo el stock disponible. Nunca se ofrecen más de las que hay en inventario.</span>
+          </div>
           <div class="cm-campo">
             <label for="cm-nombre" class="cm-campo-lbl">Nombre del producto *</label>
             <input id="cm-nombre" class="mk-input" type="text" maxlength="160" placeholder="Ej. Grisi Manzanilla Gold" required>
@@ -854,7 +868,7 @@
       .from('campana_producto')
       .select('id, nombre, slug, categoria_codigo, detalle_presentacion, hook_corto, imagen_banner_path, ' +
               'caracteristica_adicional, precio_venta, hook_largo, por_que_magandhi, sobre_este_producto, ' +
-              'ficha_tecnica, imagenes, sello_elegido, estrella, stock_disponible, ' +
+              'ficha_tecnica, imagenes, sello_elegido, estrella, stock_disponible, tope_escaparate, ' +
               'aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, product_id_ref, ' +
               'campana_producto_etiqueta ( etiqueta_codigo )')
       .eq('id', campanaId)
@@ -901,6 +915,8 @@
     $('cm-por-que').value = data.por_que_magandhi || '';
     $('cm-sobre').value = data.sobre_este_producto || '';
     $('cm-stock').value = String(data.stock_disponible ?? 0);
+    // Tope de escaparate: vacio cuando es null (mismo patron que precio_venta).
+    $('cm-tope').value = (data.tope_escaparate === null || data.tope_escaparate === undefined) ? '' : String(data.tope_escaparate);
 
     // Ficha tecnica (arreglo de {clave,valor}).
     fichaCont.innerHTML = '';
@@ -973,6 +989,19 @@
 
     let stock = Math.trunc(Number($('cm-stock').value));
     if (Number.isNaN(stock) || stock < 0) stock = 0;
+
+    // Tope de escaparate: entero >= 0 (o vacio = null, ofrecer todo el stock).
+    // Independiente del stock manual y del aviso de urgencia.
+    let tope = null;
+    const topeRaw = $('cm-tope').value.trim();
+    if (topeRaw !== '') {
+      tope = Math.trunc(Number(topeRaw));
+      if (Number.isNaN(tope) || tope < 0) {
+        mostrarMsg('El tope de escaparate debe ser un número entero mayor o igual que cero, o dejarse vacío.');
+        $('cm-tope').focus();
+        return;
+      }
+    }
 
     if (galeria.some((g) => g.cargando)) {
       mostrarMsg('Espera a que terminen de optimizarse las imágenes de la galería.');
@@ -1050,7 +1079,10 @@
       // Producto de Inventario ligado (uuid) o null si aun no se liga.
       p_product_id_ref: $('cm-producto').value || null,
       // Direccion web legible (slug). El servidor la re-normaliza; vacio -> null.
-      p_slug: slugificar($('cm-slug').value) || null
+      p_slug: slugificar($('cm-slug').value) || null,
+      // Tope de escaparate (opcion A): maximo de unidades a ofrecer en la web.
+      // null = ofrecer todo el stock. Ultimo parametro de la firma SQL.
+      p_tope_escaparate: tope
     });
 
     // FALLO REAL: la edicion NO se guardo. Las imagenes NUEVAS que acabamos de

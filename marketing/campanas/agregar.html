@@ -85,6 +85,20 @@
             </select>
             <span class="cm-campo-ayuda">Elige el producto ya registrado en Inventario. Primero se crea el producto en Inventario; aquí aparece por su SKU y nombre. El stock y el estado Agotado se toman automáticamente de Inventario.</span>
           </div>
+          <!--
+            TOPE DE ESCAPARATE (opción A del dueño). Este número decide "tras
+            cortina" cuántas unidades se OFRECEN en la web; NO se muestra ningún
+            número al cliente. HOY solo gobierna el ESCAPARATE (el estado
+            "Agotado" de la tienda): nunca se ofrecen más de las que hay en
+            Inventario, así que si el tope supera el stock manda el stock. El
+            candado de VENTA real (que impida cobrar de más) llega con Wompi
+            (Fase F). Es independiente del stock manual y del aviso de urgencia.
+          -->
+          <div class="cm-campo">
+            <label for="cm-tope" class="cm-campo-lbl">Tope de escaparate</label>
+            <input id="cm-tope" class="mk-input" type="number" min="0" step="1" inputmode="numeric" placeholder="">
+            <span class="cm-campo-ayuda">Máximo de unidades a ofrecer en la web. Déjalo vacío para ofrecer todo el stock disponible. Nunca se ofrecen más de las que hay en inventario.</span>
+          </div>
           <div class="cm-campo">
             <label for="cm-nombre" class="cm-campo-lbl">Nombre del producto *</label>
             <input id="cm-nombre" class="mk-input" type="text" maxlength="160" placeholder="Ej. Grisi Manzanilla Gold" required>
@@ -821,6 +835,19 @@
     let stock = Math.trunc(Number($('cm-stock').value));
     if (Number.isNaN(stock) || stock < 0) stock = 0;
 
+    // Tope de escaparate: entero >= 0 (o vacio = null, ofrecer todo el stock).
+    // Independiente del stock manual y del aviso de urgencia.
+    let tope = null;
+    const topeRaw = $('cm-tope').value.trim();
+    if (topeRaw !== '') {
+      tope = Math.trunc(Number(topeRaw));
+      if (Number.isNaN(tope) || tope < 0) {
+        mostrarMsg('El tope de escaparate debe ser un número entero mayor o igual que cero, o dejarse vacío.');
+        $('cm-tope').focus();
+        return;
+      }
+    }
+
     // No permitir guardar mientras alguna imagen de la galeria aun se optimiza.
     if (galeria.some((g) => g.cargando)) {
       mostrarMsg('Espera a que terminen de optimizarse las imágenes de la galería.');
@@ -900,7 +927,10 @@
       // Producto de Inventario ligado (uuid) o null si aun no se liga.
       p_product_id_ref: $('cm-producto').value || null,
       // Direccion web legible (slug). El servidor la re-normaliza; vacio -> null.
-      p_slug: slugificar($('cm-slug').value) || null
+      p_slug: slugificar($('cm-slug').value) || null,
+      // Tope de escaparate (opcion A): maximo de unidades a ofrecer en la web.
+      // null = ofrecer todo el stock. Ultimo parametro de la firma SQL.
+      p_tope_escaparate: tope
     });
 
     // FALLO REAL: la campana NO se creo. Nadie referencia las imagenes que
