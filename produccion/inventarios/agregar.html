@@ -199,7 +199,16 @@
     const p_marca = document.getElementById('pr-marca').value.trim() || null;
     const p_unidad_medida = document.getElementById('pr-unidad').value.trim() || 'unidad';
     const p_contenido = document.getElementById('pr-contenido').value.trim() || null;
-    const p_costo_unitario = parsearMonto(document.getElementById('pr-costo').value) || null;
+    // Costo unitario: distinguir campo VACIO (costo desconocido -> null) de un
+    // CERO legitimo (costo = 0 -> 0). Para el asiento contable de Wompi, "costo 0"
+    // y "costo desconocido" NO son lo mismo; por eso NO usamos `|| null` (que
+    // colapsaria un 0 valido a null). Mismo criterio que el modo edicion de ver.html.
+    const rawCosto = document.getElementById('pr-costo').value;
+    const p_costo_unitario = rawCosto.trim() === '' ? null : parsearMonto(rawCosto);
+    // NOTA (observacion, fuera del alcance de C2.2): el precio de venta conserva
+    // el patron `|| null` heredado. El precio al publico es decision de Campanas
+    // y su limpieza/modelado esta fichado (F-C2.2b: borrar precio_venta del modelo),
+    // por lo que no se toca aqui para no ampliar el tramo.
     const p_precio_venta = parsearMonto(document.getElementById('pr-precio').value) || null;
     const p_stock_minimo = parsearCantidad(document.getElementById('pr-minimo').value);
     const p_ubicacion = document.getElementById('pr-ubicacion').value.trim() || null;

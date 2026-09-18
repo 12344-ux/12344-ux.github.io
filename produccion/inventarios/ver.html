@@ -39,6 +39,17 @@
            placeholder="Buscar por SKU (ej. MAG-0001) o nombre...">
   </div>
   <p class="pr-hint" id="pr-hint">Todos los productos del inventario</p>
+
+  <!-- Filtros por existencias (chips). Operan sobre los items YA cargados
+       (existencias derivadas de la vista stock_actual); conviven con el
+       buscador por SKU/nombre. El filtro activo se guarda en estado. -->
+  <div class="pr-chips" id="pr-filtros" role="group" aria-label="Filtrar por existencias">
+    <button type="button" class="pr-chip activo" data-filtro="todos">Todos</button>
+    <button type="button" class="pr-chip" data-filtro="agotados">Agotados</button>
+    <button type="button" class="pr-chip" data-filtro="mas">Con más unidades</button>
+    <button type="button" class="pr-chip" data-filtro="menos">Con menos unidades</button>
+  </div>
+
   <div id="pr-vitrina-cont"></div>
 </main>
 
@@ -61,14 +72,16 @@
 <script type="module">
   import {
     supabase, asegurarAcceso, montarHeader, ICONOS,
-    escaparHTML, formatearCOP, parsearCantidad,
-    formatearFecha, hoyISO, urlPublicaImagen
+    escaparHTML, formatearCOP, parsearMonto, parsearCantidad,
+    formatearFecha, hoyISO, urlPublicaImagen,
+    optimizarImagen, BUCKET_PRODUCTOS
   } from '../inventario-core.js';
 
   const main = document.getElementById('pr-main');
   const input = document.getElementById('pr-q');
   const hint = document.getElementById('pr-hint');
   const cont = document.getElementById('pr-vitrina-cont');
+  const filtrosEl = document.getElementById('pr-filtros');
   const modalEl = document.getElementById('pr-modal');
   const mNombre = document.getElementById('pr-m-nombre');
   const mSku = document.getElementById('pr-m-sku');
@@ -83,6 +96,8 @@
   };
 
   let productoActivo = null; // producto abierto en el modal
+  let itemsCargados = [];    // ultimos items traidos de la BD (para re-filtrar sin re-consultar)
+  let filtroActivo = 'todos'; // 'todos' | 'agotados' | 'mas' | 'menos'
 
   // ----------------------------------------------------------
   // VITRINA (listado)
@@ -188,6 +203,35 @@
       })
       // Ocultar productos dados de baja (activo=false) del listado principal.
       .filter((it) => it.activo !== false);
+    itemsCargados = items;
+    pintarFiltrado();
+  }
+
+  // Aplica el FILTRO por existencias activo sobre los items ya cargados y
+  // re-pinta. No re-consulta la BD: el filtro/orden es puro cliente sobre las
+  // existencias derivadas de stock_actual. Convive con el buscador (que si
+  // consulta): cargar() guarda el resultado y aqui solo lo filtramos/ordenamos.
+  function pintarFiltrado() {
+    let items = itemsCargados.slice();
+    switch (filtroActivo) {
+      case 'agotados':
+        // Agotados = sin existencias (incluye negativos por sobre-salida).
+        items = items.filter((it) => (Number(it.existencias) || 0) <= 0);
+        break;
+      case 'mas':
+        // De mayor a menor existencias.
+        items.sort((a, b) => (Number(b.existencias) || 0) - (Number(a.existencias) || 0));
+        break;
+      case 'menos':
+        // De menor a mayor, pero SOLO con stock real (>= 1): el 0 y los
+        // negativos ya son "agotados" y no deben colarse en este orden.
+        items = items
+          .filter((it) => (Number(it.existencias) || 0) >= 1)
+          .sort((a, b) => (Number(a.existencias) || 0) - (Number(b.existencias) || 0));
+        break;
+      default: // 'todos': orden natural por nombre que ya trae la consulta.
+        break;
+    }
     pintar(items);
   }
 
@@ -197,6 +241,18 @@
     const q = input.value.trim();
     hint.textContent = q ? 'Resultados para "' + q + '"' : 'Todos los productos del inventario';
     t = setTimeout(() => cargar(q), 220);
+  });
+
+  // Chips de filtro por existencias: cambian el estado y re-pintan sin
+  // re-consultar (los items ya estan en memoria tras la ultima carga).
+  filtrosEl.addEventListener('click', (e) => {
+    const chip = e.target.closest('.pr-chip');
+    if (!chip) return;
+    filtroActivo = chip.dataset.filtro || 'todos';
+    filtrosEl.querySelectorAll('.pr-chip').forEach((c) => {
+      c.classList.toggle('activo', c === chip);
+    });
+    pintarFiltrado();
   });
 
   // ----------------------------------------------------------
@@ -249,9 +305,14 @@
       '<div class="pr-detalle">' +
         '<div class="pr-detalle-foto">' + foto + '</div>' +
         '<div class="pr-detalle-datos">' +
-          '<div class="pr-detalle-existencias' + clsEx + '">' +
-            '<span class="val">' + ex + '</span>' +
-            '<span class="uni">' + escaparHTML(p.unidad_medida || 'unidad') + (Math.abs(ex) === 1 ? '' : 's') + ' en existencia</span>' +
+          '<div class="pr-detalle-cab">' +
+            '<div class="pr-detalle-existencias' + clsEx + '">' +
+              '<span class="val">' + ex + '</span>' +
+              '<span class="uni">' + escaparHTML(p.unidad_medida || 'unidad') + (Math.abs(ex) === 1 ? '' : 's') + ' en existencia</span>' +
+            '</div>' +
+            '<button class="pr-btn-sec" id="pr-editar-btn" type="button">' +
+              '<span data-ico="lapiz"></span> Editar ficha' +
+            '</button>' +
           '</div>' +
           avisoNeg +
           '<div class="pr-ficha-datos">' +
@@ -316,6 +377,307 @@
     // Cablear el submit del movimiento.
     const form = mCuerpo.querySelector('#pr-mov-form');
     form.addEventListener('submit', registrarMovimiento);
+
+    // Boton "Editar ficha": entra al MODO EDICION dentro del mismo modal.
+    const editarBtn = mCuerpo.querySelector('#pr-editar-btn');
+    if (editarBtn) editarBtn.addEventListener('click', pintarEdicion);
+  }
+
+  // ----------------------------------------------------------
+  // MODO EDICION (dentro del mismo modal)
+  // ----------------------------------------------------------
+  // Blob de imagen optimizada pendiente de subir (se recalcula al elegir una
+  // imagen nueva en el form de edicion). null = no se cambia la imagen.
+  let blobEdicion = null;
+
+  // Reemplaza el cuerpo del modal por el FORMULARIO DE EDICION de la ficha.
+  // Decision de diseno: la edicion es un "modo" dentro del modal de detalle
+  // (que ya muestra la ficha y aloja "Registrar movimiento"), no una pagina
+  // aparte. Se muestra SOLO el form + un boton "Cancelar" que vuelve al
+  // detalle. SKU y existencias son SOLO-LECTURA (contexto): el stock jamas se
+  // edita a mano (se deriva del libro de movimientos); el SKU es inmutable.
+  //
+  // DECISION CLAVE DE PRECIO: aqui NO se muestra ni edita p_precio_venta. Se
+  // edita el COSTO (costo_unitario, lo que a MAGANDHI le cuesta). El precio de
+  // venta al publico es decision comercial de Campanas, no de Inventario; el
+  // costo vive en Inventario para el asiento contable de Wompi. Al guardar se
+  // REENVIA productoActivo.precio_venta SIN TOCAR para no borrarlo (borrar la
+  // columna del modelo es una ficha futura, no este tramo).
+  function pintarEdicion() {
+    blobEdicion = null;
+    const p = productoActivo;
+    const ex = Number(p.existencias) || 0;
+    const urlActual = urlPublicaImagen(p.imagen_path);
+    const val = (v) => escaparHTML(v == null ? '' : v);
+    const preview = urlActual
+      ? '<img src="' + escaparHTML(urlActual) + '" alt="' + escaparHTML(p.nombre || '') + '">'
+      : ICONOS.imagen;
+
+    mCuerpo.innerHTML =
+      '<div class="pr-seccion-tit">' + ICONOS.lapiz + 'Editar ficha</div>' +
+
+      // Contexto SOLO-LECTURA: SKU + existencias (nunca editables).
+      '<div class="pr-edit-ctx">' +
+        '<div class="pr-dato"><span class="k">SKU</span><span class="v">' + escaparHTML(p.sku || '') + '</span></div>' +
+        '<div class="pr-dato"><span class="k">Existencias</span><span class="v num">' + ex + '</span></div>' +
+        '<span class="pr-edit-ctx-nota">' + ICONOS.info +
+          '<span>El SKU es fijo y las existencias se derivan del libro de movimientos: no se editan aquí.</span>' +
+        '</span>' +
+      '</div>' +
+
+      '<form class="pr-edit-form" id="pr-edit-form" autocomplete="off">' +
+        '<div class="pr-field">' +
+          '<label for="pr-ed-nombre">Nombre del producto</label>' +
+          '<input id="pr-ed-nombre" type="text" required value="' + val(p.nombre) + '">' +
+        '</div>' +
+        '<div class="pr-field">' +
+          '<label for="pr-ed-desc">Descripción</label>' +
+          '<textarea id="pr-ed-desc" placeholder="Detalle del producto...">' + val(p.descripcion) + '</textarea>' +
+        '</div>' +
+        '<div class="pr-field-row">' +
+          '<div class="pr-field">' +
+            '<label for="pr-ed-marca">Marca</label>' +
+            '<input id="pr-ed-marca" type="text" value="' + val(p.marca) + '">' +
+          '</div>' +
+          '<div class="pr-field">' +
+            '<label for="pr-ed-categoria">Categoría</label>' +
+            '<input id="pr-ed-categoria" type="text" value="' + val(p.categoria) + '">' +
+          '</div>' +
+        '</div>' +
+        '<div class="pr-field-row">' +
+          '<div class="pr-field">' +
+            '<label for="pr-ed-unidad">Unidad de medida</label>' +
+            '<input id="pr-ed-unidad" type="text" value="' + val(p.unidad_medida || 'unidad') + '">' +
+          '</div>' +
+          '<div class="pr-field">' +
+            '<label for="pr-ed-contenido">Contenido</label>' +
+            '<input id="pr-ed-contenido" type="text" placeholder="Ej. 200 g, 500 ml" value="' + val(p.contenido) + '">' +
+          '</div>' +
+        '</div>' +
+        '<div class="pr-field-row">' +
+          '<div class="pr-field pr-monto">' +
+            '<label for="pr-ed-costo">Costo unitario (COP)</label>' +
+            '<input id="pr-ed-costo" type="text" inputmode="numeric" placeholder="0" value="' +
+              (p.costo_unitario != null ? formatearCOP(p.costo_unitario) : '') + '">' +
+            '<span class="pr-ayuda">Lo que a MAGANDHI le cuesta. El precio de venta al público lo maneja Campañas, no Inventario.</span>' +
+          '</div>' +
+          '<div class="pr-field">' +
+            '<label for="pr-ed-minimo">Stock mínimo</label>' +
+            '<input id="pr-ed-minimo" type="text" inputmode="numeric" placeholder="0" value="' +
+              (p.stock_minimo != null ? escaparHTML(p.stock_minimo) : '') + '">' +
+          '</div>' +
+        '</div>' +
+        '<div class="pr-field-row">' +
+          '<div class="pr-field">' +
+            '<label for="pr-ed-ubicacion">Ubicación</label>' +
+            '<input id="pr-ed-ubicacion" type="text" value="' + val(p.ubicacion) + '">' +
+          '</div>' +
+          '<div class="pr-field">' +
+            '<label for="pr-ed-proveedor">Proveedor</label>' +
+            '<input id="pr-ed-proveedor" type="text" value="' + val(p.proveedor) + '">' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="pr-field">' +
+          '<label for="pr-ed-imagen">Imagen del producto</label>' +
+          '<div class="pr-imagen-zona">' +
+            '<div class="pr-imagen-preview" id="pr-ed-img-preview">' + preview + '</div>' +
+            '<div class="pr-imagen-datos">' +
+              '<input id="pr-ed-imagen" type="file" accept="image/*">' +
+              '<p style="margin:10px 0 0">Si eliges una imagen nueva, el sistema la <strong>ajusta automáticamente</strong> (redimensiona y comprime). Si no eliges ninguna, se conserva la actual.</p>' +
+              '<p id="pr-ed-img-info" style="margin:8px 0 0" hidden>' +
+                'Original: <span class="pr-peso" id="pr-ed-img-orig">—</span> · ' +
+                'Optimizada: <span class="pr-peso" id="pr-ed-img-opt">—</span>' +
+              '</p>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="pr-edit-flags">' +
+          '<label class="pr-check"><input id="pr-ed-publicado" type="checkbox"' + (p.publicado ? ' checked' : '') + '> Publicado (visible para Campañas)</label>' +
+          '<label class="pr-check"><input id="pr-ed-activo" type="checkbox"' + (p.activo !== false ? ' checked' : '') + '> Activo (si lo desmarcas, se da de baja: no se borra)</label>' +
+        '</div>' +
+
+        '<div class="pr-acciones">' +
+          '<button class="pr-btn-guardar" id="pr-ed-guardar" type="submit">Guardar cambios</button>' +
+          '<button class="pr-btn-sec" id="pr-ed-cancelar" type="button"><span data-ico="flecha"></span> Cancelar</button>' +
+          '<span class="pr-msg" id="pr-ed-msg"></span>' +
+        '</div>' +
+      '</form>';
+
+    // Iconos recien inyectados.
+    mCuerpo.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    // Al elegir imagen: previsualiza y OPTIMIZA en el navegador (mismo flujo
+    // que agregar.html). No sube nada aqui: solo prepara el blob.
+    const imgInput = mCuerpo.querySelector('#pr-ed-imagen');
+    const imgPreview = mCuerpo.querySelector('#pr-ed-img-preview');
+    const imgInfo = mCuerpo.querySelector('#pr-ed-img-info');
+    const imgOrig = mCuerpo.querySelector('#pr-ed-img-orig');
+    const imgOpt = mCuerpo.querySelector('#pr-ed-img-opt');
+    const kb = (bytes) => (bytes / 1024).toFixed(0) + ' KB';
+    imgInput.addEventListener('change', async () => {
+      blobEdicion = null;
+      const file = imgInput.files && imgInput.files[0];
+      if (!file) {
+        imgPreview.innerHTML = urlActual ? '<img src="' + escaparHTML(urlActual) + '" alt="">' : ICONOS.imagen;
+        imgInfo.hidden = true;
+        return;
+      }
+      imgOrig.textContent = kb(file.size);
+      imgOpt.textContent = 'procesando...';
+      imgInfo.hidden = false;
+      try {
+        const { blob } = await optimizarImagen(file, { maxBorde: 1200, calidad: 0.8 });
+        blobEdicion = blob;
+        imgOpt.textContent = kb(blob.size);
+        imgPreview.innerHTML = '<img src="' + URL.createObjectURL(blob) + '" alt="Previsualización">';
+      } catch (_) {
+        imgOpt.textContent = 'no se pudo procesar';
+        imgPreview.innerHTML = ICONOS.imagen;
+      }
+    });
+
+    // Cancelar: vuelve a la vista de detalle SIN guardar.
+    mCuerpo.querySelector('#pr-ed-cancelar').addEventListener('click', () => {
+      pintarCuerpo();
+      cargarMovimientos(productoActivo.id);
+    });
+
+    // Guardar cambios.
+    mCuerpo.querySelector('#pr-edit-form').addEventListener('submit', guardarEdicion);
+  }
+
+  async function guardarEdicion(e) {
+    e.preventDefault();
+    const msg = mCuerpo.querySelector('#pr-ed-msg');
+    const btn = mCuerpo.querySelector('#pr-ed-guardar');
+    msg.textContent = ''; msg.className = 'pr-msg';
+
+    const p = productoActivo;
+    const p_nombre = mCuerpo.querySelector('#pr-ed-nombre').value.trim();
+    if (!p_nombre) { msg.className = 'pr-msg err'; msg.textContent = 'El nombre del producto es obligatorio.'; return; }
+
+    const p_descripcion = mCuerpo.querySelector('#pr-ed-desc').value.trim() || null;
+    const p_marca = mCuerpo.querySelector('#pr-ed-marca').value.trim() || null;
+    const p_categoria = mCuerpo.querySelector('#pr-ed-categoria').value.trim() || null;
+    const p_unidad_medida = mCuerpo.querySelector('#pr-ed-unidad').value.trim() || 'unidad';
+    const p_contenido = mCuerpo.querySelector('#pr-ed-contenido').value.trim() || null;
+    // Costo unitario: distinguir campo VACIO (costo desconocido -> null) de un
+    // CERO legitimo (costo = 0 -> 0). Para el asiento contable de Wompi, "costo 0"
+    // y "costo desconocido" NO son lo mismo, asi que NO usamos `|| null` (que
+    // colapsaria 0 a null). Solo el campo vacio se guarda como null.
+    const rawCosto = mCuerpo.querySelector('#pr-ed-costo').value;
+    const p_costo_unitario = rawCosto.trim() === '' ? null : parsearMonto(rawCosto);
+    const p_stock_minimo = parsearCantidad(mCuerpo.querySelector('#pr-ed-minimo').value);
+    const p_ubicacion = mCuerpo.querySelector('#pr-ed-ubicacion').value.trim() || null;
+    const p_proveedor = mCuerpo.querySelector('#pr-ed-proveedor').value.trim() || null;
+    const p_activo = mCuerpo.querySelector('#pr-ed-activo').checked;
+    const p_publicado = mCuerpo.querySelector('#pr-ed-publicado').checked;
+
+    const imgInput = mCuerpo.querySelector('#pr-ed-imagen');
+    const eligioImagen = imgInput.files && imgInput.files.length > 0;
+    if (eligioImagen && !blobEdicion) {
+      msg.className = 'pr-msg err';
+      msg.textContent = 'La imagen no se pudo procesar. Elige otra o quítala e inténtalo de nuevo.';
+      return;
+    }
+
+    btn.disabled = true; btn.textContent = 'Guardando...';
+    // Declaradas fuera del try para que el catch pueda compensar la imagen huerfana.
+    const teniaImagenPrevia = !!(p.imagen_path);
+    let imagenSubidaNueva = null; // key recien subida (para compensar si la RPC falla)
+    try {
+      // Imagen: si el usuario eligio una nueva, se sube a Storage con la SESION
+      // del usuario (key '<id>.jpg', upsert). Si NO eligio, se REENVIA el
+      // imagen_path actual sin tocar. Mensajeria honesta: si la imagen no sube,
+      // el resto SI se guarda y se avisa (aviso ambar), no se trata como error.
+      let imagenPath = p.imagen_path || null;
+      let avisoImagen = null;
+      if (blobEdicion) {
+        const keyImagen = p.id + '.jpg';
+        const { error: eUp } = await supabase.storage
+          .from(BUCKET_PRODUCTOS)
+          .upload(keyImagen, blobEdicion, { contentType: 'image/jpeg', upsert: true });
+        if (eUp) {
+          // La imagen no subio: conservamos el path anterior y avisamos.
+          avisoImagen = 'La imagen no se pudo subir (' + (eUp.message || 'error de Storage') + '); se conservó la imagen anterior. El resto de los cambios sí se guardaron.';
+        } else {
+          imagenPath = keyImagen;
+          imagenSubidaNueva = keyImagen;
+        }
+      }
+
+      // DECISION CLAVE DE PRECIO: p_precio_venta se REENVIA tal cual desde
+      // productoActivo.precio_venta, SIN modificar. Inventario no maneja el
+      // precio al publico (eso es de Campanas); solo lo reenvia para no
+      // borrarlo. El costo (p_costo_unitario) SI es de Inventario (asiento
+      // contable de Wompi). Firma completa de 15 args de inv_editar_producto.
+      const { error: eEdit } = await supabase.rpc('inv_editar_producto', {
+        p_id: p.id,
+        p_nombre,
+        p_descripcion,
+        p_marca,
+        p_categoria,
+        p_unidad_medida,
+        p_contenido,
+        p_costo_unitario,
+        p_precio_venta: p.precio_venta, // REENVIADO sin tocar (decision de Campanas)
+        p_stock_minimo,
+        p_proveedor,
+        p_ubicacion,
+        p_imagen_path: imagenPath,
+        p_activo,
+        p_publicado
+      });
+      if (eEdit) throw eEdit;
+      // La RPC persistio: la imagen recien subida (si la hubo) quedo enlazada;
+      // ya no hay riesgo de huerfano, asi que anulamos la compensacion pendiente.
+      imagenSubidaNueva = null;
+
+      // Actualizar productoActivo con los valores guardados y volver al detalle.
+      Object.assign(productoActivo, {
+        nombre: p_nombre, descripcion: p_descripcion, marca: p_marca,
+        categoria: p_categoria, unidad_medida: p_unidad_medida, contenido: p_contenido,
+        costo_unitario: p_costo_unitario, stock_minimo: p_stock_minimo,
+        proveedor: p_proveedor, ubicacion: p_ubicacion, imagen_path: imagenPath,
+        activo: p_activo, publicado: p_publicado
+      });
+
+      mNombre.textContent = p_nombre;
+      // Re-pintar la vista de detalle con los datos nuevos.
+      pintarCuerpo();
+      await cargarMovimientos(productoActivo.id);
+      // Mensaje en el detalle recien pintado: reutilizamos el pr-mov-msg.
+      const detalleMsg = mCuerpo.querySelector('#pr-mov-msg');
+      if (detalleMsg) {
+        if (avisoImagen) {
+          detalleMsg.className = 'pr-msg aviso';
+          detalleMsg.textContent = avisoImagen;
+        } else {
+          detalleMsg.className = 'pr-msg ok';
+          detalleMsg.textContent = '✓ Ficha actualizada.';
+        }
+      }
+    } catch (err) {
+      // Compensacion best-effort (misma familia C2.1, mismo espiritu que agregar.html
+      // paso 4): si la RPC fallo y acabamos de subir una imagen NUEVA para un
+      // producto que NO tenia imagen previa, el objeto '<id>.jpg' quedaria huerfano
+      // en Storage sin ninguna ficha que lo referencie. Lo borramos. Si el producto
+      // ya tenia imagen previa (misma key '<id>.jpg'), NO borramos: la ficha sigue
+      // apuntando a esa key y el fallo no debe dejar al producto sin imagen.
+      if (imagenSubidaNueva && !teniaImagenPrevia) {
+        try {
+          const { error: eDel } = await supabase.storage.from(BUCKET_PRODUCTOS).remove([imagenSubidaNueva]);
+          if (eDel) console.warn('No se pudo limpiar la imagen huérfana:', eDel.message || eDel);
+        } catch (errDel) {
+          console.warn('No se pudo limpiar la imagen huérfana:', errDel?.message || errDel);
+        }
+      }
+      msg.className = 'pr-msg err';
+      msg.textContent = err?.message || 'No se pudo guardar la ficha.';
+      btn.disabled = false; btn.textContent = 'Guardar cambios';
+    }
   }
 
   async function cargarMovimientos(id) {

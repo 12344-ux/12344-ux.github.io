@@ -356,7 +356,7 @@
   let slugTocado = false;
 
   let categorias = [];
-  let productos = [];        // [{id,sku,nombre,precio_venta,activo}] de Inventario
+  let productos = [];        // [{id,sku,nombre,activo}] de Inventario
   let campanaId = null;      // uuid de la campana en edicion (?id=...)
   let publicadoActual = false;
 
@@ -759,24 +759,20 @@
       slugTocado = limpio.length > 0;
     });
 
-    // Producto de Inventario: al elegirlo, AUTO-SUGERIR nombre y precio SOLO si
-    // esos campos estan vacios. Campanas manda en la presentacion: nunca se
-    // pisa lo que el operador ya escribio (ni lo que ya venia precargado).
+    // Producto de Inventario: al elegirlo, AUTO-SUGERIR solo el NOMBRE si el
+    // campo esta vacio. Campanas manda en la presentacion: nunca se pisa lo que
+    // el operador ya escribio (ni lo que ya venia precargado).
+    //
+    // NO se autosugiere el precio desde Inventario: el precio de venta al
+    // publico es decision comercial de Campanas (el operador lo escribe siempre
+    // a mano); el costo vive en Inventario para el asiento contable de Wompi.
+    // (El campo cm-precio se precarga con el precio guardado de ESTA campana en
+    // precargar(); eso es dato propio de la campana, no herencia de Inventario.)
     $('cm-producto').addEventListener('change', () => {
       const prod = productos.find((p) => p.id === $('cm-producto').value);
       if (prod) {
         const campoNombre = $('cm-nombre');
         if (!campoNombre.value.trim() && prod.nombre) campoNombre.value = prod.nombre;
-        const campoPrecio = $('cm-precio');
-        if (!campoPrecio.value.trim() && prod.precio_venta != null) {
-          // prod.precio_venta es un ENTERO CRUDO (bigint, pesos enteros) de
-          // Inventario: se asigna tal cual, SIN separadores de miles. El input
-          // es type=number y guardar() lo re-parsea con Math.trunc(Number(...)),
-          // asi que el valor que viaja a la RPC es exactamente el mismo bigint
-          // (no se altera). El formateo con separadores solo ocurre en la vista
-          // previa (formatearNumero), nunca en el input ni en el guardado.
-          campoPrecio.value = prod.precio_venta;
-        }
       }
       refrescarPreview();
     });
@@ -831,12 +827,14 @@
     try {
       const { data: prod, error } = await supabase
         .from('productos')
-        .select('id, sku, nombre, precio_venta, activo')
+        // No se trae precio_venta: el precio al publico lo escribe Campanas a
+        // mano; el costo vive en Inventario para el asiento contable de Wompi.
+        .select('id, sku, nombre, activo')
         .eq('id', idLigado)
         .maybeSingle();
       if (!error && prod) {
         // Lo sumamos a la lista en memoria para que la auto-sugerencia de
-        // nombre/precio tambien lo encuentre por id.
+        // nombre tambien lo encuentre por id.
         productos.push(prod);
         etiqueta = (prod.sku || 's/sku') + ' - ' + (prod.nombre || 'sin nombre') +
           (prod.activo ? '' : ' (inactivo)');
@@ -1167,7 +1165,9 @@
         .eq('activo', true)
         .order('orden', { ascending: true }),
       supabase.from('productos')
-        .select('id, sku, nombre, precio_venta, activo')
+        // No se trae precio_venta: el precio al publico lo escribe Campanas a
+        // mano; el costo vive en Inventario para el asiento contable de Wompi.
+        .select('id, sku, nombre, activo')
         .eq('activo', true)
         .order('nombre', { ascending: true })
     ]);
