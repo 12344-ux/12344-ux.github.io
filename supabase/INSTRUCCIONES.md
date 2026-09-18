@@ -2387,3 +2387,55 @@ donde el webhook `wompi-webhook` es la fuente de verdad: **idempotencia** por
 referencia en `pagos_wompi` (una referencia solo se procesa una vez) y, si se ve
 necesario, **rate-limiting/captcha** o validacion del comprador antes de emitir
 la intencion. Queda **mapeado** aqui como riesgo aceptado en F1.
+
+## F1.8. FIX · Leer `pagos_config` por RPC (migracion nueva + redeploy)
+
+**Sintoma:** tras poner el grant y desplegar, la funcion seguia devolviendo
+`HTTP 500` con `{"error":"No se pudo leer la configuracion de pagos."}`, aunque
+`grant select on public.pagos_config to service_role;` ya estaba y como
+`service_role` REAL la fila se lee bien en el SQL Editor
+(`begin; set local role service_role; select entorno, llave_publica_sandbox from pagos_config where id=1; rollback;`
+devuelve la fila).
+
+**Por que pasaba:** la peticion del navegador lleva el header
+`apikey=publishable/anon` (supabase-js lo adjunta). Aunque la funcion usa la
+`SERVICE_ROLE_KEY`, **PostgREST degrada el rol efectivo a `anon`/`authenticated`**
+por esa apikey. Como `pagos_config` tiene **RLS** (SELECT solo a `authenticated`
+con `tiene_modulo('finanzas')`), la lectura **directa de la tabla** queda
+bloqueada para ese rol degradado. Por eso `catalogo_publico` (una VISTA con grant
+a `anon`) si se leia y `pagos_config` no.
+
+**Fix (patron del resto del proyecto):** la funcion ya **no lee la tabla
+`pagos_config` directo**; la lee a traves de una **RPC SECURITY DEFINER**,
+`pagos_config_para_intencion()`, que corre con los privilegios de su dueno (no
+depende de como PostgREST resuelva el rol) y devuelve **SOLO** el entorno y la
+**llave publica** del entorno activo (jamas la fila completa ni secretos).
+
+**Pasos para el dueno:**
+
+1. **Correr la migracion nueva** en el **SQL Editor** (crea la RPC; idempotente,
+   `create or replace`):
+
+   ```
+   supabase/migrations/20250604000000_pagos_config_rpc_intencion.sql
+   ```
+
+   Verificar que la RPC devuelve entorno + llave publica (y **NO** secretos):
+
+   ```sql
+   select * from pagos_config_para_intencion();
+   -- Esperado: una fila con entorno ('sandbox'|'prod') y llave_publica (la
+   --           publishable key del entorno activo). NUNCA secretos de integridad.
+   ```
+
+2. **Re-desplegar la Edge Function** `crear-intencion-pago` con el `index.ts`
+   actualizado (mismo procedimiento de **F1.2**: dashboard o
+   `supabase functions deploy crear-intencion-pago`). Sin este redeploy la
+   funcion vieja seguiria leyendo la tabla directo y dando 500.
+
+> El header global `Authorization: Bearer <service_role>` que ya lleva la funcion
+> **se mantiene** (no estorba; ayuda a `catalogo_publico` y a la RPC). Solo
+> `pagos_config` era el problema: `catalogo_publico` **sigue leyendose como
+> vista** (no se convierte a RPC). El contrato de la respuesta al navegador **no
+> cambia**: mismo JSON y mismo mensaje de error 500 si la config no se puede
+> leer.

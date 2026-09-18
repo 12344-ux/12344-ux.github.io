@@ -235,14 +235,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
     );
   }
 
-  // --- (3) Leer pagos_config (id=1): entorno + llaves publicas ---------------
-  const { data: config, error: errorConfig } = await supabase
-    .from("pagos_config")
-    .select("entorno, llave_publica_sandbox, llave_publica_prod")
-    .eq("id", 1)
-    .maybeSingle();
+  // --- (3) Leer la configuracion de pagos por RPC (NO por lectura directa) ---
+  // Se lee entorno + llave publica del entorno activo a traves de la RPC
+  // SECURITY DEFINER pagos_config_para_intencion(), NO leyendo la tabla
+  // pagos_config directo por PostgREST. Por que: aunque este cliente usa la
+  // SERVICE_ROLE_KEY, la peticion del navegador tambien lleva el header
+  // apikey=anon (supabase-js lo adjunta) y PostgREST degrada el rol efectivo a
+  // anon/authenticated; como pagos_config tiene RLS, la lectura directa de la
+  // TABLA quedaba bloqueada (500). La RPC definer corre con los privilegios de
+  // su dueno, sortea ese problema y devuelve SOLO datos publicos (entorno +
+  // llave publica del entorno activo, nunca la fila completa ni secretos).
+  const { data: configFilas, error: errorConfig } = await supabase.rpc(
+    "pagos_config_para_intencion",
+  );
 
+  // La RPC devuelve una tabla (0..n filas); tomamos la primera (id=1).
+  const config = Array.isArray(configFilas) ? configFilas[0] : configFilas;
   if (errorConfig || !config) {
+    // Mismo mensaje y contrato que antes (no se cambia la respuesta al cliente).
     return json(
       { error: "No se pudo leer la configuracion de pagos." },
       500,
@@ -250,10 +260,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
     );
   }
 
+  // La RPC ya resolvio la llave publica del entorno activo: se usa directamente.
   const entorno = config.entorno === "prod" ? "prod" : "sandbox";
-  const llavePublica = entorno === "prod"
-    ? (config.llave_publica_prod ?? "")
-    : (config.llave_publica_sandbox ?? "");
+  const llavePublica = config.llave_publica ?? "";
   if (!llavePublica) {
     return json(
       {
