@@ -90,6 +90,11 @@
             <input id="cm-nombre" class="mk-input" type="text" maxlength="160" placeholder="Ej. Grisi Manzanilla Gold" required>
           </div>
           <div class="cm-campo">
+            <label for="cm-slug" class="cm-campo-lbl">Dirección web (slug)</label>
+            <input id="cm-slug" class="mk-input" type="text" maxlength="160" placeholder="Ej. grisi-manzanilla-gold" autocapitalize="off" autocorrect="off" spellcheck="false">
+            <span class="cm-campo-ayuda">Es la parte legible de la URL en la tienda (magandhi.com/producto/?slug=<b>esto</b>). Se sugiere sola desde el nombre; puedes editarla. Solo minúsculas, números y guiones.</span>
+          </div>
+          <div class="cm-campo">
             <label for="cm-detalle" class="cm-campo-lbl">Detalle de presentación</label>
             <input id="cm-detalle" class="mk-input" type="text" maxlength="200" placeholder="Ej. Con extracto de manzanilla · 400 mL">
           </div>
@@ -330,11 +335,30 @@
   const claveAleatoria = () =>
     Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
 
+  // Normaliza un texto a un slug de URL (mismo criterio que cm_normalizar_slug
+  // en el servidor): minusculas, sin acentos/enie, lo no [a-z0-9] -> guion,
+  // colapsa y recorta guiones. El servidor vuelve a normalizar por seguridad.
+  function slugificar(texto) {
+    return String(texto == null ? '' : texto)
+      .toLowerCase().trim()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quita acentos
+      .replace(/ñ/g, 'n')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+  // El slug se autosugiere desde el nombre SOLO mientras el usuario no lo haya
+  // tocado a mano. En cuanto lo edita, se respeta su valor y no se pisa.
+  let slugTocado = false;
+
   let categorias = [];   // [{codigo,nombre,color_fuerte,color_claro,color_sombra}]
   let productos = [];    // [{id,sku,nombre,precio_venta,activo}] de Inventario
 
   // Blob optimizado del banner pendiente de subir (o null).
   let bannerPend = null; // { blob, ext, tipo, url }
+  // Guardia: true mientras el BANNER se esta optimizando. Igual que la galeria
+  // (item.cargando), impide guardar a medias y subir un banner vacio.
+  let bannerOptimizando = false;
   // Galeria en memoria: arreglo ORDENADO. Cada item, al ser nuevo:
   //   { id, url, grande:{blob,ext,tipo}, liviana:{blob,ext,tipo} }
   // (en editar.html un item puede venir con { path } preexistente).
@@ -381,6 +405,7 @@
     if (!file || !file.type.startsWith('image/')) return;
     bannerInfo.hidden = false;
     bannerInfo.textContent = 'Original: ' + kb(file.size) + ' · optimizando…';
+    bannerOptimizando = true;
     try {
       // El banner es UNA imagen grande (pagina de producto / grid del home).
       const { blob, ext, tipo } = await optimizarImagen(file, { maxBorde: 1600, calidad: 0.85 });
@@ -393,6 +418,8 @@
       refrescarPreview();
     } catch (_) {
       bannerInfo.textContent = 'No se pudo procesar la imagen. Prueba con otra.';
+    } finally {
+      bannerOptimizando = false;
     }
   }
   function quitarBanner() {
@@ -703,6 +730,23 @@
         el.addEventListener('change', refrescarPreview);
       });
 
+    // SLUG: autosugerencia desde el nombre mientras el usuario no lo edite.
+    const slugEl = $('cm-slug');
+    $('cm-nombre').addEventListener('input', () => {
+      if (!slugTocado) slugEl.value = slugificar($('cm-nombre').value);
+    });
+    // Al escribir directo en el slug: marcarlo como tocado (deja de sugerirse).
+    // Si lo vacia por completo, se reanuda la autosugerencia desde el nombre.
+    slugEl.addEventListener('input', () => {
+      slugTocado = slugEl.value.trim().length > 0;
+    });
+    // Al salir del campo, se normaliza lo que quedo escrito (guiones, acentos).
+    slugEl.addEventListener('blur', () => {
+      const limpio = slugificar(slugEl.value);
+      slugEl.value = limpio;
+      slugTocado = limpio.length > 0;
+    });
+
     // Producto de Inventario: al elegirlo, AUTO-SUGERIR nombre y precio SOLO si
     // esos campos estan vacios. Campanas manda en la presentacion: nunca se
     // pisa lo que el operador ya escribio. Tras autocompletar, refrescar la
@@ -786,6 +830,13 @@
       return;
     }
 
+    // Misma guardia para el BANNER: si aun se esta optimizando, guardar ahora
+    // lo dejaria vacio (bannerPend todavia null). Esperar a que termine.
+    if (bannerOptimizando) {
+      mostrarMsg('Espera a que termine de optimizarse la imagen del banner.');
+      return;
+    }
+
     const btn = $('cm-guardar');
     btn.disabled = true;
 
@@ -836,7 +887,9 @@
       p_aviso_urgencia_cantidad: avisoCant,
       p_etiquetas: recolectarEtiquetas(),
       // Producto de Inventario ligado (uuid) o null si aun no se liga.
-      p_product_id_ref: $('cm-producto').value || null
+      p_product_id_ref: $('cm-producto').value || null,
+      // Direccion web legible (slug). El servidor la re-normaliza; vacio -> null.
+      p_slug: slugificar($('cm-slug').value) || null
     });
 
     if (error) {
