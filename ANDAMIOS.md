@@ -499,6 +499,14 @@ _TODAS las fichas técnicas 1-9 que el dueño aprobó viven aquí._
    - **Sandbox y producción de Wompi son perfiles de comercio SEPARADOS.** El
      checkout de sandbox puede mostrar datos viejos del comercio aunque el
      dashboard ya muestre los nuevos. Confirmar el nombre/datos reales en F4.
+
+   ### 🧾 Ajuste de inventario hecho durante F1 (dato operativo, no bug)
+   Para probar el checkout, el dueño cargó 5 unidades del Grisi en Inventario
+   (entrada real: así dejó de salir "Agotado"). Físicamente había 2, así que
+   registró un **ajuste de salida de 3** ("cuadre a existencias físicas reales")
+   desde la pantalla de Inventario → stock quedó en **2** (verificado, funcionó).
+   No ensució nada: el libro es append-only y el ajuste deja rastro; Inventario
+   sigue desconectado de Contabilidad (cita a ciegas), así que no generó asiento.
 3. **Respeta el orden de fases** (A→B→C→D→E→F→G): las de arriba son cimiento de
    las de abajo. No saltes a Wompi (F) si B (parsearMonto, config) no está ✅.
 4. **Un tramo = una rama = un PR.** Nunca push a main. El dueño mergea.

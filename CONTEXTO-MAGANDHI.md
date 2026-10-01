@@ -307,35 +307,77 @@ dueño lo pide.
   `supabase/INSTRUCCIONES.md`, con orden exacto y queries de verificación).
 
 ---
-## 🔖 DÓNDE RETOMAR (cierre de sesión — leer esto primero al abrir chat nuevo)
+## 🔖 DÓNDE RETOMAR (leer esto PRIMERO al abrir chat nuevo · actualizado tras la sesión Wompi F1)
 
-**El ecosistema Impulse tiene 3 áreas VIVAS en producción:** Finanzas (Contabilidad
-PUC), Producción (Inventarios: Ver/Agregar/Movimientos) y Marketing (Marketing
-Project: Proyección de demanda, Tendencia Central, Ranking de productos).
+> ⚠️ **ESTE BLOQUE MANDA sobre el estado del proyecto.** Las secciones más abajo
+> ("SOFTWARE 4 — Área VENTAS", "SESIÓN CAMPAÑAS") son históricas y describen cosas
+> que YA SE CONSTRUYERON; no te confundas con su redacción en tiempo futuro.
 
-**La 4.ª área, VENTAS, está DISEÑADA Y APROBADA pero NO construida.** El plano es
-`docs/PLANO-VENTAS.md` en el **PR #183 (abierto, sin mergear)**. Ver la sección
-"SOFTWARE 4 — Área VENTAS" arriba para el detalle completo.
+**Áreas VIVAS en producción (4):** Finanzas (Contabilidad PUC), Producción
+(Inventarios), Marketing (Marketing Project + Campañas), y **VENTAS** (Seguimiento
+de pedidos + Portafolio de clientes — YA CONSTRUIDA, no "pendiente" como dice la
+sección 4 más abajo). Todo mergeado a main.
 
-**PASO INMEDIATO para continuar el proyecto tal cual:**
-1. El dueño **mergea el PR #183** (deja el plano en main como fuente de verdad).
-2. Kiro **construye el área Ventas** siguiendo `docs/PLANO-VENTAS.md` y sus decisiones
-   finales (2 sub-áreas: Seguimiento de pedidos + Portafolio de clientes; núcleo
-   `crear_pedido`; coincidencia por puntaje; motor de devoluciones por debajo;
-   migraciones `20250401...`; nivel Finanzas, sin color nuevo, sello Impulse). El SQL
-   lo aplica el dueño a mano (documentar en `supabase/INSTRUCCIONES.md`).
+**FASE EN CURSO: F (Wompi), la ficha más grande. Vamos tramo por tramo F1→F2→F3→F4.**
+El plan maestro con el tablero de estado es `ANDAMIOS.md` (léelo junto con este
+archivo).
+
+### ✅ F1 (Wompi · intención de pago) — TERMINADO Y VERIFICADO CON EVIDENCIA
+La tienda llega al **checkout REAL de Wompi en sandbox** (métodos de pago cargados).
+Cadena: formulario del comprador → Edge Function `crear-intencion-pago` → precio
+releído de la BD server-side → firma de integridad → checkout. El dueño desplegó la
+primera Edge Function del proyecto, puso el secret `WOMPI_INTEGRITY_SANDBOX`, pegó la
+llave pública sandbox en `pagos_config` y corrió los grants (migración
+`20250605000000`). PRs mergeados: back-office #208–#213, tienda #38–#39. El detalle
+y las ⚠️ LECCIONES DE F1 están en `ANDAMIOS.md` (leerlas antes de tocar Edge Functions).
+
+### ➡️ SIGUIENTE: TRAMO F2 (webhook + idempotencia + estados) — AQUÍ SE RETOMA
+Es donde el pago POR FIN se vuelve real. Hoy, cuando alguien paga, NO pasa nada en el
+sistema (correcto en F1: F1 solo firma y abre el checkout). F2 arregla eso:
+- **F2.1** — Tabla `pagos_wompi` (idempotencia: un pago jamás crea dos pedidos).
+- **F2.2** — Edge Function `wompi-webhook`: Wompi avisa server-to-server; valida la
+  firma del evento; y **SOLO si el pago es APPROVED** invoca `crear_pedido(canal='web')`
+  (que YA existe y baja el stock). Registra también DECLINED/VOIDED/ERROR para ver
+  intentos fallidos.
+- **F2.3** — Página de "gracias" en la tienda (cosmética; la verdad la da el webhook).
+Luego quedan **F3** (asiento contable automático de la venta web) y **F4** (interruptor
+sandbox→prod: cambiar `pagos_config.entorno` a 'prod' + llaves/secret de producción).
+
+### 🧾 NOTA DE INVENTARIO (ajuste hecho en la sesión Wompi F1)
+Durante F1, para poder probar el checkout, el dueño cargó **5 unidades** del Shampoo
+Grisi en Inventario (entrada real, no basura de prueba — así dejó de salir "Agotado").
+Pero físicamente hoy solo hay **2**. El dueño registró un **ajuste de salida de 3
+unidades** ("cuadre a existencias físicas reales") desde la pantalla de Inventario, y
+el stock quedó en **2** (verificado: funcionó). Esto NO ensució nada: el libro es
+append-only y el ajuste deja rastro (entró 5, se ajustó −3, quedan 2). Inventario sigue
+desconectado de Contabilidad (cita a ciegas), así que el ajuste no generó asiento.
+
+### ⚠️ PENDIENTE MENOR (decisión del dueño, NO urgente, NO insistir)
+Los DATOS DE CONTACTO que Wompi muestra al cliente en el checkout siguen siendo los
+viejos (`contacto@montaguth.institute` + teléfono personal) en vez de
+`contacto@magandhi.com` + WhatsApp +57 313 245 1188. El dueño lo gestionará con soporte
+de Wompi cuando quiera (con cero clientes reales no corre prisa). El cambio de NOMBRE
+del comercio a "Magandhi" YA está aplicado en el dashboard; el checkout de sandbox
+muestra el viejo porque sandbox y prod son perfiles separados (se confirmará en F4).
 
 **RECORDATORIOS PERMANENTES:** (a) reglas de identidad de Impulse: solo DATOS PROPIOS /
 NO interpreta (el humano decide/lee). (b) La INTERFAZ y la coherencia de marca son
 FUNDAMENTALES para el dueño (nivel Finanzas, azul marino, sin color nuevo, sello
-Impulse, wordmark MAGANDHI). (c) Flujo Git: rama nueva + PR por cada cambio, nunca push
-a main, el dueño mergea; SQL/Edge/Storage los aplica el dueño a mano. (d) "Hacer las
-cosas bien": sin afán, nada a medias; frenar al dueño si se afana. (e) Wompi: nombre del
-comercio ya cambiado a MAGANDHI (Kiro no interviene en Wompi). (f) Modo de trabajo: "regar fichas" → trazar el
-camino de conexión (husmear los tapetes de otras áreas para conectar) → construir.
+Impulse, wordmark MAGANDHI; la tienda pública NUNCA lleva sello Impulse). (c) Flujo Git:
+rama nueva + PR por cada cambio, nunca push a main, el dueño mergea; verificar con
+`gh api` que un PR no esté mergeado antes de reusar una rama. (d) SQL/Edge Functions/
+Storage los corre/despliega el DUEÑO a mano en Supabase (Kiro no tiene dashboard);
+escribir SQL/Edge en el repo NO lo despliega; dar instrucciones exactas en
+`supabase/INSTRUCCIONES.md`. (e) "Hacer las cosas bien": sin afán, nada a medias;
+frenar al dueño si se afana. (f) Verificar con EVIDENCIA (un select, una captura), no
+con el papel. (g) Decisiones duras de Wompi (NO rediscutir): precio nunca sale del
+navegador; la verdad del pago llega SOLO por webhook; solo APPROVED crea pedido+asiento;
+idempotencia estricta; stock baja solo AL PAGAR; MAGANDHI no es responsable de IVA (el
+asiento no toca 2408); comisión Wompi a cuenta 5305; secretos solo como secrets de la
+Edge Function; sandbox primero, prod con el interruptor `pagos_config.entorno`.
 
-_Última actualización: ver el bloque "SESIÓN CAMPAÑAS" abajo (la más importante del
-proyecto hasta ahora)._
+_Última actualización: sesión Wompi F1 (F1 cerrado y verificado; se retoma en F2).
+El chat anterior se corrompió, por eso esta migración de contexto a chat nuevo._
 
 ---
 
