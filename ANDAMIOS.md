@@ -375,6 +375,31 @@ _TODAS las fichas técnicas 1-9 que el dueño aprobó viven aquí._
   pago; cablear WhatsApp → `wa.me/573132451188` con mensaje prellenado del
   producto.
 
+## TRAMO 0 — Correcciones de la auditoría integral (ANTES de F2) 🔨
+**Repo:** `12344-ux.github.io` · **Rama:** `fix/tramo0-auditoria`
+**⚠️ 3 SQL (el dueño los corre) + redeploy de `crear-intencion-pago`.**
+_Detalle, orden y verificación: `supabase/INSTRUCCIONES.md` § TRAMO 0._
+
+- [x] **T0.1** — `movimientos_mayor`, `saldos_cuenta`, `stock_actual` a
+  `security_invoker` (se saltaban la RLS). `catalogo_publico` deja de leer
+  `stock_actual` para no romper la tienda. (`20250606000000`)
+- [x] **T0.2** — Matriz de permisos repetible (anon, sin módulo, Finanzas,
+  Producción, Marketing, Ventas, admin, service_role + EXECUTE):
+  `supabase/pruebas/matriz-permisos.sql`. Local: 14 fallas antes → 0 después.
+- [x] **T0.3** — F1 acepta solo `cantidad = 1`.
+- [x] **T0.4** — XSS de cuentas PUC (Nuevo/Editar asiento, Catálogo PUC).
+- [x] **T0.5** — Parser estricto + lectura en vivo (teclear 1234567 daba 167).
+- [x] **T0.6** — Anulación y avance de pedido con `FOR UPDATE` (doble
+  devolución de stock reproducida y cerrada). (`20250606000100`)
+- [x] **T0.7** — Portafolio: búsqueda y orden contra toda la cartera.
+- [x] **T0.8** — Proyección: periodos proyectados desde el último analizado.
+- [x] **T0.9** — EXECUTE nominal (anon 32→0 funciones; authenticated = 26) +
+  funciones futuras nacen cerradas. (`20250606000200`)
+- [ ] **Cierre** — el dueño corre los 3 SQL, redespliega la Edge Function y la
+  matriz da `TODO PASA` en el proyecto real.
+- ⏭️ **Aparte (no incluido):** `buscar_candidatos_cliente` falla si
+  `fuzzystrmatch` no está en `public` (preexistente; ver INSTRUCCIONES T0.6).
+
 ## TRAMO F2 — Webhook + idempotencia + estados ⬜
 **Repo:** `12344-ux.github.io` · **Rama:** `feat/wompi-webhook`
 **⚠️ Edge Function (el dueño despliega) + SQL.**
@@ -459,6 +484,7 @@ _TODAS las fichas técnicas 1-9 que el dueño aprobó viven aquí._
 | D4 | Ranking vs anulaciones | ✅ | [#204](https://github.com/12344-ux/12344-ux.github.io/pull/204) | solo frontend |
 | D5 | Truncamiento/paginación | ✅ | [#205](https://github.com/12344-ux/12344-ux.github.io/pull/205) | Diario paginado + avisos en 5 pantallas |
 | E1 | Impulse: serie temporal + paginación | ✅ | [#206](https://github.com/12344-ux/12344-ux.github.io/pull/206) | identidad Impulse · solo frontend |
+| T0 | Correcciones de la auditoría (pre-F2) | 🔨 | rama `fix/tramo0-auditoria` | 3 SQL + redeploy Edge Fn · ver INSTRUCCIONES.md § TRAMO 0 · matriz de permisos 170/170 en local |
 | F1 | Wompi: intención de pago | ✅ | back-office [#208](https://github.com/12344-ux/12344-ux.github.io/pull/208) [#209](https://github.com/12344-ux/12344-ux.github.io/pull/209) [#210](https://github.com/12344-ux/12344-ux.github.io/pull/210) [#211](https://github.com/12344-ux/12344-ux.github.io/pull/211) [#212](https://github.com/12344-ux/12344-ux.github.io/pull/212) · tienda [#38](https://github.com/12344-ux/magandhi/pull/38) [#39](https://github.com/12344-ux/magandhi/pull/39) | **VERIFICADO con evidencia:** checkout REAL de Wompi alcanzado en sandbox (métodos de pago cargados). Edge Fn desplegada + secret + llave pública + grants |
 | F2 | Wompi: webhook + idempotencia | ⬜ | — | Edge Fn + SQL |
 | F3 | Wompi: asiento automático | ⬜ | — | SQL dueño |
