@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../marca.css?v=1">
-<link rel="stylesheet" href="finanzas.css?v=4">
+<link rel="stylesheet" href="finanzas.css?v=5">
 
 <!--
   MAGANDHI · Area de Finanzas · Editar / anular asiento (modelo "punto medio").
@@ -113,9 +113,10 @@
 <script type="module">
   import {
     supabase, asegurarAcceso, montarHeader, ICONOS,
-    formatearCOP, parsearMonto, analizarMonto, hoyISO, formatearFecha, formatearMomento,
-    ACCIONES_BITACORA, cargarBitacora, escaparHTML, TOPE_MONTO_LINEA
-  } from './finanzas-core.js';
+    formatearCOP, parsearMonto, leerMontoTecleado, hoyISO, formatearFecha, formatearMomento,
+    ACCIONES_BITACORA, cargarBitacora, escaparHTML, TOPE_MONTO_LINEA,
+    pintarSugerenciasCuentas, aplicarLecturaMonto, hayMontoInvalido
+  } from './finanzas-core.js?v=5';
 
   // --- Elementos ---
   const cargandoEl = document.getElementById('fz-cargando');
@@ -207,22 +208,11 @@
         .limit(12);
       return data || [];
     }
+    // TRAMO 0: nodos DOM + textContent (antes el nombre entraba crudo a innerHTML).
     function pintarSug(cuentas) {
-      if (!cuentas.length) { sug.innerHTML = '<div class="fz-sug-item"><span class="fz-sug-nombre">Sin resultados</span></div>'; sug.classList.add('open'); return; }
-      sug.innerHTML = cuentas.map((c) => (
-        '<div class="fz-sug-item" data-codigo="' + c.codigo + '" data-nombre="' + (c.nombre || '').replace(/"/g, '&quot;') + '">' +
-          '<span class="fz-badge">' + c.codigo + '</span>' +
-          '<span class="fz-sug-nombre">' + (c.nombre || '') + '</span>' +
-        '</div>'
-      )).join('');
-      sug.classList.add('open');
-      sug.querySelectorAll('.fz-sug-item[data-codigo]').forEach((it) => {
-        it.addEventListener('mousedown', (e) => {
-          e.preventDefault();
-          cuentaInput.value = it.dataset.codigo + ' · ' + it.dataset.nombre;
-          cuentaInput.dataset.codigo = it.dataset.codigo;
-          sug.classList.remove('open');
-        });
+      pintarSugerenciasCuentas(sug, cuentas, (c) => {
+        cuentaInput.value = c.codigo + ' · ' + (c.nombre || '');
+        cuentaInput.dataset.codigo = c.codigo;
       });
     }
     cuentaInput.addEventListener('input', () => {
@@ -239,29 +229,25 @@
     });
     cuentaInput.addEventListener('blur', () => { setTimeout(() => sug.classList.remove('open'), 120); });
 
-    function normalizarMonto(el, otro) {
-      // analizarMonto no se traga los centavos en silencio: avisa si el
-      // usuario escribio un decimal en vez de pegarlo a los pesos.
-      const { valor: entero, tieneDecimal } = analizarMonto(el.value);
-      el.value = entero > 0 ? formatearCOP(entero) : '';
-      if (tieneDecimal) {
-        msgEl.className = 'fz-msg err';
-        msgEl.textContent = 'Los montos son pesos enteros, sin centavos. Se detecto un decimal y se ignoro: revisa el valor (quedo en ' + formatearCOP(entero) + ').';
-      } else if (msgEl.dataset.aviso === 'decimal') {
-        msgEl.textContent = ''; msgEl.className = 'fz-msg';
+    // TRAMO 0: lectura de campo que se reformatea al teclear (ver Nuevo asiento).
+    function normalizarMonto(el, otro, ev) {
+      const lectura = leerMontoTecleado(el.value, ev && ev.inputType, ev && ev.data);
+      const entero = aplicarLecturaMonto(el, lectura, msgEl);
+      if (entero > 0 && (parsearMonto(otro.value) > 0 || otro.getAttribute('aria-invalid') === 'true')) {
+        otro.value = '';
+        otro.removeAttribute('aria-invalid');
       }
-      msgEl.dataset.aviso = tieneDecimal ? 'decimal' : '';
-      if (entero > 0 && parsearMonto(otro.value) > 0) { otro.value = ''; }
       recalcular();
     }
-    debeInput.addEventListener('input', () => normalizarMonto(debeInput, haberInput));
-    haberInput.addEventListener('input', () => normalizarMonto(haberInput, debeInput));
+    debeInput.addEventListener('input', (ev) => normalizarMonto(debeInput, haberInput, ev));
+    haberInput.addEventListener('input', (ev) => normalizarMonto(haberInput, debeInput, ev));
 
     delBtn.addEventListener('click', () => {
       if (lineasEl.querySelectorAll('.fz-linea').length <= 2) {
         cuentaInput.value = ''; cuentaInput.dataset.codigo = '';
         row.querySelector('.fz-detalle').value = '';
         debeInput.value = ''; haberInput.value = '';
+        debeInput.removeAttribute('aria-invalid'); haberInput.removeAttribute('aria-invalid');
       } else {
         row.remove();
       }
@@ -296,9 +282,18 @@
     );
     // Tope de rango (espejo del candado server-side): ver TOPE_MONTO_LINEA.
     const superaTope = conMonto.some((l) => l.debe > TOPE_MONTO_LINEA || l.haber > TOPE_MONTO_LINEA);
-    const cuadra = diff === 0 && totalDebe > 0 && todasValidas && !superaTope;
+    // TRAMO 0: un monto ilegible bloquea el guardado (no se ignora en silencio).
+    const montoInvalido = hayMontoInvalido(lineasEl);
+    if (!montoInvalido && msgEl.dataset.aviso === 'invalido') {
+      msgEl.textContent = ''; msgEl.className = 'fz-msg'; msgEl.dataset.aviso = '';
+    }
+    const cuadra = diff === 0 && totalDebe > 0 && todasValidas && !superaTope && !montoInvalido;
 
-    if (superaTope) {
+    if (montoInvalido) {
+      estadoEl.className = 'fz-estado no-cuadra';
+      estadoEl.textContent = 'Revisa los montos marcados';
+      guardarBtn.disabled = true;
+    } else if (superaTope) {
       estadoEl.className = 'fz-estado no-cuadra';
       estadoEl.textContent = 'Monto por linea demasiado alto';
       guardarBtn.disabled = true;
@@ -329,6 +324,7 @@
     const fecha = fechaEl.value;
     const descripcion = descEl.value.trim();
     if (!fecha || !descripcion) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'Fecha y descripcion son obligatorias.'; return; }
+    if (hayMontoInvalido(lineasEl)) { msgEl.className = 'fz-msg err'; msgEl.textContent = 'Hay montos que no se pudieron leer (marcados en rojo). Corrigelos antes de guardar.'; return; }
 
     const lineas = leerLineas().filter((l) => l.debe > 0 || l.haber > 0);
     for (const l of lineas) {

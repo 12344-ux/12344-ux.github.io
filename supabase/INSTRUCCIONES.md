@@ -2667,3 +2667,158 @@ lado del servidor antes de mandar a Wompi.
 - Notas/indicaciones libres del pedido que no caben en `address-line-2`.
 - Preferencia de horario de entrega.
 - Codigo postal, si algun transportador lo exige.
+
+---
+
+# TRAMO 0 · Correcciones de la auditoria (antes de F2)
+
+Cierra los hallazgos de la auditoria integral **antes** de construir el webhook
+de Wompi (F2). Todo se verifico primero en un PostgreSQL 17 local que imita a
+Supabase (las 46 migraciones aplicadas en orden sobre una base vacia), con
+pruebas de antes/despues. Nada de esto cambia lo que ve el cliente en la tienda.
+
+**Que se arregla (resumen):**
+
+| # | Problema | Donde vive el arreglo |
+|---|---|---|
+| 1 | Las vistas `movimientos_mayor`, `saldos_cuenta` y `stock_actual` se saltaban la RLS: un usuario con sesion pero SIN modulo leia el Libro Mayor, los saldos y todo el stock | SQL `20250606000000` |
+| 2 | Dos anulaciones simultaneas del mismo pedido devolvian el stock **dos veces**; un avance podia marcar "entregado" un pedido recien anulado | SQL `20250606000100` |
+| 3 | 32 de 32 funciones eran ejecutables por `anon` (el visitante de la tienda) | SQL `20250606000200` |
+| 4 | `crear-intencion-pago` firmaba cualquier cantidad (1.000 unidades con 1 en bodega) | Edge Function (redeploy) |
+| 5 | XSS: el nombre de una cuenta PUC se pintaba como HTML en Nuevo/Editar asiento y en el Catalogo PUC | Frontend |
+| 6 | Parser de montos: teclear `1234567` en un asiento daba `167`; borrar un digito de `24.900` dejaba `24`; puntos mal puestos se adivinaban | Frontend |
+| 7 | Portafolio: el buscador decia buscar "en el resto" pero solo veia 2.000 clientes | Frontend |
+| 8 | Proyeccion: las fechas proyectadas arrancaban desde HOY, no desde el ultimo periodo analizado | Frontend |
+| 9 | No habia una prueba repetible de permisos | `supabase/pruebas/matriz-permisos.sql` |
+
+## T0.1. Orden EXACTO en el SQL Editor
+
+Cada archivo completo, con su propio **Run**, en este orden:
+
+1. `supabase/migrations/20250606000000_tramo0_vistas_security_invoker.sql`
+   Primero redefine `catalogo_publico` para que **no dependa** de `stock_actual`
+   (si no, la tienda se caeria con "permission denied"), y despues activa
+   `security_invoker` en las tres vistas internas. Columnas y resultados de la
+   tienda: identicos (verificado fila por fila, incluido el tope de escaparate).
+2. `supabase/migrations/20250606000100_tramo0_anulacion_sin_carreras.sql`
+   Igual que antes, solo agrega `FOR UPDATE` en `anular_pedido` y
+   `avanzar_estado_pedido`. Firmas y mensajes sin cambios.
+3. `supabase/migrations/20250606000200_tramo0_execute_nominal.sql`
+   Revoca EXECUTE a `PUBLIC`/`anon`/`authenticated` y lo otorga a
+   `authenticated` solo en una lista blanca de 26 funciones. Si un nombre de la
+   lista no existiera, **aborta sin cambiar nada** (proteccion contra erratas).
+
+Los tres son idempotentes y van dentro de `begin/commit` (o todo o nada).
+
+## T0.2. Redesplegar la Edge Function
+
+`supabase/functions/crear-intencion-pago/index.ts` cambio (cantidad = 1).
+Redespliegala igual que en **F1.2** (dashboard: pegar el archivo completo y
+desplegar; o `supabase functions deploy crear-intencion-pago`). Los secrets no
+cambian.
+
+## T0.3. Verificar con EVIDENCIA (obligatorio)
+
+**(a) Matriz de permisos.** Pega TODO `supabase/pruebas/matriz-permisos.sql` en
+el SQL Editor y Run. Es seguro: crea personas y datos de prueba dentro de un
+bloque que **siempre se deshace** (no queda ningun usuario, asiento, pedido ni
+movimiento). La primera fila debe decir:
+
+```
+RESUMEN | 170 comprobaciones | | 0 fallan | TODO PASA
+```
+
+Si alguna fila dice `FALLA`, aparece arriba del informe con la persona, el
+objeto, lo esperado y lo obtenido. **Antes** del Tramo 0 esta misma prueba da
+14 fallas (esa es la vulnerabilidad); despues, 0.
+
+**(b) Recuento de EXECUTE** (opcional, una linea):
+
+```sql
+select count(*) filter (where has_function_privilege('anon', p.oid, 'execute')) as anon,
+       count(*) filter (where has_function_privilege('authenticated', p.oid, 'execute')) as authenticated
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e');
+-- Esperado: anon = 0 · authenticated = 26
+```
+
+**(c) Tienda.** Abre `magandhi.com` y la ficha del Grisi: deben verse los
+productos, el precio y el boton de compra como antes. Pulsa "Comprar ahora",
+llena el formulario y confirma que llega al checkout de Wompi sandbox.
+
+**(d) Edge Function con cantidad 2** (debe rechazar):
+
+```bash
+curl -s -X POST "https://bxlzipwxyxdtffnuizbz.supabase.co/functions/v1/crear-intencion-pago" \
+  -H "apikey: sb_publishable_ap4jdsO_0KPOPWhUk9Y7ZA_0jDUvHu1" \
+  -H "Authorization: Bearer sb_publishable_ap4jdsO_0KPOPWhUk9Y7ZA_0jDUvHu1" \
+  -H "Content-Type: application/json" \
+  -d '{"producto":"grisi-manzanilla-gold","cantidad":2}'
+# Esperado: HTTP 400 {"error":"Por ahora cada compra es de una unidad ('cantidad' debe ser 1)."}
+```
+
+**(e) Back-office.** Con tu sesion: abre Libro Mayor, un informe, Ver
+inventario, Portafolio y Proyeccion; deben cargar como siempre. En Nuevo asiento
+escribe `1234567` en Debe: debe quedar `1.234.567`.
+
+## T0.4. Si algo saliera mal (vuelta atras)
+
+- **Vistas (1):** `alter view <vista> set (security_invoker = false);` en las
+  tres devuelve el comportamiento anterior (no recomendado: reabre la fuga).
+- **EXECUTE (3):** si una pantalla del back-office dijera
+  `permission denied for function X`, la funcion X falta en la lista blanca:
+  `grant execute on function X to authenticated;` y avisame para corregir la
+  migracion. (Verificado localmente: las 21 RPC del back-office y los 4 guardias
+  de las policies quedan otorgados.)
+- **Anulacion (2):** volver a correr `20250603000000` restaura las funciones
+  sin `FOR UPDATE`.
+
+## T0.5. REGLA NUEVA para migraciones futuras (desde el Tramo 0)
+
+Toda **funcion nueva** nace **cerrada** para `PUBLIC`, `anon` y `authenticated`
+(solo `service_role` la puede ejecutar). Si el frontend la va a llamar, su
+migracion **debe** incluir:
+
+```sql
+grant execute on function nombre_funcion(tipos...) to authenticated;
+```
+
+Es el mismo espiritu del cambio de Supabase del 30-oct-2026 para **tablas**
+nuevas (que tambien necesitan su `grant` explicito; este proyecto ya lo hacia
+porque tiene "auto-expose" en OFF). Si se olvida, falla de forma ruidosa
+(`permission denied for function`), nunca silenciosa. Y la prueba
+`matriz-permisos.sql` lo detecta: su lista blanca debe actualizarse a la par.
+
+**Otra leccion:** una vista `security_invoker` evalua sus tablas con el usuario
+ACTUAL aunque se lea desde dentro de una vista del dueno. Por eso
+`catalogo_publico` (publica, del dueno) **no debe** leer vistas internas: calcula
+sus agregados directo de las tablas.
+
+## T0.6. Hallazgo aparte (NO incluido en este tramo, decidir)
+
+Mientras se probaba aparecio un fallo **anterior** al Tramo 0:
+`buscar_candidatos_cliente` (sugerencias de cliente al registrar un pedido)
+intenta usar `levenshtein`, de la extension `fuzzystrmatch`. Si la extension no
+esta instalada **en el esquema public**, la funcion falla siempre con
+`function levenshtein(text, text) does not exist` (el "plan B" que trae no
+alcanza a activarse). Para saber si te afecta, corre:
+
+```sql
+select n.nspname as esquema
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where p.proname = 'levenshtein';
+-- Sin filas, o un esquema distinto de public -> las sugerencias fallan hoy.
+```
+
+El registro del pedido **no** se bloquea por esto (solo no aparecen
+candidatos). Se corrige en un tramo propio cuando lo decidas.
+
+## T0.7. Probar todo localmente (para el proximo Kiro)
+
+`supabase/pruebas/local/correr-local.sh` crea una base vacia en un PostgreSQL
+local, simula lo minimo de Supabase (`supabase-simulado.sql`), aplica TODAS las
+migraciones en orden y corre la matriz de permisos. Nunca toca el proyecto real.
+Pruebas JS sin dependencias:
+`node finanzas/pruebas-parsear-monto.mjs` y
+`node marketing/marketing-project/pruebas-etiquetas-proyeccion.mjs`.

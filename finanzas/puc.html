@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../marca.css?v=1">
-<link rel="stylesheet" href="finanzas.css?v=4">
+<link rel="stylesheet" href="finanzas.css?v=5">
 
 <!--
   MAGANDHI · Area de Finanzas · Catalogo PUC.
@@ -46,7 +46,7 @@
 </main>
 
 <script type="module">
-  import { supabase, asegurarAcceso, montarHeader, ICONOS } from './finanzas-core.js';
+  import { supabase, asegurarAcceso, montarHeader, ICONOS } from './finanzas-core.js?v=5';
 
   const main = document.getElementById('fz-main');
   const input = document.getElementById('fz-q');
@@ -56,21 +56,34 @@
 
   const NIVEL_TXT = { 1: 'Clase', 2: 'Grupo', 3: 'Cuenta', 4: 'Subcuenta' };
 
+  // Crea un <span> con clase y TEXTO (nunca HTML).
+  function span(clase, texto) {
+    const el = document.createElement('span');
+    el.className = clase;
+    el.textContent = texto == null ? '' : String(texto);
+    return el;
+  }
+
+  // TRAMO 0: el catalogo se pinta con nodos DOM + textContent. Antes codigo,
+  // nombre y naturaleza entraban crudos a innerHTML (XSS almacenado si una
+  // cuenta tenia marcado en el nombre). La naturaleza solo se usa como clase
+  // CSS si es una de las dos conocidas.
   function pintar(cuentas) {
+    list.replaceChildren();
     if (!cuentas || cuentas.length === 0) {
-      list.innerHTML = '<div class="fz-empty">No se encontraron cuentas.</div>';
+      list.append(Object.assign(document.createElement('div'), { className: 'fz-empty', textContent: 'No se encontraron cuentas.' }));
       return;
     }
-    list.innerHTML = cuentas.map((c) => (
-      '<div class="fz-puc' + (c.imputable ? '' : ' no-imputable') + '">' +
-        '<span class="fz-badge">' + c.codigo + '</span>' +
-        '<span class="fz-puc-nombre">' + (c.nombre || '') + '</span>' +
-        '<span class="fz-puc-meta">' +
-          '<span class="fz-nivel">' + (NIVEL_TXT[c.nivel] || 'Nivel ' + c.nivel) + '</span>' +
-          '<span class="fz-nat ' + c.naturaleza + '">' + c.naturaleza + '</span>' +
-        '</span>' +
-      '</div>'
-    )).join('');
+    for (const c of cuentas) {
+      const fila = document.createElement('div');
+      fila.className = 'fz-puc' + (c.imputable ? '' : ' no-imputable');
+      const meta = span('fz-puc-meta', '');
+      const nat = span('fz-nat', c.naturaleza);
+      if (c.naturaleza === 'debito' || c.naturaleza === 'credito') nat.classList.add(c.naturaleza);
+      meta.append(span('fz-nivel', NIVEL_TXT[c.nivel] || 'Nivel ' + c.nivel), nat);
+      fila.append(span('fz-badge', c.codigo), span('fz-puc-nombre', c.nombre || ''), meta);
+      list.append(fila);
+    }
   }
 
   async function cargarSugeridas() {

@@ -160,7 +160,7 @@
     supabase, asegurarAcceso, montarHeader, ICONOS,
     escaparHTML, formatearNumero, formatearFecha, hoyISO,
     promedioMovil, suavizacionExponencial, regresionLineal,
-    agruparPorPeriodo, traerTodo
+    agruparPorPeriodo, clavePeriodo, traerTodo
   } from '../marketing-core.js';
 
   const selProducto = document.getElementById('mk-producto');
@@ -338,23 +338,52 @@
     );
   }
 
-  // Genera etiquetas de periodo hacia adelante a partir del horizonte y la
-  // unidad elegida, arrancando desde HOY (solo para rotular el eje/tabla; la
-  // matematica ya proyecto `horizonte` valores).
-  function etiquetasFuturas(horizonte, unidad) {
+  // TRAMO 0 · Etiquetas de los periodos PROYECTADOS.
+  // ANTES arrancaban desde HOY (new Date()): si analizabas un rango pasado
+  // (p.ej. enero-marzo), la matematica proyectaba abril-mayo pero el eje decia
+  // los meses siguientes a HOY. Ademas setMonth desde un dia 29-31 podia
+  // saltarse un mes (31-ene + 1 mes = 3-mar) y las semanas decian "sem +1".
+  // AHORA continuan exactamente desde el ULTIMO periodo analizado, con el MISMO
+  // formato de clave del historico (clavePeriodo: YYYY-MM-DD / YYYY-Www /
+  // YYYY-MM), avanzando fechas UTC reales; los meses parten del dia 1.
+
+  // Fecha UTC del inicio de un periodo a partir de su clave.
+  function fechaInicioDeClave(clave, unidad) {
+    if (!clave) return null;
+    if (unidad === 'mes') {
+      const [y, m] = clave.split('-').map(Number);
+      return (y && m) ? new Date(Date.UTC(y, m - 1, 1)) : null;
+    }
+    if (unidad === 'semana') {
+      // 'YYYY-Www' (ISO 8601): el 4 de enero siempre cae en la semana 1.
+      const mt = /^(\d{4})-W(\d{2})$/.exec(clave);
+      if (!mt) return null;
+      const anio = Number(mt[1]), semana = Number(mt[2]);
+      const cuatroEne = new Date(Date.UTC(anio, 0, 4));
+      const lunesSemana1 = new Date(cuatroEne.getTime() - ((cuatroEne.getUTCDay() + 6) % 7) * 86400000);
+      return new Date(lunesSemana1.getTime() + (semana - 1) * 7 * 86400000);
+    }
+    const [y, m, d] = clave.split('-').map(Number);
+    return (y && m && d) ? new Date(Date.UTC(y, m - 1, d)) : null;
+  }
+
+  function aISO(fecha) {
+    return fecha.getUTCFullYear() + '-' + String(fecha.getUTCMonth() + 1).padStart(2, '0') + '-' +
+      String(fecha.getUTCDate()).padStart(2, '0');
+  }
+
+  // `horizonte` claves consecutivas DESPUES de `ultimaClave` (la matematica ya
+  // proyecto `horizonte` valores; esto solo los rotula).
+  function etiquetasFuturas(ultimaClave, horizonte, unidad) {
+    const base = fechaInicioDeClave(ultimaClave, unidad);
+    if (!base) return [];
     const out = [];
-    const base = new Date();
     for (let k = 1; k <= horizonte; k++) {
-      const d = new Date(base.getTime());
-      if (unidad === 'dia') d.setDate(d.getDate() + k);
-      else if (unidad === 'semana') d.setDate(d.getDate() + k * 7);
-      else d.setMonth(d.getMonth() + k);
-      const y = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      if (unidad === 'mes') out.push(`${y}-${mm}`);
-      else if (unidad === 'semana') out.push(`sem +${k}`);
-      else out.push(`${mm}-${dd}`);
+      let d;
+      if (unidad === 'mes') d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + k, 1));
+      else if (unidad === 'semana') d = new Date(base.getTime() + k * 7 * 86400000);
+      else d = new Date(base.getTime() + k * 86400000);
+      out.push(clavePeriodo(aISO(d), unidad));
     }
     return out;
   }
@@ -370,7 +399,8 @@
 
     const etiquetasReal = buckets.map((b) => b.clave);
     const serieReal = buckets.map((b) => b.cantidad);
-    const etiquetasProy = etiquetasFuturas(horizonte, horizonteUnidad);
+    const ultimaClave = buckets.length ? buckets[buckets.length - 1].clave : null;
+    const etiquetasProy = etiquetasFuturas(ultimaClave, horizonte, horizonteUnidad);
     const serieProy = proyeccion.map((v) => Math.max(0, Math.round(v)));
 
     // CAPA 1 — numero grande: total proyectado en el horizonte.

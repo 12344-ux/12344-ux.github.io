@@ -162,14 +162,22 @@ Deno.serve(async (req: Request): Promise<Response> => {
     );
   }
 
-  // Cantidad: entero >= 1, por defecto 1 si falta. Se ignora cualquier valor no
-  // entero o < 1.
-  let cantidad = 1;
+  // Cantidad: EXACTAMENTE 1 (Tramo 0). Por defecto 1 si falta.
+  // POR QUE: esta funcion solo conoce el booleano `agotado`, no cuantas
+  // unidades hay. Antes aceptaba cualquier entero >= 1, asi que una llamada
+  // directa (sin pasar por la tienda) podia obtener una firma VALIDA para 1.000
+  // unidades con una sola en bodega. CORS no lo impide: no es autorizacion.
+  // La tienda solo vende de a una unidad por compra en esta fase, asi que el
+  // servidor exige lo mismo. Cuando exista selector de cantidad, este limite se
+  // reemplaza por una validacion real contra el stock (en F2, al persistir la
+  // intencion), nunca se quita sin esa validacion.
+  const CANTIDAD_PERMITIDA = 1;
+  let cantidad = CANTIDAD_PERMITIDA;
   if (body?.cantidad !== undefined && body?.cantidad !== null) {
     const n = Number(body.cantidad);
-    if (!Number.isInteger(n) || n < 1) {
+    if (n !== CANTIDAD_PERMITIDA) {
       return json(
-        { error: "'cantidad' debe ser un entero mayor o igual a 1." },
+        { error: "Por ahora cada compra es de una unidad ('cantidad' debe ser 1)." },
         400,
         cors,
       );
