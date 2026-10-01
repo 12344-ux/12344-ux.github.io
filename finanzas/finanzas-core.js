@@ -58,7 +58,10 @@ export function formatearCOP(entero) {
  *     "1.200,50" o el punto final de "1200.50"), se interpreta como parte
  *     DECIMAL: se descarta (el sistema no maneja centavos) y se avisa via
  *     `tieneDecimal` para que la UI lo advierta o lo rechace, nunca lo cuele.
+ *   · TRAMO 0 (estricto): puntos mal agrupados ("12.34.567", "1234.567") NO se
+ *     adivinan: se devuelve `invalido: true` y la UI debe rechazar el valor.
  *   · Campo vacio -> 0.
+ * Para campos que se reformatean mientras se escribe, usar leerMontoTecleado.
  *
  * Devuelve el ENTERO de pesos (parte entera, ignorando cualquier decimal) y
  * banderas para que la capa de UX decida. El candado autoritativo del monto
@@ -86,27 +89,76 @@ export function analizarMonto(texto) {
     limpio = limpio.slice(0, coma);
   }
 
-  // Ya sin coma: quedan solo digitos y puntos (candidatos a miles). Un punto
-  // es separador de miles solo si agrupa de a TRES digitos. Si el ultimo grupo
-  // tras un punto no tiene 3 digitos (p.ej. "1200.50" o "12.5"), ese punto es
-  // decimal: descartamos ese ultimo grupo y avisamos.
+  // Ya sin coma: quedan solo digitos y puntos.
   if (limpio.indexOf('.') !== -1) {
     const grupos = limpio.split('.');
+    // Un ultimo grupo de 1 o 2 digitos tras un punto ("1200.50", "12.5") es
+    // una parte DECIMAL escrita al estilo anglosajon: se descarta y se avisa.
     const ultimo = grupos[grupos.length - 1];
-    // Con mas de un grupo, todos menos el primero deben tener 3 digitos para
-    // ser miles legitimos. Si el ultimo no los tiene, es una parte decimal.
-    if (grupos.length > 1 && ultimo.length !== 3) {
-      const dec = grupos.pop().replace(/\D/g, '');
-      if (dec !== '') tieneDecimal = true;
-      limpio = grupos.join('.');
+    if (grupos.length > 1 && ultimo.length >= 1 && ultimo.length <= 2) {
+      grupos.pop();
+      tieneDecimal = true;
     }
+    // TRAMO 0 · ESTRICTO: si aun quedan puntos, deben ser separadores de miles
+    // BIEN FORMADOS: primer grupo de 1 a 3 digitos y todos los demas de
+    // EXACTAMENTE 3. Cualquier otra forma ("12.34.567", "1234.567", "1.2345")
+    // es ambigua: NO se adivina, se marca invalido para que la UI lo rechace.
+    if (grupos.length > 1) {
+      const [primero, ...resto] = grupos;
+      const bienFormado = /^\d{1,3}$/.test(primero) && resto.every((g) => /^\d{3}$/.test(g));
+      if (!bienFormado) return { valor: 0, tieneDecimal, invalido: true };
+    }
+    limpio = grupos.join('');
   }
 
-  const soloDigitos = limpio.replace(/\D/g, '');
-  if (soloDigitos === '') return { valor: 0, tieneDecimal, invalido: false };
-  const n = parseInt(soloDigitos, 10);
+  if (limpio === '') return { valor: 0, tieneDecimal, invalido: false };
+  const n = parseInt(limpio, 10);
   if (!Number.isFinite(n)) return { valor: 0, tieneDecimal, invalido: true };
   return { valor: n, tieneDecimal, invalido: false };
+}
+
+/**
+ * TRAMO 0 · Lectura de un campo de monto que se REFORMATEA MIENTRAS SE ESCRIBE
+ * (Nuevo asiento / Editar asiento ponen los puntos de miles en cada tecla).
+ *
+ * El problema que corrige (verificado): en esos campos los puntos los pone el
+ * PROPIO sistema. analizarMonto (pensado para un texto completo) los leia como
+ * decimales al teclear o borrar:
+ *   · escribir 1234567 digito a digito daba 167 ("1.234" + "5" = "1.2345");
+ *   · borrar el ultimo digito de "24.900" dejaba 24 ("24.90" = decimal).
+ * Era imposible capturar montos de 5 cifras o mas tecleando.
+ *
+ * Regla: si el cambio vino de TECLEAR o BORRAR, los puntos son nuestros y se
+ * ignoran; solo la coma marca decimales (se descartan y se avisa). Un punto
+ * tecleado a mano tambien se ignora y se avisa (no hay centavos). Si el cambio
+ * vino de PEGAR o ARRASTRAR un texto, se analiza con la regla estricta de
+ * analizarMonto (puede venir con decimales o con puntos mal puestos).
+ *
+ * @param {string} texto  valor actual del campo
+ * @param {string} [tipoEntrada]  InputEvent.inputType (ej. 'insertText',
+ *   'deleteContentBackward', 'insertFromPaste'). Si falta, se usa la regla estricta.
+ * @param {string} [datoTecleado]  InputEvent.data (lo que se tecleo)
+ * @returns {{ valor:number, tieneDecimal:boolean, invalido:boolean, puntoTecleado:boolean }}
+ */
+export function leerMontoTecleado(texto, tipoEntrada, datoTecleado) {
+  const tecleado = typeof tipoEntrada === 'string'
+    && (tipoEntrada.startsWith('insert') || tipoEntrada.startsWith('delete'))
+    && !/^insertFrom(Paste|Drop|PasteAsQuotation)$/.test(tipoEntrada)
+    && tipoEntrada !== 'insertReplacementText';
+  if (!tecleado) return { ...analizarMonto(texto), puntoTecleado: false };
+
+  const puntoTecleado = typeof datoTecleado === 'string' && datoTecleado.indexOf('.') !== -1;
+  let limpio = String(texto == null ? '' : texto).replace(/[^\d,]/g, '');
+  let tieneDecimal = false;
+  const coma = limpio.indexOf(',');
+  if (coma !== -1) {
+    if (limpio.slice(coma + 1).replace(/,/g, '') !== '') tieneDecimal = true;
+    limpio = limpio.slice(0, coma);
+  }
+  if (limpio === '') return { valor: 0, tieneDecimal, invalido: false, puntoTecleado };
+  const n = parseInt(limpio, 10);
+  if (!Number.isFinite(n)) return { valor: 0, tieneDecimal, invalido: true, puntoTecleado };
+  return { valor: n, tieneDecimal, invalido: false, puntoTecleado };
 }
 
 /**
@@ -151,6 +203,97 @@ export function escaparHTML(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/**
+ * TRAMO 0 · Pinta la lista de sugerencias de cuentas PUC con NODOS DOM y
+ * textContent (nunca innerHTML con datos de la base). Antes Nuevo asiento y
+ * Editar asiento concatenaban el nombre de la cuenta dentro de innerHTML: un
+ * nombre con marcado (<img onerror=...>) se ejecutaba en la sesion de quien
+ * abria el buscador (XSS almacenado). Compartido por ambas pantallas.
+ * @param {HTMLElement} sug  contenedor de la lista
+ * @param {Array<{codigo:string, nombre?:string}>} cuentas
+ * @param {(cuenta:object) => void} alElegir  se llama al elegir una cuenta
+ */
+export function pintarSugerenciasCuentas(sug, cuentas, alElegir) {
+  sug.replaceChildren();
+  if (!cuentas || !cuentas.length) {
+    const vacio = document.createElement('div');
+    vacio.className = 'fz-sug-item';
+    const txt = document.createElement('span');
+    txt.className = 'fz-sug-nombre';
+    txt.textContent = 'Sin resultados';
+    vacio.append(txt);
+    sug.append(vacio);
+    sug.classList.add('open');
+    return;
+  }
+  for (const c of cuentas) {
+    const item = document.createElement('div');
+    item.className = 'fz-sug-item';
+    item.dataset.codigo = String(c.codigo == null ? '' : c.codigo);
+    const badge = document.createElement('span');
+    badge.className = 'fz-badge';
+    badge.textContent = String(c.codigo == null ? '' : c.codigo);
+    const nombre = document.createElement('span');
+    nombre.className = 'fz-sug-nombre';
+    nombre.textContent = String(c.nombre == null ? '' : c.nombre);
+    item.append(badge, nombre);
+    item.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      alElegir(c);
+      sug.classList.remove('open');
+    });
+    sug.append(item);
+  }
+  sug.classList.add('open');
+}
+
+/**
+ * TRAMO 0 · Aplica la lectura de un campo de monto (de leerMontoTecleado):
+ *   · Si es ILEGIBLE: conserva el texto tal cual, lo marca aria-invalid (se ve
+ *     en rojo) y explica por que. Nunca lo convierte en otro numero.
+ *   · Si es legible: lo reescribe formateado y avisa si se descarto un decimal
+ *     o si se tecleo un punto a mano.
+ * El aviso de "ilegible" lo limpia recalcular() cuando ya no queda ninguno
+ * (ver hayMontoInvalido). Devuelve el entero de pesos (0 si es ilegible).
+ * @param {HTMLInputElement} el
+ * @param {{valor:number, tieneDecimal:boolean, invalido:boolean, puntoTecleado?:boolean}} lectura
+ * @param {HTMLElement} msgEl
+ * @returns {number}
+ */
+export function aplicarLecturaMonto(el, lectura, msgEl) {
+  if (lectura.invalido) {
+    el.setAttribute('aria-invalid', 'true');
+    msgEl.className = 'fz-msg err';
+    msgEl.textContent = 'No pudimos leer "' + el.value + '" como monto: los puntos no estan cada tres cifras. ' +
+      'Escribe solo las cifras (los puntos de miles los pone el sistema).';
+    msgEl.dataset.aviso = 'invalido';
+    return 0;
+  }
+  el.removeAttribute('aria-invalid');
+  el.value = lectura.valor > 0 ? formatearCOP(lectura.valor) : '';
+  if (lectura.tieneDecimal) {
+    msgEl.className = 'fz-msg err';
+    msgEl.textContent = 'Los montos son pesos enteros, sin centavos. Se detecto un decimal y se ignoro: revisa el valor (quedo en ' + formatearCOP(lectura.valor) + ').';
+    msgEl.dataset.aviso = 'decimal';
+  } else if (lectura.puntoTecleado) {
+    msgEl.className = 'fz-msg err';
+    msgEl.textContent = 'No hace falta escribir puntos: el sistema los pone solo. Los montos son pesos enteros, sin centavos.';
+    msgEl.dataset.aviso = 'punto';
+  } else if (msgEl.dataset.aviso === 'decimal' || msgEl.dataset.aviso === 'punto') {
+    msgEl.textContent = ''; msgEl.className = 'fz-msg'; msgEl.dataset.aviso = '';
+  }
+  return lectura.valor;
+}
+
+/**
+ * TRAMO 0 · true si algun campo de monto del contenedor quedo ILEGIBLE.
+ * @param {HTMLElement} contenedor
+ * @returns {boolean}
+ */
+export function hayMontoInvalido(contenedor) {
+  return !!contenedor.querySelector('.fz-debe[aria-invalid="true"], .fz-haber[aria-invalid="true"]');
 }
 
 // ------------------------------------------------------------

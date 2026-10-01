@@ -63,16 +63,20 @@ export function formatearCOP(entero) {
  * centavos) sin avisar. Aqui el punto agrupa miles ("1.200.000" -> 1200000) y
  * cualquier parte decimal (coma, o punto que no agrupa de a tres) se descarta
  * y se avisa via `tieneDecimal`, nunca se cuela como pesos.
+ * TRAMO 0 (estricto): puntos mal agrupados ("12.34.567") devuelven
+ * `invalido: true`; la pantalla debe rechazar el valor, nunca adivinarlo.
  * @param {string} texto
  * @returns {{ valor:number, tieneDecimal:boolean, invalido:boolean }}
  */
 export function analizarMonto(texto) {
   if (texto == null) return { valor: 0, tieneDecimal: false, invalido: false };
+  // Quita todo lo que no sea digito, punto o coma (espacios, $, letras, signos).
   let limpio = String(texto).replace(/[^\d.,]/g, '');
   if (limpio === '') return { valor: 0, tieneDecimal: false, invalido: false };
 
   let tieneDecimal = false;
 
+  // Una coma siempre marca la parte decimal (centavos): la separamos.
   const coma = limpio.indexOf(',');
   if (coma !== -1) {
     const decimales = limpio.slice(coma + 1).replace(/[.,]/g, '');
@@ -80,19 +84,30 @@ export function analizarMonto(texto) {
     limpio = limpio.slice(0, coma);
   }
 
+  // Ya sin coma: quedan solo digitos y puntos.
   if (limpio.indexOf('.') !== -1) {
     const grupos = limpio.split('.');
+    // Un ultimo grupo de 1 o 2 digitos tras un punto ("1200.50", "12.5") es
+    // una parte DECIMAL escrita al estilo anglosajon: se descarta y se avisa.
     const ultimo = grupos[grupos.length - 1];
-    if (grupos.length > 1 && ultimo.length !== 3) {
-      const dec = grupos.pop().replace(/\D/g, '');
-      if (dec !== '') tieneDecimal = true;
-      limpio = grupos.join('.');
+    if (grupos.length > 1 && ultimo.length >= 1 && ultimo.length <= 2) {
+      grupos.pop();
+      tieneDecimal = true;
     }
+    // TRAMO 0 · ESTRICTO: si aun quedan puntos, deben ser separadores de miles
+    // BIEN FORMADOS: primer grupo de 1 a 3 digitos y todos los demas de
+    // EXACTAMENTE 3. Cualquier otra forma ("12.34.567", "1234.567", "1.2345")
+    // es ambigua: NO se adivina, se marca invalido para que la UI lo rechace.
+    if (grupos.length > 1) {
+      const [primero, ...resto] = grupos;
+      const bienFormado = /^\d{1,3}$/.test(primero) && resto.every((g) => /^\d{3}$/.test(g));
+      if (!bienFormado) return { valor: 0, tieneDecimal, invalido: true };
+    }
+    limpio = grupos.join('');
   }
 
-  const soloDigitos = limpio.replace(/\D/g, '');
-  if (soloDigitos === '') return { valor: 0, tieneDecimal, invalido: false };
-  const n = parseInt(soloDigitos, 10);
+  if (limpio === '') return { valor: 0, tieneDecimal, invalido: false };
+  const n = parseInt(limpio, 10);
   if (!Number.isFinite(n)) return { valor: 0, tieneDecimal, invalido: true };
   return { valor: n, tieneDecimal, invalido: false };
 }

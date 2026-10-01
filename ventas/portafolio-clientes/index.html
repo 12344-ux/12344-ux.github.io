@@ -20,9 +20,10 @@
   MAGANDHI · Area de Ventas · Portafolio de clientes · LISTA.
   La cartera de clientes con sus metricas OBJETIVAS derivadas de pedidos reales
   (vista portafolio_metricas: ultima_compra, num_pedidos, total_gastado). Se
-  cruza con clientes para el contacto (correo/telefono/ciudad). Filtrable y
-  ordenable por total gastado y por ultima compra, con buscador por nombre/
-  correo/telefono. Cada fila enlaza a ver.html?id=<customer_id>.
+  cruza con clientes para el contacto (correo/telefono/ciudad). Ordenable por
+  total gastado, recencia, pedidos o nombre (orden en el SERVIDOR sobre toda la
+  cartera) y con buscador por nombre/correo/telefono que consulta TODA la
+  cartera (Tramo 0). Cada fila enlaza a ver.html?id=<customer_id>.
 
   SOLO EL DATO OBJETIVO (regla de identidad de Impulse): aqui NO se interpreta
   la "salud" del cliente (sano / en riesgo / dormido). Eso es trabajo del
@@ -65,57 +66,84 @@
   const orden = document.getElementById('vt-orden');
 
   // ============================================================
-  // PATRON N+1 (deteccion de truncamiento) — mismo patron que el Libro Diario
-  // e Inventario en este tramo (D5). La FUENTE DE VERDAD del listado (y del
-  // conteo) es portafolio_metricas: le pedimos SIEMPRE una fila extra
-  // (CLIENTES_N + 1). Si vuelve esa fila de mas, HAY mas clientes de los que
-  // mostramos: nos quedamos con CLIENTES_N y pintamos un aviso sobrio que
-  // apunta al buscador (el listado se ordena/filtra en cliente, asi que el
-  // buscador es la via honesta para llegar al resto). La consulta de contacto
-  // (clientes) mantiene un limite ALINEADO (CLIENTES_N) porque SOLO hidrata
-  // correo/telefono/ciudad por id; no manda en el conteo. Si esa consulta
-  // falla, ya se degrada hoy (contactoPorId queda vacio) y no se toca. El
-  // aviso solo se evalua sobre datos traidos.
+  // TRAMO 0 · BUSQUEDA GLOBAL REAL (antes era falsa)
+  // ------------------------------------------------------------
+  // ANTES: se traian 2.000 clientes y el buscador filtraba SOLO esos en
+  // memoria, pero el aviso decia "usa el buscador para encontrar uno del
+  // resto". Era imposible: el resto nunca llegaba al navegador. Ademas el
+  // contacto se hidrataba con otros 2.000 clientes sin relacion con los
+  // primeros (algunos salian sin correo/telefono) y el orden se aplicaba solo
+  // sobre la muestra.
+  //
+  // AHORA, dos modos, ambos contra TODA la cartera en el servidor:
+  //   · LISTADO (sin texto): portafolio_metricas se ORDENA EN EL SERVIDOR con el
+  //     criterio elegido (desempate estable por customer_id) y se traen los
+  //     primeros CLIENTES_N. Cambiar el orden vuelve a consultar.
+  //   · BUSQUEDA (2+ caracteres): se busca en clientes por nombre, correo,
+  //     telefono (tal cual y solo digitos). Las coincidencias se cruzan con sus
+  //     metricas y se ordenan en el navegador (son <= CLIENTES_N).
+  // El contacto se trae SOLO para los ids mostrados, en lotes.
+  // Patron N+1 para detectar truncamiento (como el Libro Diario e Inventario).
   // ============================================================
-  const CLIENTES_N = 2000; // clientes que se muestran en el portafolio
+  const CLIENTES_N = 2000; // maximo de clientes que se pintan a la vez
+  const LOTE_IDS = 150;     // ids por consulta .in() (URL corta y segura)
+  const MIN_BUSQUEDA = 2;
 
-  // Datos en memoria: metricas del portafolio cruzadas con el contacto.
+  // Criterio de orden del selector -> columna de portafolio_metricas.
+  const ORDEN_SERVIDOR = {
+    total_desc:   { col: 'total_gastado', asc: false },
+    total_asc:    { col: 'total_gastado', asc: true },
+    reciente:     { col: 'ultima_compra', asc: false },
+    antigua:      { col: 'ultima_compra', asc: true },
+    pedidos_desc: { col: 'num_pedidos',   asc: false },
+    nombre:       { col: 'nombre',        asc: true }
+  };
+
   let filas = [];
-  // Se pinta el aviso de truncamiento solo cuando la fuente (portafolio_metricas)
-  // devolvio mas de CLIENTES_N filas.
   let hayMas = false;
+  let modoBusqueda = false;
+  let consultaActual = 0; // descarta respuestas viejas si el usuario sigue escribiendo
 
-  async function cargar() {
-    lista.innerHTML = '<p class="vt-empty">Cargando clientes...</p>';
+  // Mismo saneamiento que Inventario: quita los caracteres con significado en
+  // el filtro .or() de PostgREST y el comodin %.
+  function limpiarTermino(q) {
+    return String(q).replace(/[,()%*\\]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
 
-    // Metricas objetivas (una fila por cliente). FUENTE del listado: pedimos
-    // N+1 para saber si hay mas de los que mostramos.
-    const { data: metricas, error: eM } = await supabase
-      .from('portafolio_metricas')
-      .select('customer_id, nombre, ultima_compra, num_pedidos, total_gastado')
-      .limit(CLIENTES_N + 1); // N+1: la fila extra revela si hay mas
-    if (eM) {
-      lista.innerHTML = '<div class="vt-empty">No se pudo cargar el portafolio. <strong>' +
-        escaparHTML(eM.message || 'Error') + '</strong></div>';
-      return;
+  function enLotes(arr, n) {
+    const out = [];
+    for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+    return out;
+  }
+
+  // Contacto (correo/telefono/ciudad) SOLO de los ids pedidos, en lotes.
+  async function contactosDe(ids) {
+    const mapa = new Map();
+    for (const lote of enLotes(ids, LOTE_IDS)) {
+      const { data, error } = await supabase
+        .from('clientes').select('id, correo, telefono, ciudad').in('id', lote);
+      if (error) throw error;
+      (data || []).forEach((c) => mapa.set(c.id, c));
     }
+    return mapa;
+  }
 
-    // Si llego la fila extra, hay mas de CLIENTES_N: nos quedamos con CLIENTES_N.
-    const todas = metricas || [];
-    hayMas = todas.length > CLIENTES_N;
-    const metricasVis = hayMas ? todas.slice(0, CLIENTES_N) : todas;
+  // Metricas SOLO de los ids pedidos, en lotes (modo busqueda).
+  async function metricasDe(ids) {
+    const out = [];
+    for (const lote of enLotes(ids, LOTE_IDS)) {
+      const { data, error } = await supabase
+        .from('portafolio_metricas')
+        .select('customer_id, nombre, ultima_compra, num_pedidos, total_gastado')
+        .in('customer_id', lote);
+      if (error) throw error;
+      out.push(...(data || []));
+    }
+    return out;
+  }
 
-    // Contacto de cada cliente (correo/telefono/ciudad) desde clientes. Solo
-    // hidrata contacto por id: limite alineado (CLIENTES_N), no manda en el
-    // conteo. Si falla, contactoPorId queda vacio y se degrada con gracia.
-    const { data: clientes, error: eC } = await supabase
-      .from('clientes')
-      .select('id, correo, telefono, ciudad')
-      .limit(CLIENTES_N);
-    const contactoPorId = new Map();
-    if (!eC && clientes) clientes.forEach((c) => contactoPorId.set(c.id, c));
-
-    filas = metricasVis.map((m) => {
+  function armarFilas(metricas, contactoPorId) {
+    return metricas.map((m) => {
       const c = contactoPorId.get(m.customer_id) || {};
       return {
         id: m.customer_id,
@@ -128,40 +156,88 @@
         total_gastado: Number(m.total_gastado) || 0
       };
     });
+  }
 
-    pintar();
+  async function cargar() {
+    const miConsulta = ++consultaActual;
+    const termino = limpiarTermino(buscar.value);
+    modoBusqueda = termino.length >= MIN_BUSQUEDA;
+    lista.innerHTML = '<p class="vt-empty">' + (modoBusqueda ? 'Buscando en toda la cartera...' : 'Cargando clientes...') + '</p>';
+
+    try {
+      let metricas;
+      if (modoBusqueda) {
+        // Busca en TODA la tabla clientes (no en una muestra).
+        const patron = '%' + termino + '%';
+        const filtros = ['nombre.ilike.' + patron, 'correo.ilike.' + patron, 'telefono.ilike.' + patron];
+        const digitos = termino.replace(/\D/g, '');
+        if (digitos.length >= MIN_BUSQUEDA) filtros.push('telefono_norm.ilike.%' + digitos + '%');
+        const { data: encontrados, error } = await supabase
+          .from('clientes').select('id').or(filtros.join(','))
+          .order('id', { ascending: true })
+          .limit(CLIENTES_N + 1);
+        if (error) throw error;
+        const ids = (encontrados || []).map((c) => c.id);
+        hayMas = ids.length > CLIENTES_N;
+        metricas = await metricasDe(hayMas ? ids.slice(0, CLIENTES_N) : ids);
+      } else {
+        // Listado ordenado EN EL SERVIDOR sobre toda la cartera.
+        const o = ORDEN_SERVIDOR[orden.value] || ORDEN_SERVIDOR.total_desc;
+        const { data, error } = await supabase
+          .from('portafolio_metricas')
+          .select('customer_id, nombre, ultima_compra, num_pedidos, total_gastado')
+          .order(o.col, { ascending: o.asc, nullsFirst: false })
+          .order('customer_id', { ascending: true })
+          .limit(CLIENTES_N + 1);
+        if (error) throw error;
+        const todas = data || [];
+        hayMas = todas.length > CLIENTES_N;
+        metricas = hayMas ? todas.slice(0, CLIENTES_N) : todas;
+      }
+
+      // Contacto de los mismos ids que se muestran. Si falla, se degrada con
+      // gracia (filas sin contacto) en vez de vaciar el portafolio.
+      let contactoPorId = new Map();
+      try { contactoPorId = await contactosDe(metricas.map((m) => m.customer_id)); }
+      catch (e) { console.warn('No se pudo cargar el contacto de los clientes', e?.message || e); }
+
+      if (miConsulta !== consultaActual) return; // llego una respuesta vieja
+      filas = armarFilas(metricas, contactoPorId);
+      pintar();
+    } catch (e) {
+      if (miConsulta !== consultaActual) return;
+      lista.innerHTML = '<div class="vt-empty">No se pudo cargar el portafolio. <strong>' +
+        escaparHTML(e?.message || 'Error') + '</strong></div>';
+    }
   }
 
   function ordenar(arr) {
     const v = orden.value;
     const copia = arr.slice();
     const fecha = (x) => x.ultima_compra ? new Date(x.ultima_compra).getTime() : 0;
+    // Desempate estable por id (igual que el orden del servidor).
+    const desempate = (a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
     switch (v) {
-      case 'total_asc': copia.sort((a, b) => a.total_gastado - b.total_gastado); break;
-      case 'reciente': copia.sort((a, b) => fecha(b) - fecha(a)); break;
-      case 'antigua': copia.sort((a, b) => fecha(a) - fecha(b)); break;
-      case 'pedidos_desc': copia.sort((a, b) => b.num_pedidos - a.num_pedidos); break;
-      case 'nombre': copia.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')); break;
+      case 'total_asc': copia.sort((a, b) => a.total_gastado - b.total_gastado || desempate(a, b)); break;
+      case 'reciente': copia.sort((a, b) => fecha(b) - fecha(a) || desempate(a, b)); break;
+      case 'antigua': copia.sort((a, b) => {
+        // Sin compras al final, igual que el servidor (nulls last).
+        if (!a.ultima_compra !== !b.ultima_compra) return a.ultima_compra ? -1 : 1;
+        return fecha(a) - fecha(b) || desempate(a, b);
+      }); break;
+      case 'pedidos_desc': copia.sort((a, b) => b.num_pedidos - a.num_pedidos || desempate(a, b)); break;
+      case 'nombre': copia.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es') || desempate(a, b)); break;
       case 'total_desc':
-      default: copia.sort((a, b) => b.total_gastado - a.total_gastado); break;
+      default: copia.sort((a, b) => b.total_gastado - a.total_gastado || desempate(a, b)); break;
     }
     return copia;
   }
 
-  function filtrar(arr) {
-    const q = buscar.value.trim().toLowerCase();
-    if (!q) return arr;
-    return arr.filter((x) =>
-      x.nombre.toLowerCase().includes(q) ||
-      x.correo.toLowerCase().includes(q) ||
-      x.telefono.toLowerCase().includes(q));
-  }
-
   function pintar() {
-    const datos = ordenar(filtrar(filas));
+    const datos = ordenar(filas);
     if (!datos.length) {
-      lista.innerHTML = filas.length
-        ? '<div class="vt-empty">Ningún cliente coincide con la búsqueda.</div>'
+      lista.innerHTML = modoBusqueda
+        ? '<div class="vt-empty">Ningún cliente de la cartera coincide con la búsqueda.</div>'
         : '<div class="vt-empty">Aún no hay clientes en el portafolio. Se irán sumando conforme registres pedidos.</div>';
       return;
     }
@@ -193,20 +269,27 @@
         '<tbody>' + cuerpo + '</tbody>' +
       '</table></div>';
 
-    // Aviso de truncamiento (patron N+1): SOLO cuando portafolio_metricas
-    // devolvio mas de CLIENTES_N. El buscador (nombre/correo/telefono) filtra
-    // en cliente y es la via honesta para llegar a un cliente puntual del resto.
+    // Aviso de truncamiento honesto (patron N+1), distinto segun el modo.
     if (hayMas) {
+      const texto = modoBusqueda
+        ? 'Hay más de ' + formatearCOP(CLIENTES_N) + ' clientes que coinciden. Escribe más letras o el correo/teléfono completo para acotar.'
+        : 'Mostrando los primeros ' + formatearCOP(CLIENTES_N) + ' clientes según el orden elegido. Hay más en la cartera: ' +
+          'el buscador consulta la cartera completa por nombre, correo o teléfono.';
       lista.insertAdjacentHTML('beforeend',
-        '<div class="vt-truncado">' + (ICONOS.info || '') +
-          '<span>Mostrando ' + CLIENTES_N + ' clientes. Hay más en la cartera: ' +
-          'usa el buscador por nombre, correo o teléfono para encontrar uno puntual.</span>' +
-        '</div>');
+        '<div class="vt-truncado">' + (ICONOS.info || '') + '<span>' + escaparHTML(texto) + '</span></div>');
     }
   }
 
-  buscar.addEventListener('input', pintar);
-  orden.addEventListener('change', pintar);
+  // Buscar consulta el servidor (con pausa para no consultar en cada tecla).
+  let tBuscar;
+  buscar.addEventListener('input', () => {
+    clearTimeout(tBuscar);
+    tBuscar = setTimeout(cargar, 300);
+  });
+  // En modo busqueda las coincidencias ya estan todas: se reordena en el
+  // navegador. En el listado el orden decide QUIENES aparecen: se reconsulta.
+  // (Si una busqueda supera el maximo, el aviso pide acotarla.)
+  orden.addEventListener('change', () => { if (modoBusqueda) pintar(); else cargar(); });
 
   (async () => {
     const acceso = await asegurarAcceso(document.body, '../../panel.html');

@@ -72,10 +72,19 @@
 <script type="module">
   import {
     supabase, asegurarAcceso, montarHeader, ICONOS,
-    escaparHTML, formatearCOP, parsearMonto, parsearCantidad,
+    escaparHTML, formatearCOP, parsearMonto, analizarMonto, parsearCantidad,
     formatearFecha, hoyISO, urlPublicaImagen,
     optimizarImagen, BUCKET_PRODUCTOS
   } from '../inventario-core.js';
+
+  // TRAMO 0: monto ilegible o con centavos -> se rechaza con mensaje (ver agregar.html).
+  function errorDeMonto(etiqueta, texto) {
+    if (!texto || !texto.trim()) return null;
+    const r = analizarMonto(texto);
+    if (r.invalido) return etiqueta + ': no pudimos leer "' + texto.trim() + '". Escribe solo las cifras o con puntos cada tres cifras (ej. 24.900).';
+    if (r.tieneDecimal) return etiqueta + ': los montos son pesos enteros, sin centavos. Quita la parte decimal.';
+    return null;
+  }
 
   const main = document.getElementById('pr-main');
   const input = document.getElementById('pr-q');
@@ -589,6 +598,8 @@
     const p = productoActivo;
     const p_nombre = mCuerpo.querySelector('#pr-ed-nombre').value.trim();
     if (!p_nombre) { msg.className = 'pr-msg err'; msg.textContent = 'El nombre del producto es obligatorio.'; return; }
+    const errMonto = errorDeMonto('Costo unitario', mCuerpo.querySelector('#pr-ed-costo').value);
+    if (errMonto) { msg.className = 'pr-msg err'; msg.textContent = errMonto; return; }
 
     const p_descripcion = mCuerpo.querySelector('#pr-ed-desc').value.trim() || null;
     const p_marca = mCuerpo.querySelector('#pr-ed-marca').value.trim() || null;

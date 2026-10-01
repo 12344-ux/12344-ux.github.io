@@ -180,7 +180,7 @@
 <script type="module">
   import {
     supabase, asegurarAcceso, montarHeader, ICONOS,
-    escaparHTML, formatearCOP, parsearMonto, parsearCantidad, hoyISO
+    escaparHTML, formatearCOP, parsearMonto, analizarMonto, parsearCantidad, hoyISO
   } from '../ventas-core.js';
 
   const main = document.getElementById('vt-main');
@@ -424,6 +424,22 @@
       // Mensaje honesto: aqui solo se exige producto + cantidad. El precio se
       // valida enseguida con su propio mensaje especifico (D1.3).
       msg.textContent = 'Agrega al menos un producto con una cantidad mayor que cero.';
+      return;
+    }
+    // TRAMO 0: un precio ilegible ("12.34.567") o con centavos se RECHAZA con
+    // un mensaje que nombra el producto (antes se convertia en otro numero o se
+    // truncaba en silencio). Va antes del chequeo de precio 0 porque un precio
+    // ilegible vale 0 y daria un mensaje equivocado.
+    for (const tr of itemsBody.querySelectorAll('tr')) {
+      const textoPrecio = tr.querySelector('.vt-it-precio').value;
+      const lectura = analizarMonto(textoPrecio);
+      if (!tr.querySelector('.vt-it-prod').value || (!lectura.invalido && !lectura.tieneDecimal)) continue;
+      const p = productos.find((x) => x.id === tr.querySelector('.vt-it-prod').value);
+      const nombre = p ? (p.nombre || 'producto sin nombre') : 'producto';
+      msg.className = 'vt-msg err';
+      msg.textContent = lectura.invalido
+        ? 'No pudimos leer el precio "' + textoPrecio.trim() + '" de "' + nombre + '". Escribe solo las cifras o con puntos cada tres cifras (ej. 24.900).'
+        : 'El precio de "' + nombre + '" tiene centavos: los montos son pesos enteros. Quita la parte decimal.';
       return;
     }
     // D1.3: para una VENTA, un precio 0 casi siempre es un olvido de captura, no

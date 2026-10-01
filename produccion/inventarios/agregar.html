@@ -141,9 +141,20 @@
 <script type="module">
   import {
     supabase, asegurarAcceso, montarHeader, ICONOS,
-    parsearMonto, parsearCantidad,
+    parsearMonto, analizarMonto, parsearCantidad,
     optimizarImagen, urlPublicaImagen, BUCKET_PRODUCTOS
   } from '../inventario-core.js';
+
+  // TRAMO 0: un monto ilegible ("12.34.567") o con centavos se RECHAZA con un
+  // mensaje claro. Antes el primero se convertia en otro numero y el segundo
+  // se truncaba en silencio (el costo alimentara el asiento contable de Wompi).
+  function errorDeMonto(etiqueta, texto) {
+    if (!texto || !texto.trim()) return null;
+    const r = analizarMonto(texto);
+    if (r.invalido) return etiqueta + ': no pudimos leer "' + texto.trim() + '". Escribe solo las cifras o con puntos cada tres cifras (ej. 24.900).';
+    if (r.tieneDecimal) return etiqueta + ': los montos son pesos enteros, sin centavos. Quita la parte decimal.';
+    return null;
+  }
 
   const form = document.getElementById('pr-form');
   const altaOk = document.getElementById('pr-alta-ok');
@@ -193,6 +204,9 @@
 
     const p_nombre = document.getElementById('pr-nombre').value.trim();
     if (!p_nombre) { msgEl.className = 'pr-msg err'; msgEl.textContent = 'El nombre del producto es obligatorio.'; return; }
+    const errMonto = errorDeMonto('Costo unitario', document.getElementById('pr-costo').value)
+      || errorDeMonto('Precio de venta', document.getElementById('pr-precio').value);
+    if (errMonto) { msgEl.className = 'pr-msg err'; msgEl.textContent = errMonto; return; }
 
     const p_categoria = document.getElementById('pr-categoria').value.trim() || null;
     const p_descripcion = document.getElementById('pr-descripcion').value.trim() || null;

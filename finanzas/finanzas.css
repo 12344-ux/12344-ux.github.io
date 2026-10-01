@@ -294,6 +294,9 @@ body.fz-body{
 }
 .fz-cell input:focus{outline:0;border-color:var(--fz-marino);
   box-shadow:0 0 0 3px rgba(16,28,51,.10)}
+/* Tramo 0: monto ilegible (se conserva el texto y se bloquea el guardado) */
+.fz-cell input[aria-invalid="true"]{border-color:var(--fz-debe);
+  box-shadow:0 0 0 3px rgba(166,51,46,.14)}
 /* cuenta con lupa */
 .fz-cell.cuenta input{padding-left:34px}
 .fz-cell.cuenta .fz-search-ico{
