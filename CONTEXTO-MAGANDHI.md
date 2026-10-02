@@ -331,16 +331,18 @@ llave pública sandbox en `pagos_config` y corrió los grants (migración
 `20250605000000`). PRs mergeados: back-office #208–#213, tienda #38–#39. El detalle
 y las ⚠️ LECCIONES DE F1 están en `ANDAMIOS.md` (leerlas antes de tocar Edge Functions).
 
-### 🔨 TRAMO 0 (correcciones de la auditoría) — PRIMERO, antes de F2
-Rama `fix/tramo0-auditoria`. Cierra 9 hallazgos (vistas que se saltaban la RLS,
-EXECUTE abierto a anon, doble anulación, cantidad libre en F1, XSS de cuentas,
-parser de montos, buscador falso del Portafolio, fechas de la Proyección) y deja
-`supabase/pruebas/matriz-permisos.sql`. Al cerrarlo (3 SQL + redeploy + matriz
-`TODO PASA` en el proyecto real) se sigue con F2. **Regla nueva:** toda función
-SQL nueva nace cerrada; su migración debe traer `grant execute ... to
-authenticated` si el frontend la llama (INSTRUCCIONES § T0.5).
+### ✅ TRAMO 0 (correcciones de la auditoría) — CERRADO Y VERIFICADO
+PR #215 mergeado. Cerró 9 hallazgos (vistas que se saltaban la RLS, EXECUTE
+abierto a anon, doble anulación, cantidad libre en F1, XSS de cuentas, parser de
+montos, buscador falso del Portafolio, fechas de la Proyección) y dejó
+`supabase/pruebas/matriz-permisos.sql`. El dueño corrió los 3 SQL, redesplegó la
+Edge Function y la matriz dio **170/170 · TODO PASA** en producción. Verificado
+también con la publishable key (anon ya no lee vistas internas ni RPC; la Edge
+Function rechaza cantidad ≠ 1). **Regla nueva:** toda función SQL nueva nace
+cerrada; su migración debe traer `grant execute ... to authenticated` si el
+frontend la llama (INSTRUCCIONES § T0.5).
 
-### ➡️ DESPUÉS: TRAMO F2 (webhook + idempotencia + estados)
+### ➡️ AQUÍ SE RETOMA: TRAMO F2 (webhook + idempotencia + estados)
 Nota de diseño que dejó la auditoría para F2: F1 hoy no guarda la intención; el
 webhook no podrá reconstruir producto/cantidad desde la referencia. F2 debe
 empezar persistiendo la intención (estado INITIATED) en `pagos_wompi` antes de
