@@ -395,8 +395,13 @@ _Detalle, orden y verificación: `supabase/INSTRUCCIONES.md` § TRAMO 0._
 - [x] **T0.8** — Proyección: periodos proyectados desde el último analizado.
 - [x] **T0.9** — EXECUTE nominal (anon 32→0 funciones; authenticated = 26) +
   funciones futuras nacen cerradas. (`20250606000200`)
-- [ ] **Cierre** — el dueño corre los 3 SQL, redespliega la Edge Function y la
-  matriz da `TODO PASA` en el proyecto real.
+- [x] **Cierre** — el dueño corrió los 3 SQL (Success), redesplegó la Edge
+  Function y la matriz dio **170/170 · TODO PASA** en el proyecto real.
+  Verificado además con la publishable key: `saldos_cuenta`/`movimientos_mayor`/
+  `stock_actual`/`tiene_modulo`/`crear_pedido` devuelven `42501 permission
+  denied` para anon; `catalogo_publico` sí responde (Grisi `agotado:false`).
+  La Edge Function rechaza `cantidad` 2 y 1000 (HTTP 400) y firma con
+  `cantidad` 1 ($69.900 → `monto_en_centavos` 6990000) sin exponer secretos.
 - ⏭️ **Aparte (no incluido):** `buscar_candidatos_cliente` falla si
   `fuzzystrmatch` no está en `public` (preexistente; ver INSTRUCCIONES T0.6).
 
@@ -484,7 +489,7 @@ _Detalle, orden y verificación: `supabase/INSTRUCCIONES.md` § TRAMO 0._
 | D4 | Ranking vs anulaciones | ✅ | [#204](https://github.com/12344-ux/12344-ux.github.io/pull/204) | solo frontend |
 | D5 | Truncamiento/paginación | ✅ | [#205](https://github.com/12344-ux/12344-ux.github.io/pull/205) | Diario paginado + avisos en 5 pantallas |
 | E1 | Impulse: serie temporal + paginación | ✅ | [#206](https://github.com/12344-ux/12344-ux.github.io/pull/206) | identidad Impulse · solo frontend |
-| T0 | Correcciones de la auditoría (pre-F2) | 🔨 | rama `fix/tramo0-auditoria` | 3 SQL + redeploy Edge Fn · ver INSTRUCCIONES.md § TRAMO 0 · matriz de permisos 170/170 en local |
+| T0 | Correcciones de la auditoría (pre-F2) | ✅ | [#215](https://github.com/12344-ux/12344-ux.github.io/pull/215) | mergeado · 3 SQL corridos + Edge Fn redesplegada · **VERIFICADO en producción**: anon ya no lee vistas internas/RPC, cantidad limitada a 1 (HTTP 400), matriz de permisos **170/170 TODO PASA** |
 | F1 | Wompi: intención de pago | ✅ | back-office [#208](https://github.com/12344-ux/12344-ux.github.io/pull/208) [#209](https://github.com/12344-ux/12344-ux.github.io/pull/209) [#210](https://github.com/12344-ux/12344-ux.github.io/pull/210) [#211](https://github.com/12344-ux/12344-ux.github.io/pull/211) [#212](https://github.com/12344-ux/12344-ux.github.io/pull/212) · tienda [#38](https://github.com/12344-ux/magandhi/pull/38) [#39](https://github.com/12344-ux/magandhi/pull/39) | **VERIFICADO con evidencia:** checkout REAL de Wompi alcanzado en sandbox (métodos de pago cargados). Edge Fn desplegada + secret + llave pública + grants |
 | F2 | Wompi: webhook + idempotencia | ⬜ | — | Edge Fn + SQL |
 | F3 | Wompi: asiento automático | ⬜ | — | SQL dueño |
