@@ -293,7 +293,7 @@ export function montarHeader(opts) {
   const hrefVolver = volverHref || 'index.html';
   const txtVolver = volverTexto || 'Producción';
   const rotulo = areaLabel || 'ÁREA DE PRODUCCIÓN';
-  const logo = logoSrc || (raiz + 'logo-mark-terracota.png');
+  const logo = logoSrc || (raiz + 'logo-mark-terracota.png?v=2');
 
   const header = document.createElement('header');
   header.className = 'pr-header';

@@ -424,7 +424,7 @@
   border:1px solid rgba(201,150,46,.35);border-radius:999px;padding:5px 12px;
 }
 .cm-preview-sello svg{width:14px;height:14px;flex:none}
-.cm-preview-sello .cm-preview-estrella{color:#C9962E}
+.cm-preview-sello .cm-preview-estrella{color:#C28A3A}
 .cm-preview-sello[hidden]{display:none}
 .cm-preview-precio{display:flex;align-items:baseline;gap:7px}
 .cm-preview-precio .n{font-size:22px;font-weight:700;color:var(--mk-marino);font-variant-numeric:tabular-nums}

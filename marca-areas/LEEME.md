@@ -1,51 +1,30 @@
-# Logos por área — Back-office MAGANDHI
+# Identidad por área · back-office MAGANDHI
 
-Esta carpeta guarda los íconos/logos que distinguen cada área interna de
-montaguth.institute (control interno), conservando la identidad de marca
-de MAGANDHI pero con una variación cromática por área.
+Estos favicons distinguen superficies internas de `montaguth.institute`. No forman parte de la tienda pública y no modifican el logo comercial maestro.
 
-## Favicons oficiales (en uso)
+## Archivos en uso
 
-- `control-interno.png` → ícono GENERAL (login / panel de montaguth.institute).
-  Domo MAGANDHI + escudo, en **azul marino**. PNG con **fondo transparente**.
-- `finanzas.png` → ícono del Área de Finanzas.
-  Domo MAGANDHI + moneda ($) y gráfico ascendente, en **verde**. PNG con
-  **fondo transparente**.
-- `produccion.png` → ícono del Área de Producción (Inventarios adentro).
-  **PLACEHOLDER provisional**: es una copia de `control-interno.png` (azul
-  marino) para que las páginas de `produccion/` no queden con un favicon 404.
-  El dueño debe **reemplazarlo** por el arte final del área (base del domo
-  MAGANDHI en la **familia azul marino** del back-office, sin color nuevo) y
-  subir el `?v=N` del `<link rel="icon">` de las páginas de Producción.
-- `marketing.png` → ícono del Área de Marketing (Marketing Project adentro).
-  **PLACEHOLDER provisional**: es una copia de `control-interno.png` (azul
-  marino) para que las páginas de `marketing/` no queden con un favicon 404.
-  El dueño debe **reemplazarlo** por el arte final del área (base del domo
-  MAGANDHI en la **familia azul marino** del back-office, **sin color nuevo**:
-  el verde ya es de Finanzas) y subir el `?v=N` del `<link rel="icon">` de las
-  páginas de Marketing.
-- `ventas.png` → ícono del Área de Ventas (Seguimiento de pedidos y Portafolio
-  de clientes adentro).
-  **PLACEHOLDER provisional**: es una copia de `control-interno.png` (azul
-  marino) para que las páginas de `ventas/` no queden con un favicon 404.
-  El dueño debe **reemplazarlo** por el arte final del área (base del domo
-  MAGANDHI en la **familia azul marino** del back-office, **sin color nuevo**:
-  el verde ya es de Finanzas) y subir el `?v=N` del `<link rel="icon">` de las
-  páginas de Ventas.
+- `control-interno.png`: login y panel general, azul operativo.
+- `finanzas.png`: Finanzas, verde funcional.
+- `marketing.png`: Marketing, actualmente comparte el arte azul general.
+- `produccion.png`: Producción/Inventarios, actualmente comparte el arte azul general.
+- `ventas.png`: Ventas, actualmente comparte el arte azul general.
 
-Ambos los diseñó el dueño y se exportaron con fondo transparente (removebg /
-Firefly). Se referencian con `?v=N` (cache-bust) en el `<link rel="icon">` de
-cada página.
+Marketing, Producción y Ventas son **copias temporales deliberadas**, no tres identidades terminadas. Evitan favicons rotos y mantienen una sola familia azul mientras se decide si cada área necesita un símbolo propio. No deben describirse como “oficiales distintos”.
 
-## Sistema por áreas (a futuro)
+## Jerarquía de marca
 
-Cada área nueva del back-office (ej. pedidos, inventario) tendrá su propio
-ícono con **color representativo**, conservando la base del domo MAGANDHI.
-Esto es SOLO para el back-office interno (montaguth.institute), nunca para la
-tienda pública magandhi.com.
+1. El logo maestro comercial vive en el repositorio público `magandhi`, en `marca/logo/logo-magandhi.svg`.
+2. Login/panel usan derivados terracota sincronizados con ese maestro.
+3. Las áreas internas aplican color funcional: azul operativo y verde para Finanzas.
+4. No se introduce un color nuevo por área sin una decisión explícita del sistema interno.
 
-## Cómo actualizar un favicon
+## Actualización
 
-Sube el PNG (idealmente cuadrado, fondo transparente) con el nombre del área
-y sube el `?v=N` del `<link rel="icon">` en las páginas correspondientes para
-forzar que el navegador tome la versión nueva.
+Al reemplazar un favicon:
+
+1. partir del logo/sistema oficial, no de un JPG antiguo;
+2. exportar PNG cuadrado, transparente y por debajo de 2000px;
+3. conservar el nombre estable del área;
+4. incrementar `?v=N` en todas las páginas que lo usan;
+5. verificar por DOM que ninguna ruta produzca 404.

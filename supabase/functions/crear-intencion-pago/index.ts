@@ -1,5 +1,5 @@
 // ============================================================================
-// Magandhi Corporation · Edge Function · crear-intencion-pago (Fase F · Tramo F1.2)
+// MAGANDHI · Edge Function · crear-intencion-pago (Fase F · Tramo F1.2)
 // ----------------------------------------------------------------------------
 // PRIMERA Edge Function del proyecto. Recibe del navegador (tienda magandhi.com)
 // un identificador de producto (slug o id de catalogo_publico) + una cantidad,
@@ -378,8 +378,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // PROVISIONAL hasta F2.3 (pagina de gracias). Mientras no exista /gracias/,
   // redirigimos a la pagina del producto con la referencia como parametro, para
   // que el comprador vuelva a un lugar conocido de la tienda.
+  const destinoProducto = fila.slug
+    ? `slug=${encodeURIComponent(String(fila.slug))}`
+    : `id=${encodeURIComponent(String(fila.id ?? ""))}`;
   const urlRedireccion =
-    `https://magandhi.com/producto/?slug=${encodeURIComponent(fila.slug ?? "")}` +
+    `https://magandhi.com/producto/?${destinoProducto}` +
     `&ref=${encodeURIComponent(referencia)}`;
 
   // --- Respuesta 200: SOLO datos publicos -----------------------------------

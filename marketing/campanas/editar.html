@@ -7,15 +7,15 @@
 <meta name="description" content="Editar campaña · ajustar la presentación de un producto del Área de Marketing de Magandhi.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" type="image/png" href="../../marca-areas/marketing.png?v=1">
-<link rel="apple-touch-icon" href="../../icono-app-180.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=2">
 <meta name="theme-color" content="#101C33">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../../marca.css?v=1">
+<link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=1">
-<link rel="stylesheet" href="campanas.css?v=1">
+<link rel="stylesheet" href="campanas.css?v=2">
 
 <!--
   MAGANDHI · Area de Marketing · Sub-area CAMPANAS · EDITAR.
@@ -28,20 +28,17 @@
   escribir).
 
   CONEXION CON INVENTARIO (Tanda 2 · la incision): Campanas YA se liga a
-  Inventario por product_id_ref (el <select id="cm-producto"> lo precarga y lo
-  guarda via la RPC). El estado "Agotado" YA NO es manual: se deriva SOLO del
-  stock REAL de Inventario (catalogo_publico.agotado = existencias <= 0) y la
-  tienda deshabilita la compra por si sola al llegar a cero. El campo
-  stock_disponible que se edita aqui sigue siendo un dato MANUAL de la tabla
-  campana_producto (lectura/escritura autenticada directa; NO alimenta el
-  Agotado real, se conserva por compatibilidad). El AVISO DE URGENCIA sigue
-  siendo MANUAL y honesto (por ejemplo, cuando de verdad quedan 3 unidades); por
-  eso, si el switch esta activo, la cantidad es obligatoria (> 0).
+  Inventario por product_id_ref. El estado "Agotado" se deriva del stock REAL
+  de Inventario y la tienda deshabilita la compra al llegar a cero. El antiguo
+  stock manual de Campañas ya no forma parte de esta interfaz; la columna se
+  conserva temporalmente en la base solo por compatibilidad histórica. El AVISO
+  DE URGENCIA sigue siendo manual y honesto, independiente del stock exacto.
 
   NADA SE BORRA: despublicar NO borra la ficha (solo la saca de la tienda);
   inactivar seria baja logica. La informacion siempre queda viva.
 
-  El color del banner es AUTOMATICO segun la categoria (no hay color manual).
+  La categoria clasifica el producto. La tienda pública conserva una paleta fija
+  de marca; no cambia de color por categoria.
 -->
 </head>
 <body class="mk-body">
@@ -61,7 +58,7 @@
           <span class="cm-seccion-num">1</span>
           <div>
             <h2 class="cm-seccion-tit">Banner hook</h2>
-            <p class="cm-seccion-sub">Lo que engancha en el grid del home: categoría (define el color), nombre, presentación, gancho corto e imagen principal.</p>
+            <p class="cm-seccion-sub">Lo que aparece en el grid del home: categoría, nombre, presentación, gancho corto e imagen principal.</p>
           </div>
         </div>
         <div class="cm-campos">
@@ -70,7 +67,7 @@
             <select id="cm-categoria" class="mk-select">
               <option value="">Sin categoría</option>
             </select>
-            <span class="cm-campo-ayuda">El color del banner es automático según la categoría (se ve en la vista previa). No hay color manual.</span>
+            <span class="cm-campo-ayuda">Clasifica el producto para organización y análisis. La tienda conserva la paleta fija de MAGANDHI.</span>
           </div>
           <div class="cm-campo">
             <label for="cm-producto" class="cm-campo-lbl">Producto de Inventario</label>
@@ -253,16 +250,6 @@
             </label>
           </div>
 
-          <div class="cm-switch-fila">
-            <div class="cm-switch-texto">
-              <b>Stock disponible (manual)</b>
-              <span>Unidades que declaras a mano. Hoy no se conecta con Inventario; el estado “Agotado” está preparado en el diseño pero no se dispara solo todavía.</span>
-              <div class="cm-sub" style="display:block">
-                <input id="cm-stock" class="mk-input" type="number" min="0" step="1" inputmode="numeric" value="0">
-              </div>
-            </div>
-          </div>
-
         </div>
       </section>
 
@@ -304,7 +291,7 @@
     </div>
 
     <!-- Columna derecha: vista previa en vivo del banner-hook. -->
-    <aside class="cm-preview-col" id="cm-preview" style="--cm-acento:#6E6A66;--cm-acento-cl:#A8A29C;--cm-acento-sombra:rgba(110,106,102,.15)">
+    <aside class="cm-preview-col" id="cm-preview" style="--cm-acento:#C28A3A;--cm-acento-cl:#D9AE6E;--cm-acento-sombra:rgba(194,138,58,.16)">
       <span class="cm-preview-lbl">Vista previa</span>
       <div class="cm-preview-card">
         <div class="cm-preview-banner">
@@ -623,7 +610,7 @@
     const key = claveAleatoria() + '.' + ext;
     const { error } = await supabase.storage
       .from(BUCKET_CAMPANAS)
-      .upload(key, blob, { contentType, upsert: true });
+      .upload(key, blob, { contentType, upsert: false });
     if (error) throw error;
     return key;
   }
@@ -634,15 +621,16 @@
     const keyGrande = base + '.' + item.grande.ext;
     const { error: e1 } = await supabase.storage
       .from(BUCKET_CAMPANAS)
-      .upload(keyGrande, item.grande.blob, { contentType: item.grande.tipo, upsert: true });
+      .upload(keyGrande, item.grande.blob, { contentType: item.grande.tipo, upsert: false });
     if (e1) throw e1;
     let keySm = null;
     try {
       const kSm = base + '-sm.' + item.liviana.ext;
-      await supabase.storage
+      const { error: e2 } = await supabase.storage
         .from(BUCKET_CAMPANAS)
-        .upload(kSm, item.liviana.blob, { contentType: item.liviana.tipo, upsert: true });
-      keySm = kSm; // solo se registra si subio de verdad
+        .upload(kSm, item.liviana.blob, { contentType: item.liviana.tipo, upsert: false });
+      if (e2) throw e2;
+      keySm = kSm; // solo se registra si Supabase confirmo la subida
     } catch (_) { /* la liviana es opcional */ }
     return { keyGrande, keySm };
   }
@@ -670,7 +658,7 @@
   }
 
   // ------------------------------------------------------------
-  // VISTA PREVIA EN VIVO
+  // VISTA PREVIA EN VIVO (misma paleta fija de la tienda publica)
   // ------------------------------------------------------------
   const preview = $('cm-preview');
   function categoriaPorCodigo(cod) {
@@ -678,9 +666,9 @@
   }
   function refrescarPreview() {
     const cat = categoriaPorCodigo($('cm-categoria').value);
-    preview.style.setProperty('--cm-acento', cat?.color_fuerte || '#6E6A66');
-    preview.style.setProperty('--cm-acento-cl', cat?.color_claro || '#A8A29C');
-    preview.style.setProperty('--cm-acento-sombra', cat?.color_sombra || 'rgba(110,106,102,.15)');
+    preview.style.setProperty('--cm-acento', '#C28A3A');
+    preview.style.setProperty('--cm-acento-cl', '#D9AE6E');
+    preview.style.setProperty('--cm-acento-sombra', 'rgba(194,138,58,.16)');
     $('pv-cat').textContent = cat?.nombre || 'Sin categoría';
 
     const nombre = $('cm-nombre').value.trim();
@@ -868,7 +856,7 @@
       .from('campana_producto')
       .select('id, nombre, slug, categoria_codigo, detalle_presentacion, hook_corto, imagen_banner_path, ' +
               'caracteristica_adicional, precio_venta, hook_largo, por_que_magandhi, sobre_este_producto, ' +
-              'ficha_tecnica, imagenes, sello_elegido, estrella, stock_disponible, tope_escaparate, ' +
+              'ficha_tecnica, imagenes, sello_elegido, estrella, tope_escaparate, ' +
               'aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, product_id_ref, ' +
               'campana_producto_etiqueta ( etiqueta_codigo )')
       .eq('id', campanaId)
@@ -914,7 +902,6 @@
     $('cm-hook-largo').value = data.hook_largo || '';
     $('cm-por-que').value = data.por_que_magandhi || '';
     $('cm-sobre').value = data.sobre_este_producto || '';
-    $('cm-stock').value = String(data.stock_disponible ?? 0);
     // Tope de escaparate: vacio cuando es null (mismo patron que precio_venta).
     $('cm-tope').value = (data.tope_escaparate === null || data.tope_escaparate === undefined) ? '' : String(data.tope_escaparate);
 
@@ -986,9 +973,6 @@
         return;
       }
     }
-
-    let stock = Math.trunc(Number($('cm-stock').value));
-    if (Number.isNaN(stock) || stock < 0) stock = 0;
 
     // Tope de escaparate: entero >= 0 (o vacio = null, ofrecer todo el stock).
     // Independiente del stock manual y del aviso de urgencia.
@@ -1072,7 +1056,6 @@
       p_imagenes: imagenesPaths,
       p_sello_elegido: $('cm-sello').checked,
       p_estrella: $('cm-sello').checked && $('cm-estrella').checked,
-      p_stock_disponible: stock,
       p_aviso_urgencia_activo: avisoActivo,
       p_aviso_urgencia_cantidad: avisoCant,
       p_etiquetas: recolectarEtiquetas(),
@@ -1190,7 +1173,7 @@
     // La lectura de productos la permite la policy productos_select_marketing.
     const [catRes, tagRes, prodRes] = await Promise.all([
       supabase.from('campana_categoria')
-        .select('codigo, nombre, color_fuerte, color_claro, color_sombra, orden')
+        .select('codigo, nombre, orden')
         .order('orden', { ascending: true }),
       supabase.from('campana_etiqueta')
         .select('codigo, nombre, orden')

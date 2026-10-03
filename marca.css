@@ -1,46 +1,40 @@
 /* ============================================================
-   MAGANDHI · TOKENS DE MARCA (fuente única de la paleta)
+   MAGANDHI · TOKENS VIGENTES (acceso general del back-office)
    ------------------------------------------------------------
-   Este archivo define los colores del sistema. Todas las páginas
-   lo enlazan. Cambiar un tono aquí = cambiarlo en toda la tienda.
-
-   PALETA EN PRUEBA: "terracota" — rojo desaturado + fondo crema.
-   (Evolución de la paleta del manual #D32F2F hacia un tono más
-   cálido/boutique. Si no convence, se revierte editando solo este archivo.)
+   Esta hoja gobierna únicamente login, panel y superficies generales de
+   montaguth.institute. Las áreas internas conservan sus colores funcionales
+   propios (azul operativo; verde para Finanzas), sin alterar la identidad
+   comercial oficial de MAGANDHI.
    ============================================================ */
 :root{
-  /* ---- Rojo de marca (escala) ---- */
-  --red-900:#5C1F1C;   /* texto sobre fondos claros, hover de botón oscuro */
-  --red-700:#7A2A26;   /* estados hover/active de botones */
-  --red-600:#98332D;   /* bordes o iconos secundarios */
-  --red-500:#A6332E;   /* ROJO PRINCIPAL de marca */
-  --red-400:#BF5450;   /* acentos suaves, links, precio secundario */
-  --red-100:#F4E2E0;   /* fondos de sección muy sutiles, badges */
-  --red-50:#FBF1F0;    /* fondo de tarjeta/hover muy leve */
+  /* Identidad comercial vigente */
+  --red-900:#5C1F1C;
+  --red-700:#7A2A26;
+  --red-600:#98332D;
+  --red-500:#A6332E;
+  --red-400:#BF5450;
+  --red-100:#F4E2E0;
+  --red-50:#FBF1F0;
 
-  /* ---- Neutros ---- */
-  --black-900:#111111; /* texto principal, footer */
-  --cream-50:#FAF6F1;  /* FONDO GENERAL (reemplaza blanco puro) */
-  --cream-100:#F2ECE4; /* fondo de tarjetas sobre el fondo general */
-  --gray-500:#6B6660;  /* texto secundario, descripciones */
+  /* Neutros del acceso interno */
+  --black-900:#111111;
+  --cream-50:#FAF6F1;
+  --cream-100:#F2ECE4;
+  --gray-500:#6B6660;
 
-  /* ---- Acento por producto (se sobreescribe por producto) ---- */
-  --acento:#C9962E;        /* dorado del GRISI Gold */
-  --acento-cl:#E7C56B;
-  --acento-sombra:rgba(201,150,46,.18);
+  /* Dorado oficial MAGANDHI, fijo; no depende de producto o categoría */
+  --acento:#C28A3A;
+  --acento-cl:#D9AE6E;
+  --acento-sombra:rgba(194,138,58,.16);
 
-  /* ============================================================
-     ALIAS semánticos: los nombres que usa el CSS de las páginas
-     apuntan a los tokens de arriba. Así el código de cada página
-     no necesita conocer los hex, solo el rol.
-     ============================================================ */
+  /* Alias semánticos */
   --rojo:var(--red-500);
-  --rojo-osc:var(--red-700);   /* hover: MÁS OSCURO (sólido, no clickbait) */
+  --rojo-osc:var(--red-700);
   --rojo-prof:var(--red-900);
   --negro:var(--black-900);
   --tinta:#1C1C1C;
-  --blanco:var(--cream-50);    /* "blanco" de la marca = crema */
-  --tarjeta:var(--cream-100);  /* tarjetas sobre el fondo general */
+  --blanco:var(--cream-50);
+  --tarjeta:var(--cream-100);
   --hueso:var(--cream-50);
   --gris:var(--gray-500);
   --gris-cl:#9A938B;
