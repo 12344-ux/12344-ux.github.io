@@ -104,10 +104,6 @@
             <input id="cm-detalle" class="mk-input" type="text" maxlength="200" placeholder="Ej. Con extracto de manzanilla · 400 mL">
           </div>
           <div class="cm-campo">
-            <label for="cm-hook-corto" class="cm-campo-lbl">Hook corto</label>
-            <input id="cm-hook-corto" class="mk-input" type="text" maxlength="200" placeholder="Frase gancho breve para el grid">
-          </div>
-          <div class="cm-campo">
             <span class="cm-campo-lbl">Imagen del banner</span>
             <span class="cm-campo-ayuda">Elígela desde tu equipo o arrástrala aquí. Se optimiza en tu navegador (calidad boutique) y se sube al guardar. Si ya tenía una, se muestra y puedes reemplazarla o quitarla.</span>
             <div class="cm-banner-carga">
@@ -299,7 +295,6 @@
           <span class="cm-preview-cat" id="pv-cat">Sin categoría</span>
           <h3 class="cm-preview-nombre" id="pv-nombre">Nombre del producto</h3>
           <p class="cm-preview-detalle" id="pv-detalle" hidden></p>
-          <p class="cm-preview-hook" id="pv-hook" hidden></p>
         </div>
         <div class="cm-preview-cuerpo">
           <span class="cm-preview-sello" id="pv-sello" hidden>
@@ -678,10 +673,6 @@
     $('pv-detalle').textContent = detalle;
     $('pv-detalle').hidden = !detalle;
 
-    const hook = $('cm-hook-corto').value.trim();
-    $('pv-hook').textContent = hook;
-    $('pv-hook').hidden = !hook;
-
     // Banner: blob nuevo si lo hay; si no, el path preexistente via URL publica.
     const img = bannerPend?.url || (bannerPathExistente ? urlPublicaImagen(bannerPathExistente) : '');
     $('pv-img').style.backgroundImage = img ? 'url("' + img.replace(/"/g, '\\"') + '")' : '';
@@ -739,7 +730,7 @@
     $('cm-aviso-cantidad').addEventListener('input', refrescarPreview);
 
     // El banner ya no es un input de texto: se refresca desde el cargador.
-    ['cm-categoria', 'cm-nombre', 'cm-detalle', 'cm-hook-corto', 'cm-precio']
+    ['cm-categoria', 'cm-nombre', 'cm-detalle', 'cm-precio']
       .forEach((id) => {
         const el = $(id);
         el.addEventListener('input', refrescarPreview);
@@ -854,7 +845,7 @@
   async function precargar() {
     const { data, error } = await supabase
       .from('campana_producto')
-      .select('id, nombre, slug, categoria_codigo, detalle_presentacion, hook_corto, imagen_banner_path, ' +
+      .select('id, nombre, slug, categoria_codigo, detalle_presentacion, imagen_banner_path, ' +
               'caracteristica_adicional, precio_venta, hook_largo, por_que_magandhi, sobre_este_producto, ' +
               'ficha_tecnica, imagenes, sello_elegido, estrella, tope_escaparate, ' +
               'aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, product_id_ref, ' +
@@ -894,7 +885,6 @@
     $('cm-slug').value = data.slug || '';
     slugTocado = !!(data.slug && String(data.slug).trim().length > 0);
     $('cm-detalle').value = data.detalle_presentacion || '';
-    $('cm-hook-corto').value = data.hook_corto || '';
     // Banner: mostrar el path preexistente (si lo hay) en el cargador.
     mostrarBannerExistente(data.imagen_banner_path || null);
     $('cm-caracteristica').value = data.caracteristica_adicional || '';
@@ -1045,7 +1035,6 @@
       p_nombre: nombre,
       p_categoria_codigo: $('cm-categoria').value || null,
       p_detalle_presentacion: $('cm-detalle').value.trim() || null,
-      p_hook_corto: $('cm-hook-corto').value.trim() || null,
       p_imagen_banner_path: bannerPath,
       p_caracteristica_adicional: $('cm-caracteristica').value.trim() || null,
       p_precio_venta: precio,

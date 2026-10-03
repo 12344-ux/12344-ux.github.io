@@ -33,6 +33,102 @@ secretos se consultan en los paneles privados, no se repiten en este repositorio
 5. Probar intención por slug y por UUID; el retorno UUID debe usar `?id=`.
 6. Mantener Wompi en sandbox.
 
+## 0bis. Campañas · jubilar HOOK CORTO y orden por arrastrar y soltar
+
+> **Acción MANUAL del dueño.** El agente no tiene acceso al dashboard: esta
+> migración NO se aplica sola. Ejecútala tú, **una sola vez**, en el SQL Editor,
+> después de `20261002000000`. Es una migración forward nueva (ledger inmutable):
+> nunca reescribas ni reejecutes las históricas.
+
+Archivo: `supabase/migrations/20261003000000_campanas_jubilar_hook_y_reordenar.sql`.
+
+Hace dos cosas en una sola migración, sobre las mismas funciones y la misma vista:
+
+- **A) Jubilar `hook_corto`.** `cm_crear_campana` / `cm_editar_campana` se
+  re-crean **sin** el parámetro `p_hook_corto`, y `catalogo_publico` se re-crea
+  **sin** la columna `hook_corto`. **No se borra nada en la base**: la columna
+  `campana_producto.hook_corto` sigue existiendo con sus datos; solo se deja de
+  pedir y de exponer. El campo "HOOK CORTO" ya no aparece al crear/editar un
+  producto ni llega a la vitrina pública.
+- **B) Orden editable (arrastrar y soltar).** Nueva RPC atómica
+  `cm_reordenar_campanas(p_ids uuid[])` que reasigna `orden = 1..N` en el orden
+  exacto del arreglo recibido (sin huecos). Es la **única vía** de escritura del
+  orden; el navegador nunca escribe la columna directo. El número NO se muestra
+  en la web: solo controla el orden de aparición (el home ya ordena con
+  `order('orden', asc)`). La columna `orden`, su índice y su exposición en
+  `catalogo_publico` ya existían: esta migración no los toca.
+
+### Aplicación
+
+1. Abrir `supabase/migrations/20261003000000_campanas_jubilar_hook_y_reordenar.sql`.
+2. Ejecutarlo **una sola vez** en el SQL Editor (pulsar **Run**).
+
+### Verificación MANUAL del dueño
+
+1. **La vista ya no trae `hook_corto`** (la consulta NO debe listar `hook_corto`):
+
+   ```sql
+   select column_name
+     from information_schema.columns
+    where table_name = 'catalogo_publico'
+    order by ordinal_position;
+   -- Esperado: NO aparece hook_corto. El resto de columnas sigue igual
+   -- (incluida orden al final).
+   ```
+
+2. **La columna base NO se borró** (sigue existiendo con sus datos, aunque ya no
+   se use):
+
+   ```sql
+   select column_name
+     from information_schema.columns
+    where table_name = 'campana_producto' and column_name = 'hook_corto';
+   -- Esperado: devuelve una fila (la columna sigue ahí; nada se borró).
+   ```
+
+3. **El grant de lectura de la vista quedó intacto** (el DROP VIEW se los lleva;
+   la migración los re-otorga a anon, authenticated y service_role):
+
+   ```sql
+   select has_table_privilege('anon', 'catalogo_publico', 'SELECT')          as anon_lee,
+          has_table_privilege('service_role', 'catalogo_publico', 'SELECT')   as service_role_lee;
+   -- Esperado: ambas true. service_role es obligatorio para la Edge Function
+   -- crear-intencion-pago (ver sección Wompi).
+   ```
+
+   Las tablas base siguen SIN grant a `anon` (candado real):
+
+   ```sql
+   select has_table_privilege('anon', 'campana_producto', 'SELECT') as anon_tabla;
+   -- Esperado: false.
+   ```
+
+4. **Crear/editar un producto desde Campañas funciona sin hook.** En el
+   back-office, agrega y edita un producto; ya no verás el campo "HOOK CORTO" y
+   el guardado debe funcionar igual.
+
+5. **Reordenar refleja el nuevo orden en el home.** Con los UUID de tus
+   campañas, en el orden que quieras (recuerda: solo posiciones válidas 1..N, el
+   arreglo las fija por índice):
+
+   ```sql
+   select cm_reordenar_campanas(array[
+     '<uuid-que-va-primero>',
+     '<uuid-que-va-segundo>',
+     '<uuid-que-va-tercero>'
+   ]::uuid[]);
+   -- Luego comprueba el orden asignado (1..N, sin huecos):
+   select id, nombre, orden from campana_producto order by orden;
+   ```
+
+   Abre `magandhi.com`: la vitrina debe mostrarse en ese nuevo orden. (En el
+   SQL Editor `auth.uid()` es NULL, así que la RPC fallará con "Acceso
+   denegado" si la llamas desde el editor; pruébala desde el back-office con
+   sesión de Marketing, que es su vía normal.)
+
+6. **`crear-intencion-pago` NO necesita redeploy** por esta migración: la vista
+   sigue exponiendo `precio_venta` y el grant a `service_role` se re-otorgó.
+
 ---
 
 ## Instalación histórica de referencia

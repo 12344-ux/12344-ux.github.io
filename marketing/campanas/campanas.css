@@ -109,10 +109,6 @@
 .cm-nombre{
   margin:0;font-size:17px;font-weight:600;line-height:1.25;color:var(--mk-marino);
 }
-.cm-hook{
-  margin:0;font-size:12.5px;line-height:1.4;color:var(--mk-gris);
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-}
 
 /* ------------------------------------------------------------
    CUERPO: precio + estados (publicado/borrador, estrella, aviso urgencia)
@@ -598,6 +594,45 @@
   border-top:1px solid var(--mk-linea);
 }
 .cm-galeria-pie .cm-galeria-num{font-weight:600;color:var(--mk-marino);font-variant-numeric:tabular-nums}
+
+/* ------------------------------------------------------------
+   MODO REORDENAR del listado (pedido B · arrastrar y soltar)
+   Reusa el MISMO lenguaje visual que la galeria: opacidad al arrastrar, marca
+   de destino 'sobre', asa con cursor grab y un numero de POSICION derivado del
+   indice (#1..#N, nunca editable). Solo aplica cuando el contenedor esta en
+   .cm-modo-reordenar; en modo normal la tarjeta no cambia en absoluto.
+   ------------------------------------------------------------ */
+.cm-lista.cm-modo-reordenar .cm-card{cursor:grab;position:relative}
+.cm-lista.cm-modo-reordenar .cm-card:hover{transform:none}
+/* La tarjeta tomada se atenua (igual que .cm-galeria-item.arrastrando). */
+.cm-lista.cm-modo-reordenar .cm-card.arrastrando{opacity:.4;border-color:var(--mk-marino)}
+/* Destino donde se soltara (igual que .cm-galeria-item.sobre). */
+.cm-lista.cm-modo-reordenar .cm-card.sobre{border-color:var(--mk-marino);box-shadow:0 0 0 2px rgba(16,28,51,.25)}
+/* En modo reordenar, los enlaces/botones de la tarjeta no deben "invitar" a
+   hacer click (ademas el JS neutraliza el click para evitar navegacion). */
+.cm-lista.cm-modo-reordenar .cm-card .cm-banner,
+.cm-lista.cm-modo-reordenar .cm-card .cm-acciones{cursor:grab}
+/* Asa de arrastre de la tarjeta (manija), espejo de .cm-galeria-asa. */
+.cm-card-asa{
+  position:absolute;top:10px;left:10px;z-index:2;width:30px;height:30px;border-radius:8px;
+  display:inline-flex;align-items:center;justify-content:center;cursor:grab;
+  color:#fff;background:rgba(16,28,51,.6);
+}
+.cm-card-asa:active{cursor:grabbing}
+.cm-card-asa svg{width:16px;height:16px}
+/* Numero de POSICION (#1..#N) derivado del indice, no editable (espejo del pie
+   .cm-galeria-num de la galeria). */
+.cm-card-pos{
+  position:absolute;top:10px;right:10px;z-index:2;
+  display:inline-flex;align-items:center;border-radius:999px;padding:3px 10px;
+  font-size:11.5px;font-weight:600;letter-spacing:.03em;
+  color:#fff;background:var(--mk-marino);font-variant-numeric:tabular-nums;
+}
+/* Boton "Reordenar/Hecho" activo: se resalta como en estado seleccionado. */
+.cm-btn-secundario.activo{
+  background:var(--mk-marino);border-color:var(--mk-marino);color:#fff;
+}
+.cm-btn-secundario.activo:hover{background:var(--mk-marino-2);border-color:var(--mk-marino-2)}
 
 /* ============================================================
    PANTALLA DE ETIQUETAS (etiquetas.html)

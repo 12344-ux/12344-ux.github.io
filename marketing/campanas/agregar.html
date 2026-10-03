@@ -104,10 +104,6 @@
             <input id="cm-detalle" class="mk-input" type="text" maxlength="200" placeholder="Ej. Con extracto de manzanilla · 400 mL">
           </div>
           <div class="cm-campo">
-            <label for="cm-hook-corto" class="cm-campo-lbl">Hook corto</label>
-            <input id="cm-hook-corto" class="mk-input" type="text" maxlength="200" placeholder="Frase gancho breve para el grid">
-          </div>
-          <div class="cm-campo">
             <span class="cm-campo-lbl">Imagen del banner</span>
             <span class="cm-campo-ayuda">Elígela desde tu equipo o arrástrala aquí. Se optimiza en tu navegador (calidad boutique) y se sube al guardar.</span>
             <div class="cm-banner-carga">
@@ -281,7 +277,6 @@
           <span class="cm-preview-cat" id="pv-cat">Sin categoría</span>
           <h3 class="cm-preview-nombre" id="pv-nombre">Nombre del producto</h3>
           <p class="cm-preview-detalle" id="pv-detalle" hidden></p>
-          <p class="cm-preview-hook" id="pv-hook" hidden></p>
         </div>
         <div class="cm-preview-cuerpo">
           <span class="cm-preview-sello" id="pv-sello" hidden>
@@ -656,10 +651,6 @@
     $('pv-detalle').textContent = detalle;
     $('pv-detalle').hidden = !detalle;
 
-    const hook = $('cm-hook-corto').value.trim();
-    $('pv-hook').textContent = hook;
-    $('pv-hook').hidden = !hook;
-
     // La imagen del banner sale de la previsualizacion local (blob optimizado).
     const img = bannerPend?.url || '';
     $('pv-img').style.backgroundImage = img ? 'url("' + img.replace(/"/g, '\\"') + '")' : '';
@@ -721,7 +712,7 @@
 
     // Campos de texto/select que alimentan la vista previa (el banner ya no es
     // un input de texto: se refresca desde el cargador de imagenes).
-    ['cm-categoria', 'cm-nombre', 'cm-detalle', 'cm-hook-corto', 'cm-precio']
+    ['cm-categoria', 'cm-nombre', 'cm-detalle', 'cm-precio']
       .forEach((id) => {
         const el = $(id);
         el.addEventListener('input', refrescarPreview);
@@ -886,7 +877,6 @@
       p_nombre: nombre,
       p_categoria_codigo: $('cm-categoria').value || null,
       p_detalle_presentacion: $('cm-detalle').value.trim() || null,
-      p_hook_corto: $('cm-hook-corto').value.trim() || null,
       p_imagen_banner_path: bannerPath,
       p_caracteristica_adicional: $('cm-caracteristica').value.trim() || null,
       p_precio_venta: precio,
