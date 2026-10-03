@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=1">
-<link rel="stylesheet" href="campanas.css?v=3">
+<link rel="stylesheet" href="campanas.css?v=4">
 
 <!--
   MAGANDHI · Area de Marketing · Sub-area CAMPANAS · HOME/LISTA.
@@ -129,7 +129,7 @@
 
     const { data, error } = await supabase
       .from('campana_producto')
-      .select('id, nombre, categoria_codigo, imagen_banner_path, precio_venta, sello_elegido, estrella, aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, activo, es_placeholder, orden, campana_categoria ( nombre )')
+      .select('id, nombre, categoria_codigo, imagen_banner_path, precio_venta, sello_elegido, aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, activo, es_placeholder, orden, campana_categoria ( nombre )')
       .order('orden', { ascending: true });
 
     if (error) {
@@ -239,10 +239,10 @@
     const esEjemplo = !!c.es_placeholder;
     const retirada = c.activo === false;
 
-    // Chips de estado. Publicado vs Borrador siempre; estrella y urgencia solo
-    // cuando corresponden (el aviso es MANUAL: "Solo X disponibles"). Los
-    // productos de EJEMPLO (ficticios) se marcan con su propio chip; si ya se
-    // retiraron (baja logica, activo=false) se rotula como "Retirado".
+    // Chips de estado. Publicado vs Borrador siempre; el distintivo elegido o
+    // de últimas unidades aparece como una sola señal. Los productos de
+    // EJEMPLO (ficticios) se marcan con su propio chip; si ya se retiraron
+    // (baja lógica, activo=false) se rotula como "Retirado".
     const chips = [];
     if (retirada) {
       chips.push('<span class="cm-chip retirada">' + SVG.retirar + 'Retirado</span>');
@@ -254,12 +254,14 @@
     if (esEjemplo) {
       chips.push('<span class="cm-chip ejemplo">' + SVG.ejemplo + 'Ejemplo</span>');
     }
-    if (c.estrella) {
-      chips.push('<span class="cm-chip estrella">' + SVG.estrella + 'Estrella</span>');
-    }
     if (c.aviso_urgencia_activo && Number(c.aviso_urgencia_cantidad) > 0) {
-      chips.push('<span class="cm-chip urgencia">' + SVG.urgencia +
-        'Solo ' + formatearNumero(c.aviso_urgencia_cantidad) + ' disponibles</span>');
+      const cant = Number(c.aviso_urgencia_cantidad);
+      const texto = cant === 1
+        ? 'Última disponible'
+        : 'Últimas ' + formatearNumero(cant) + ' disponibles';
+      chips.push('<span class="cm-chip urgencia">' + SVG.urgencia + texto + '</span>');
+    } else if (c.sello_elegido) {
+      chips.push('<span class="cm-chip estrella">' + SVG.estrella + 'Elegido por MAGANDHI</span>');
     }
 
     // Boton de publicar/despublicar segun el estado actual. Una campana ya
