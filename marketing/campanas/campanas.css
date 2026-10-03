@@ -109,10 +109,6 @@
 .cm-nombre{
   margin:0;font-size:17px;font-weight:600;line-height:1.25;color:var(--mk-marino);
 }
-.cm-hook{
-  margin:0;font-size:12.5px;line-height:1.4;color:var(--mk-gris);
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-}
 
 /* ------------------------------------------------------------
    CUERPO: precio + estados (publicado/borrador, estrella, aviso urgencia)

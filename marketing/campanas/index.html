@@ -110,7 +110,7 @@
 
     const { data, error } = await supabase
       .from('campana_producto')
-      .select('id, nombre, categoria_codigo, hook_corto, imagen_banner_path, precio_venta, sello_elegido, estrella, aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, activo, es_placeholder, orden, campana_categoria ( nombre )')
+      .select('id, nombre, categoria_codigo, imagen_banner_path, precio_venta, sello_elegido, estrella, aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, activo, es_placeholder, orden, campana_categoria ( nombre )')
       .order('orden', { ascending: true });
 
     if (error) {
@@ -239,7 +239,6 @@
           '<span class="cm-banner-cont">' +
             '<span class="cm-cat">' + escaparHTML(catNombre) + '</span>' +
             '<h3 class="cm-nombre">' + escaparHTML(c.nombre) + '</h3>' +
-            (c.hook_corto ? '<p class="cm-hook">' + escaparHTML(c.hook_corto) + '</p>' : '') +
           '</span>' +
         '</a>' +
         '<div class="cm-cuerpo">' +
