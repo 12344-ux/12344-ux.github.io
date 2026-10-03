@@ -212,9 +212,9 @@
    FORMULARIO DE CAMPANA (agregar.html / editar.html)
    ------------------------------------------------------------
    Un producto se "viste" aqui: DOS secciones (Banner hook + Producto) con
-   todos sus campos, mas los INTERRUPTORES por producto (sello, estrella,
-   aviso de urgencia manual, stock, publicar). A la derecha, una VISTA PREVIA
-   en vivo del banner-hook que toma el color de la categoria elegida.
+   todos sus campos, más el DISTINTIVO DE TARJETA (una opción excluyente).
+   A la derecha, una VISTA PREVIA en vivo del banner-hook que toma el color de
+   la categoría elegida.
 
    Diseno nivel Finanzas (PILAR INNEGOCIABLE): campos limpios, switches
    pulcros tipo toggle, chips seleccionables sobrios, azul marino heredado.
@@ -271,43 +271,8 @@
 }
 .cm-precio-input .mk-input{padding-left:26px;font-variant-numeric:tabular-nums}
 
-/* ------------------------------------------------------------
-   SWITCH tipo toggle (interruptores pulcros). Se apoya en un checkbox real
-   oculto por accesibilidad; el "riel" es el <label>.
-   ------------------------------------------------------------ */
-.cm-switch-fila{
-  display:flex;align-items:flex-start;gap:14px;
-  padding:14px 0;border-top:1px solid var(--mk-linea);
-}
-.cm-switch-fila:first-of-type{border-top:0}
-.cm-switch-texto{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
-.cm-switch-texto b{font-size:14px;font-weight:600;color:var(--mk-marino)}
-.cm-switch-texto span{font-size:12px;color:var(--mk-gris);line-height:1.4}
-.cm-switch{
-  position:relative;flex:none;width:46px;height:26px;cursor:pointer;
-  display:inline-block;
-}
-.cm-switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
-.cm-switch .cm-riel{
-  position:absolute;inset:0;border-radius:999px;background:rgba(16,28,51,.18);
-  transition:background-color .18s ease;
-}
-.cm-switch .cm-perilla{
-  position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;
-  background:#fff;box-shadow:0 1px 3px rgba(16,28,51,.35);
-  transition:transform .18s ease;
-}
-.cm-switch input:checked ~ .cm-riel{background:var(--mk-marino)}
-.cm-switch input:checked ~ .cm-perilla{transform:translateX(20px)}
-.cm-switch input:focus-visible ~ .cm-riel{box-shadow:0 0 0 3px rgba(143,163,196,.55)}
-.cm-switch input:disabled ~ .cm-riel{background:rgba(16,28,51,.10)}
-.cm-switch input:disabled{cursor:not-allowed}
-/* Fila deshabilitada (ej. estrella cuando el sello esta apagado). */
-.cm-switch-fila.desactivada{opacity:.55}
-.cm-switch-fila.desactivada .cm-switch{cursor:not-allowed}
-
-/* Sub-bloque que se revela bajo un switch (ej. cantidad del aviso de urgencia,
-   sub-controles del sello). Sangrado para dejar claro que "cuelga" del switch. */
+/* Sub-bloque que se revela bajo el selector de distintivo (cantidad de
+   "Últimas unidades"). Sangrado para dejar claro que "cuelga" de la opción. */
 .cm-sub{
   margin:10px 0 2px;padding:14px 16px;border-radius:11px;
   background:rgba(16,28,51,.03);border:1px solid var(--mk-linea);
@@ -315,8 +280,52 @@
 .cm-sub[hidden]{display:none}
 .cm-sub .mk-input{max-width:180px}
 
-/* Grupo visual de interruptores (encapsula sello + estrella + aviso + stock). */
-.cm-controles-caja{display:flex;flex-direction:column}
+/* ------------------------------------------------------------
+   DISTINTIVO DE TARJETA · selector único y extensible
+   Cada opción es una tarjeta-radio: comunica que se elige UNA sola señal y
+   deja espacio para incorporar nuevos distintivos sin sumar interruptores
+   ambiguos. Oro = selección MAGANDHI; negro = disponibilidad temporal.
+   ------------------------------------------------------------ */
+.cm-sr-only{
+  position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
+}
+.cm-distintivos{
+  border:0;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;
+}
+.cm-distintivo-opcion{
+  position:relative;display:flex;align-items:center;gap:11px;min-height:82px;
+  padding:13px;border:1px solid var(--mk-linea);border-radius:13px;
+  background:var(--mk-tarjeta);cursor:pointer;
+  transition:border-color .16s ease,box-shadow .16s ease,background-color .16s ease,transform .12s ease;
+}
+.cm-distintivo-opcion:hover{border-color:var(--mk-azul-cl);transform:translateY(-1px)}
+.cm-distintivo-opcion:has(input:checked){
+  border-color:var(--mk-marino);background:rgba(16,28,51,.035);
+  box-shadow:0 0 0 2px rgba(16,28,51,.08),0 5px 16px rgba(16,28,51,.07);
+}
+.cm-distintivo-opcion input{
+  position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;
+}
+.cm-distintivo-opcion:has(input:focus-visible){box-shadow:0 0 0 3px rgba(143,163,196,.55)}
+.cm-distintivo-marca{
+  width:38px;height:38px;flex:none;border-radius:11px;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:15px;font-weight:700;
+}
+.cm-distintivo-marca svg{width:17px;height:17px}
+.cm-distintivo-marca--ninguno{color:var(--mk-gris);background:rgba(16,28,51,.06)}
+.cm-distintivo-marca--estrella{color:#A9772F;background:rgba(194,138,58,.14);border:1px solid rgba(194,138,58,.26)}
+.cm-distintivo-marca--ultimas{color:#FAF7F2;background:#111;font-size:11px;letter-spacing:.06em}
+.cm-distintivo-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
+.cm-distintivo-copy b{font-size:12.5px;line-height:1.25;color:var(--mk-marino)}
+.cm-distintivo-copy small{font-size:10.5px;line-height:1.35;color:var(--mk-gris)}
+.cm-distintivo-cantidad{margin-top:14px}
+.cm-distintivo-cantidad .mk-input{display:block;margin:7px 0;max-width:180px}
+@media(max-width:760px){
+  .cm-distintivos{grid-template-columns:1fr}
+  .cm-distintivo-opcion{min-height:68px}
+}
 
 /* ------------------------------------------------------------
    CHIPS DE ETIQUETAS (catalogo controlado, multiseleccion)
@@ -412,28 +421,24 @@
 .cm-preview-detalle{margin:0;font-size:12px;color:var(--mk-gris)}
 .cm-preview-hook{margin:0;font-size:13px;line-height:1.45;color:var(--mk-carbon)}
 .cm-preview-cuerpo{padding:16px 20px;display:flex;flex-direction:column;gap:12px}
-/* Sello "Elegido por MAGANDHI" en la vista previa (con estrella opcional dentro). */
-.cm-preview-sello{
-  display:inline-flex;align-items:center;gap:8px;align-self:flex-start;
-  font-size:11.5px;font-weight:600;letter-spacing:.04em;
-  color:#8a6a1f;background:rgba(201,150,46,.14);
-  border:1px solid rgba(201,150,46,.35);border-radius:999px;padding:5px 12px;
+/* Distintivo único en la vista previa. La selección se representa con una
+   estrella limpia; la disponibilidad usa una etiqueta negra de alto contraste. */
+.cm-preview-distintivo{
+  display:inline-flex;align-items:center;gap:7px;align-self:flex-start;
+  min-height:29px;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  border-radius:9px;padding:6px 10px;
 }
-.cm-preview-sello svg{width:14px;height:14px;flex:none}
-.cm-preview-sello .cm-preview-estrella{color:#C28A3A}
-.cm-preview-sello[hidden]{display:none}
+.cm-preview-distintivo svg{width:14px;height:14px;flex:none}
+.cm-preview-distintivo.es-elegido{
+  color:#A9772F;background:rgba(194,138,58,.12);border:1px solid rgba(194,138,58,.32);
+}
+.cm-preview-distintivo.es-elegido span{display:none}
+.cm-preview-distintivo.es-ultimas{color:#FAF7F2;background:#111;border:1px solid #111}
+.cm-preview-distintivo[hidden],.cm-preview-distintivo svg[hidden]{display:none}
 .cm-preview-precio{display:flex;align-items:baseline;gap:7px}
 .cm-preview-precio .n{font-size:22px;font-weight:700;color:var(--mk-marino);font-variant-numeric:tabular-nums}
 .cm-preview-precio .m{font-size:12px;font-weight:600;color:var(--mk-gris)}
 .cm-preview-precio .vacio{font-size:13px;color:var(--mk-gris);font-style:italic}
-/* Aviso de urgencia en la vista previa (terracota, honesto). */
-.cm-preview-aviso{
-  display:inline-flex;align-items:center;gap:7px;align-self:flex-start;
-  font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
-  color:var(--mk-acento);background:rgba(166,51,46,.10);border-radius:999px;padding:5px 12px;
-}
-.cm-preview-aviso svg{width:13px;height:13px;flex:none}
-.cm-preview-aviso[hidden]{display:none}
 .cm-preview-estado{
   display:inline-flex;align-items:center;gap:6px;align-self:flex-start;
   font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;

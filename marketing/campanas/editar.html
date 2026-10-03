@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=1">
-<link rel="stylesheet" href="campanas.css?v=2">
+<link rel="stylesheet" href="campanas.css?v=4">
 
 <!--
   MAGANDHI · Area de Marketing · Sub-area CAMPANAS · EDITAR.
@@ -58,7 +58,7 @@
           <span class="cm-seccion-num">1</span>
           <div>
             <h2 class="cm-seccion-tit">Banner hook</h2>
-            <p class="cm-seccion-sub">Lo que aparece en el grid del home: categoría, nombre, presentación, gancho corto e imagen principal.</p>
+            <p class="cm-seccion-sub">Lo que aparece en el grid del home: categoría, nombre, presentación e imagen principal.</p>
           </div>
         </div>
         <div class="cm-campos">
@@ -199,53 +199,48 @@
         <div class="cm-seccion-cab">
           <span class="cm-seccion-num">3</span>
           <div>
-            <h2 class="cm-seccion-tit">Controles</h2>
-            <p class="cm-seccion-sub">Interruptores por producto: sello, estrella, aviso de urgencia manual y stock. Se pueden cambiar en cualquier momento.</p>
+            <h2 class="cm-seccion-tit">Distintivo de la tarjeta</h2>
+            <p class="cm-seccion-sub">Elige una sola señal para acompañar el producto en el escaparate. El bloque queda preparado para incorporar nuevos distintivos en el futuro.</p>
           </div>
         </div>
-        <div class="cm-controles-caja">
+        <fieldset class="cm-distintivos" aria-describedby="cm-distintivo-ayuda">
+          <legend class="cm-sr-only">Distintivo de la tarjeta</legend>
 
-          <div class="cm-switch-fila">
-            <div class="cm-switch-texto">
-              <b>Sello “Elegido por MAGANDHI”</b>
-              <span>Muestra el sello de curaduría en la tarjeta y la página del producto.</span>
-            </div>
-            <label class="cm-switch">
-              <input type="checkbox" id="cm-sello">
-              <span class="cm-riel"></span>
-              <span class="cm-perilla"></span>
-            </label>
-          </div>
+          <label class="cm-distintivo-opcion">
+            <input type="radio" name="cm-distintivo" value="ninguno">
+            <span class="cm-distintivo-marca cm-distintivo-marca--ninguno" aria-hidden="true">—</span>
+            <span class="cm-distintivo-copy">
+              <b>Ninguno</b>
+              <small>La tarjeta se muestra limpia, sin distintivo.</small>
+            </span>
+          </label>
 
-          <div class="cm-switch-fila" id="cm-fila-estrella">
-            <div class="cm-switch-texto">
-              <b>Estrella (destacado)</b>
-              <span id="cm-estrella-nota">La estrella vive dentro del sello. Activa primero el sello para poder destacarlo.</span>
-            </div>
-            <label class="cm-switch">
-              <input type="checkbox" id="cm-estrella" disabled>
-              <span class="cm-riel"></span>
-              <span class="cm-perilla"></span>
-            </label>
-          </div>
+          <label class="cm-distintivo-opcion">
+            <input type="radio" name="cm-distintivo" value="elegido">
+            <span class="cm-distintivo-marca cm-distintivo-marca--estrella" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z"/></svg>
+            </span>
+            <span class="cm-distintivo-copy">
+              <b>Elegido por MAGANDHI</b>
+              <small>La estrella identifica nuestra selección.</small>
+            </span>
+          </label>
 
-          <div class="cm-switch-fila">
-            <div class="cm-switch-texto">
-              <b>Aviso de urgencia (“Solo X disponibles”)</b>
-              <span>Interruptor manual y honesto: actívalo en el momento adecuado (por ejemplo, cuando de verdad queden 3 unidades). Hoy Campañas no lee Inventario, así que el número lo defines tú.</span>
-              <div class="cm-sub" id="cm-aviso-sub" hidden>
-                <label for="cm-aviso-cantidad" class="cm-campo-lbl">Cantidad para el aviso *</label>
-                <input id="cm-aviso-cantidad" class="mk-input" type="number" min="1" step="1" inputmode="numeric" placeholder="Ej. 3">
-                <span class="cm-campo-ayuda">Obligatorio y mayor que cero cuando el aviso está activo.</span>
-              </div>
-            </div>
-            <label class="cm-switch">
-              <input type="checkbox" id="cm-aviso">
-              <span class="cm-riel"></span>
-              <span class="cm-perilla"></span>
-            </label>
-          </div>
+          <label class="cm-distintivo-opcion">
+            <input type="radio" name="cm-distintivo" value="ultimas">
+            <span class="cm-distintivo-marca cm-distintivo-marca--ultimas" aria-hidden="true">X</span>
+            <span class="cm-distintivo-copy">
+              <b>Últimas unidades</b>
+              <small>Comunica una cantidad real y comprobada.</small>
+            </span>
+          </label>
+        </fieldset>
+        <p class="cm-campo-ayuda" id="cm-distintivo-ayuda">Solo puede mostrarse un distintivo. “Agotado” continúa dependiendo automáticamente de Inventario.</p>
 
+        <div class="cm-sub cm-distintivo-cantidad" id="cm-aviso-sub" hidden>
+          <label for="cm-aviso-cantidad" class="cm-campo-lbl">Unidades disponibles *</label>
+          <input id="cm-aviso-cantidad" class="mk-input" type="number" min="1" step="1" inputmode="numeric" placeholder="Ej. 3">
+          <span class="cm-campo-ayuda">En móvil se mostrará “ÚLTIMA DISPONIBLE” o “ÚLTIMAS X DISPONIBLES”.</span>
         </div>
       </section>
 
@@ -297,17 +292,13 @@
           <p class="cm-preview-detalle" id="pv-detalle" hidden></p>
         </div>
         <div class="cm-preview-cuerpo">
-          <span class="cm-preview-sello" id="pv-sello" hidden>
-            <svg class="cm-preview-estrella" id="pv-estrella" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true" hidden><path d="M12 2 15.09 8.26 22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 6.91-1.01Z"/></svg>
-            <span>Elegido por MAGANDHI</span>
+          <span class="cm-preview-distintivo" id="pv-distintivo" hidden>
+            <svg id="pv-distintivo-estrella" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z"/></svg>
+            <span id="pv-distintivo-txt">Elegido por MAGANDHI</span>
           </span>
           <div class="cm-preview-precio" id="pv-precio">
             <span class="vacio">Sin precio definido</span>
           </div>
-          <span class="cm-preview-aviso" id="pv-aviso" hidden>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg>
-            <span id="pv-aviso-txt">Solo 0 disponibles</span>
-          </span>
           <span class="cm-preview-estado borrador" id="pv-estado">Borrador</span>
         </div>
       </div>
@@ -659,6 +650,12 @@
   function categoriaPorCodigo(cod) {
     return categorias.find((c) => c.codigo === cod) || null;
   }
+  function tipoDistintivo() {
+    return document.querySelector('input[name="cm-distintivo"]:checked')?.value || 'ninguno';
+  }
+  function textoUltimas(cantidad) {
+    return cantidad === 1 ? 'ÚLTIMA DISPONIBLE' : 'ÚLTIMAS ' + formatearNumero(cantidad) + ' DISPONIBLES';
+  }
   function refrescarPreview() {
     const cat = categoriaPorCodigo($('cm-categoria').value);
     preview.style.setProperty('--cm-acento', '#C28A3A');
@@ -685,47 +682,33 @@
       precioBox.innerHTML = '<span class="n mk-num">$' + formatearNumero(precioRaw) + '</span><span class="m">COP</span>';
     }
 
-    const sello = $('cm-sello').checked;
-    $('pv-sello').hidden = !sello;
-    $('pv-estrella').hidden = !(sello && $('cm-estrella').checked);
-
-    const aviso = $('cm-aviso').checked;
-    const cant = Number($('cm-aviso-cantidad').value);
-    const avisoOk = aviso && cant > 0;
-    $('pv-aviso').hidden = !avisoOk;
-    if (avisoOk) $('pv-aviso-txt').textContent = 'Solo ' + formatearNumero(cant) + ' disponibles';
+    // Un solo distintivo: estrella de selección o últimas unidades.
+    const tipo = tipoDistintivo();
+    const cant = Math.trunc(Number($('cm-aviso-cantidad').value));
+    const distintivo = $('pv-distintivo');
+    const esElegido = tipo === 'elegido';
+    const ultimasOk = tipo === 'ultimas' && Number.isFinite(cant) && cant > 0;
+    distintivo.hidden = !(esElegido || ultimasOk);
+    distintivo.classList.toggle('es-elegido', esElegido);
+    distintivo.classList.toggle('es-ultimas', ultimasOk);
+    $('pv-distintivo-estrella').hidden = !esElegido;
+    $('pv-distintivo-txt').textContent = esElegido
+      ? 'Elegido por MAGANDHI'
+      : (ultimasOk ? textoUltimas(cant) : '');
   }
 
   // ------------------------------------------------------------
-  // INTERRUPTORES (estrella depende del sello; aviso revela nº)
+  // DISTINTIVO EXCLUYENTE (ninguno / elegido / últimas unidades)
   // ------------------------------------------------------------
   function cablearInterruptores() {
-    const sello = $('cm-sello');
-    const estrella = $('cm-estrella');
-    const filaEstrella = $('cm-fila-estrella');
-    const nota = $('cm-estrella-nota');
-
-    function sincronizarSello() {
-      const on = sello.checked;
-      estrella.disabled = !on;
-      filaEstrella.classList.toggle('desactivada', !on);
-      if (!on) {
-        estrella.checked = false;
-        nota.textContent = 'La estrella vive dentro del sello. Activa primero el sello para poder destacarlo.';
-      } else {
-        nota.textContent = 'Destaca este producto con una estrella dentro del sello.';
-      }
-      refrescarPreview();
-    }
-    sello.addEventListener('change', sincronizarSello);
-    estrella.addEventListener('change', refrescarPreview);
-
-    const aviso = $('cm-aviso');
     const avisoSub = $('cm-aviso-sub');
-    aviso.addEventListener('change', () => {
-      avisoSub.hidden = !aviso.checked;
-      if (aviso.checked) $('cm-aviso-cantidad').focus();
-      refrescarPreview();
+    document.querySelectorAll('input[name="cm-distintivo"]').forEach((radio) => {
+      radio.addEventListener('change', () => {
+        const esUltimas = tipoDistintivo() === 'ultimas';
+        avisoSub.hidden = !esUltimas;
+        if (esUltimas) $('cm-aviso-cantidad').focus();
+        refrescarPreview();
+      });
     });
     $('cm-aviso-cantidad').addEventListener('input', refrescarPreview);
 
@@ -847,7 +830,7 @@
       .from('campana_producto')
       .select('id, nombre, slug, categoria_codigo, detalle_presentacion, imagen_banner_path, ' +
               'caracteristica_adicional, precio_venta, hook_largo, por_que_magandhi, sobre_este_producto, ' +
-              'ficha_tecnica, imagenes, sello_elegido, estrella, tope_escaparate, ' +
+              'ficha_tecnica, imagenes, sello_elegido, tope_escaparate, ' +
               'aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, product_id_ref, ' +
               'campana_producto_etiqueta ( etiqueta_codigo )')
       .eq('id', campanaId)
@@ -905,20 +888,22 @@
     const imgs = Array.isArray(data.imagenes) ? data.imagenes.filter((p) => typeof p === 'string') : [];
     inicializarGaleria(imgs);
 
-    // Sello + estrella.
-    $('cm-sello').checked = !!data.sello_elegido;
-    $('cm-estrella').disabled = !data.sello_elegido;
-    $('cm-estrella').checked = !!data.estrella && !!data.sello_elegido;
-    $('cm-fila-estrella').classList.toggle('desactivada', !data.sello_elegido);
-    if (data.sello_elegido) {
-      $('cm-estrella-nota').textContent = 'Destaca este producto con una estrella dentro del sello.';
-    }
+    // Distintivo único. Si un registro histórico trae ambos estados, la
+    // disponibilidad tiene prioridad visual; al guardar queda normalizado a
+    // una sola opción y la base impedirá futuras combinaciones dobles.
+    const conflictoDistintivo = !!data.sello_elegido && !!data.aviso_urgencia_activo;
+    const tipoActual = data.aviso_urgencia_activo
+      ? 'ultimas'
+      : (data.sello_elegido ? 'elegido' : 'ninguno');
+    const radioActual = document.querySelector('input[name="cm-distintivo"][value="' + tipoActual + '"]');
+    if (radioActual) radioActual.checked = true;
 
-    // Aviso de urgencia.
-    $('cm-aviso').checked = !!data.aviso_urgencia_activo;
-    $('cm-aviso-sub').hidden = !data.aviso_urgencia_activo;
+    $('cm-aviso-sub').hidden = tipoActual !== 'ultimas';
     $('cm-aviso-cantidad').value = (data.aviso_urgencia_cantidad === null || data.aviso_urgencia_cantidad === undefined)
       ? '' : String(data.aviso_urgencia_cantidad);
+    if (conflictoDistintivo) {
+      mostrarMsg('Esta campaña conservaba dos distintivos históricos. Se muestra “Últimas unidades” para que elijas una sola opción y guardes la normalización.', 'aviso');
+    }
 
     // Estado de publicacion.
     publicadoActual = !!data.publicado;
@@ -953,12 +938,15 @@
       }
     }
 
-    const avisoActivo = $('cm-aviso').checked;
+    // Distintivo: el selector solo permite una opción a la vez.
+    const distintivo = tipoDistintivo();
+    const selloElegido = distintivo === 'elegido';
+    const avisoActivo = distintivo === 'ultimas';
     let avisoCant = null;
     if (avisoActivo) {
       avisoCant = Math.trunc(Number($('cm-aviso-cantidad').value));
       if (Number.isNaN(avisoCant) || avisoCant <= 0) {
-        mostrarMsg('Con el aviso de urgencia activo debes indicar una cantidad mayor que cero (“Solo X disponibles”).');
+        mostrarMsg('Con “Últimas unidades” debes indicar una cantidad mayor que cero.');
         $('cm-aviso-cantidad').focus();
         return;
       }
@@ -1043,8 +1031,10 @@
       p_sobre_este_producto: $('cm-sobre').value.trim() || null,
       p_ficha_tecnica: recolectarFicha(),
       p_imagenes: imagenesPaths,
-      p_sello_elegido: $('cm-sello').checked,
-      p_estrella: $('cm-sello').checked && $('cm-estrella').checked,
+      p_sello_elegido: selloElegido,
+      // Campo histórico retirado de la marca: "Elegido" ya se representa
+      // directamente con una estrella, sin un segundo interruptor.
+      p_estrella: false,
       p_aviso_urgencia_activo: avisoActivo,
       p_aviso_urgencia_cantidad: avisoCant,
       p_etiquetas: recolectarEtiquetas(),

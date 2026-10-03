@@ -195,6 +195,56 @@ Después, desde el back-office con sesión de Marketing:
 No pruebes la ejecución funcional desde SQL Editor: allí `auth.uid()` es `NULL`
 y el guard interno debe responder **Acceso denegado** aunque el grant esté bien.
 
+## 0quater. Campañas · distintivo único de tarjeta
+
+Archivo: `supabase/migrations/20261003000200_campanas_distintivo_excluyente.sql`.
+
+La tarjeta puede llevar **Elegido por MAGANDHI** o **Últimas unidades**, nunca
+ambos. “Agotado” continúa siendo un estado automático de Inventario. El antiguo
+campo `estrella` queda histórico: la estrella es ahora el símbolo único de
+“Elegido” y ya no existe un interruptor de destacado.
+
+### Antes de aplicar
+
+Auditar si quedó alguna campaña histórica con ambos distintivos:
+
+```sql
+select id, nombre, sello_elegido, aviso_urgencia_activo,
+       aviso_urgencia_cantidad
+from public.campana_producto
+where sello_elegido = true
+  and aviso_urgencia_activo = true;
+```
+
+No es necesario modificarla a mano para aplicar la migración: el constraint se
+crea `NOT VALID`, por lo que protege inmediatamente todas las filas nuevas o
+actualizadas sin borrar ni decidir silenciosamente por los datos históricos. Al
+editar una fila en conflicto, Campañas mostrará “Últimas unidades” como prioridad
+y pedirá guardar una única elección.
+
+### Aplicación
+
+1. Ejecutar el archivo completo **una sola vez** en SQL Editor, después de
+   `20261003000100`.
+2. No redesplegar Edge Functions: no se cambian funciones ni vistas.
+3. Cerrar sesión y volver a iniciarla si el navegador conserva una sesión previa
+   a cambios de permisos; esto renueva la lectura del perfil sin tocar datos.
+
+### Verificación
+
+```sql
+select conname, convalidated
+from pg_constraint
+where conname = 'campana_producto_un_distintivo_chk';
+-- Esperado: una fila. convalidated=true si no había conflictos históricos;
+-- false si existe alguno pendiente de normalizar desde Campañas.
+```
+
+En Campañas, verificar que el bloque **Distintivo de la tarjeta** solo permita
+una de estas opciones: Ninguno, Elegido por MAGANDHI o Últimas unidades. Con una
+cantidad `1`, la vista previa debe decir “ÚLTIMA DISPONIBLE”; con una cantidad
+mayor, “ÚLTIMAS X DISPONIBLES”.
+
 ---
 
 ## Instalación histórica de referencia
