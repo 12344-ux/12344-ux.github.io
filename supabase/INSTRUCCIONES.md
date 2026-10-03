@@ -129,6 +129,72 @@ Hace dos cosas en una sola migración, sobre las mismas funciones y la misma vis
 6. **`crear-intencion-pago` NO necesita redeploy** por esta migración: la vista
    sigue exponiendo `precio_venta` y el grant a `service_role` se re-otorgó.
 
+## 0ter. Corrección de permisos de Campañas (error 42501)
+
+> **Acción MANUAL del dueño.** Ejecuta esta migración forward después de
+> `20261003000000`. No edites ni reejecutes la migración anterior: ya forma
+> parte de la historia de producción.
+
+Archivo: `supabase/migrations/20261003000100_campanas_execute_nominal.sql`.
+
+### Incidente y causa
+
+Al pulsar **Hecho** después de reordenar, los productos regresaban a su posición
+anterior. La llamada real a Supabase confirmó:
+
+```text
+42501: permission denied for function cm_reordenar_campanas
+```
+
+Tramo 0 dejó correctamente cerrados los privilegios predeterminados de las
+funciones nuevas. La migración `20261003000000` creó
+`cm_reordenar_campanas` sin conceder el `EXECUTE` nominal a `authenticated` y,
+al hacer DROP + CREATE de `cm_crear_campana` y `cm_editar_campana`, también
+eliminó los grants que tenían sus firmas anteriores.
+
+La corrección mantiene menor privilegio: `PUBLIC` y `anon` continúan bloqueados;
+`authenticated` puede entrar a las tres RPC y el segundo candado sigue siendo
+`tiene_acceso_marketing()`; `service_role` conserva la política de Tramo 0.
+
+### Aplicación
+
+1. Abrir `supabase/migrations/20261003000100_campanas_execute_nominal.sql`.
+2. Copiarlo completo y ejecutarlo **una sola vez** en SQL Editor.
+3. No redesplegar ninguna Edge Function: esta corrección solo cambia permisos
+   SQL de tres funciones existentes.
+
+### Verificación
+
+En SQL Editor, comprobar la matriz de permisos:
+
+```sql
+select
+  p.oid::regprocedure as funcion,
+  has_function_privilege('anon',          p.oid, 'execute') as anon,
+  has_function_privilege('authenticated', p.oid, 'execute') as authenticated,
+  has_function_privilege('service_role',  p.oid, 'execute') as service_role
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in (
+    'cm_crear_campana', 'cm_editar_campana', 'cm_reordenar_campanas'
+  )
+order by p.proname;
+-- Esperado en las tres filas:
+-- anon=false, authenticated=true, service_role=true.
+```
+
+Después, desde el back-office con sesión de Marketing:
+
+1. Reordenar dos productos, pulsar **Hecho** y recargar Campañas: el orden debe
+   persistir.
+2. Abrir `magandhi.com`: el escaparate debe reflejar el mismo orden.
+3. Crear y editar una campaña para comprobar que las otras dos firmas recreadas
+   también conservan acceso.
+
+No pruebes la ejecución funcional desde SQL Editor: allí `auth.uid()` es `NULL`
+y el guard interno debe responder **Acceso denegado** aunque el grant esté bien.
+
 ---
 
 ## Instalación histórica de referencia

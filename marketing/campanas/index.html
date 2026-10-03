@@ -459,22 +459,26 @@
   // visual inconsistente con la base.
   async function persistirOrden() {
     const p_ids = campanas.map((c) => c.id);
-    if (!p_ids.length) return;
+    if (!p_ids.length) return true;
     const { error } = await supabase.rpc('cm_reordenar_campanas', { p_ids });
-    if (error) {
-      const primero = campanas[0]?.id;
-      const msg = primero
-        ? lista.querySelector('[data-msg="' + CSS.escape(primero) + '"]')
-        : null;
-      if (msg) {
-        msg.textContent = 'No se pudo guardar el nuevo orden: ' +
-          (error.message || 'error desconocido.') + ' Se recargó la lista.';
-        msg.hidden = false;
-      }
-      // Recargar para reflejar el orden REAL de la base (evita quedar fuera de
-      // sincronia con lo que ve el home).
-      await cargarCampanas();
+    if (!error) return true;
+
+    const detalle = error.message || 'error desconocido.';
+    // Primero recargar para reflejar el orden REAL de la base (evita quedar
+    // fuera de sincronia con lo que ve el home). Despues se muestra el error
+    // sobre el DOM nuevo: antes se mostraba y cargarCampanas lo destruia al
+    // repintar, por eso el mensaje desaparecia inmediatamente.
+    await cargarCampanas();
+    const primero = campanas[0]?.id;
+    const msg = primero
+      ? lista.querySelector('[data-msg="' + CSS.escape(primero) + '"]')
+      : null;
+    if (msg) {
+      msg.textContent = 'No se pudo guardar el nuevo orden: ' +
+        detalle + ' Se recargó la lista.';
+      msg.hidden = false;
     }
+    return false;
   }
 
   // Boton de la cabecera: alterna entre modo normal y modo reordenar. Al pasar
@@ -486,11 +490,18 @@
         pintarLista();
         return;
       }
-      // Confirmar ("Hecho"): persistir y salir del modo.
+      // Confirmar ("Hecho"): persistir y salir del modo. El boton queda
+      // bloqueado mientras Supabase responde para impedir una segunda accion
+      // que compita con la primera.
       modoReordenar = false;
       arrastrandoId = null;
       pintarLista();
-      await persistirOrden();
+      btnReordenar.disabled = true;
+      try {
+        await persistirOrden();
+      } finally {
+        btnReordenar.disabled = false;
+      }
     });
   }
 
