@@ -7,15 +7,15 @@
 <meta name="description" content="Campañas · presentación de productos del Área de Marketing de Magandhi.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" type="image/png" href="../../marca-areas/marketing.png?v=1">
-<link rel="apple-touch-icon" href="../../icono-app-180.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=2">
 <meta name="theme-color" content="#101C33">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../../marca.css?v=1">
+<link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=1">
-<link rel="stylesheet" href="campanas.css?v=1">
+<link rel="stylesheet" href="campanas.css?v=2">
 
 <!--
   MAGANDHI · Area de Marketing · Sub-area CAMPANAS · HOME/LISTA.
@@ -110,7 +110,7 @@
 
     const { data, error } = await supabase
       .from('campana_producto')
-      .select('id, nombre, categoria_codigo, hook_corto, imagen_banner_path, precio_venta, sello_elegido, estrella, aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, activo, es_placeholder, orden, campana_categoria ( nombre, color_fuerte, color_claro, color_sombra )')
+      .select('id, nombre, categoria_codigo, hook_corto, imagen_banner_path, precio_venta, sello_elegido, estrella, aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, activo, es_placeholder, orden, campana_categoria ( nombre )')
       .order('orden', { ascending: true });
 
     if (error) {
@@ -156,20 +156,17 @@
   }
 
   // ----------------------------------------------------------
-  // Devuelve el HTML de una tarjeta. El color de categoria se inyecta como
-  // variables inline (--cm-acento*), mismo espiritu que --acento en la tienda.
+  // Devuelve el HTML de una tarjeta. La paleta es FIJA (dorado de marca), igual
+  // que la tienda publica: la categoria solo clasifica, no cambia el color.
   // ----------------------------------------------------------
   function pintarTarjeta(c) {
     const cat = c.campana_categoria || null;
-    const acento   = cat?.color_fuerte || '#6E6A66';
-    const acentoCl = cat?.color_claro  || '#A8A29C';
-    const acentoSo = cat?.color_sombra || 'rgba(110,106,102,.15)';
     const catNombre = cat?.nombre || 'Sin categoría';
 
     const style =
-      '--cm-acento:' + escaparHTML(acento) + ';' +
-      '--cm-acento-cl:' + escaparHTML(acentoCl) + ';' +
-      '--cm-acento-sombra:' + escaparHTML(acentoSo) + ';';
+      '--cm-acento:#C28A3A;' +
+      '--cm-acento-cl:#D9AE6E;' +
+      '--cm-acento-sombra:rgba(194,138,58,.16);';
 
     const id = escaparHTML(c.id);
     const hrefEditar = 'editar.html?id=' + encodeURIComponent(c.id);

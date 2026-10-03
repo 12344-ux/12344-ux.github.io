@@ -1,18 +1,45 @@
-# Supabase · Instrucciones para el dueno (Magandhi)
+# Supabase · runbook operativo MAGANDHI / Impulse
 
-Esta guia es para aplicar manualmente, desde el dashboard de Supabase, el
-cimiento de datos y seguridad del back-office interno (montaguth.institute).
-El agente no tiene acceso al dashboard: por eso todo el SQL vive en el repo y
-tu lo ejecutas siguiendo estos pasos en orden.
+> **Estado al 2-oct-2026:** las migraciones hasta `20250606000200` y el Tramo 0
+> fueron verificadas en producción. La siguiente acción es aplicar
+> `20261002000000_puesta_al_dia_seguridad_operativa.sql` y redesplegar
+> `crear-intencion-pago`. Después se retoma Wompi F2.
+>
+> **Regla de migraciones:** los archivos ya aplicados son historia inmutable.
+> Nunca se reejecutan como arreglo o rollback sobre la base actual. Toda
+> corrección se agrega en una migración forward nueva.
+>
+> Los capítulos antiguos de esta guía documentan cómo se construyó el sistema.
+> No prevalecen sobre el estado acumulativo descrito arriba, `CONTEXTO-MAGANDHI.md`
+> y `ANDAMIOS.md`.
 
-Datos del proyecto:
+El agente no tiene acceso al dashboard. SQL escrito en este repositorio no está
+desplegado hasta que el dueño lo ejecute en SQL Editor; una Edge Function tampoco
+está desplegada hasta redesplegarla. Los datos personales del administrador y los
+secretos se consultan en los paneles privados, no se repiten en este repositorio.
 
-- URL del proyecto: `https://bxlzipwxyxdtffnuizbz.supabase.co`
-- Publishable key (PUBLICA, va en el cliente): `sb_publishable_ap4jdsO_0KPOPWhUk9Y7ZA_0jDUvHu1`
-- Usuario administrador (ya creado por ti): `michaelmagandhi@outlook.com`
-- UID del administrador: `89e5028d-8c17-4deb-89c3-59acbd0ee2f2`
+## 0. Puesta al día pendiente
+
+1. Abrir `supabase/migrations/20261002000000_puesta_al_dia_seguridad_operativa.sql`.
+2. Ejecutarlo **una sola vez** en SQL Editor.
+3. Verificar:
+   - campaña sin Inventario ligado: no publicable/no comprable;
+   - campaña ligada, producto activo y precio positivo: publicable;
+   - anon continúa bloqueado en vistas/RPC internas;
+   - Finanzas sigue escribiendo mediante RPC;
+   - Marketing puede eliminar keys fallidas solo en el bucket `campanas`.
+4. Redesplegar `supabase/functions/crear-intencion-pago/index.ts` conservando los
+   secrets del entorno.
+5. Probar intención por slug y por UUID; el retorno UUID debe usar `?id=`.
+6. Mantener Wompi en sandbox.
 
 ---
+
+## Instalación histórica de referencia
+
+Las secciones siguientes sirven para reconstruir un proyecto vacío y entender la
+evolución. En la base actual, comprobar el ledger antes de cualquier acción y
+crear una migración nueva si hace falta corregir algo.
 
 ## 1. Abrir el SQL Editor de Supabase
 
@@ -21,28 +48,19 @@ Datos del proyecto:
 3. En el menu lateral izquierdo, abre **SQL Editor**.
 4. Pulsa **New query** para tener un editor en blanco.
 
-## 2. Ejecutar la migracion de perfiles y roles
+## 2. Migración histórica de perfiles y roles
 
-1. Abre en el repo el archivo `supabase/migrations/20250101000000_crear_perfiles_y_roles.sql`.
-2. Copia **todo** su contenido y pegalo en el SQL Editor.
-3. Pulsa **Run** (o Ctrl/Cmd + Enter).
-4. Debe terminar sin errores. Esto crea:
-   - La tabla `perfiles` (id -> rol -> modulos -> creado).
-   - RLS activado con una unica policy de lectura (cada usuario solo lee su propia fila).
-   - La fila del administrador (tu UID con rol `admin`).
-   - La funcion helper `tiene_modulo(text)`.
+En una instalación nueva, el bootstrap original está en
+`supabase/migrations/20250101000000_crear_perfiles_y_roles.sql`. En producción
+actual **no se reejecuta**: si el administrador cambia, se hace una migración
+forward o una operación controlada con el UID consultado en Authentication.
 
-   El archivo ya trae el `INSERT` del administrador con `on conflict do update`,
-   asi que puedes re-ejecutarlo sin duplicar nada si algo falla a mitad.
+## 3. Confirmar Auth Email y el administrador
 
-## 3. Confirmar que Auth Email esta habilitado y que el usuario admin existe
-
-1. En el menu lateral, abre **Authentication**.
-2. En **Providers**, confirma que **Email** esta habilitado (ya deberia estarlo).
-3. En **Users**, confirma que existe el usuario `michaelmagandhi@outlook.com`
-   y que su UID coincide con `89e5028d-8c17-4deb-89c3-59acbd0ee2f2`.
-   - Si el UID fuera distinto (por ejemplo, si recreaste el usuario), copia el
-     UID real, ajusta el valor en el `INSERT` del paso 2 y vuelve a ejecutarlo.
+1. En **Authentication → Providers**, confirmar Email habilitado.
+2. En **Users**, verificar que existe el administrador esperado.
+3. En SQL, verificar que su fila de `perfiles` tenga `rol='admin'`.
+4. No copiar correos, documentos ni UID reales a esta guía pública.
 
 ## 4. Exposicion de la tabla en la API (auto-expose new tables OFF)
 
@@ -70,7 +88,7 @@ Datos del proyecto:
 ## 6. Como verificar despues
 
 1. Aplicado el SQL, ve al login del sitio (`index.html`) e inicia sesion con
-   `michaelmagandhi@outlook.com`.
+   el usuario administrador configurado en Authentication.
 2. El panel interno (`panel.html`) debe cargar y leer tu rol `admin` desde la
    tabla `perfiles` (respetando RLS: solo ves tu propia fila).
 3. Para delegar en el futuro (por ejemplo, dar a tu hermano solo el modulo de
@@ -139,8 +157,8 @@ ORDEN, el contenido completo de cada archivo (cada uno con su propio **Run**):
    imputable)`, que es la UNICA via de escritura del catalogo PUC desde el
    software (la pantalla "Agregar cuenta"). Valida SOLO admin + formato +
    duplicado + existencia del padre (jerarquia) para no crear cuentas
-   huerfanas. Como usa `create or replace`, si en el futuro la ajustas basta
-   con **volver a ejecutar solo este archivo**, sin tocar los demas.
+   huerfanas. En la base actual, cualquier ajuste posterior se entrega mediante
+   una migración forward nueva; no se vuelve a ejecutar este archivo histórico.
 10. `supabase/migrations/20250201000900_finanzas_balance_comprobacion.sql`
     Crea la funcion `balance_comprobacion(fecha_corte date)` (Tramo 2, paso 1:
     el Balance de comprobacion A FECHA DE CORTE). Se derivan solos, de las
@@ -183,9 +201,10 @@ ORDEN, el contenido completo de cada archivo (cada uno con su propio **Run**):
     Como usa `create or replace`, si en el futuro la ajustas basta con **volver
     a ejecutar solo este archivo**, sin tocar los demas.
 
-Los archivos son idempotentes (`create ... if not exists`, `on conflict do
-update`, `create or replace`, `drop policy if exists`): si algo falla a mitad,
-puedes re-ejecutar sin duplicar nada.
+Estos archivos describen la instalación inicial. Aunque varios fragmentos son
+idempotentes de forma aislada, **no se reaplican sobre producción actual** porque
+migraciones posteriores los superseden. Ante un fallo o ajuste, crear una
+migración forward nueva.
 
 ## F2. Como verificar que quedo bien
 
@@ -292,10 +311,9 @@ lugares: `c_tope_linea` en `20250201000600_finanzas_funciones.sql` y
 `TOPE_MONTO_LINEA` en `finanzas/finanzas-core.js`.
 
 > **Reaplicacion tras esta correccion:** el archivo 7
-> (`20250201000600_finanzas_funciones.sql`) cambio (tope por linea y, en
-> `editar_asiento`, snapshot de las lineas anteriores en la bitacora). Como todas
-> las funciones usan `create or replace`, basta con **volver a ejecutar ese
-> archivo** en el SQL Editor; no hay que tocar los demas ni borrar nada.
+> **Nota histórica:** el archivo `20250201000600_finanzas_funciones.sql` fue
+> supersedido por migraciones posteriores. En producción actual no se reaplica;
+> cualquier corrección adicional debe llegar como migración forward nueva.
 
 ## F5. NOTA · El catalogo PUC quedo PARCIAL (a proposito)
 
@@ -904,10 +922,13 @@ que baste `'{marketing}'`. Puedes combinar modulos como en Finanzas
 (`'{finanzas,marketing}'`, etc.); el `admin` no necesita nada de esto porque ve
 todo.
 
-## I5. Que NO se construye en esta vuelta (nota honesta)
+## I5. Alcance histórico de la primera fase de Inventario
 
-Igual que la nota honesta del Balance General, aqui esta lo que queda pendiente
-a proposito, para no dejar cosas a medias:
+> **Supersedido:** esta lista describe lo que no existía al cerrar aquella fase.
+> Hoy sí existen `clientes`, `catalogo_publico`, Campañas y Ventas. Se conserva
+> para explicar la secuencia de construcción, no como estado operativo actual.
+
+En ese momento se dejó pendiente, de forma deliberada:
 
 - **No hay tabla de clientes.** `movimientos_inventario.customer_id` existe como
   columna ANTICIPADA (sin FK), lista para el dia que exista un software de
@@ -1139,10 +1160,11 @@ operar sus datos (quien ve la carpeta, puede operar sus datos).
    > venta actual (ingreso estimado) sin romperse. Dale `'{ventas}'` ademas de
    > `'{marketing}'` solo si quieres que vea el ingreso REAL en el Ranking.
 
-## V4. Que NO se construye en esta vuelta (nota honesta)
+## V4. Alcance histórico de la primera fase de Ventas
 
-Igual que las notas honestas de Balance General e Inventario, aqui esta lo que
-queda pendiente a proposito, para no dejar cosas a medias:
+> **Supersedido en parte:** F1 ya abre el checkout Wompi en sandbox, pero F2
+> todavía no persiste pagos ni crea pedidos automáticos. Los puntos siguientes
+> describen el cierre original de Ventas.
 
 - **La pantalla de DEVOLUCIONES no se construye.** El MOTOR por debajo si queda
   listo: `anular_pedido` revierte el stock con una entrada compensatoria y deja
@@ -1164,12 +1186,12 @@ queda pendiente a proposito, para no dejar cosas a medias:
 
 # CAMPANAS (Area Marketing) · Producto vestido para la tienda publica
 
-Esta seccion aplica el cimiento de datos de CAMPANAS: el software con el que se
-"viste" un producto (dos secciones: BANNER HOOK y PRODUCTO) y se PUBLICA en la
-tienda publica (magandhi.com). CAMPANAS es una ISLA: NO se cruza con la tabla
-`productos` de Inventario, NO lee stock real y NO usa su product_id. Tiene su
-propia identidad y deja un enchufe apagado (`product_id_ref` uuid NULL SIN FK)
-para conectar Inventario despues sin cirugia.
+Esta seccion documenta cómo nació CAMPANAS. **Estado actual:** Campañas ya se
+conecta con `productos` mediante `product_id_ref`, deriva `agotado` del libro de
+Inventario y publica en `catalogo_publico`. La descripción de “isla” que sigue
+corresponde únicamente a la primera migración y no al sistema vigente.
+
+En la primera etapa, CAMPANAS se diseñó como una isla con un enchufe futuro:
 
 La tienda publica lee EN VIVO una VISTA segura, `catalogo_publico`, que solo
 expone productos publicados y solo campos publicos. JAMAS expone costo,
@@ -1218,9 +1240,10 @@ archivo (cada uno con su propio **Run**):
    lee) y `select` de la VISTA `catalogo_publico` a `anon, authenticated` (la
    tienda publica la lee sin login). NO grant a anon sobre las tablas base.
 8. `supabase/migrations/20250501000700_campanas_seed.sql`
-   Siembra los 5 productos actuales del home (Grisi real + 4 de ejemplo) con ids
-   fijos e idempotencia (`on conflict (id) do update`), y asigna etiquetas de
-   segmentacion por producto. Todos con `publicado=true`.
+   **Seed historico:** creo el Grisi y cuatro filas de ejemplo para construir la
+   interfaz. No describe el catalogo actual. Las filas `es_placeholder=true` se
+   retiran por baja logica; nunca se convierten en productos reales ni se dejan
+   publicadas de cara al cliente.
 9. `supabase/migrations/20250502000000_campanas_placeholder_slug.sql` **(Tanda 1)**
    Anade a `campana_producto` la columna INTERNA `es_placeholder` (marca true los
    4 productos ficticios de ejemplo ...0c0002..0c0005 y false el Grisi ...0c0001)
@@ -1232,9 +1255,8 @@ archivo (cada uno con su propio **Run**):
    por baja logica, sin cambiar el codigo). No necesita GRANT nuevo (el grant de
    tabla cubre las columnas nuevas; las funciones ya otorgan EXECUTE a PUBLIC).
 
-Los archivos son idempotentes (`create ... if not exists`, `create or replace`,
-`drop policy if exists`, `on conflict do update`, guard sobre `pg_constraint`):
-si algo falla a mitad, puedes re-ejecutar sin duplicar nada.
+Estos archivos son historia de instalación. No se reaplican sobre la base actual;
+la migración `20261002000000` consolida las correcciones operativas vigentes.
 
 ## C2. Imagenes de Campanas (Storage) · REQUERIDO (Tanda 1)
 
@@ -1259,6 +1281,12 @@ cargador de imagenes.
    create policy "campanas_escritura_marketing" on storage.objects
      for insert to authenticated
      with check (bucket_id = 'campanas' and tiene_acceso_marketing());
+
+   -- Borrado compensatorio de keys huerfanas, tambien limitado a Marketing.
+   -- En la base vigente lo versiona la migracion 20261002000000.
+   create policy "campanas_delete_marketing" on storage.objects
+     for delete to authenticated
+     using (bucket_id = 'campanas' and tiene_acceso_marketing());
    ```
 
    El Grisi puede seguir apuntando a una ruta del repo de la tienda en
@@ -2152,18 +2180,19 @@ Orden permanente del dueno, **no negociable** (misma linea que B3.0):
   para leer `pagos_config` (cuyo RLS solo deja leer a `authenticated` con
   `tiene_modulo('finanzas')`) y `catalogo_publico`.
 
-## F1.1. Que archivos entrega F1 (y que SQL, si hay)
+## F1.1. Archivos acumulativos requeridos
 
-- **Codigo (repo, rama `feat/wompi-intencion-pago`):**
-  `supabase/functions/crear-intencion-pago/index.ts` (Edge Function Deno; usa
-  `@supabase/supabase-js@2.116.0` por URL, version EXACTA).
-- **SQL nuevo:** **NINGUNO.** F1 **no agrega migraciones**: usa `pagos_config`
-  de **B3** (`20250601000100_pagos_config.sql`, ya en produccion) y
-  `catalogo_publico` de **Campanas** (ya en produccion). No hay tabla nueva en
-  F1. La tabla de idempotencia `pagos_wompi` y el webhook son de **F2**.
+- Edge Function vigente: `supabase/functions/crear-intencion-pago/index.ts`.
+- Configuración inicial: `20250601000100_pagos_config.sql`.
+- Correcciones acumulativas F1: `20250604000000`, `20250605000000` y las tres
+  migraciones `20250606*`.
+- Puesta al día posterior: `20261002000000_puesta_al_dia_seguridad_operativa.sql`.
+- `pagos_wompi`, intención persistida y webhook siguen perteneciendo a F2.
 
-> Escribir el `index.ts` en el repo **NO lo despliega**. El despliegue lo hace el
-> dueno a mano (abajo).
+> La lista anterior es histórica/acumulativa. En producción actual solo se aplica
+> la migración nueva pendiente; las anteriores no se reejecutan.
+>
+> Escribir `index.ts` en el repo **no lo despliega**. El dueño debe redesplegarlo.
 
 ## F1.2. Como desplegar la Edge Function a mano
 
@@ -2182,15 +2211,13 @@ Orden permanente del dueno, **no negociable** (misma linea que B3.0):
 supabase functions deploy crear-intencion-pago
 ```
 
-**Nota sobre "Verify JWT":** la tienda invoca la funcion con
-`supabase.functions.invoke('crear-intencion-pago', ...)` usando la
-**publishable/anon key** del proyecto. Esa anon key **es un JWT valido de
-Supabase**, asi que puedes **dejar activado "Verify JWT"** (recomendado): la
-funcion se sigue pudiendo llamar desde la tienda sin sesion de usuario. Si
-prefieres **desactivar** "Verify JWT", la funcion quedaria abierta sin exigir
-ningun JWT de Supabase; solo hazlo si lo entiendes (la funcion ya valida el
-producto y el CORS, pero perderias esa primera barrera de Supabase). Para F1 se
-recomienda **dejarlo activado**.
+**Nota sobre “Verify JWT”:** una `sb_publishable_…` no debe documentarse como
+JWT de usuario. Antes de cambiar esta opción, registrar el valor desplegado y
+probar desde `magandhi.com` un caso válido y uno inválido. La seguridad de la
+función no puede depender solo de CORS ni de ocultar la URL: valida método,
+payload, producto, cantidad, precio y disponibilidad server-side. Mantener en el
+runbook la configuración realmente verificada; no adivinarla por el formato de
+la publishable key.
 
 ## F1.3. Que secrets poner y DONDE (Edge Functions > Secrets)
 

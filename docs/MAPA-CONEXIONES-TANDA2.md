@@ -10,9 +10,10 @@
 > verificación viven allí (subsección **C4. Tanda 2**); aquí se enlaza, no se
 > duplica.
 >
-> **Estado:** Tanda 2 **aplicada en código**, pendiente de que el dueño corra el
-> SQL `20250503000000_campanas_incision_inventario.sql` en el SQL Editor de
-> Supabase y lo verifique (ver INSTRUCCIONES.md · C4.2).
+> **Estado:** Tanda 2 aplicada y operativa. Tramo 0 sustituyó el join a
+> `stock_actual` por un agregado privado directo de `movimientos_inventario`, sin
+> exponer existencias. La migración `20261002000000` endurece el último borde:
+> una campaña sin Inventario ligado queda no comprable.
 
 ---
 
@@ -55,14 +56,12 @@ Tras aplicar `20250503000000_campanas_incision_inventario.sql`:
    `product_id_ref` (id capturado de la RPC al sembrar). Idempotente: si el
    `campana_producto` ya tiene `product_id_ref` no nulo, no se vuelve a sembrar.
 
-4. **La vista pública `catalogo_publico` expone el booleano derivado `agotado`.**
-   En lugar del antiguo número manual `stock_disponible`, la vista calcula
-   `agotado` desde el stock REAL de Inventario:
-   `case when cp.product_id_ref is null then false else coalesce(sa.existencias,0) <= 0 end`.
-   Es decir: si el producto de Campañas todavía **no** está ligado a Inventario,
-   `agotado = false` (no marcamos agotado a algo sin inventario conectado, para
-   no romper el catálogo mientras el dueño migra); si está ligado, `agotado` es
-   `true` cuando las existencias reales llegan a 0.
+4. **La vista pública `catalogo_publico` expone únicamente el booleano `agotado`.**
+   Tramo 0 lo calcula desde un agregado privado de `movimientos_inventario`
+   (misma fórmula del stock derivado), sin depender de la vista interna
+   `stock_actual` y sin exponer cantidades. Con la puesta al día 2026-10-02,
+   `product_id_ref is null` produce `agotado=true`: un producto sin Inventario
+   ligado puede seguir como borrador, pero no se presenta como comprable.
 
 5. **Desplegable de producto de Inventario en el panel de Campañas.**
    `marketing/campanas/agregar.html` y `editar.html` tienen un
@@ -207,43 +206,31 @@ decisión honesta del dueño (por ejemplo, cuando de verdad quedan 3 unidades). 
 producto está agotado, en la tienda manda el sello **Agotado** y el aviso de
 urgencia se oculta para no contradecirlo.
 
-### Tabla base vs vista pública (para no confundir `stock_disponible`)
+### Columna histórica `stock_disponible`
 
-Tras la incisión, `stock_disponible` **sigue existiendo** como columna de la
-**tabla base** `campana_producto`, y el panel autenticado (`editar.html`) aún la
-lee y la escribe vía RPC. **Eso es válido:** es una lectura/escritura autenticada
-directa sobre la tabla base, no sobre la vista pública. Lo que se retiró de la
-**vista pública** `catalogo_publico` es esa columna: la tienda ya **no** depende de
-`stock_disponible` para nada (ver grep abajo). No confundir ambas cosas:
+`campana_producto.stock_disponible` permanece temporalmente en la tabla y en las
+firmas RPC por compatibilidad de esquema, pero la interfaz de Campañas ya no la
+lee, muestra ni envía. La tienda tampoco la consume. La única disponibilidad
+pública es `catalogo_publico.agotado`, derivada del libro real de Inventario.
 
-| Concepto            | `campana_producto.stock_disponible` (tabla base) | `catalogo_publico.agotado` (vista pública) |
-|---------------------|--------------------------------------------------|--------------------------------------------|
-| Naturaleza          | Número manual, dato de compatibilidad            | Booleano derivado del stock real           |
-| Quién lo lee        | Panel autenticado (marketing), directo           | La tienda pública (`anon`)                 |
-| Alimenta el Agotado | **No** (histórico/manual)                         | **Sí** (existencias ≤ 0 vía product_id_ref)|
-| Se expone al público| **No**                                           | **Sí** (solo el booleano)                  |
+| Concepto | `stock_disponible` histórico | `catalogo_publico.agotado` vigente |
+|---|---|---|
+| Naturaleza | Columna de compatibilidad | Booleano derivado del libro real |
+| Interfaz | No se muestra ni edita | Lo consume la tienda pública |
+| Alimenta Agotado | No | Sí |
+| Se expone a anon | No | Sí, solo el booleano |
 
 ---
 
 ## Verificación de coherencia realizada en esta Tanda
 
-- **`grep -rn stock_disponible` en `magandhi/` (la tienda):** **0 resultados**.
-  La tienda NO depende de `stock_disponible` del catálogo público tras la Tanda 2
-  (FEAT-004 ya migró la lógica de agotado a `fila.agotado`). No quedó ninguna
-  dependencia huérfana que rompa la tienda.
-- **`grep -rn stock_disponible` en `12344-ux.github.io/marketing/`:** aparece solo
-  en el panel de Campañas (`agregar.html` línea ~821 al escribir vía RPC,
-  `editar.html` líneas ~765/~795/~919 al leer y escribir). Todas son operaciones
-  autenticadas sobre la **tabla base** `campana_producto`, válidas (ver distinción
-  arriba).
-- **Comentarios del panel actualizados:** las notas de arquitectura en el `<head>`
-  de `agregar.html` y `editar.html` decían "Campañas NO lee Inventario hoy" y que
-  el Agotado "no se dispara solo": quedaron **desactualizadas** tras la incisión.
-  Se corrigió **solo el texto de los comentarios** (sin cambiar comportamiento)
-  para reflejar que Campañas ya se liga a Inventario por `product_id_ref` y que el
-  Agotado se deriva del stock real en la tienda.
-- **`ranking-productos.html`:** el marcador de conexión con Ventas ya estaba
-  actualizado (usa `pedido_items` para el precio real). No se reabrió ni se cambió.
+- La tienda pública no consume `stock_disponible`; usa `fila.agotado`.
+- Campañas ya no muestra ni envía el campo manual; el parámetro RPC conserva su
+  valor por defecto mientras se retira en una futura migración de esquema.
+- `catalogo_publico` calcula existencias directamente desde
+  `movimientos_inventario` desde Tramo 0.
+- Ranking usa `pedido_items` cuando existe venta trazable y distingue sus
+  fallbacks; no presenta todo ingreso como real.
 
 ---
 
@@ -252,8 +239,9 @@ directa sobre la tabla base, no sobre la vista pública. Lo que se retiró de la
 - **SQL y verificación:** `supabase/INSTRUCCIONES.md` → subsección **C4. Tanda 2 ·
   La incisión: conectar Campañas con Inventario** (orden exacto de ejecución en
   C4.1, consultas de verificación en C4.2).
-- **Migración:** `supabase/migrations/20250503000000_campanas_incision_inventario.sql`.
-- **Índice de estado del proyecto:** `CONTEXTO-MAGANDHI.md`.
+- **Migración original:** `supabase/migrations/20250503000000_campanas_incision_inventario.sql` (histórica; no reaplicar).
+- **Endurecimiento vigente:** `supabase/migrations/20261002000000_puesta_al_dia_seguridad_operativa.sql`.
+- **Índice de estado:** `CONTEXTO-MAGANDHI.md`.
 
-> _Aplica el SQL el dueño, a mano, en el SQL Editor de Supabase. Escribir SQL en
-> el repo NO lo despliega._
+> El dueño despliega SQL manualmente. Escribir una migración en el repositorio no
+> cambia Supabase hasta ejecutarla y verificarla.

@@ -424,7 +424,7 @@ export function montarHeader(opts) {
         '<span>' + escaparHTML(txtVolver) + '</span>' +
       '</a>' +
       '<span class="fz-sep" aria-hidden="true"></span>' +
-      '<img class="fz-logo" src="../logo-mark-terracota.png" alt="Magandhi">' +
+      '<img class="fz-logo" src="../logo-mark-terracota.png?v=2" alt="Magandhi">' +
       '<span class="fz-word">MAGANDHI</span>' +
       '<span class="fz-sep" aria-hidden="true"></span>' +
       '<span class="fz-area">ÁREA DE FINANZAS</span>' +

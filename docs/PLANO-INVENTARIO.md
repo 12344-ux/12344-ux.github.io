@@ -1,7 +1,10 @@
 # PLANO MAESTRO · Módulo Inventario (ecosistema Impulse · piloto MAGANDHI)
 
-> **Estado: APROBADO POR EL DUEÑO — EN CONSTRUCCIÓN.** El dueño revisó el plano
-> y dio luz verde. Este documento es la memoria fiel de las decisiones tomadas.
+> **DOCUMENTO HISTÓRICO DE DISEÑO — IMPLEMENTACIÓN OPERATIVA.** Este plano conserva
+> las decisiones que originaron Inventarios. No es un instructivo de despliegue y
+> su DDL narrativo puede estar supersedido. El estado vigente está en
+> `../CONTEXTO-MAGANDHI.md`; las migraciones acumulativas viven en `../supabase/`.
+> No ejecutar fragmentos de este documento sobre producción.
 >
 > Tono: socio honesto. Donde hay una decisión con costo o un riesgo, lo digo
 > sin humo. Donde algo es "para después", lo marco para no caer en gold-plating.

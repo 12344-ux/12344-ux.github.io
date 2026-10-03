@@ -298,7 +298,7 @@ export function montarHeader(opts) {
   const hrefVolver = volverHref || 'index.html';
   const txtVolver = volverTexto || 'Ventas';
   const rotulo = areaLabel || 'ÁREA DE VENTAS';
-  const logo = logoSrc || (raiz + 'logo-mark-terracota.png');
+  const logo = logoSrc || (raiz + 'logo-mark-terracota.png?v=2');
 
   const header = document.createElement('header');
   header.className = 'vt-header';
