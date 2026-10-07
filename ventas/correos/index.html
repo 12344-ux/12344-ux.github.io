@@ -91,7 +91,8 @@
         <input class="vt-input" id="co-boton" maxlength="40">
         <span class="vt-ayuda">Solo en «Entregado». El código de reseña y el botón se agregan solos debajo del cuerpo.</span>
       </label>
-      <p class="co-vars">Variables: <code>{nombre}</code> primer nombre del cliente · <code>{pedido}</code> referencia corta (#A1B2C3D4).</p>
+      <p class="co-vars">Variables: <code>{nombre}</code> primer nombre del cliente · <code>{pedido}</code> referencia corta (#A1B2C3D4). Escríbelas tal cual, con las llaves: el sistema las reemplaza solo.</p>
+      <p class="vt-msg err" id="co-vars-aviso" hidden></p>
       <label class="co-check"><input type="checkbox" id="co-oficial">
         <span>Este es el copy <strong>oficial</strong> (quita la marca de borrador en el panel).</span>
       </label>
@@ -164,6 +165,28 @@
     }));
   }
 
+  // Detecta {lo-que-sea} que NO sea una variable real. Ej.: escribir {michael}
+  // en lugar de {nombre} saldria literal en el correo ("Hola, {michael}").
+  const VARIABLES = ['nombre', 'pedido'];
+  function variablesDesconocidas() {
+    const b = leerForm();
+    const texto = [b.asunto, b.preheader, b.titulo, b.cuerpo, b.boton_texto].join(' ');
+    const malas = new Set();
+    for (const m of texto.matchAll(/\{([^{}]*)\}/g)) {
+      if (!VARIABLES.includes(m[1].trim())) malas.add('{' + m[1] + '}');
+    }
+    return [...malas];
+  }
+  function revisarVariables() {
+    const malas = variablesDesconocidas();
+    const el = $('co-vars-aviso');
+    el.hidden = !malas.length;
+    el.textContent = malas.length
+      ? 'Ojo: ' + malas.join(', ') + ' no es una variable y saldrá tal cual en el correo. ¿Quisiste decir {nombre}?'
+      : '';
+    return malas;
+  }
+
   function contador() {
     $('co-cuerpo-cont').textContent = $('co-cuerpo').value.length + ' / 4000';
   }
@@ -179,6 +202,7 @@
     $('co-boton-campo').hidden = etapa !== 'entregado';
     sucio = false;
     contador();
+    revisarVariables();
     aviso(pl.actualizado ? 'Última edición: ' + formatearMomento(pl.actualizado) : '');
     pintarEtapas();
     verPrevia();
@@ -267,7 +291,7 @@
   }
 
   ['co-asunto', 'co-preheader', 'co-titulo', 'co-cuerpo', 'co-boton'].forEach((id) =>
-    $(id).addEventListener('input', () => { sucio = true; if (id === 'co-cuerpo') contador(); }));
+    $(id).addEventListener('input', () => { sucio = true; if (id === 'co-cuerpo') contador(); revisarVariables(); }));
   $('co-oficial').addEventListener('change', () => { sucio = true; });
   $('co-ver').addEventListener('click', verPrevia);
 
@@ -275,6 +299,8 @@
     ev.preventDefault();
     const b = leerForm();
     if (!b.asunto || !b.titulo || !b.cuerpo) { aviso('Asunto, título y cuerpo son obligatorios.', 'err'); return; }
+    const malas = revisarVariables();
+    if (malas.length && !window.confirm(malas.join(', ') + ' no es una variable y los clientes lo verán tal cual. ¿Guardar de todas formas?')) return;
     $('co-guardar').disabled = true; aviso('Guardando…');
     const { error } = await supabase.rpc('correo_guardar_plantilla', {
       p_etapa: etapa, p_asunto: b.asunto, p_preheader: b.preheader, p_titulo: b.titulo,
