@@ -88,6 +88,17 @@
   .vt-avance .vt-btn{width:100%;justify-content:center}
   .vt-anular-zona{display:flex;flex-direction:column;gap:8px}
   .vt-anular-zona textarea{min-height:60px}
+  /* Correos al cliente: una fila por etapa con su estado y su boton. */
+  .vt-correo-dest{margin:0 0 10px;font-size:12.5px;color:var(--vt-gris);word-break:break-all}
+  .vt-correo-fila{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--vt-linea)}
+  .vt-correo-fila:first-of-type{border-top:0}
+  .vt-correo-fila .et{font-size:13.5px;color:var(--vt-carbon);font-weight:600}
+  .vt-correo-fila .st{display:block;font-size:11.5px;color:var(--vt-gris);font-weight:400;margin-top:2px;font-variant-numeric:tabular-nums}
+  .vt-correo-fila .st.ok{color:#2E7D4F}
+  .vt-correo-fila .st.err{color:#B3261E}
+  .vt-correo-fila .vt-btn{padding:7px 12px;font-size:12.5px;white-space:nowrap;flex:none}
+  .vt-correo-fila .vt-btn[disabled]{opacity:.45;cursor:not-allowed}
+  .vt-msg.ok{color:#2E7D4F}
 </style>
 </head>
 <body class="vt-body">
@@ -182,6 +193,8 @@
 
   // Cache de pedidos cargados (por id) para abrir el detalle sin re-consultar.
   let pedidosPorId = new Map();
+  // false si la base aun no tiene la tabla de correos (migracion sin aplicar).
+  let correosDisponibles = true;
 
   function badge(estado) {
     const ico = ICONOS[ESTADO_ICO[estado]] || '';
@@ -210,24 +223,33 @@
 
     // Un solo select con relaciones: pedido -> cliente (contacto) y sus lineas
     // con el producto. PostgREST resuelve las FK declaradas en las migraciones.
-    let q = supabase
-      .from('pedidos')
-      .select(
-        'id, fecha_orden, estado, canal, total, notas, anulado, motivo_anulacion, creado,' +
-        ' direccion, ciudad, departamento, pais,' +
-        ' cliente:clientes ( id, nombre, correo, telefono, direccion, ciudad, departamento, pais ),' +
-        ' items:pedido_items ( id, cantidad, precio_unitario, subtotal, product_id, producto:productos ( nombre, sku ) ),' +
-        ' bitacora:pedido_bitacora ( id, accion, estado_anterior, estado_nuevo, detalle_cambio, actor, cuando )'
-      );
+    const SELECT_BASE =
+      'id, fecha_orden, estado, canal, total, notas, anulado, motivo_anulacion, creado,' +
+      ' direccion, ciudad, departamento, pais,' +
+      ' cliente:clientes ( id, nombre, correo, telefono, direccion, ciudad, departamento, pais ),' +
+      ' items:pedido_items ( id, cantidad, precio_unitario, subtotal, product_id, producto:productos ( nombre, sku ) ),' +
+      ' bitacora:pedido_bitacora ( id, accion, estado_anterior, estado_nuevo, detalle_cambio, actor, cuando )';
+    // Correos del pedido (migracion 20261008000000). Si aun no esta aplicada, la
+    // relacion no existe y se reintenta SIN ella: el tablero nunca se rompe.
+    const SELECT_CORREOS =
+      ', correos:correo_envios ( id, etapa, estado, destinatario, error, es_reenvio, creado, resuelto )';
 
-    if (fEstado.value) q = q.eq('estado', fEstado.value);
-    if (fDesde.value) q = q.gte('fecha_orden', fDesde.value);
-    if (fHasta.value) q = q.lte('fecha_orden', fHasta.value);
+    const consultar = (conCorreos) => {
+      let q = supabase.from('pedidos').select(SELECT_BASE + (conCorreos ? SELECT_CORREOS : ''));
+      if (fEstado.value) q = q.eq('estado', fEstado.value);
+      if (fDesde.value) q = q.gte('fecha_orden', fDesde.value);
+      if (fHasta.value) q = q.lte('fecha_orden', fHasta.value);
+      return q
+        .order('fecha_orden', { ascending: false })
+        .order('creado', { ascending: false })
+        .limit(PEDIDOS_N + 1); // N+1: la fila extra revela si hay mas
+    };
 
-    const { data, error } = await q
-      .order('fecha_orden', { ascending: false })
-      .order('creado', { ascending: false })
-      .limit(PEDIDOS_N + 1); // N+1: la fila extra revela si hay mas
+    let { data, error } = await consultar(correosDisponibles);
+    if (error && correosDisponibles && /correo_envios|relationship/i.test(error.message || '')) {
+      correosDisponibles = false;
+      ({ data, error } = await consultar(false));
+    }
 
     if (error) {
       lista.innerHTML = '<div class="vt-empty">No se pudieron cargar los pedidos. ' +
@@ -417,6 +439,49 @@
       '</div></div>';
     }
 
+    // Correos al cliente: un correo por etapa, enviado A MANO desde aqui. Solo se
+    // puede enviar una etapa que el pedido ya alcanzo; el servidor lo vuelve a
+    // validar (correo_pedido_preparar), igual que el destinatario, que sale de
+    // la base y no de esta pantalla.
+    let correosHtml = '';
+    if (correosDisponibles && !p.anulado) {
+      const idxEstado = FLUJO.indexOf(p.estado);
+      const envios = (p.correos || []).slice().sort((a, b) => Date.parse(b.creado) - Date.parse(a.creado));
+      const filas = FLUJO.map((etapa, i) => {
+        const alcanzada = idxEstado >= i;
+        const ult = envios.find((e) => e.etapa === etapa);
+        const yaEnviado = envios.some((e) => e.etapa === etapa && e.estado === 'enviado');
+        let st = '<span class="st">Sin enviar</span>';
+        if (ult && ult.estado === 'enviado') {
+          st = '<span class="st ok">Enviado · ' + escaparHTML(formatearMomento(ult.resuelto || ult.creado)) +
+            (ult.es_reenvio ? ' (reenvío)' : '') + '</span>';
+        } else if (ult && ult.estado === 'pendiente') {
+          st = '<span class="st">Enviando…</span>';
+        } else if (ult && ult.estado === 'fallido') {
+          st = '<span class="st err" title="' + escaparHTML(ult.error || '') + '">Falló: ' +
+            escaparHTML((ult.error || 'error').slice(0, 80)) + '</span>';
+        }
+        let boton;
+        if (!c.correo) {
+          boton = '';
+        } else if (!alcanzada) {
+          boton = '<button class="vt-btn ghost" type="button" disabled title="El pedido aún no llega a esta etapa">Aún no</button>';
+        } else if (yaEnviado) {
+          boton = '<button class="vt-btn ghost" type="button" data-correo="' + etapa + '" data-reenviar="1">Reenviar</button>';
+        } else {
+          boton = '<button class="vt-btn' + (i === idxEstado ? '' : ' ghost') + '" type="button" data-correo="' + etapa + '">Enviar</button>';
+        }
+        return '<div class="vt-correo-fila"><div><span class="et">' + escaparHTML(ESTADO_TXT[etapa]) + '</span>' + st + '</div>' + boton + '</div>';
+      }).join('');
+      correosHtml = '<div class="vt-bloque"><h3>Correos al cliente</h3>' +
+        (c.correo
+          ? '<p class="vt-correo-dest">Se envían a <strong>' + escaparHTML(c.correo) + '</strong></p>'
+          : '<p class="vt-correo-dest">Este cliente no tiene correo registrado; no se le pueden enviar avisos.</p>') +
+        filas +
+        '<p class="vt-msg" id="vt-c-msg"></p>' +
+      '</div>';
+    }
+
     drawerBody.innerHTML =
       (contacto.length ? '<div class="vt-bloque"><h3>Cliente</h3>' +
         contacto.map((d) => '<div class="vt-dato"><span class="k">' + escaparHTML(d.k) + '</span><span class="v">' + escaparHTML(d.v) + '</span></div>').join('') +
@@ -429,7 +494,39 @@
         '<div class="vt-dato" style="margin-top:6px"><span class="k">Registrado</span><span class="v">' + escaparHTML(formatearMomento(p.creado)) + '</span></div>' +
         '<div class="vt-dato"><span class="k">Canal</span><span class="v">' + escaparHTML(p.canal || 'manual') + '</span></div>' +
       '</div>' +
-      avanceHtml;
+      avanceHtml +
+      correosHtml;
+
+    // Cablear el envio de correos por etapa.
+    const cMsg = drawerBody.querySelector('#vt-c-msg');
+    drawerBody.querySelectorAll('button[data-correo]').forEach((b) => {
+      b.addEventListener('click', async () => {
+        const etapa = b.dataset.correo;
+        const reenviar = b.dataset.reenviar === '1';
+        if (reenviar && !window.confirm('El correo de «' + ESTADO_TXT[etapa] + '» ya se envió a ' + (c.correo || 'este cliente') +
+            '. Reenvía solo si hace falta de verdad (por ejemplo, no lo encuentra). ¿Enviarlo de nuevo?')) {
+          return;
+        }
+        drawerBody.querySelectorAll('button[data-correo]').forEach((x) => { x.disabled = true; });
+        cMsg.className = 'vt-msg'; cMsg.textContent = 'Enviando correo de «' + ESTADO_TXT[etapa] + '»...';
+        const r = await invocarCorreo({ modo: 'pedido', pedido_id: p.id, etapa, reenviar });
+        if (!r.ok) {
+          cMsg.className = 'vt-msg err';
+          cMsg.textContent = r.error;
+          // Recargar para reflejar el intento fallido en la bitacora.
+          await cargar();
+          abrirDetalle(p.id);
+          const m2 = drawerBody.querySelector('#vt-c-msg');
+          if (m2) { m2.className = 'vt-msg err'; m2.textContent = r.error; }
+          return;
+        }
+        cerrarDetalle();
+        await cargar();
+        abrirDetalle(p.id);
+        const m3 = drawerBody.querySelector('#vt-c-msg');
+        if (m3) { m3.className = 'vt-msg ok'; m3.textContent = 'Correo enviado a ' + (r.data.destinatario || c.correo) + '.'; }
+      });
+    });
 
     // Cablear acciones (solo si el pedido no esta anulado).
     const btnAvanzar = drawerBody.querySelector('#vt-avanzar');
@@ -492,6 +589,29 @@
   }
 
   function cerrarDetalle() { drawerFondo.hidden = true; }
+
+  // Llama a la Edge Function enviar-correo-pedido con la sesion del usuario y
+  // devuelve { ok, data } o { ok:false, error } con el mensaje real del servidor.
+  async function invocarCorreo(body) {
+    try {
+      const { data, error } = await supabase.functions.invoke('enviar-correo-pedido', { body });
+      if (error) {
+        let texto = error.message || 'No se pudo enviar el correo.';
+        try {
+          const j = await error.context.json();
+          if (j && j.error) texto = j.error;
+        } catch (_) { /* sin cuerpo JSON */ }
+        if (/Failed to send a request|FunctionsFetchError/i.test(texto)) {
+          texto = 'No se pudo contactar el servicio de correo. ¿Ya está desplegada la función enviar-correo-pedido?';
+        }
+        return { ok: false, error: texto };
+      }
+      if (data && data.error) return { ok: false, error: data.error };
+      return { ok: true, data: data || {} };
+    } catch (e) {
+      return { ok: false, error: 'Sin conexión: ' + (e?.message || e) };
+    }
+  }
 
   document.getElementById('vt-d-cerrar').addEventListener('click', cerrarDetalle);
   drawerFondo.addEventListener('click', (e) => { if (e.target === drawerFondo) cerrarDetalle(); });

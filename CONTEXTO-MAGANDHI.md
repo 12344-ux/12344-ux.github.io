@@ -91,7 +91,7 @@ Verificación de compra sin inicio de sesión: cada pedido lleva un código de r
 
 Coherencia del promedio, decisión del dueño: se muestra el promedio real a un decimal **siempre acompañado del total**. No se usa media bayesiana ni suavizado, porque rompería la coherencia con las tarjetas visibles.
 
-Pendiente real: hacer llegar el código al cliente en el último correo de seguimiento. Requiere montar el envío de correos de MAGANDHI, que todavía no existe. Hasta entonces el código se comparte a mano desde el back-office.
+Entrega del código: va en el correo de «Entregado» (tramo de correos, código listo). Hasta desplegarlo, el código se comparte a mano desde el back-office.
 
 ### Ventas — operativo
 
@@ -101,7 +101,9 @@ Pendiente real: hacer llegar el código al cliente en el último correo de segui
 - Anulación transaccional y movimientos compensatorios de inventario.
 - Portafolio de clientes con métricas derivadas de pedidos reales.
 
-Pendiente real: entrada automática desde Wompi F2.
+- Correos al cliente (`ventas/correos/`): un correo por etapa del pedido, enviado a mano desde el detalle en Seguimiento, con copy editable sin tocar código, vista previa, prueba a la propia bandeja e historial. El de «Entregado» lleva el código de reseña. Proveedor: Resend, subdominio `pedidos.magandhi.com`. Diseño en `docs/PLANO-CORREO.md`; runbook § CO de `supabase/INSTRUCCIONES.md`.
+
+Pendiente real: entrada automática desde Wompi F2. Desplegar el tramo de correos (cuenta Resend, DNS, migración `20261008000000`, secret y función `enviar-correo-pedido`).
 
 ## 3. Supabase: estado acumulativo
 
@@ -218,7 +220,7 @@ Debe incorporar:
 
 ## 9. Próximo orden de trabajo
 
-1. Montar el envío de correos de MAGANDHI y entregar el código de reseña en el último correo de seguimiento. Es lo único que falta para que entren opiniones reales.
+1. Desplegar los correos del pedido (§ CO de `supabase/INSTRUCCIONES.md`). Es lo único que falta para que entren opiniones reales. Después: política de tratamiento de datos → captura de consentimiento «Novedades» → software de email marketing.
 2. Aplicar y verificar la migración `20261002000000`.
 3. Redesplegar y verificar `crear-intencion-pago`.
 4. Construir Wompi F2 en sandbox.

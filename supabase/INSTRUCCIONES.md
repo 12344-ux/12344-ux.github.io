@@ -3158,3 +3158,107 @@ La **entrega del código al cliente** (en el último correo de entrega) es la fa
 siguiente y requiere montar el envío de correos de MAGANDHI. Hasta entonces el
 código se comparte manualmente desde el back-office. El panel y la tienda
 (botón "Dejar una reseña" + render real) son los otros dos tramos pendientes.
+
+# CO · Correos del pedido (transaccionales, vía Resend)
+
+Diseño en `docs/PLANO-CORREO.md`. **Escribir el SQL/TS en el repo NO lo
+despliega.** Orden: (1) Resend + DNS, (2) migración, (3) secret, (4) función,
+(5) evidencia.
+
+## CO.1. Archivos de este tramo
+
+- `supabase/migrations/20261008000000_correos_pedido.sql` — plantillas
+  editables (copy de prueba), bitácora `correo_envios`, RPC guardados por
+  `tiene_acceso_ventas()`.
+- `supabase/functions/enviar-correo-pedido/index.ts` — arma el correo y lo
+  entrega a Resend. **No usa service_role**: llama a los RPC con el JWT del
+  usuario logueado.
+- `ventas/correos/index.html` — editor de copys + vista previa + prueba +
+  historial.
+- `ventas/seguimiento-pedidos/index.html` — bloque «Correos al cliente» en el
+  detalle de cada pedido.
+
+## CO.2. Resend + DNS (una sola vez)
+
+1. Crear cuenta en <https://resend.com> (plan Free: 3.000 correos/mes, 100/día,
+   3 dominios). Nombre del equipo: `MAGANDHI`.
+2. **Domains → Add domain → `pedidos.magandhi.com`**. Región recomendada: São
+   Paulo (`sa-east-1`), la más cercana a Colombia. Se usa un **subdominio** a
+   propósito: la reputación de los avisos de pedido queda separada de la del
+   futuro email marketing (que irá en otro subdominio) y no toca a Zoho, que
+   sigue recibiendo en `contacto@magandhi.com`.
+3. Resend muestra 3 registros (MX, TXT SPF y TXT DKIM). En **Porkbun → DNS** de
+   `magandhi.com` se crean tal cual, escribiendo en *Host* **solo la parte
+   anterior a `magandhi.com`** (Porkbun la completa):
+   - `MX`  host `send.pedidos` → valor que dé Resend, prioridad `10`.
+   - `TXT` host `send.pedidos` → `v=spf1 include:amazonses.com ~all`.
+   - `TXT` host `resend._domainkey.pedidos` → la llave larga `p=...` que dé Resend.
+   No se toca ningún registro existente (los MX/SPF de Zoho en la raíz siguen igual).
+4. **DMARC** (hoy no existe): `TXT` host `_dmarc` →
+   `v=DMARC1; p=none; rua=mailto:contacto@magandhi.com`.
+   `p=none` solo observa; no bloquea nada.
+5. En Resend pulsar **Verify**. Puede tardar de minutos a unas horas.
+6. **API Keys → Create API key**: nombre `supabase-enviar-correo-pedido`,
+   permiso **Sending access**, dominio `pedidos.magandhi.com`. Se muestra UNA
+   vez: copiarla directo al paso CO.4. **Nunca pegarla en el chat, el repo ni
+   un archivo.**
+
+## CO.3. Aplicar la migración (SQL Editor, UNA sola vez)
+
+Pegar y correr `20261008000000_correos_pedido.sql`. Requiere que
+`20261007000000_opiniones_modulo.sql` ya esté aplicada. Registrar fecha y resultado.
+
+## CO.4. Secrets (Edge Functions → Secrets)
+
+| Nombre | Valor | Obligatorio |
+|---|---|---|
+| `RESEND_API_KEY` | la llave del paso CO.2.6 | Sí |
+| `CORREO_REMITENTE` | `MAGANDHI <pedidos@pedidos.magandhi.com>` | No (es el valor por defecto) |
+| `CORREO_RESPONDER_A` | `contacto@magandhi.com` | No (por defecto) |
+
+Sin `RESEND_API_KEY` la función responde 503 con un mensaje claro y no reserva
+ningún envío.
+
+## CO.5. Desplegar la Edge Function `enviar-correo-pedido`
+
+Dashboard → Edge Functions → **Deploy a new function** → nombre exacto
+`enviar-correo-pedido` → pegar `supabase/functions/enviar-correo-pedido/index.ts`.
+**Verify JWT: ENCENDIDO** (la llama el back-office con la sesión del usuario).
+Si con las llaves nuevas de Supabase respondiera `401 Invalid JWT` incluso con
+sesión válida, se puede apagar: la función valida la sesión por su cuenta
+(`auth.getUser`) y los RPC exigen `tiene_acceso_ventas()`.
+
+## CO.6. Verificar con EVIDENCIA
+
+a) **Prueba en tu bandeja**: Ventas → Correos al cliente → «Enviarme una
+   prueba» en cada etapa. Llega a tu correo de login con la franja negra
+   «Correo de PRUEBA». Confirmar que entra en **Principal** (no Spam ni Promociones).
+b) **Pedido real de prueba**: registrar un pedido con tu propio correo como
+   cliente → abrirlo → «Enviar» en Recibido. El historial muestra «Enviado».
+c) **Idempotencia**: pulsar otra vez → aparece «Reenviar» con confirmación; sin
+   confirmar no sale nada.
+d) **Etapa no alcanzada**: las etapas futuras muestran «Aún no» (y el servidor
+   también lo rechaza).
+e) **Entregado**: avanzar el pedido a entregado → «Enviar» → el correo trae el
+   código de reseña y el botón abre la ficha del producto con el formulario y
+   el código ya escritos.
+f) **anon bloqueado**:
+```sql
+-- Esperado: 0 filas (ningún privilegio de anon sobre lo nuevo)
+select table_name, privilege_type from information_schema.role_table_grants
+ where grantee = 'anon' and table_name in ('correo_plantillas','correo_envios');
+select p.proname from pg_proc p
+ where p.proname like 'correo_%' and has_function_privilege('anon', p.oid, 'execute');
+```
+
+El tramo queda ✅ con a)–f), no por ver «Success».
+
+## CO.7. Pruebas locales hechas antes de entregar
+
+52 migraciones aplicadas en orden sobre PostgreSQL 15 local + matriz de
+permisos existente (171 filas, todas pasan) + 30 comprobaciones del tramo:
+camino feliz, cada rechazo (`CORREO_*`), doble clic, reenvío explícito, cierre
+de pendientes huérfanos, usuario sin módulo, anon sin acceso a tablas y RPC, y
+re-aplicar la migración sin pisar el copy editado. La Edge Function se ejercitó
+con un simulador de Supabase/Resend: 401 sin sesión, 503 sin llave, HTML
+escapado, Idempotency-Key = envio_id y ningún secreto ni código en logs.

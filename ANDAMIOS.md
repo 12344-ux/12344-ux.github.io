@@ -1,7 +1,7 @@
 # ANDAMIOS · próximos tramos MAGANDHI / Impulse
 
 **Corte:** 7 de octubre de 2026
-**Punto de retorno:** Tramo 0 cerrado; F1 Wompi operativo en sandbox; puesta al día preparada; Opiniones terminado y desplegado. Los siguientes desarrollos son el correo con el código de reseña y Wompi F2.
+**Punto de retorno:** Tramo 0 cerrado; F1 Wompi operativo en sandbox; puesta al día preparada; Opiniones terminado y desplegado. Correos del pedido construidos y probados localmente, pendientes de despliegue; luego Wompi F2.
 
 Este archivo contiene solo trabajo pendiente y criterios de cierre. Las fases terminadas y decisiones vigentes están consolidadas en `CONTEXTO-MAGANDHI.md`; el historial anterior permanece en Git.
 
@@ -16,7 +16,8 @@ Este archivo contiene solo trabajo pendiente y criterios de cierre. Las fases te
 | Campañas | ✅ Operativo | Ficha, publicación, galería, slug, vínculo y tope |
 | Ventas | ✅ Operativo | Pedidos, estados, anulación y portafolio |
 | Opiniones | ✅ Operativo | Esquema, RPC y Edge Function desplegados; panel y tienda vivos |
-| Correo con el código de reseña | ⏭️ Siguiente | Sin él no entran opiniones reales |
+| Correos del pedido (4 etapas + código de reseña) | 🟡 Código listo | Falta cuenta Resend, DNS, migración `20261008000000`, secret y función (§ CO) |
+| Email marketing (consentimiento + campañas) | ⏸️ Después | Requiere antes la política de tratamiento de datos |
 | Tramo 0 | ✅ Verificado | Matriz 170/170 y anon bloqueado en superficies internas |
 | Wompi F1 | ✅ Sandbox | Intención firmada y checkout cargando |
 | Puesta al día 2026-10-02 | 🟡 Código listo | Falta aplicar SQL y redesplegar Edge Function |
