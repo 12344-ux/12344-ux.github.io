@@ -3061,3 +3061,100 @@ migraciones en orden y corre la matriz de permisos. Nunca toca el proyecto real.
 Pruebas JS sin dependencias:
 `node finanzas/pruebas-parsear-monto.mjs` y
 `node marketing/marketing-project/pruebas-etiquetas-proyeccion.mjs`.
+
+# OPINIONES · Software de Opiniones (reseñas de clientes)
+
+Diseño completo en `docs/PLANO-OPINIONES.md`. Esta sección es el runbook de
+despliegue. **Escribir el SQL/TS en el repo NO lo despliega**: la migración se
+corre a mano en el SQL Editor y la Edge Function se despliega aparte.
+
+## OP.1. Archivos de este tramo
+
+- `supabase/migrations/20261007000000_opiniones_modulo.sql` (tablas, vistas,
+  RPC, RLS, grants + código de reseña por pedido).
+- `supabase/functions/enviar-opinion/index.ts` (Edge Function pública).
+
+## OP.2. Aplicar la migración (SQL Editor, UNA sola vez)
+
+Pega y corre el contenido de `20261007000000_opiniones_modulo.sql`. Es
+idempotente (`if not exists` / `create or replace`), pero una migración aplicada
+es inmutable: no se reejecuta para "corregir". Registra fecha y resultado.
+
+## OP.3. Desplegar la Edge Function `enviar-opinion`
+
+```bash
+# Desde la raiz del repo back-office (12344-ux.github.io):
+supabase functions deploy enviar-opinion --project-ref bxlzipwxyxdtffnuizbz
+```
+
+No requiere secrets nuevos: usa `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`,
+que el runtime ya inyecta. **Verify JWT**: puede quedar ENCENDIDO (la tienda la
+invoca con la publishable key, igual que `crear-intencion-pago`). Si se usa el
+mismo esquema de invocación con `apikey`, no se requiere apagarlo.
+
+## OP.4. Verificar con EVIDENCIA (obligatorio — "Success" no basta)
+
+### a) Todo pedido tiene código de reseña (trigger + backfill)
+```sql
+-- Esperado: 0 filas sin codigo.
+select count(*) as sin_codigo from pedidos where codigo_resena is null;
+-- Un pedido nuevo recibe codigo automatico (mira codigo_resena tras crearlo).
+```
+
+### b) anon NO puede leer ni escribir opiniones
+```sql
+-- Con la PUBLISHABLE key (rol anon), estas deben FALLAR / devolver 0:
+--   select * from opiniones;                      -> permission denied / vacio
+--   insert into opiniones(...) values (...);       -> permission denied
+-- Las vistas publicas SI son legibles por anon:
+--   select * from opiniones_publicas;             -> ok (vacio hasta haber datos)
+--   select * from producto_rating_publico;        -> ok (vacio hasta haber datos)
+```
+
+### c) Camino feliz (requiere un pedido ENTREGADO con un producto ligado a una
+### campaña publicada). Toma su `codigo_resena` y el `slug` del producto:
+```bash
+curl -i -X POST \
+  'https://bxlzipwxyxdtffnuizbz.supabase.co/functions/v1/enviar-opinion' \
+  -H 'Content-Type: application/json' \
+  -H 'apikey: <PUBLISHABLE_KEY>' \
+  -H 'Authorization: Bearer <PUBLISHABLE_KEY>' \
+  -d '{"codigo":"MG-XXXXXXXXXX","slug":"<slug>","estrellas":5,"autor":"Prueba","comentario":"Todo bien","es_prueba":true}'
+# Esperado: HTTP 200 {"ok":true,...}. Como es_prueba=true, NO cuenta en el promedio.
+```
+
+### d) Rechazos esperados (cada uno con su HTTP)
+```bash
+# Codigo inexistente  -> HTTP 404 {"error":"El código de reseña no es válido."}
+# ... -d '{"codigo":"MG-NOEXISTE0","slug":"<slug>","estrellas":5,"autor":"X"}'
+
+# Mismo codigo+producto dos veces -> HTTP 409 "Ya habías dejado tu opinión..."
+# Estrellas fuera de 1..5         -> HTTP 400 "Elige entre 1 y 5 estrellas."
+# Pedido no entregado             -> HTTP 409 "...todavía no figura como entregado."
+# Producto no comprado en ese pedido -> HTTP 409 "...no corresponde a una compra..."
+```
+
+### e) El promedio es REAL y coherente (sin bayesiano)
+```sql
+-- Inserta via Edge Function 1 opinion REAL de 5 estrellas (es_prueba=false) a un
+-- producto publicado y comprueba:
+select slug, total, promedio from producto_rating_publico where slug = '<slug>';
+-- Esperado: total=1, promedio=5.0  (NO 4.x). El N acompaña siempre al promedio.
+```
+
+### f) Panel (autenticado con módulo opiniones / admin)
+```sql
+-- Deben responder sin error y respetar el orden pedido:
+select * from op_resumen_productos();        -- productos por reseña mas reciente
+select * from op_opiniones_producto('<product_id>'); -- mas antigua -> mas reciente
+-- Un no-autorizado (sin modulo) recibe excepcion SIN_ACCESO_OPINIONES.
+```
+
+El tramo backend queda ✅ cuando a)–f) pasan con evidencia, no por ver "Success".
+
+## OP.5. Pendiente que NO está aquí
+
+La **entrega del código al cliente** (en el último correo de entrega) es la fase
+siguiente y requiere montar el envío de correos de MAGANDHI. Hasta entonces el
+código se comparte manualmente desde el back-office. El panel y la tienda
+(botón "Dejar una reseña" + render real) son los otros dos tramos pendientes.
