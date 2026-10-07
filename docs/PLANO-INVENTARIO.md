@@ -412,6 +412,10 @@ Espejo de las RPC de Finanzas:
   registrar una venta que de verdad ocurrió. La RPC devuelve el stock resultante
   para que la UI pueda alertar en el momento. (Si el dueño prefiere bloquear la
   salida en negativo, es un `if` de una línea en la RPC; ver §7.)
+  > **Actualización 8-oct-2026 (decisión del dueño): las VENTAS sí se bloquean.**
+  > `crear_pedido` rechaza con `STOCK_INSUFICIENTE` cualquier pedido que pida más
+  > de lo disponible (migración `20261008000100`). Los movimientos manuales de
+  > Inventario conservan el contrato de arriba.
 - `inv_editar_producto(...)` → edita SOLO la ficha (nombre, precio, etc.),
   **nunca** las existencias (esas solo se mueven por el libro).
 

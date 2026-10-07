@@ -54,7 +54,7 @@ Pendiente real: cierre anual cuando cambie el ejercicio fiscal y pulido de expor
 
 - Catálogo de productos.
 - Libro append-only de movimientos.
-- Stock derivado; puede ser negativo como señal honesta de conciliación.
+- Stock derivado. Las ventas no pueden dejarlo negativo (bloqueo firme en `crear_pedido`); los ajustes manuales de Inventario conservan su contrato.
 - Alta, consulta y movimientos.
 - Imágenes optimizadas.
 - Inventario es la fuente de verdad de existencias; Campañas no declara stock manual.
@@ -99,6 +99,7 @@ Entrega del código: va en el correo de «Entregado» (tramo de correos, código
 - Registro manual con cliente, items y snapshot de dirección.
 - Avance de estado con bitácora.
 - Anulación transaccional y movimientos compensatorios de inventario.
+- **Bloqueo firme de stock** (8-oct-2026): no se registra un pedido que pida más unidades de las disponibles en Inventario; el candado vive en `crear_pedido`, serializa ventas simultáneas y aplica también a la futura entrada web (Wompi F2). Registrar pedido muestra «Disponibles: N» y marca los agotados.
 - Portafolio de clientes con métricas derivadas de pedidos reales.
 
 - Correos al cliente (`ventas/correos/`): un correo por etapa del pedido, enviado a mano desde el detalle en Seguimiento, con copy editable sin tocar código, vista previa, prueba a la propia bandeja e historial. El de «Entregado» lleva el código de reseña. Proveedor: Resend, subdominio `updates.magandhi.com` (el marketing irá en `news.magandhi.com`). Diseño en `docs/PLANO-CORREO.md`; runbook § CO de `supabase/INSTRUCCIONES.md`.
