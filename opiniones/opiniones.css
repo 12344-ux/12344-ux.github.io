@@ -1,0 +1,289 @@
+/* ============================================================
+   MAGANDHI · GESTION DE OPINIONES · Tokens y estilos de area
+   ------------------------------------------------------------
+   Extiende marca.css (se carga DESPUES). Espejo estructural de ventas.css /
+   finanzas.css: mismo header institucional azul marino, mismas tarjetas,
+   mismas tablas, mismo sello Impulse, misma pagina de denegado.
+
+   IDENTIDAD (decision del dueno, igual que Ventas):
+   · SIN COLOR NUEVO: se HEREDA el AZUL MARINO #101C33 del back-office.
+   · UNICO acento calido: el DORADO oficial de marca (--acento) en las
+     ESTRELLAS de calificacion. La estrella dorada es el lenguaje universal
+     de una resena; no es un color de area nuevo.
+   · La diferenciacion es por LAYOUT: una LISTA de productos por recencia de
+     resena + una pagina de DETALLE con las opiniones y la respuesta de marca.
+
+   Prefijo de clase: op-
+   ============================================================ */
+:root{
+  --op-marino:#101C33;
+  --op-marino-2:#1B2A47;
+  --op-azul-cl:#8FA3C4;
+  --op-crema:#F7F3EC;
+  --op-carbon:#2A2622;
+  --op-gris:#8A8578;
+  --op-acento:var(--rojo);        /* terracota de marca: kicker y avatar */
+  --op-oro:var(--acento);         /* dorado oficial: estrellas */
+  --op-oro-cl:var(--acento-cl);
+  --op-verde:#1B7A46;             /* "compra verificada" (igual que la tienda) */
+  --op-linea:rgba(16,28,51,.12);
+  --op-tarjeta:#FFFFFF;
+  --op-radio:14px;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body.op-body{
+  background:var(--op-crema);
+  color:var(--op-carbon);
+  font-family:'Poppins',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  line-height:1.55;-webkit-font-smoothing:antialiased;
+  min-height:100vh;display:flex;flex-direction:column;
+}
+.op-num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ============================================================
+   HEADER INSTITUCIONAL FIJO (azul marino)
+   ============================================================ */
+.op-header{
+  position:sticky;top:0;z-index:50;
+  background:var(--op-marino);color:#fff;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:12px 24px;box-shadow:0 2px 10px rgba(16,28,51,.18);
+}
+.op-header-left{display:flex;align-items:center;gap:14px;min-width:0}
+.op-volver{
+  display:inline-flex;align-items:center;gap:6px;flex:none;
+  font-family:inherit;font-size:13px;font-weight:600;letter-spacing:.02em;
+  color:var(--op-azul-cl);text-decoration:none;
+  background:rgba(143,163,196,.14);border-radius:999px;padding:7px 14px 7px 10px;
+  transition:background-color .15s ease, color .15s ease;
+}
+.op-volver:hover{background:rgba(143,163,196,.28);color:#fff}
+.op-volver svg{width:18px;height:18px;flex:none}
+.op-logo{width:34px;height:34px;display:block;flex:none}
+.op-word{font-weight:600;font-size:17px;letter-spacing:.22em;color:#fff;line-height:1}
+.op-sep{width:1px;height:26px;background:rgba(143,163,196,.4);flex:none}
+.op-area{font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--op-azul-cl);white-space:nowrap}
+.op-header-right{display:flex;align-items:center;gap:14px}
+.op-avatar{
+  width:36px;height:36px;border-radius:50%;flex:none;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--op-acento);color:#fff;
+  font-weight:600;font-size:15px;letter-spacing:.02em;text-transform:uppercase;
+  border:0;font-family:inherit;cursor:pointer;padding:0;
+  transition:box-shadow .15s ease, transform .1s ease;
+}
+.op-avatar:hover{box-shadow:0 0 0 3px rgba(143,163,196,.35)}
+.op-avatar:focus-visible{outline:0;box-shadow:0 0 0 3px rgba(143,163,196,.55)}
+.op-avatar[aria-expanded="true"]{box-shadow:0 0 0 3px rgba(143,163,196,.55)}
+
+/* MENU DE PERFIL */
+.op-perfil{position:relative;display:flex;align-items:center}
+.op-perfil-menu{
+  position:absolute;top:calc(100% + 10px);right:0;z-index:60;min-width:230px;
+  background:var(--op-tarjeta);color:var(--op-carbon);
+  border:1px solid var(--op-linea);border-radius:12px;
+  box-shadow:0 14px 40px rgba(16,28,51,.24);padding:6px;
+}
+.op-perfil-menu[hidden]{display:none}
+.op-perfil-info{display:flex;flex-direction:column;gap:2px;padding:10px 12px 12px;border-bottom:1px solid var(--op-linea)}
+.op-perfil-lbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--op-gris)}
+.op-perfil-email{font-size:13.5px;color:var(--op-carbon);word-break:break-all}
+.op-perfil-salir{
+  display:flex;align-items:center;gap:9px;width:100%;margin-top:4px;
+  font-family:inherit;font-size:13.5px;font-weight:600;text-align:left;
+  color:var(--op-acento);background:transparent;border:0;border-radius:9px;
+  padding:10px 12px;cursor:pointer;transition:background-color .15s ease;
+}
+.op-perfil-salir:hover{background:rgba(166,51,46,.08)}
+.op-perfil-salir:focus-visible{outline:0;background:rgba(166,51,46,.12)}
+.op-perfil-salir svg{width:17px;height:17px;flex:none}
+
+/* SELLO IMPULSE */
+.op-sello{margin-top:auto;padding:26px 24px 30px;text-align:center;font-size:11.5px;letter-spacing:.05em;color:var(--op-gris)}
+.op-sello-marca{color:var(--op-marino);font-weight:600;letter-spacing:.06em}
+
+/* ENCABEZADO EDITORIAL */
+.op-screen-head{max-width:1000px;margin:0 auto;padding:26px 24px 6px;width:100%}
+.op-kicker{margin:0 0 6px;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--op-acento)}
+.op-title{margin:0;font-size:clamp(22px,3vw,30px);font-weight:600;color:var(--op-marino);letter-spacing:-.01em}
+.op-lead{margin:8px 0 0;font-size:14px;color:var(--op-gris);max-width:64ch}
+
+.op-wrap{max-width:1000px;margin:0 auto;padding:18px 24px 60px;width:100%}
+
+/* DENEGADO */
+.op-denegado{max-width:560px;margin:60px auto;padding:34px 28px;text-align:center;background:var(--op-tarjeta);border:1px solid var(--op-linea);border-radius:var(--op-radio)}
+.op-denegado h2{margin:0 0 8px;color:var(--op-acento);font-size:18px}
+.op-denegado p{margin:0;color:var(--op-gris);font-size:14px}
+.op-denegado a{color:var(--op-marino);font-weight:600}
+
+/* NOTA INFORMATIVA */
+.op-nota{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--op-gris);background:rgba(16,28,51,.04);border-radius:10px;padding:11px 14px;margin:16px 0}
+.op-nota svg{width:18px;height:18px;color:var(--op-marino);flex:none}
+
+/* ESTADO VACIO */
+.op-empty{color:var(--op-gris);font-size:14px;padding:40px 22px;text-align:center;background:var(--op-tarjeta);border:1px dashed var(--op-linea);border-radius:var(--op-radio);margin-top:18px}
+.op-empty strong{color:var(--op-carbon)}
+.op-empty .op-empty-ico{width:34px;height:34px;color:var(--op-marino);opacity:.5;margin:0 auto 10px;display:block}
+.op-empty .op-empty-ico svg{width:34px;height:34px}
+
+/* ============================================================
+   ESTRELLAS (relleno fraccional exacto, dorado de marca)
+   ============================================================ */
+.op-stars{position:relative;display:inline-flex;vertical-align:middle;line-height:0}
+.op-stars-bg{display:inline-flex;color:var(--op-oro-cl);opacity:.55}
+.op-stars-fg{position:absolute;left:0;top:0;overflow:hidden;white-space:nowrap;display:inline-flex;color:var(--op-oro)}
+.op-stars-fg--static{position:static;overflow:visible;width:auto}
+.op-stars svg{width:16px;height:16px;flex:none}
+.op-stars--sm svg{width:14px;height:14px}
+.op-stars--lg svg{width:22px;height:22px}
+/* La variante enteras pinta rellenas + huecas en linea, sin recorte */
+.op-stars--sm{display:inline-flex;align-items:center}
+
+/* ============================================================
+   LISTA DE PRODUCTOS (tabla por recencia de resena) — layout del area
+   ============================================================ */
+.op-barra{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:18px 0}
+.op-barra .op-crece{flex:1;min-width:160px}
+.op-input,.op-select,.op-textarea{
+  width:100%;font-family:inherit;font-size:14px;color:var(--op-carbon);
+  background:var(--op-tarjeta);border:1px solid var(--op-linea);border-radius:10px;padding:11px 12px;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+.op-textarea{min-height:84px;resize:vertical}
+.op-input:focus,.op-select:focus,.op-textarea:focus{outline:0;border-color:var(--op-marino);box-shadow:0 0 0 3px rgba(16,28,51,.10)}
+
+.op-tabla-caja{margin-top:18px;overflow-x:auto}
+.op-tabla{width:100%;border-collapse:collapse;background:var(--op-tarjeta);border:1px solid var(--op-linea);border-radius:var(--op-radio);overflow:hidden}
+.op-tabla th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--op-gris);padding:11px 14px;border-bottom:1px solid var(--op-linea);white-space:nowrap}
+.op-tabla th.num{text-align:right}
+.op-tabla td{font-size:13.5px;color:var(--op-carbon);padding:12px 14px;border-bottom:1px solid var(--op-linea);vertical-align:middle}
+.op-tabla tr:last-child td{border-bottom:0}
+.op-tabla tbody tr{transition:background-color .12s ease;cursor:pointer}
+.op-tabla tbody tr:hover{background:rgba(16,28,51,.03)}
+.op-tabla tbody tr:focus-visible{outline:0;background:rgba(16,28,51,.06)}
+.op-tabla td.prod{color:var(--op-marino);font-weight:600}
+.op-tabla td.prod .sku{display:block;font-weight:400;font-size:12px;color:var(--op-gris);font-variant-numeric:tabular-nums}
+.op-tabla td.fecha{color:var(--op-gris);white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* Calificacion en celda: estrellas + "4.8 · N" */
+.op-calif{display:flex;align-items:center;gap:9px;white-space:nowrap}
+.op-calif .prom{font-weight:700;color:var(--op-marino);font-variant-numeric:tabular-nums}
+.op-calif .n{font-size:12px;color:var(--op-gris)}
+.op-calif .sinprom{font-size:12.5px;color:var(--op-gris)}
+
+/* Chips de estado del producto en la lista */
+.op-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;letter-spacing:.04em;border-radius:999px;padding:3px 10px;white-space:nowrap;border:1px solid transparent;line-height:1.4}
+.op-chip svg{width:12px;height:12px;flex:none}
+.op-chip.pend{color:var(--op-acento);background:rgba(166,51,46,.08);border-color:rgba(166,51,46,.26)}
+.op-chip.aldia{color:var(--op-verde);background:rgba(27,122,70,.08);border-color:rgba(27,122,70,.22)}
+.op-chip.neutro{color:var(--op-gris);background:rgba(16,28,51,.06)}
+
+/* ============================================================
+   DETALLE DEL PRODUCTO
+   ============================================================ */
+/* Resumen del producto (encabezado del detalle) */
+.op-resumen{
+  display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+  background:var(--op-tarjeta);border:1px solid var(--op-linea);border-radius:var(--op-radio);
+  padding:20px 22px;margin-top:4px;
+}
+.op-resumen .op-prom-grande{display:flex;align-items:center;gap:14px}
+.op-resumen .op-prom-num{font-size:40px;font-weight:600;line-height:1;color:var(--op-marino);font-variant-numeric:tabular-nums}
+.op-resumen .op-prom-det{display:flex;flex-direction:column;gap:4px}
+.op-resumen .op-prom-n{font-size:13px;color:var(--op-gris)}
+.op-resumen .op-prod-meta{margin-left:auto;text-align:right;display:flex;flex-direction:column;gap:4px;min-width:0}
+.op-resumen .op-prod-nom{font-size:15px;font-weight:600;color:var(--op-marino)}
+.op-resumen .op-prod-sku{font-size:12px;color:var(--op-gris);font-variant-numeric:tabular-nums}
+.op-ver-tienda{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--op-acento);text-decoration:none}
+.op-ver-tienda:hover{text-decoration:underline}
+.op-ver-tienda svg{width:14px;height:14px}
+
+.op-dist{display:flex;flex-direction:column;gap:4px;min-width:170px;flex:1}
+.op-dist-fila{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--op-gris)}
+.op-dist-fila .lbl{width:16px;text-align:right;font-variant-numeric:tabular-nums}
+.op-dist-fila .lbl svg{width:11px;height:11px;color:var(--op-oro);vertical-align:-1px;margin-left:2px}
+.op-dist-barra{flex:1;height:7px;border-radius:999px;background:rgba(16,28,51,.08);overflow:hidden}
+.op-dist-barra > i{display:block;height:100%;background:var(--op-oro);border-radius:999px}
+.op-dist-fila .cnt{width:20px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* Lista de opiniones (de mas antigua a mas reciente) */
+.op-lista-op{display:flex;flex-direction:column;gap:14px;margin-top:22px}
+.op-sub{font-size:13px;color:var(--op-gris);margin:22px 0 2px;font-weight:600;letter-spacing:.02em}
+
+.op-resena{
+  background:var(--op-tarjeta);border:1px solid var(--op-linea);border-radius:14px;padding:18px 20px;
+  transition:box-shadow .12s ease, border-color .12s ease;
+}
+.op-resena.oculta{background:rgba(16,28,51,.03);border-style:dashed;opacity:.82}
+.op-resena.prueba{border-color:var(--op-oro-cl)}
+.op-resena__top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}
+.op-resena__pers{display:flex;align-items:center;gap:12px;min-width:0}
+.op-avatar-r{
+  width:40px;height:40px;border-radius:50%;flex:none;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(16,28,51,.08);color:var(--op-marino);font-weight:600;font-size:16px;
+}
+.op-resena__id{display:flex;flex-direction:column;gap:2px;min-width:0}
+.op-resena__nom{font-size:14px;font-weight:600;color:var(--op-carbon);line-height:1.15}
+.op-resena__meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.op-resena__ver{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--op-verde)}
+.op-resena__ver svg{width:13px;height:13px}
+.op-resena__fecha{font-size:11.5px;color:var(--op-gris);font-variant-numeric:tabular-nums}
+.op-resena__estrellas{flex:none;margin-top:2px}
+.op-resena__texto{font-size:14px;color:#333;margin:6px 0 0;white-space:pre-wrap;word-wrap:break-word}
+.op-resena__texto.vacio{color:var(--op-gris);font-style:italic}
+
+/* Mini-chips dentro de una resena (prueba / oculta) */
+.op-mini{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:2px 9px;line-height:1.5}
+.op-mini.prueba{color:var(--op-oro);background:var(--acento-sombra)}
+.op-mini.oculta{color:var(--op-gris);background:rgba(16,28,51,.08)}
+
+/* Respuesta de la marca */
+.op-respuesta{
+  margin:14px 0 0;padding:13px 15px;border-radius:11px;
+  background:rgba(16,28,51,.04);border-left:3px solid var(--op-marino);
+}
+.op-respuesta .r-cab{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--op-marino);margin-bottom:5px}
+.op-respuesta .r-cab svg{width:13px;height:13px}
+.op-respuesta .r-txt{font-size:13.5px;color:var(--op-carbon);white-space:pre-wrap}
+.op-respuesta .r-cuando{display:block;margin-top:5px;font-size:11px;color:var(--op-gris);font-variant-numeric:tabular-nums}
+
+/* Acciones de la resena */
+.op-resena__acc{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--op-linea)}
+.op-abtn{
+  display:inline-flex;align-items:center;gap:7px;
+  font-family:inherit;font-size:13px;font-weight:600;
+  color:var(--op-marino);background:transparent;border:1px solid var(--op-linea);border-radius:10px;
+  padding:8px 14px;cursor:pointer;transition:background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+.op-abtn:hover{background:rgba(16,28,51,.05)}
+.op-abtn svg{width:16px;height:16px}
+.op-abtn.peligro{color:var(--op-acento);border-color:rgba(166,51,46,.26)}
+.op-abtn.peligro:hover{background:rgba(166,51,46,.07)}
+.op-abtn:disabled{opacity:.5;cursor:not-allowed}
+
+/* Zona desplegable para responder / motivo de ocultar */
+.op-zona{margin-top:12px;display:flex;flex-direction:column;gap:9px}
+.op-zona[hidden]{display:none}
+.op-zona-acc{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.op-btn{
+  font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.02em;
+  color:#fff;background:var(--op-marino);border:0;border-radius:10px;padding:11px 20px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:8px;transition:background-color .15s ease, opacity .15s ease;
+}
+.op-btn:hover:not(:disabled){background:var(--op-marino-2)}
+.op-btn:disabled{opacity:.5;cursor:not-allowed}
+.op-btn.ghost{color:var(--op-marino);background:transparent;border:1px solid var(--op-linea)}
+.op-btn.ghost:hover:not(:disabled){background:rgba(16,28,51,.05)}
+.op-btn svg{width:16px;height:16px}
+.op-msg{font-size:13px}
+.op-msg.err{color:var(--op-acento)}
+.op-msg.ok{color:var(--op-verde)}
+
+@media (max-width:640px){
+  .op-resumen{flex-direction:column;align-items:stretch}
+  .op-resumen .op-prod-meta{margin-left:0;text-align:left}
+  .op-resena__top{flex-direction:column;gap:8px}
+}

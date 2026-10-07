@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Gestión de opiniones</title>
+<meta name="description" content="Gestión de opiniones de clientes · back-office de MAGANDHI.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../marca-areas/control-interno.png?v=4">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=2">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=2">
+<link rel="stylesheet" href="opiniones.css?v=1">
+
+<!--
+  MAGANDHI · Gestion de opiniones · HOME del area.
+  La LISTA de productos CON opiniones, ordenada por la resena MAS RECIENTE
+  primero (el producto que acaban de opinar sube arriba). Lee el RPC
+  op_resumen_productos() (security definer, guardado por tiene_acceso_opiniones).
+  Cada fila lleva al detalle del producto (producto.html?producto=<uuid>), donde
+  se leen, responden y moderan las opiniones. El candado real es RLS/RPC; ocultar
+  UI es solo comodidad de UX.
+-->
+</head>
+<body class="op-body">
+
+<!-- Guardia reutilizable: sin sesion, redirige al login de la raiz. -->
+<script type="module" src="../auth-guard.js"></script>
+
+<main class="op-wrap" id="op-main" hidden>
+  <p class="op-nota"><span data-ico="info"></span>
+    <span>Aquí aparecen los productos con opiniones, con el <strong>más reciente arriba</strong>. Entra a un producto para leer sus opiniones, responderlas o moderarlas.</span>
+  </p>
+  <div id="op-lista"><p class="op-empty">Cargando opiniones...</p></div>
+</main>
+
+<script type="module">
+  import {
+    supabase, asegurarAcceso, montarHeader, ICONOS,
+    escaparHTML, estrellasHTML, formatearMomento
+  } from './opiniones-core.js';
+
+  const main = document.getElementById('op-main');
+  const lista = document.getElementById('op-lista');
+
+  // Calificacion de la celda: estrellas + "4.8 · N". Coherencia (decision del
+  // dueno): el numero grande es el promedio REAL y SIEMPRE va con el N; si hay
+  // una sola opinion de 5, se ve "5.0 · 1 opinion" (no se infla ni se suaviza).
+  function califHTML(prom, total) {
+    const t = Number(total) || 0;
+    if (t <= 0) return '<span class="op-calif"><span class="sinprom">Sin opiniones visibles</span></span>';
+    const p = Number(prom) || 0;
+    return '<span class="op-calif">' +
+      estrellasHTML(p) +
+      '<span class="prom op-num">' + p.toFixed(1) + '</span>' +
+      '<span class="n">· ' + t + (t === 1 ? ' opinión' : ' opiniones') + '</span>' +
+    '</span>';
+  }
+
+  // Chip de pendientes: cuantas opiniones visibles aun no tienen respuesta.
+  function pendientesHTML(sinResponder, total) {
+    const s = Number(sinResponder) || 0;
+    if ((Number(total) || 0) <= 0) return '<span class="op-chip neutro">—</span>';
+    if (s <= 0) return '<span class="op-chip aldia">' + ICONOS.check + 'Al día</span>';
+    return '<span class="op-chip pend">' + s + (s === 1 ? ' sin responder' : ' sin responder') + '</span>';
+  }
+
+  // Linea tenue bajo el nombre: cuenta ocultas / pruebas si las hay (contexto
+  // de moderacion), sin ruido cuando no aplica.
+  function subNota(row) {
+    const partes = [];
+    if ((Number(row.ocultas) || 0) > 0) partes.push(row.ocultas + ' oculta' + (row.ocultas === 1 ? '' : 's'));
+    if ((Number(row.pruebas) || 0) > 0) partes.push(row.pruebas + ' de prueba');
+    return partes.length ? '<span class="sku">' + escaparHTML(partes.join(' · ')) + '</span>' : '';
+  }
+
+  async function cargar() {
+    lista.innerHTML = '<p class="op-empty">Cargando opiniones...</p>';
+
+    // op_resumen_productos: ya viene ORDENADO por la resena mas reciente
+    // primero (order by max(creado) desc en el RPC). No reordenamos aqui.
+    const { data, error } = await supabase.rpc('op_resumen_productos');
+
+    if (error) {
+      lista.innerHTML = '<div class="op-empty">No se pudieron cargar las opiniones. ' +
+        '<strong>' + escaparHTML(error.message || 'Error') + '</strong></div>';
+      return;
+    }
+
+    const filas = data || [];
+    if (!filas.length) {
+      lista.innerHTML =
+        '<div class="op-empty">' +
+          '<span class="op-empty-ico">' + ICONOS.mensaje + '</span>' +
+          '<strong>Aún no hay opiniones.</strong><br>' +
+          'Llegarán cuando un cliente deje su reseña con el código de un pedido entregado. ' +
+          'El sistema ya está listo para recibirlas.' +
+        '</div>';
+      return;
+    }
+
+    const tr = filas.map((r) => {
+      const id = escaparHTML(r.product_id);
+      return (
+        '<tr data-id="' + id + '" tabindex="0" role="button" aria-label="Ver opiniones de ' + escaparHTML(r.nombre || 'producto') + '">' +
+          '<td class="prod">' + escaparHTML(r.nombre || 'Producto') +
+            (r.sku ? '<span class="sku">' + escaparHTML(r.sku) + '</span>' : '') +
+            subNota(r) +
+          '</td>' +
+          '<td>' + califHTML(r.promedio, r.total) + '</td>' +
+          '<td class="fecha">' + escaparHTML(formatearMomento(r.ultima)) + '</td>' +
+          '<td>' + pendientesHTML(r.sin_responder, r.total) + '</td>' +
+        '</tr>'
+      );
+    }).join('');
+
+    lista.innerHTML =
+      '<div class="op-tabla-caja"><table class="op-tabla">' +
+        '<thead><tr>' +
+          '<th>Producto</th>' +
+          '<th>Calificación</th>' +
+          '<th>Última opinión</th>' +
+          '<th>Pendientes</th>' +
+        '</tr></thead>' +
+        '<tbody>' + tr + '</tbody>' +
+      '</table></div>';
+
+    lista.querySelectorAll('tr[data-id]').forEach((fila) => {
+      const ir = () => { window.location.href = 'producto.html?producto=' + encodeURIComponent(fila.dataset.id); };
+      fila.addEventListener('click', ir);
+      fila.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ir(); } });
+    });
+  }
+
+  (async () => {
+    const acceso = await asegurarAcceso(document.body, '../panel.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Gestión de opiniones',
+      kicker: 'OPINIONES · VOZ DEL CLIENTE',
+      lead: 'El lugar donde viven las opiniones verificadas de quienes compraron. Entra a un producto para leer, responder y moderar; el promedio y las estrellas se calculan sobre opiniones reales.',
+      sesion: acceso.sesion,
+      areaLabel: 'GESTIÓN DE OPINIONES',
+      volverHref: '../panel.html',
+      volverTexto: 'Panel'
+    });
+    document.querySelectorAll('main [data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+
+    main.hidden = false;
+    await cargar();
+  })();
+</script>
+
+</body>
+</html>
