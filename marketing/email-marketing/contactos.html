@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Contactos · Email marketing</title>
+<meta name="description" content="Contactos de Email marketing · Área de Marketing de MAGANDHI.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/marketing.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=2">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=2">
+<link rel="stylesheet" href="../marketing.css?v=2">
+<link rel="stylesheet" href="email-marketing.css?v=2">
+
+<!--
+  MAGANDHI · Marketing · EMAIL MARKETING · CONTACTOS (tramo EM1).
+  Lista con busqueda y filtros, ficha lateral (prueba del consentimiento,
+  cliente vinculado, correos de seguimiento recibidos, historial imborrable,
+  edicion de nombre/temas y baja) y alta manual con EVIDENCIA obligatoria.
+  Lectura: em_contactos / em_temas (RLS tiene_acceso_email_marketing()).
+  Escritura: RPC em_alta_manual / em_editar_contacto / em_dar_baja.
+  Parametros: ?nuevo=1 abre el alta; ?id=<uuid> abre la ficha.
+-->
+</head>
+<body class="mk-body">
+
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="mk-wrap" id="em-main" hidden>
+  <div class="em-toolbar">
+    <label class="em-buscar"><span data-ico="lupa"></span>
+      <input class="mk-input" id="f-buscar" type="search" placeholder="Buscar por nombre o correo" aria-label="Buscar">
+    </label>
+    <select class="mk-select" id="f-estado" aria-label="Estado">
+      <option value="">Todos los estados</option>
+      <option value="suscrito">Suscritos</option>
+      <option value="pendiente_confirmacion">Por confirmar</option>
+      <option value="baja">De baja</option>
+      <option value="rebotado">Rebotados</option>
+      <option value="queja">Marcaron spam</option>
+    </select>
+    <select class="mk-select" id="f-tema" aria-label="Tema"><option value="">Todos los temas</option></select>
+    <select class="mk-select em-ocultar-movil" id="f-cliente" aria-label="Cliente">
+      <option value="">Clientes y no clientes</option>
+      <option value="si">Ya son clientes</option>
+      <option value="no">Aún no compran</option>
+    </select>
+    <button class="mk-btn" id="btn-nuevo" type="button"><span data-ico="usuarioMas"></span> Agregar contacto</button>
+  </div>
+  <p class="em-contador" id="contador"></p>
+  <div id="lista"><p class="mk-empty">Cargando contactos…</p></div>
+</main>
+
+<!-- Ficha lateral -->
+<div class="em-fondo" id="ficha-fondo" hidden>
+  <aside class="em-drawer" role="dialog" aria-modal="true" aria-labelledby="ficha-nombre">
+    <div class="em-drawer-head">
+      <span class="em-ini" id="ficha-ini"></span>
+      <div style="min-width:0"><h2 id="ficha-nombre">Contacto</h2><span class="sub" id="ficha-correo"></span></div>
+      <button class="em-x" id="ficha-cerrar" type="button" aria-label="Cerrar"><span data-ico="equis"></span></button>
+    </div>
+    <div class="em-drawer-body" id="ficha-body"></div>
+  </aside>
+</div>
+
+<!-- Modal de alta -->
+<div class="em-modal-fondo" id="alta-fondo" hidden>
+  <div class="em-modal" role="dialog" aria-modal="true" aria-labelledby="alta-titulo">
+    <div class="em-modal-head">
+      <span class="ico" data-ico="usuarioMas"></span>
+      <div><h2 id="alta-titulo">Agregar contacto</h2><p>Solo personas que te autorizaron. La prueba queda guardada con el contacto.</p></div>
+      <button class="em-x" id="alta-cerrar" type="button" aria-label="Cerrar"><span data-ico="equis"></span></button>
+    </div>
+    <form class="em-form" id="alta-form" novalidate>
+      <p class="em-seccion">La persona</p>
+      <div class="em-fila2">
+        <label class="em-campo"><span>Correo <em>*</em></span>
+          <input class="mk-input" id="a-correo" type="email" autocomplete="off" maxlength="254" required></label>
+        <label class="em-campo"><span>Nombre</span>
+          <input class="mk-input" id="a-nombre" type="text" maxlength="80" placeholder="Para saludar con {nombre}"></label>
+      </div>
+      <div class="em-campo"><span>Qué quiere recibir <em>*</em></span>
+        <div class="em-opciones" id="a-temas"></div></div>
+
+      <p class="em-seccion">La autorización</p>
+      <div class="em-fila2">
+        <label class="em-campo"><span>Por dónde autorizó <em>*</em></span>
+          <select class="mk-select" id="a-canal" required>
+            <option value="">Elige…</option>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="presencial">En persona</option>
+            <option value="llamada">Llamada</option>
+            <option value="correo">Correo</option>
+            <option value="otro">Otro</option>
+          </select></label>
+        <label class="em-campo"><span>Fecha de la autorización <em>*</em></span>
+          <input class="mk-input" id="a-fecha" type="date" required></label>
+      </div>
+      <label class="em-campo"><span>Cómo autorizó, con detalle <em>*</em></span>
+        <textarea class="mk-input" id="a-detalle" maxlength="1000" placeholder="Ej.: Le preguntamos por WhatsApp si quería recibir novedades y respondió «sí, claro». La conversación queda en el chat del negocio."></textarea>
+        <span class="em-ayuda">Es la prueba legal del permiso. Escribe lo que pasó, no una frase genérica.</span></label>
+      <p class="em-texto-legal" id="a-texto"><span>Lo que la persona autoriza</span></p>
+      <label class="em-confirmo"><input type="checkbox" id="a-confirmo">
+        <span>Confirmo que esta persona autorizó <strong>de forma expresa</strong> recibir estos correos y que la evidencia descrita es real.</span></label>
+      <label class="em-confirmo" id="a-reactivar-caja" hidden><input type="checkbox" id="a-reactivar">
+        <span>Este correo se había dado de baja. Confirmo que la persona <strong>volvió a autorizar</strong> y quiero reactivarlo.</span></label>
+      <p class="em-msg" id="a-msg" hidden></p>
+      <div class="em-form-acciones">
+        <button class="em-btn-sec" type="button" id="alta-cancelar">Cancelar</button>
+        <button class="mk-btn" type="submit" id="alta-guardar">Agregar a la lista</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script type="module">
+  import {
+    supabase, ICONOS, escaparHTML, formatearNumero, asegurarAccesoEM, montarArea,
+    ESTADOS, FUENTES, CANALES, ETAPAS, badgeEstado, formatearFecha, formatearMomento,
+    fechaRelativa, hoyISO, formatearCOP, mensajeError
+  } from './em-core.js';
+
+  const $ = (id) => document.getElementById(id);
+  let contactos = [];
+  let temas = [];
+  let config = null;
+  let fichaId = null;
+
+  const inicial = (c) => ((c.nombre || c.correo || '?').trim()[0] || '?').toUpperCase();
+  const nombreTema = (cod) => (temas.find((t) => t.codigo === cod) || {}).nombre || cod;
+
+  // ---------------- Carga ----------------
+  async function cargar() {
+    const [rc, rt, rcfg] = await Promise.all([
+      supabase.from('em_contactos')
+        .select('id, correo, nombre, estado, fuente, temas, customer_id, consentimiento_en, creado, politica_version')
+        .order('creado', { ascending: false }).limit(5000),
+      supabase.from('em_temas').select('codigo, nombre, descripcion, orden').eq('activo', true).order('orden'),
+      supabase.from('em_config').select('texto_consentimiento, politica_publicada, politica_version').limit(1)
+    ]);
+    if (rc.error) {
+      $('lista').innerHTML = '<div class="mk-empty">' + (/em_contactos/i.test(rc.error.message || '')
+        ? 'Falta aplicar la migración <strong>20261009000000_email_marketing_em1.sql</strong> en Supabase.'
+        : 'No se pudieron cargar los contactos: <strong>' + escaparHTML(rc.error.message) + '</strong>') + '</div>';
+      $('btn-nuevo').disabled = true;
+      return false;
+    }
+    contactos = rc.data || [];
+    temas = rt.data || [];
+    config = Array.isArray(rcfg.data) ? (rcfg.data[0] || null) : (rcfg.data || null);
+    $('f-tema').innerHTML = '<option value="">Todos los temas</option>' +
+      temas.map((t) => '<option value="' + escaparHTML(t.codigo) + '">' + escaparHTML(t.nombre) + '</option>').join('');
+    return true;
+  }
+
+  // ---------------- Lista ----------------
+  function filtrados() {
+    const q = $('f-buscar').value.trim().toLowerCase();
+    const est = $('f-estado').value, tema = $('f-tema').value, cli = $('f-cliente').value;
+    return contactos.filter((c) =>
+      (!q || (c.correo || '').toLowerCase().includes(q) || (c.nombre || '').toLowerCase().includes(q)) &&
+      (!est || c.estado === est) &&
+      (!tema || (c.temas || []).includes(tema)) &&
+      (!cli || (cli === 'si' ? !!c.customer_id : !c.customer_id)));
+  }
+
+  function pintarLista() {
+    if (!contactos.length) {
+      $('contador').textContent = '';
+      $('lista').innerHTML =
+        '<div class="em-bienvenida"><div class="ico">' + ICONOS.usuarios + '</div>' +
+          '<h2>Aún no hay contactos</h2>' +
+          '<p>Agrega a quienes te autoricen recibir novedades u ofertas. Por ejemplo, un cliente que te dijo «sí» por WhatsApp.</p>' +
+          '<button class="mk-btn" type="button" id="btn-nuevo-vacio">' + ICONOS.usuarioMas + ' Agregar el primer contacto</button></div>';
+      $('btn-nuevo-vacio').addEventListener('click', () => abrirAlta());
+      return;
+    }
+    const lista = filtrados();
+    const susc = contactos.filter((c) => c.estado === 'suscrito').length;
+    $('contador').textContent = (lista.length === contactos.length
+      ? formatearNumero(contactos.length) + ' contactos'
+      : formatearNumero(lista.length) + ' de ' + formatearNumero(contactos.length) + ' contactos') +
+      ' · ' + formatearNumero(susc) + ' suscritos';
+    if (!lista.length) {
+      $('lista').innerHTML = '<div class="mk-empty">Ningún contacto coincide con la búsqueda o los filtros.</div>';
+      return;
+    }
+    const filas = lista.map((c) =>
+      '<tr tabindex="0" data-id="' + escaparHTML(c.id) + '" aria-label="Abrir ficha de ' + escaparHTML(c.nombre || c.correo) + '">' +
+        '<td><div class="em-persona"><span class="em-ini">' + escaparHTML(inicial(c)) + '</span><div class="em-persona-txt">' +
+          '<b>' + escaparHTML(c.nombre || 'Sin nombre') + '</b><span>' + escaparHTML(c.correo) + '</span></div></div></td>' +
+        '<td>' + badgeEstado(c.estado) + '</td>' +
+        '<td><div class="em-chips">' + (c.temas || []).map((t) => '<span class="em-chip">' + escaparHTML(nombreTema(t)) + '</span>').join('') + '</div></td>' +
+        '<td class="em-ocultar-movil">' + (c.customer_id
+          ? '<span class="em-cliente-si">' + ICONOS.check + 'Cliente</span>'
+          : '<span class="em-tenue">—</span>') + '</td>' +
+        '<td class="em-ocultar-movil em-tenue">' + escaparHTML(FUENTES[c.fuente] || c.fuente) + '</td>' +
+        '<td class="em-ocultar-movil mk-num" title="' + escaparHTML(formatearFecha(c.consentimiento_en)) + '">' + escaparHTML(fechaRelativa(c.creado)) + '</td>' +
+      '</tr>').join('');
+    $('lista').innerHTML = '<div class="em-tabla-caja"><table class="mk-tabla em-tabla"><thead><tr>' +
+      '<th>Contacto</th><th>Estado</th><th>Temas</th><th class="em-ocultar-movil">Cliente</th>' +
+      '<th class="em-ocultar-movil">Llegó por</th><th class="em-ocultar-movil">Alta</th>' +
+      '</tr></thead><tbody>' + filas + '</tbody></table></div>';
+    $('lista').querySelectorAll('tr[data-id]').forEach((tr) => {
+      const abrir = () => abrirFicha(tr.dataset.id);
+      tr.addEventListener('click', abrir);
+      tr.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(); } });
+    });
+  }
+
+  ['f-buscar', 'f-estado', 'f-tema', 'f-cliente'].forEach((id) =>
+    $(id).addEventListener(id === 'f-buscar' ? 'input' : 'change', pintarLista));
+
+  // ---------------- Ficha ----------------
+  const ACCIONES = {
+    alta: 'Alta en la lista', confirmacion: 'Confirmó su suscripción', baja: 'Se dio de baja',
+    reactivacion: 'Reactivado con nueva autorización', edicion: 'Datos editados',
+    rebote: 'Correo rebotado', queja: 'Marcó un correo como spam', vinculo_cliente: 'Vinculado a su ficha de cliente'
+  };
+
+  function detalleEvento(b) {
+    const d = b.detalle || {};
+    if (b.accion === 'baja' && d.motivo) return 'Motivo: ' + d.motivo;
+    if ((b.accion === 'alta' || b.accion === 'reactivacion') && d.evidencia) return 'Por ' + (CANALES[d.evidencia.canal] || d.evidencia.canal);
+    if (b.accion === 'edicion' && d.antes && d.despues) {
+      const cambios = [];
+      if ((d.antes.nombre || '') !== (d.despues.nombre || '')) cambios.push('nombre');
+      if (JSON.stringify(d.antes.temas) !== JSON.stringify(d.despues.temas)) cambios.push('temas: ' + (d.despues.temas || []).map(nombreTema).join(', '));
+      return cambios.length ? 'Cambió ' + cambios.join(' · ') : '';
+    }
+    return '';
+  }
+
+  async function abrirFicha(id) {
+    fichaId = id;
+    const c0 = contactos.find((x) => x.id === id);
+    $('ficha-ini').textContent = c0 ? inicial(c0) : '';
+    $('ficha-nombre').textContent = c0 ? (c0.nombre || 'Sin nombre') : 'Contacto';
+    $('ficha-correo').textContent = c0 ? c0.correo : '';
+    $('ficha-body').innerHTML = '<p class="em-vacio-mini">Cargando ficha…</p>';
+    $('ficha-fondo').hidden = false;
+    $('ficha-cerrar').focus();
+    history.replaceState(null, '', '?id=' + encodeURIComponent(id));
+
+    const { data, error } = await supabase.rpc('em_contacto_detalle', { p_id: id });
+    if (fichaId !== id) return;
+    if (error || !data) { $('ficha-body').innerHTML = '<p class="em-msg err">' + escaparHTML(mensajeError(error)) + '</p>'; return; }
+    pintarFicha(data);
+  }
+
+  function pintarFicha(d) {
+    const c = d.contacto;
+    const ev = c.evidencia || {};
+    $('ficha-ini').textContent = inicial(c);
+    $('ficha-nombre').textContent = c.nombre || 'Sin nombre';
+    $('ficha-correo').textContent = c.correo;
+    const activo = c.estado === 'suscrito' || c.estado === 'pendiente_confirmacion';
+
+    const bloqueEstado = '<section class="em-bloque"><h3>' + ICONOS.sobre + 'Estado</h3>' +
+      '<div class="em-kv"><span class="k">Estado</span><span class="v">' + badgeEstado(c.estado) + '</span></div>' +
+      (c.estado === 'baja' ? '<div class="em-kv"><span class="k">Baja</span><span class="v">' + escaparHTML(formatearMomento(c.baja_en)) + '</span></div>' +
+        (c.baja_motivo ? '<p class="em-cita">' + escaparHTML(c.baja_motivo) + '</p>' : '') : '') +
+      '<div class="em-kv"><span class="k">Llegó por</span><span class="v">' + escaparHTML(FUENTES[c.fuente] || c.fuente) + '</span></div>' +
+      '<div class="em-kv"><span class="k">En la lista desde</span><span class="v">' + escaparHTML(formatearFecha(c.creado)) + '</span></div>' +
+    '</section>';
+
+    const bloqueConsent = '<section class="em-bloque"><h3>' + ICONOS.escudo + 'Prueba de la autorización</h3>' +
+      '<div class="em-kv"><span class="k">Autorizó el</span><span class="v">' + escaparHTML(formatearFecha(c.consentimiento_en)) + '</span></div>' +
+      (ev.canal ? '<div class="em-kv"><span class="k">Por</span><span class="v">' + escaparHTML(CANALES[ev.canal] || ev.canal) + '</span></div>' : '') +
+      '<div class="em-kv"><span class="k">Política vigente</span><span class="v">' + escaparHTML(c.politica_version === 'pendiente' ? 'Aún no publicada' : c.politica_version) + '</span></div>' +
+      (d.registrado_por_correo ? '<div class="em-kv"><span class="k">Registró</span><span class="v">' + escaparHTML(d.registrado_por_correo) + '</span></div>' : '') +
+      (ev.detalle ? '<p class="em-cita evid">' + escaparHTML(ev.detalle) + '</p>' : '') +
+      '<p class="em-cita">«' + escaparHTML(c.consentimiento_texto) + '»</p>' +
+    '</section>';
+
+    const bloqueEditar = '<section class="em-bloque"><h3>' + ICONOS.lista + 'Datos y preferencias</h3>' +
+      '<form id="ed-form" class="em-form" style="padding:0;gap:12px" novalidate>' +
+        '<label class="em-campo"><span>Nombre</span><input class="mk-input" id="ed-nombre" maxlength="80" value="' + escaparHTML(c.nombre || '') + '"></label>' +
+        '<div class="em-campo"><span>Temas</span><div class="em-opciones">' + temas.map((t) =>
+          '<label class="em-opcion"><input type="checkbox" name="ed-tema" value="' + escaparHTML(t.codigo) + '"' + ((c.temas || []).includes(t.codigo) ? ' checked' : '') + '>' + escaparHTML(t.nombre) + '</label>').join('') +
+        '</div></div>' +
+        '<p class="em-msg" id="ed-msg" hidden></p>' +
+        '<div class="em-form-acciones"><button class="em-btn-sec" type="submit" id="ed-guardar">Guardar cambios</button></div>' +
+      '</form></section>';
+
+    const cl = d.cliente;
+    const bloqueCliente = '<section class="em-bloque"><h3>' + ICONOS.usuarios + 'Como cliente</h3>' + (cl
+      ? '<div class="em-kv"><span class="k">Ficha de cliente</span><span class="v">' + escaparHTML(cl.nombre || '—') + (cl.ciudad ? ' · ' + escaparHTML(cl.ciudad) : '') + '</span></div>' +
+        '<div class="em-kv"><span class="k">Pedidos</span><span class="v">' + formatearNumero(cl.pedidos) + '</span></div>' +
+        '<div class="em-kv"><span class="k">Ha comprado</span><span class="v">' + formatearCOP(cl.total) + '</span></div>' +
+        '<div class="em-kv"><span class="k">Última compra</span><span class="v">' + escaparHTML(cl.ultima_compra ? formatearFecha(cl.ultima_compra) : '—') + '</span></div>'
+      : '<p class="em-vacio-mini">Todavía no ha comprado con este correo. Si compra, se vincula solo.</p>') +
+    '</section>';
+
+    const seg = d.seguimiento || [];
+    const bloqueSeg = seg.length ? '<section class="em-bloque"><h3>' + ICONOS.historial + 'Correos de pedido recibidos</h3>' +
+      seg.slice(0, 8).map((e) => '<div class="em-kv"><span class="k">' + escaparHTML(ETAPAS[e.etapa] || e.etapa) +
+        (e.pedido ? ' · <span class="em-ref">' + escaparHTML(e.pedido) + '</span>' : '') + '</span><span class="v">' +
+        '<span class="em-resultado ' + escaparHTML(e.estado) + '"><i></i>' + escaparHTML(formatearFecha(e.creado)) + '</span></span></div>').join('') +
+      '</section>' : '';
+
+    const bloqueHist = '<section class="em-bloque"><h3>' + ICONOS.historial + 'Historial del permiso</h3><ul class="em-timeline">' +
+      (d.bitacora || []).map((b) => '<li class="' + (b.accion === 'baja' ? 'baja' : '') + '">' + escaparHTML(ACCIONES[b.accion] || b.accion) +
+        '<span class="cuando">' + escaparHTML(formatearMomento(b.cuando)) + (b.actor_correo ? ' · ' + escaparHTML(b.actor_correo) : ' · automático') + '</span>' +
+        (detalleEvento(b) ? '<span class="det">' + escaparHTML(detalleEvento(b)) + '</span>' : '') + '</li>').join('') +
+      '</ul><p class="em-pie">Este historial no se puede borrar: es la evidencia de que cada permiso se respetó.</p></section>';
+
+    const bloqueBaja = activo
+      ? '<section class="em-bloque"><h3>' + ICONOS.alerta + 'Dar de baja</h3>' +
+          '<p class="em-pie" style="margin:0 0 10px">Úsalo si la persona pidió dejar de recibir correos por otro medio. Desde los correos podrá hacerlo sola.</p>' +
+          '<label class="em-campo"><span>Motivo</span><input class="mk-input" id="bj-motivo" maxlength="300" placeholder="Ej.: Lo pidió por WhatsApp el 9 de octubre"></label>' +
+          '<p class="em-msg" id="bj-msg" hidden></p>' +
+          '<div class="em-form-acciones" style="margin-top:10px"><button class="em-btn-peligro" type="button" id="bj-btn">Dar de baja</button></div></section>'
+      : '<section class="em-bloque"><h3>' + ICONOS.info + 'Inactivo</h3><p class="em-pie" style="margin:0 0 10px">No recibe campañas. Solo se reactiva si la persona vuelve a autorizar, con nueva evidencia.</p>' +
+          '<div class="em-form-acciones"><button class="em-btn-sec" type="button" id="re-btn">Registrar nueva autorización</button></div></section>';
+
+    $('ficha-body').innerHTML = bloqueEstado + bloqueConsent + (activo ? bloqueEditar : '') + bloqueCliente + bloqueSeg + bloqueHist + bloqueBaja;
+    cablearFicha(c);
+  }
+
+  function msgEn(el, txt, cls) { el.hidden = !txt; el.textContent = txt || ''; el.className = 'em-msg' + (cls ? ' ' + cls : ''); }
+
+  function cablearFicha(c) {
+    const edForm = $('ed-form');
+    if (edForm) edForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const sel = [...document.querySelectorAll('input[name="ed-tema"]:checked')].map((x) => x.value);
+      if (!sel.length) { msgEn($('ed-msg'), 'Elige al menos un tema.', 'err'); return; }
+      $('ed-guardar').disabled = true;
+      const { data, error } = await supabase.rpc('em_editar_contacto', { p_id: c.id, p_nombre: $('ed-nombre').value, p_temas: sel });
+      $('ed-guardar').disabled = false;
+      if (error) { msgEn($('ed-msg'), mensajeError(error), 'err'); return; }
+      await recargarYAbrir(c.id, data && data.cambios ? 'Cambios guardados.' : 'No había cambios.');
+    });
+    const bj = $('bj-btn');
+    if (bj) bj.addEventListener('click', async () => {
+      const motivo = $('bj-motivo').value.trim();
+      if (!motivo) { msgEn($('bj-msg'), 'Escribe el motivo de la baja.', 'err'); $('bj-motivo').focus(); return; }
+      if (!window.confirm('¿Dar de baja a ' + c.correo + '? Dejará de recibir campañas. El historial se conserva.')) return;
+      bj.disabled = true;
+      const { error } = await supabase.rpc('em_dar_baja', { p_id: c.id, p_motivo: motivo });
+      bj.disabled = false;
+      if (error) { msgEn($('bj-msg'), mensajeError(error), 'err'); return; }
+      await recargarYAbrir(c.id);
+    });
+    const re = $('re-btn');
+    if (re) re.addEventListener('click', () => abrirAlta({ correo: c.correo, nombre: c.nombre, reactivar: true }));
+  }
+
+  async function recargarYAbrir(id, aviso) {
+    await cargar();
+    pintarLista();
+    await abrirFicha(id);
+    if (aviso) {
+      const m = $('ed-msg');
+      if (m) msgEn(m, aviso, 'ok');
+    }
+  }
+
+  function cerrarFicha() {
+    $('ficha-fondo').hidden = true; fichaId = null;
+    history.replaceState(null, '', location.pathname);
+  }
+  $('ficha-cerrar').addEventListener('click', cerrarFicha);
+  $('ficha-fondo').addEventListener('click', (e) => { if (e.target === $('ficha-fondo')) cerrarFicha(); });
+
+  // ---------------- Alta ----------------
+  function abrirAlta(pre) {
+    pre = pre || {};
+    $('alta-form').reset();
+    $('a-correo').value = pre.correo || '';
+    $('a-correo').readOnly = !!pre.reactivar;
+    $('a-nombre').value = pre.nombre || '';
+    $('a-fecha').value = hoyISO();
+    $('a-fecha').max = hoyISO();
+    $('a-temas').innerHTML = temas.map((t) =>
+      '<label class="em-opcion"><input type="checkbox" name="a-tema" value="' + escaparHTML(t.codigo) + '" checked>' +
+      '<span>' + escaparHTML(t.nombre) + (t.descripcion ? '<small>' + escaparHTML(t.descripcion) + '</small>' : '') + '</span></label>').join('');
+    $('a-texto').innerHTML = '<span>Lo que la persona autoriza</span>«' + escaparHTML(config ? config.texto_consentimiento : '') + '»';
+    $('a-reactivar-caja').hidden = !pre.reactivar;
+    $('a-reactivar').checked = false;
+    $('alta-titulo').textContent = pre.reactivar ? 'Registrar nueva autorización' : 'Agregar contacto';
+    $('alta-guardar').textContent = pre.reactivar ? 'Reactivar contacto' : 'Agregar a la lista';
+    msgEn($('a-msg'), '');
+    $('alta-fondo').hidden = false;
+    (pre.correo ? $('a-canal') : $('a-correo')).focus();
+  }
+  function cerrarAlta() {
+    $('alta-fondo').hidden = true;
+    if (new URLSearchParams(location.search).get('nuevo')) history.replaceState(null, '', location.pathname);
+  }
+
+  $('btn-nuevo').addEventListener('click', () => abrirAlta());
+  $('alta-cerrar').addEventListener('click', cerrarAlta);
+  $('alta-cancelar').addEventListener('click', cerrarAlta);
+  $('alta-fondo').addEventListener('click', (e) => { if (e.target === $('alta-fondo')) cerrarAlta(); });
+
+  $('alta-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const correo = $('a-correo').value.trim();
+    const temasSel = [...document.querySelectorAll('input[name="a-tema"]:checked')].map((x) => x.value);
+    const canal = $('a-canal').value;
+    const detalle = $('a-detalle').value.trim();
+    const reactivar = !$('a-reactivar-caja').hidden;
+    let err = '';
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) err = 'Escribe un correo válido.';
+    else if (!temasSel.length) err = 'Elige al menos un tema.';
+    else if (!canal) err = 'Elige por dónde autorizó.';
+    else if (detalle.length < 10) err = 'Describe cómo autorizó la persona (mínimo 10 caracteres).';
+    else if (!$('a-confirmo').checked) err = 'Marca la casilla de confirmación.';
+    else if (reactivar && !$('a-reactivar').checked) err = 'Confirma que la persona volvió a autorizar.';
+    if (err) { msgEn($('a-msg'), err, 'err'); return; }
+
+    $('alta-guardar').disabled = true;
+    const { data, error } = await supabase.rpc('em_alta_manual', {
+      p_correo: correo, p_nombre: $('a-nombre').value, p_temas: temasSel, p_canal: canal,
+      p_detalle: detalle, p_autorizado_en: $('a-fecha').value || hoyISO(),
+      p_confirmo: true, p_reactivar: reactivar && $('a-reactivar').checked
+    });
+    $('alta-guardar').disabled = false;
+
+    if (error) {
+      const m = error.message || '';
+      if (m.includes('EM_CONTACTO_YA_EXISTE')) {
+        const ex = contactos.find((c) => (c.correo || '').toLowerCase() === correo.toLowerCase());
+        msgEn($('a-msg'), 'Ese correo ya está en la lista.', 'err');
+        if (ex) { cerrarAlta(); abrirFicha(ex.id); }
+        return;
+      }
+      if (m.includes('EM_CONTACTO_INACTIVO')) {
+        $('a-reactivar-caja').hidden = false;
+        msgEn($('a-msg'), 'Ese correo se había dado de baja o tuvo un problema. Si volvió a autorizar, marca la casilla de reactivación y guarda de nuevo.', 'err');
+        return;
+      }
+      msgEn($('a-msg'), mensajeError(error), 'err');
+      return;
+    }
+    cerrarAlta();
+    await cargar();
+    pintarLista();
+    if (data && data.id) abrirFicha(data.id);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (!$('alta-fondo').hidden) cerrarAlta();
+    else if (!$('ficha-fondo').hidden) cerrarFicha();
+  });
+
+  // ---------------- Arranque ----------------
+  (async () => {
+    const acceso = await asegurarAccesoEM(document.body, '../index.html');
+    if (!acceso) return;
+    montarArea({
+      activa: 'contactos',
+      titulo: 'Contactos',
+      lead: 'Las personas que autorizaron recibir correos de MAGANDHI. Abre un contacto para ver la prueba de su permiso y su historial.',
+      sesion: acceso.sesion
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+    $('em-main').hidden = false;
+    if (!(await cargar())) return;
+    pintarLista();
+    const p = new URLSearchParams(location.search);
+    if (p.get('nuevo')) abrirAlta();
+    else if (p.get('id')) abrirFicha(p.get('id'));
+  })();
+</script>
+
+</body>
+</html>

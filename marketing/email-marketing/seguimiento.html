@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Correos de seguimiento · Email marketing</title>
+<meta name="description" content="Historial de correos de seguimiento del pedido · MAGANDHI.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/marketing.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=2">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=2">
+<link rel="stylesheet" href="../marketing.css?v=2">
+<link rel="stylesheet" href="email-marketing.css?v=2">
+
+<!--
+  MAGANDHI · Marketing · EMAIL MARKETING · CORREOS DE SEGUIMIENTO (tramo EM1).
+  Historial de SOLO LECTURA de los correos transaccionales del pedido
+  (correo_envios): quien, que etapa, que respondio el proveedor. Los correos se
+  envian desde Ventas → Seguimiento de pedidos; los textos viven en
+  correo_plantillas y se cambian con un SQL que entrega Kiro.
+  Lectura via RPC em_correos_seguimiento (email_marketing o ventas).
+-->
+</head>
+<body class="mk-body">
+
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="mk-wrap" id="em-main" hidden>
+  <p class="mk-nota"><span data-ico="info"></span>
+    <span>Avisos de cada etapa del pedido. Se envían desde <a href="../../ventas/seguimiento-pedidos/index.html">Ventas → Seguimiento de pedidos</a>; para cambiar sus textos, pídeselo a Kiro.</span></p>
+  <div class="em-toolbar">
+    <label class="em-buscar"><span data-ico="lupa"></span>
+      <input class="mk-input" id="f-buscar" type="search" placeholder="Buscar por cliente, correo o pedido (#A1B2C3D4)" aria-label="Buscar"></label>
+    <select class="mk-select" id="f-etapa" aria-label="Etapa">
+      <option value="">Todas las etapas</option>
+      <option value="recibido">Recibido</option>
+      <option value="preparando">Preparando</option>
+      <option value="en_camino">En camino</option>
+      <option value="entregado">Entregado</option>
+    </select>
+    <select class="mk-select" id="f-estado" aria-label="Resultado">
+      <option value="">Todos los resultados</option>
+      <option value="enviado">Enviados</option>
+      <option value="fallido">Fallidos</option>
+      <option value="pendiente">En curso</option>
+    </select>
+    <label class="em-opcion em-ocultar-movil"><input type="checkbox" id="f-pruebas">Incluir pruebas</label>
+  </div>
+  <p class="em-contador" id="contador"></p>
+  <div id="lista"><p class="mk-empty">Cargando…</p></div>
+</main>
+
+<script type="module">
+  import {
+    supabase, ICONOS, escaparHTML, formatearNumero, asegurarAccesoEM, montarArea,
+    ETAPAS, formatearMomento, mensajeError
+  } from './em-core.js';
+
+  const $ = (id) => document.getElementById(id);
+  let tempo = null;
+
+  async function cargar() {
+    $('lista').innerHTML = '<p class="mk-empty">Cargando…</p>';
+    const { data, error } = await supabase.rpc('em_correos_seguimiento', {
+      p_etapa: $('f-etapa').value || null,
+      p_estado: $('f-estado').value || null,
+      p_buscar: $('f-buscar').value.trim() || null,
+      p_limite: 300
+    });
+    if (error) {
+      $('contador').textContent = '';
+      $('lista').innerHTML = '<div class="mk-empty">' + (/em_correos_seguimiento|function/i.test(error.message || '')
+        ? 'Falta aplicar la migración <strong>20261009000000_email_marketing_em1.sql</strong> en Supabase.'
+        : escaparHTML(mensajeError(error))) + '</div>';
+      return;
+    }
+    const filas = (data || []).filter((e) => $('f-pruebas').checked || !e.es_prueba);
+    const env = filas.filter((e) => e.estado === 'enviado').length;
+    const fal = filas.filter((e) => e.estado === 'fallido').length;
+    $('contador').textContent = formatearNumero(filas.length) + ' correos · ' + formatearNumero(env) + ' enviados · ' + formatearNumero(fal) + ' fallidos' +
+      (filas.length >= 300 ? ' · mostrando los 300 más recientes' : '');
+    if (!filas.length) {
+      $('lista').innerHTML = '<div class="mk-empty">' + (($('f-buscar').value || $('f-etapa').value || $('f-estado').value)
+        ? 'Ningún correo coincide con los filtros.'
+        : 'Aún no se ha enviado ningún correo de seguimiento.') + '</div>';
+      return;
+    }
+    const RES = { enviado: 'Enviado', fallido: 'Falló', pendiente: 'En curso' };
+    $('lista').innerHTML = '<div class="em-tabla-caja"><table class="mk-tabla"><thead><tr>' +
+      '<th>Cuándo</th><th>Pedido</th><th>Etapa</th><th class="em-ocultar-movil">Destinatario</th><th>Resultado</th>' +
+      '</tr></thead><tbody>' + filas.map((e) =>
+        '<tr><td class="mk-num">' + escaparHTML(formatearMomento(e.creado)) + '</td>' +
+        '<td>' + (e.pedido_ref ? '<span class="em-ref">' + escaparHTML(e.pedido_ref) + '</span>' : '<span class="em-tenue">—</span>') +
+          '<span class="em-error-linea">' + escaparHTML(e.cliente_nombre || (e.es_prueba ? 'Prueba' : '')) + '</span></td>' +
+        '<td>' + escaparHTML(ETAPAS[e.etapa] || e.etapa) +
+          (e.es_reenvio ? ' <span class="em-chip">Reenvío</span>' : '') + (e.es_prueba ? ' <span class="em-chip">Prueba</span>' : '') + '</td>' +
+        '<td class="em-ocultar-movil" style="word-break:break-all">' + escaparHTML(e.destinatario) + '</td>' +
+        '<td><span class="em-resultado ' + escaparHTML(e.estado) + '"><i></i>' + escaparHTML(RES[e.estado] || e.estado) + '</span>' +
+          (e.estado === 'fallido' && e.error ? '<span class="em-error-linea">' + escaparHTML(e.error) + '</span>' : '') + '</td></tr>'
+      ).join('') + '</tbody></table></div>';
+  }
+
+  $('f-buscar').addEventListener('input', () => { clearTimeout(tempo); tempo = setTimeout(cargar, 300); });
+  ['f-etapa', 'f-estado', 'f-pruebas'].forEach((id) => $(id).addEventListener('change', cargar));
+
+  (async () => {
+    const acceso = await asegurarAccesoEM(document.body, '../index.html');
+    if (!acceso) return;
+    montarArea({
+      activa: 'seguimiento',
+      titulo: 'Correos de seguimiento',
+      lead: 'La evidencia de cada aviso enviado al cliente durante su pedido: a quién, en qué etapa y qué respondió el proveedor.',
+      sesion: acceso.sesion
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+    $('em-main').hidden = false;
+    await cargar();
+  })();
+</script>
+
+</body>
+</html>

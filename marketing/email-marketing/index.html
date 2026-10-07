@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Email marketing</title>
+<meta name="description" content="Email marketing · Área de Marketing de MAGANDHI.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/marketing.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=2">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=2">
+<link rel="stylesheet" href="../marketing.css?v=2">
+<link rel="stylesheet" href="email-marketing.css?v=2">
+
+<!--
+  MAGANDHI · Marketing · EMAIL MARKETING · RESUMEN (tramo EM1).
+  Tablero de la lista: suscritos, estados, crecimiento por semana, fuentes,
+  temas, clientes con correo que aun no estan en la lista y el pulso de los
+  correos de seguimiento. Todo en UNA llamada: RPC em_resumen() (security
+  definer, guardado por tiene_acceso_email_marketing()). Diseno en
+  docs/PLANO-EMAIL-MARKETING.md.
+-->
+</head>
+<body class="mk-body">
+
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="mk-wrap" id="em-main" hidden>
+  <div id="em-aviso"></div>
+  <div id="em-contenido"><p class="mk-empty">Cargando…</p></div>
+</main>
+
+<script type="module">
+  import {
+    supabase, ICONOS, escaparHTML, formatearNumero, asegurarAccesoEM, montarArea,
+    ESTADOS, FUENTES, formatearFecha, fechaRelativa
+  } from './em-core.js';
+
+  const $ = (id) => document.getElementById(id);
+  const n = (x) => Number(x) || 0;
+
+  function avisoPolitica(cfg) {
+    if (cfg && cfg.politica_publicada) {
+      return '<div class="em-aviso ok">' + ICONOS.escudo + '<div><strong>Política de tratamiento de datos publicada</strong>' +
+        '<p>Versión vigente: ' + escaparHTML(cfg.politica_version) + '. Las nuevas autorizaciones quedan registradas bajo esta versión.</p></div></div>';
+    }
+    return '<div class="em-aviso">' + ICONOS.escudo + '<div><strong>Política de tratamiento de datos: pendiente</strong>' +
+      '<p>Ya puedes registrar contactos que te autoricen, siempre con su evidencia. El formulario público de la tienda sigue apagado y las campañas se habilitarán cuando la política esté publicada en magandhi.com.</p></div></div>';
+  }
+
+  function graficoSemanas(semanas) {
+    const W = 640, H = 190, padL = 28, padR = 8, padT = 18, padB = 28;
+    const max = Math.max(1, ...semanas.map((s) => Math.max(n(s.altas), n(s.bajas))));
+    const ancho = (W - padL - padR) / semanas.length;
+    const bw = Math.min(16, ancho / 3);
+    const y = (v) => padT + (H - padT - padB) * (1 - v / max);
+    let barras = '';
+    semanas.forEach((s, i) => {
+      const cx = padL + ancho * i + ancho / 2;
+      const a = n(s.altas), b = n(s.bajas);
+      barras += '<rect class="alta" x="' + (cx - bw - 1) + '" y="' + y(a) + '" width="' + bw + '" height="' + (H - padB - y(a)) + '" rx="3"><title>' + a + ' altas</title></rect>';
+      barras += '<rect class="bajab" x="' + (cx + 1) + '" y="' + y(b) + '" width="' + bw + '" height="' + (H - padB - y(b)) + '" rx="3"><title>' + b + ' bajas</title></rect>';
+      if (a) barras += '<text class="val" x="' + (cx - bw / 2 - 1) + '" y="' + (y(a) - 4) + '" text-anchor="middle">' + a + '</text>';
+      if (i % 2 === 1 || semanas.length <= 6) {
+        const d = new Date(s.semana + 'T12:00:00');
+        barras += '<text class="lbl" x="' + cx + '" y="' + (H - 9) + '" text-anchor="middle">' + d.getDate() + '/' + (d.getMonth() + 1) + '</text>';
+      }
+    });
+    return '<svg class="em-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Altas y bajas por semana">' +
+      '<line class="eje" x1="' + padL + '" x2="' + (W - padR) + '" y1="' + (H - padB) + '" y2="' + (H - padB) + '"/>' +
+      '<text class="lbl" x="2" y="' + (padT + 4) + '">' + max + '</text>' + barras + '</svg>' +
+      '<div class="em-ley-mini"><span><i class="alta"></i>Altas (incluye reactivaciones)</span><span><i class="baja"></i>Bajas</span></div>';
+  }
+
+  function filasBarras(pares, total) {
+    if (!pares.length) return '<p class="em-vacio-mini">Aún sin datos.</p>';
+    return '<ul class="em-filas">' + pares.map(([txt, v]) => {
+      const pct = total ? Math.round((v / total) * 100) : 0;
+      return '<li><div class="em-fila-top"><span>' + escaparHTML(txt) + '</span><b>' + formatearNumero(v) +
+        ' <span class="em-tenue" style="font-weight:400">· ' + pct + '%</span></b></div>' +
+        '<div class="em-fila-barra"><span style="width:' + pct + '%"></span></div></li>';
+    }).join('') + '</ul>';
+  }
+
+  function pintar(r) {
+    $('em-aviso').innerHTML = avisoPolitica(r.config);
+    const pe = r.por_estado || {};
+    const suscritos = n(pe.suscrito);
+    const total = n(r.total);
+
+    if (!total) {
+      $('em-contenido').innerHTML =
+        '<div class="em-bienvenida"><div class="ico">' + ICONOS.sobre + '</div>' +
+          '<h2>Tu lista empieza aquí</h2>' +
+          '<p>Registra a las personas que te autoricen recibir novedades y ofertas. Cada alta guarda la prueba del permiso: por dónde lo dio, cuándo y qué texto aceptó.</p>' +
+          '<a class="mk-btn" href="contactos.html?nuevo=1">' + ICONOS.usuarioMas + ' Agregar el primer contacto</a>' +
+        '</div>' +
+        insightClientes(r) + bloqueSeguimiento(r);
+      return;
+    }
+
+    const segm = [
+      ['suscrito', n(pe.suscrito)],
+      ['pendiente', n(pe.pendiente_confirmacion)],
+      ['baja', n(pe.baja)],
+      ['problema', n(pe.rebotado) + n(pe.queja)]
+    ];
+    const barra = '<div class="em-barra" role="img" aria-label="Distribución por estado">' +
+      segm.filter(([, v]) => v).map(([c, v]) => '<span class="' + c + '" style="width:' + (v / total * 100) + '%"></span>').join('') + '</div>';
+    const leyenda = '<div class="em-leyenda">' + [
+      ['suscrito', 'Suscritos', n(pe.suscrito)],
+      ['pendiente', 'Por confirmar', n(pe.pendiente_confirmacion)],
+      ['baja', 'De baja', n(pe.baja)],
+      ['problema', 'Rebote o spam', n(pe.rebotado) + n(pe.queja)]
+    ].map(([c, t, v]) => '<span class="em-leyenda-item"><i class="' + c + '"></i>' + t + '<b>' + formatearNumero(v) + '</b></span>').join('') + '</div>';
+
+    const vinculadosPct = suscritos ? Math.round(n(r.vinculados) / suscritos * 100) : 0;
+    const fuentes = Object.entries(r.por_fuente || {}).map(([k, v]) => [FUENTES[k] || k, n(v)]).sort((a, b) => b[1] - a[1]);
+    const temas = (r.por_tema || []).map((t) => [t.nombre, n(t.suscritos)]);
+
+    $('em-contenido').innerHTML =
+      '<section class="mk-hero em-hero" aria-label="Suscritos">' +
+        '<div class="mk-hero-main"><span class="mk-hero-lbl">Personas que reciben tus correos</span>' +
+          '<span class="mk-hero-num">' + formatearNumero(suscritos) + '<span class="mk-hero-unidad">suscritos</span></span>' +
+          '<span class="mk-hero-sub">De ' + formatearNumero(total) + ' contactos registrados en total</span></div>' +
+        '<div class="mk-hero-meta">' +
+          '<div class="mk-hero-dato"><span class="k">Altas · 30 días</span><span class="v">+' + formatearNumero(r.altas_30d) + '</span></div>' +
+          '<div class="mk-hero-dato"><span class="k">Bajas · 30 días</span><span class="v">' + formatearNumero(r.bajas_30d) + '</span></div>' +
+          '<div class="mk-hero-dato"><span class="k">Ya son clientes</span><span class="v">' + vinculadosPct + '%</span></div>' +
+        '</div>' +
+        '<div class="em-hero-acciones">' +
+          '<a class="em-btn-claro" href="contactos.html?nuevo=1">' + ICONOS.usuarioMas + ' Agregar contacto</a>' +
+          '<a class="em-btn-borde" href="contactos.html">Ver la lista</a>' +
+        '</div>' +
+      '</section>' +
+
+      '<div class="em-grid c3">' +
+        '<section class="em-card"><h2 class="em-card-titulo">Crecimiento · últimas 12 semanas</h2>' + graficoSemanas(r.semanas || []) + '</section>' +
+        '<section class="em-card"><h2 class="em-card-titulo">Estado de la lista</h2>' + barra + leyenda +
+          '<p class="em-pie">Los contactos de baja, rebotados o que marcaron spam nunca reciben campañas, aunque estén en un segmento.</p></section>' +
+      '</div>' +
+
+      '<div class="em-grid c2">' +
+        '<section class="em-card"><h2 class="em-card-titulo">Por dónde llegaron <span class="em-tenue" style="text-transform:none;letter-spacing:0;font-weight:400">suscritos</span></h2>' + filasBarras(fuentes, suscritos) + '</section>' +
+        '<section class="em-card"><h2 class="em-card-titulo">Qué quieren recibir</h2>' + filasBarras(temas, suscritos) +
+          '<p class="em-pie">Cada persona puede elegir uno o ambos temas.</p></section>' +
+      '</div>' +
+      insightClientes(r) + bloqueSeguimiento(r);
+  }
+
+  function insightClientes(r) {
+    const k = n(r.clientes_con_correo_sin_contacto);
+    if (!k) return '';
+    return '<div class="em-insight">' + ICONOS.info + '<p><strong>' + formatearNumero(k) +
+      (k === 1 ? ' cliente tiene' : ' clientes tienen') + ' correo y aún no ' + (k === 1 ? 'está' : 'están') + ' en la lista.</strong> ' +
+      'No se agregan solos: comprar no es autorizar publicidad. Pregúntales en su próxima conversación si quieren recibir novedades.</p></div>';
+  }
+
+  function bloqueSeguimiento(r) {
+    const s = r.seguimiento_30d || {};
+    return '<section class="em-card" style="margin-top:16px"><h2 class="em-card-titulo">Correos de seguimiento · 30 días <a href="seguimiento.html">Ver historial</a></h2>' +
+      '<div class="em-datos">' +
+        '<div class="em-dato"><span class="k">Enviados</span><span class="v">' + formatearNumero(s.enviados) + '</span></div>' +
+        '<div class="em-dato"><span class="k">Fallidos</span><span class="v' + (n(s.fallidos) ? ' err' : '') + '">' + formatearNumero(s.fallidos) + '</span></div>' +
+      '</div>' +
+      '<p class="em-pie">Los avisos de cada etapa del pedido, enviados desde Seguimiento de pedidos.' +
+        (s.ultimo ? ' Último: ' + escaparHTML(fechaRelativa(s.ultimo).toLowerCase()) + ' (' + escaparHTML(formatearFecha(s.ultimo)) + ').' : '') + '</p></section>';
+  }
+
+  (async () => {
+    const acceso = await asegurarAccesoEM(document.body, '../index.html');
+    if (!acceso) return;
+    montarArea({
+      activa: 'resumen',
+      titulo: 'Email marketing',
+      lead: 'Tu lista propia de personas que autorizaron recibir novedades y ofertas, con la prueba de cada permiso. Aquí nacen los segmentos y las campañas.',
+      sesion: acceso.sesion
+    });
+    $('em-main').hidden = false;
+    const { data, error } = await supabase.rpc('em_resumen');
+    if (error) {
+      $('em-contenido').innerHTML = '<div class="mk-empty">' + (/em_resumen|function/i.test(error.message || '')
+        ? 'Falta aplicar la migración <strong>20261009000000_email_marketing_em1.sql</strong> en Supabase.'
+        : 'No se pudo cargar el resumen: <strong>' + escaparHTML(error.message) + '</strong>') + '</div>';
+      return;
+    }
+    pintar(data || {});
+  })();
+</script>
+
+</body>
+</html>

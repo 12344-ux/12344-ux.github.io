@@ -3173,8 +3173,9 @@ despliega.** Orden: (1) Resend + DNS, (2) migración, (3) secret, (4) función,
 - `supabase/functions/enviar-correo-pedido/index.ts` — arma el correo y lo
   entrega a Resend. **No usa service_role**: llama a los RPC con el JWT del
   usuario logueado.
-- `ventas/correos/index.html` — editor de copys + vista previa + prueba +
-  historial.
+- `ventas/correos/index.html` — editor de copys (RETIRADO en EM1, 9-oct-2026:
+  el historial vive en Marketing → Email marketing → Correos de seguimiento y
+  los textos se cambian con un SQL que entrega Kiro).
 - `ventas/seguimiento-pedidos/index.html` — bloque «Correos al cliente» en el
   detalle de cada pedido.
 
@@ -3285,3 +3286,58 @@ stock (exceso, sin entradas, dos líneas que suman, rechazo sin rastro, venta
 exacta, anulación que devuelve, usuario sin módulo, anon) + **dos pedidos
 simultáneos por la última unidad**: el segundo esperó el candado ~2 s y fue
 rechazado; existencias finales 0, nunca negativas.
+
+# EM1 · Email marketing: contactos y consentimiento
+
+Diseño en `docs/PLANO-EMAIL-MARKETING.md`.
+
+## EM1.1. Aplicar (SQL Editor, una sola vez)
+
+Correr `supabase/migrations/20261009000000_email_marketing_em1.sql`, después de
+`20261008000100_ventas_bloqueo_stock.sql`. No requiere Edge Functions ni secrets.
+
+## EM1.2. Permiso
+
+El admin entra sin hacer nada. Para dar acceso a otra persona en el futuro, su
+fila en `perfiles` necesita el módulo `email_marketing` (el de `marketing` NO
+basta: la lista es información personal).
+
+## EM1.3. Evidencia
+
+1. Marketing → **Email marketing** abre el Resumen con el aviso «Política de
+   tratamiento de datos: pendiente».
+2. Contactos → **Agregar contacto** sin detalle o sin la casilla de confirmación
+   → no deja guardar.
+3. Alta completa → aparece en la lista y la ficha muestra la prueba (canal,
+   detalle, texto aceptado, versión de política) y el historial.
+4. Dar de baja exige motivo; volver a agregarlo exige marcar «volvió a autorizar».
+5. Correos de seguimiento muestra los avisos de pedido ya enviados.
+6. `ventas/correos/` ya no existe y Ventas no muestra la tarjeta.
+
+```sql
+-- anon sin acceso (esperado: 0 filas)
+select table_name from information_schema.role_table_grants
+ where grantee = 'anon' and table_name like 'em\_%';
+```
+
+## EM1.4. Cambiar el texto de un correo de seguimiento (sin el editor)
+
+Kiro entrega un SQL como este para pegar en el SQL Editor:
+
+```sql
+select correo_guardar_plantilla('recibido', 'Asunto', 'Vista previa', 'Título',
+  'Cuerpo…', null, false);
+```
+
+(`correo_guardar_plantilla` exige sesión con acceso a Ventas; si se corre desde
+el SQL Editor sin sesión, Kiro entrega en su lugar un `update correo_plantillas`
+equivalente.)
+
+## EM1.5. Pruebas locales hechas
+
+54 migraciones + matriz 171/171 + 37 comprobaciones de EM1 (validaciones,
+normalización, duplicados, baja y reactivación, bitácora imborrable, vínculo
+automático contacto↔cliente por trigger, resumen, ficha, aislamiento: un
+usuario solo de Ventas no ve la lista y uno solo de Email marketing sí, anon
+bloqueado). Interfaz probada en Chromium (PC 1280 y celular 390) con Supabase
+simulado: 52 comprobaciones de DOM, sin desbordes ni errores de JavaScript.

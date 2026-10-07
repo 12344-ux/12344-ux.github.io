@@ -76,6 +76,17 @@ Pendiente real: cierre anual cuando cambie el ejercicio fiscal y pulido de expor
 - Ranking por unidades o ingreso, distinguiendo fuente real/mixta/estimada.
 - Clúster y elasticidad siguen como roadmap, no como módulos terminados.
 
+### Email marketing — EM1 operativo (en construcción por tramos)
+
+Marketing → Email marketing. Diseño completo en `docs/PLANO-EMAIL-MARKETING.md`.
+
+- Módulo propio `email_marketing` (la lista es PII; el de Marketing no basta).
+- Contactos con prueba del consentimiento (texto aceptado, versión de política, canal, detalle y confirmación del operador), estados y bitácora imborrable.
+- Alta manual con evidencia obligatoria, edición de temas (Novedades / Ofertas), baja con motivo y reactivación solo con nueva autorización.
+- Vínculo automático contacto ↔ cliente por correo (trigger).
+- Resumen (suscritos, crecimiento por semana, estados, fuentes, temas, clientes con correo aún sin autorizar) y «Correos de seguimiento» (historial de los avisos del pedido).
+- Siguiente: EM2 perfiles + segmentos, EM3 clúster, EM4 campañas (`news.magandhi.com`), EM5 resultados. Captura pública (EM6) y analítica (EM7) esperan la política.
+
 ### Gestión de opiniones — operativo
 
 Quinta área del panel, en `opiniones/`. Guarda las opiniones verificadas de clientes y les da seguimiento.
@@ -102,7 +113,7 @@ Entrega del código: va en el correo de «Entregado» (tramo de correos, código
 - **Bloqueo firme de stock** (8-oct-2026): no se registra un pedido que pida más unidades de las disponibles en Inventario; el candado vive en `crear_pedido`, serializa ventas simultáneas y aplica también a la futura entrada web (Wompi F2). Registrar pedido muestra «Disponibles: N» y marca los agotados.
 - Portafolio de clientes con métricas derivadas de pedidos reales.
 
-- Correos al cliente (`ventas/correos/`): un correo por etapa del pedido, enviado a mano desde el detalle en Seguimiento, con copy editable sin tocar código, vista previa, prueba a la propia bandeja e historial. El de «Entregado» lleva el código de reseña. Proveedor: Resend, subdominio `updates.magandhi.com` (el marketing irá en `news.magandhi.com`). Diseño en `docs/PLANO-CORREO.md`; runbook § CO de `supabase/INSTRUCCIONES.md`.
+- Correos del pedido: un correo por etapa, enviado a mano desde el detalle en Seguimiento. El de «Entregado» lleva el código de reseña. Proveedor: Resend, subdominio `updates.magandhi.com`. Los textos viven en `correo_plantillas` y se cambian con un SQL que entrega Kiro (el editor `ventas/correos/` se retiró en EM1). Diseño en `docs/PLANO-CORREO.md`.
 
 Pendiente real: entrada automática desde Wompi F2. Desplegar el tramo de correos (cuenta Resend, DNS, migración `20261008000000`, secret y función `enviar-correo-pedido`).
 

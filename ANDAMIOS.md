@@ -17,7 +17,9 @@ Este archivo contiene solo trabajo pendiente y criterios de cierre. Las fases te
 | Ventas | ✅ Operativo | Pedidos, estados, anulación y portafolio |
 | Opiniones | ✅ Operativo | Esquema, RPC y Edge Function desplegados; panel y tienda vivos |
 | Correos del pedido (4 etapas + código de reseña) | 🟡 Código listo | Falta cuenta Resend, DNS, migración `20261008000000`, secret y función (§ CO) |
-| Email marketing (consentimiento + campañas) | ⏸️ Después | Requiere antes la política de tratamiento de datos |
+| Email marketing EM1 (contactos y consentimiento) | 🟡 Código listo | Falta aplicar `20261009000000` (§ EM1) |
+| Email marketing EM2–EM5 | ⏭️ Siguiente | Ver `docs/PLANO-EMAIL-MARKETING.md` §8 |
+| Email marketing EM6–EM7 (captura pública y analítica) | ⏸️ Después | Requieren la política de tratamiento de datos |
 | Tramo 0 | ✅ Verificado | Matriz 170/170 y anon bloqueado en superficies internas |
 | Wompi F1 | ✅ Sandbox | Intención firmada y checkout cargando |
 | Puesta al día 2026-10-02 | 🟡 Código listo | Falta aplicar SQL y redesplegar Edge Function |
