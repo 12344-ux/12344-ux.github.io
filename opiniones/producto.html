@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Opiniones del producto</title>
+<meta name="description" content="Opiniones de un producto · back-office de MAGANDHI.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../marca-areas/control-interno.png?v=4">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=2">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=2">
+<link rel="stylesheet" href="opiniones.css?v=1">
+
+<!--
+  MAGANDHI · Gestion de opiniones · DETALLE de un producto.
+  Lee las opiniones del producto (op_opiniones_producto, de mas antigua a mas
+  reciente, incluye ocultas y pruebas para poder moderar) y el resumen
+  (op_resumen_productos, para nombre/sku/slug/promedio/total). Permite RESPONDER
+  (op_responder_opinion) y "borrar" = OCULTAR con bitacora / restaurar
+  (op_ocultar_opinion). Todas son funciones security definer guardadas por
+  tiene_acceso_opiniones(); el candado real es la base, no esta pantalla.
+-->
+</head>
+<body class="op-body">
+
+<script type="module" src="../auth-guard.js"></script>
+
+<main class="op-wrap" id="op-main" hidden>
+  <div id="op-cab"></div>
+  <div id="op-detalle"><p class="op-empty">Cargando opiniones...</p></div>
+</main>
+
+<script type="module">
+  import {
+    supabase, asegurarAcceso, montarHeader, ICONOS,
+    escaparHTML, estrellasHTML, estrellasEnteras, inicialDe, formatearMomento
+  } from './opiniones-core.js';
+
+  const main = document.getElementById('op-main');
+  const cab = document.getElementById('op-cab');
+  const detalle = document.getElementById('op-detalle');
+
+  // product_id desde la URL (?producto=<uuid>).
+  const PRODUCT_ID = new URLSearchParams(location.search).get('producto') || '';
+
+  // Cache de la opinion por id (para las acciones sin re-consultar el texto).
+  let opinionesPorId = new Map();
+  let resumenProducto = null; // fila de op_resumen_productos para este producto
+
+  // ----------------------------------------------------------
+  // CARGA: resumen (cabecera) + opiniones (lista)
+  // ----------------------------------------------------------
+  async function cargar() {
+    detalle.innerHTML = '<p class="op-empty">Cargando opiniones...</p>';
+
+    const [resumenRes, opsRes] = await Promise.all([
+      supabase.rpc('op_resumen_productos'),
+      supabase.rpc('op_opiniones_producto', { p_product_id: PRODUCT_ID })
+    ]);
+
+    if (resumenRes.error || opsRes.error) {
+      const msg = (resumenRes.error || opsRes.error).message || 'Error';
+      detalle.innerHTML = '<div class="op-empty">No se pudieron cargar las opiniones. <strong>' + escaparHTML(msg) + '</strong></div>';
+      cab.innerHTML = '';
+      return;
+    }
+
+    resumenProducto = (resumenRes.data || []).find((r) => r.product_id === PRODUCT_ID) || null;
+    const ops = opsRes.data || [];
+    opinionesPorId = new Map(ops.map((o) => [o.id, o]));
+
+    pintarCabecera(resumenProducto, ops);
+    pintarOpiniones(ops);
+  }
+
+  // Cabecera: promedio grande REAL + estrellas + N + distribucion + meta del producto.
+  function pintarCabecera(resumen, ops) {
+    // Visibles = no ocultas y no de prueba (coherente con el promedio publico).
+    const visibles = ops.filter((o) => !o.oculta && !o.es_prueba);
+    const total = resumen ? Number(resumen.total) || 0 : visibles.length;
+    const prom = resumen && resumen.promedio != null
+      ? Number(resumen.promedio)
+      : (visibles.length ? visibles.reduce((a, o) => a + (Number(o.estrellas) || 0), 0) / visibles.length : 0);
+
+    const nombre = resumen?.nombre || 'Producto';
+    const sku = resumen?.sku || '';
+    const slug = resumen?.slug || '';
+
+    // Distribucion por estrella (5 -> 1) sobre las visibles.
+    const dist = [5, 4, 3, 2, 1].map((n) => visibles.filter((o) => (Number(o.estrellas) || 0) === n).length);
+    const maxCnt = Math.max(1, ...dist);
+    const distHtml = total > 0 ? ('<div class="op-dist">' + [5, 4, 3, 2, 1].map((n, i) => {
+      const c = dist[i];
+      const w = (c / maxCnt) * 100;
+      return '<div class="op-dist-fila">' +
+        '<span class="lbl op-num">' + n + ICONOS.estrella + '</span>' +
+        '<span class="op-dist-barra"><i style="width:' + w + '%"></i></span>' +
+        '<span class="cnt op-num">' + c + '</span>' +
+      '</div>';
+    }).join('') + '</div>') : '';
+
+    const promBloque = total > 0
+      ? ('<div class="op-prom-grande">' +
+           '<span class="op-prom-num">' + prom.toFixed(1) + '</span>' +
+           '<div class="op-prom-det">' +
+             '<span class="op-stars op-stars--lg">' +
+               '<span class="op-stars-bg">' + ICONOS.estrellaHueca.repeat(5) + '</span>' +
+               '<span class="op-stars-fg" style="width:' + ((prom / 5) * 100) + '%">' + ICONOS.estrella.repeat(5) + '</span>' +
+             '</span>' +
+             '<span class="op-prom-n">' + total + (total === 1 ? ' opinión verificada' : ' opiniones verificadas') + '</span>' +
+           '</div>' +
+         '</div>')
+      : '<div class="op-prom-det"><span class="op-prom-n">Sin opiniones visibles por ahora.</span></div>';
+
+    const verTienda = slug
+      ? '<a class="op-ver-tienda" href="https://magandhi.com/producto/?slug=' + encodeURIComponent(slug) + '" target="_blank" rel="noopener">' + ICONOS.externo + 'Ver en la tienda</a>'
+      : '';
+
+    cab.innerHTML =
+      '<div class="op-resumen">' +
+        promBloque +
+        distHtml +
+        '<div class="op-prod-meta">' +
+          '<span class="op-prod-nom">' + escaparHTML(nombre) + '</span>' +
+          (sku ? '<span class="op-prod-sku">' + escaparHTML(sku) + '</span>' : '') +
+          verTienda +
+        '</div>' +
+      '</div>';
+  }
+
+  // Lista de opiniones, de mas antigua a mas reciente (orden que entrega el RPC).
+  function pintarOpiniones(ops) {
+    if (!ops.length) {
+      detalle.innerHTML = '<div class="op-empty">' +
+        '<span class="op-empty-ico">' + ICONOS.mensaje + '</span>' +
+        '<strong>Este producto aún no tiene opiniones.</strong><br>' +
+        'Aparecerán aquí cuando un cliente deje su reseña con el código de su pedido entregado.' +
+      '</div>';
+      return;
+    }
+
+    const tarjetas = ops.map((o) => tarjetaOpinion(o)).join('');
+    detalle.innerHTML =
+      '<p class="op-sub">' + ops.length + (ops.length === 1 ? ' opinión' : ' opiniones') + ' · de la más antigua a la más reciente</p>' +
+      '<div class="op-lista-op">' + tarjetas + '</div>';
+
+    cablearAcciones();
+  }
+
+  function tarjetaOpinion(o) {
+    const clases = ['op-resena'];
+    if (o.oculta) clases.push('oculta');
+    if (o.es_prueba) clases.push('prueba');
+
+    const chips =
+      (o.es_prueba ? '<span class="op-mini prueba">Prueba</span>' : '') +
+      (o.oculta ? '<span class="op-mini oculta">' + ICONOS.ojoTachado + 'Oculta</span>' : '');
+
+    const texto = o.comentario
+      ? '<p class="op-resena__texto">' + escaparHTML(o.comentario) + '</p>'
+      : '<p class="op-resena__texto vacio">Sin comentario (solo calificación).</p>';
+
+    const respuesta = o.respuesta
+      ? ('<div class="op-respuesta">' +
+           '<div class="r-cab">' + ICONOS.responder + 'Respuesta de MAGANDHI</div>' +
+           '<div class="r-txt">' + escaparHTML(o.respuesta) + '</div>' +
+           (o.respuesta_en ? '<span class="r-cuando">' + escaparHTML(formatearMomento(o.respuesta_en)) + '</span>' : '') +
+         '</div>')
+      : '';
+
+    const motivoOculta = (o.oculta && o.oculta_motivo)
+      ? '<p class="op-resena__texto vacio" style="margin-top:8px">Motivo de ocultar: ' + escaparHTML(o.oculta_motivo) + '</p>'
+      : '';
+
+    // Acciones: Responder (toggle) + Ocultar/Mostrar.
+    const btnResponder = '<button class="op-abtn op-act-responder" type="button">' + ICONOS.responder +
+      (o.respuesta ? 'Editar respuesta' : 'Responder') + '</button>';
+    const btnOcultar = o.oculta
+      ? '<button class="op-abtn op-act-mostrar" type="button">' + ICONOS.ojo + 'Mostrar</button>'
+      : '<button class="op-abtn peligro op-act-ocultar" type="button">' + ICONOS.ojoTachado + 'Ocultar</button>';
+
+    // Zonas desplegables (ocultas por defecto).
+    const zonaResp =
+      '<div class="op-zona op-zona-resp" hidden>' +
+        '<textarea class="op-textarea op-resp-input" maxlength="1000" placeholder="Escribe la respuesta pública de MAGANDHI a esta opinión...">' + escaparHTML(o.respuesta || '') + '</textarea>' +
+        '<div class="op-zona-acc">' +
+          '<button class="op-btn op-resp-guardar" type="button">' + ICONOS.check + 'Guardar respuesta</button>' +
+          (o.respuesta ? '<button class="op-btn ghost op-resp-quitar" type="button">Quitar respuesta</button>' : '') +
+          '<button class="op-btn ghost op-resp-cancelar" type="button">Cancelar</button>' +
+          '<span class="op-msg op-resp-msg"></span>' +
+        '</div>' +
+      '</div>';
+
+    const zonaOcultar =
+      '<div class="op-zona op-zona-ocultar" hidden>' +
+        '<input class="op-input op-ocultar-motivo" maxlength="200" placeholder="Motivo (opcional): spam, lenguaje abusivo, duplicada...">' +
+        '<div class="op-zona-acc">' +
+          '<button class="op-btn op-ocultar-confirmar" type="button">' + ICONOS.ojoTachado + 'Ocultar opinión</button>' +
+          '<button class="op-btn ghost op-ocultar-cancelar" type="button">Cancelar</button>' +
+          '<span class="op-msg op-ocultar-msg"></span>' +
+        '</div>' +
+      '</div>';
+
+    return (
+      '<article class="' + clases.join(' ') + '" data-id="' + escaparHTML(o.id) + '">' +
+        '<div class="op-resena__top">' +
+          '<div class="op-resena__pers">' +
+            '<span class="op-avatar-r">' + escaparHTML(inicialDe(o.autor_nombre)) + '</span>' +
+            '<div class="op-resena__id">' +
+              '<span class="op-resena__nom">' + escaparHTML(o.autor_nombre || 'Cliente') + '</span>' +
+              '<span class="op-resena__meta">' +
+                '<span class="op-resena__ver">' + ICONOS.checkCirculo + 'Compra verificada</span>' +
+                '<span class="op-resena__fecha">' + escaparHTML(formatearMomento(o.creado)) + '</span>' +
+                chips +
+              '</span>' +
+            '</div>' +
+          '</div>' +
+          '<span class="op-resena__estrellas">' + estrellasEnteras(o.estrellas) + '</span>' +
+        '</div>' +
+        texto +
+        motivoOculta +
+        respuesta +
+        '<div class="op-resena__acc">' + btnResponder + btnOcultar + '</div>' +
+        zonaResp +
+        zonaOcultar +
+      '</article>'
+    );
+  }
+
+  // ----------------------------------------------------------
+  // ACCIONES (delegadas): responder, quitar, ocultar, mostrar
+  // ----------------------------------------------------------
+  function cablearAcciones() {
+    detalle.querySelectorAll('.op-resena').forEach((card) => {
+      const id = card.dataset.id;
+      const zonaResp = card.querySelector('.op-zona-resp');
+      const zonaOcultar = card.querySelector('.op-zona-ocultar');
+
+      // Toggle responder
+      card.querySelector('.op-act-responder')?.addEventListener('click', () => {
+        if (zonaOcultar) zonaOcultar.hidden = true;
+        zonaResp.hidden = !zonaResp.hidden;
+        if (!zonaResp.hidden) zonaResp.querySelector('.op-resp-input')?.focus();
+      });
+      card.querySelector('.op-resp-cancelar')?.addEventListener('click', () => { zonaResp.hidden = true; });
+
+      // Guardar respuesta
+      card.querySelector('.op-resp-guardar')?.addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        const txt = card.querySelector('.op-resp-input').value;
+        const msg = card.querySelector('.op-resp-msg');
+        btn.disabled = true; msg.className = 'op-msg'; msg.textContent = 'Guardando...';
+        const { error } = await supabase.rpc('op_responder_opinion', { p_id: id, p_respuesta: txt });
+        if (error) { msg.className = 'op-msg err'; msg.textContent = 'No se pudo guardar: ' + (error.message || 'error'); btn.disabled = false; return; }
+        await cargar();
+      });
+
+      // Quitar respuesta (envia vacio -> el RPC la limpia)
+      card.querySelector('.op-resp-quitar')?.addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        const msg = card.querySelector('.op-resp-msg');
+        btn.disabled = true; msg.className = 'op-msg'; msg.textContent = 'Quitando...';
+        const { error } = await supabase.rpc('op_responder_opinion', { p_id: id, p_respuesta: '' });
+        if (error) { msg.className = 'op-msg err'; msg.textContent = 'No se pudo quitar: ' + (error.message || 'error'); btn.disabled = false; return; }
+        await cargar();
+      });
+
+      // Toggle ocultar
+      card.querySelector('.op-act-ocultar')?.addEventListener('click', () => {
+        if (zonaResp) zonaResp.hidden = true;
+        zonaOcultar.hidden = !zonaOcultar.hidden;
+        if (!zonaOcultar.hidden) zonaOcultar.querySelector('.op-ocultar-motivo')?.focus();
+      });
+      card.querySelector('.op-ocultar-cancelar')?.addEventListener('click', () => { zonaOcultar.hidden = true; });
+
+      // Confirmar ocultar
+      card.querySelector('.op-ocultar-confirmar')?.addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        const motivo = card.querySelector('.op-ocultar-motivo').value.trim() || null;
+        const msg = card.querySelector('.op-ocultar-msg');
+        btn.disabled = true; msg.className = 'op-msg'; msg.textContent = 'Ocultando...';
+        const { error } = await supabase.rpc('op_ocultar_opinion', { p_id: id, p_oculta: true, p_motivo: motivo });
+        if (error) { msg.className = 'op-msg err'; msg.textContent = 'No se pudo ocultar: ' + (error.message || 'error'); btn.disabled = false; return; }
+        await cargar();
+      });
+
+      // Mostrar (restaurar)
+      card.querySelector('.op-act-mostrar')?.addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        const { error } = await supabase.rpc('op_ocultar_opinion', { p_id: id, p_oculta: false, p_motivo: null });
+        if (error) { btn.disabled = false; alert('No se pudo mostrar: ' + (error.message || 'error')); return; }
+        await cargar();
+      });
+    });
+  }
+
+  // ----------------------------------------------------------
+  // ARRANQUE
+  // ----------------------------------------------------------
+  (async () => {
+    const acceso = await asegurarAcceso(document.body, '../panel.html');
+    if (!acceso) return;
+
+    montarHeader({
+      titulo: 'Opiniones del producto',
+      kicker: 'OPINIONES · DETALLE',
+      lead: 'Lee cada opinión verificada, respóndela como MAGANDHI y, si hace falta, modérala. El promedio es real y las opiniones ocultas no cuentan.',
+      sesion: acceso.sesion,
+      areaLabel: 'GESTIÓN DE OPINIONES',
+      volverHref: 'index.html',
+      volverTexto: 'Opiniones'
+    });
+
+    if (!PRODUCT_ID) {
+      main.hidden = false;
+      cab.innerHTML = '';
+      detalle.innerHTML = '<div class="op-empty"><strong>Falta el producto.</strong><br>Vuelve al listado y elige un producto.</div>';
+      return;
+    }
+
+    main.hidden = false;
+    await cargar();
+  })();
+</script>
+
+</body>
+</html>
