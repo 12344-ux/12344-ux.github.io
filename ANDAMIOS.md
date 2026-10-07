@@ -1,7 +1,7 @@
 # ANDAMIOS · próximos tramos MAGANDHI / Impulse
 
-**Corte:** 2 de octubre de 2026
-**Punto de retorno:** Tramo 0 cerrado; F1 Wompi operativo en sandbox; puesta al día preparada; F2 es el siguiente desarrollo.
+**Corte:** 7 de octubre de 2026
+**Punto de retorno:** Tramo 0 cerrado; F1 Wompi operativo en sandbox; puesta al día preparada; Opiniones terminado y desplegado. Los siguientes desarrollos son el correo con el código de reseña y Wompi F2.
 
 Este archivo contiene solo trabajo pendiente y criterios de cierre. Las fases terminadas y decisiones vigentes están consolidadas en `CONTEXTO-MAGANDHI.md`; el historial anterior permanece en Git.
 
@@ -15,6 +15,8 @@ Este archivo contiene solo trabajo pendiente y criterios de cierre. Las fases te
 | Marketing Project | ✅ Operativo | Proyección, tendencia y ranking |
 | Campañas | ✅ Operativo | Ficha, publicación, galería, slug, vínculo y tope |
 | Ventas | ✅ Operativo | Pedidos, estados, anulación y portafolio |
+| Opiniones | ✅ Operativo | Esquema, RPC y Edge Function desplegados; panel y tienda vivos |
+| Correo con el código de reseña | ⏭️ Siguiente | Sin él no entran opiniones reales |
 | Tramo 0 | ✅ Verificado | Matriz 170/170 y anon bloqueado en superficies internas |
 | Wompi F1 | ✅ Sandbox | Intención firmada y checkout cargando |
 | Puesta al día 2026-10-02 | 🟡 Código listo | Falta aplicar SQL y redesplegar Edge Function |
@@ -49,6 +51,31 @@ Este archivo contiene solo trabajo pendiente y criterios de cierre. Las fases te
 - Cantidad distinta de 1: HTTP 400.
 
 El tramo no queda ✅ por ver “Success”; se cierra con estas comprobaciones.
+
+## Tramo correo — entregar el código de reseña
+
+### Objetivo
+
+Que el código de reseña del pedido llegue al cliente en el **último correo de seguimiento**, cuando ya recibió el producto y puede probarlo. Es lo único que falta para que el sistema de opiniones reciba opiniones reales.
+
+### Lo que ya existe
+
+- `pedidos.codigo_resena` se genera solo al crear cualquier pedido, manual o web.
+- El código es visible en el back-office para compartirlo a mano mientras no haya correo.
+- Toda la validación server-side está desplegada y probada.
+
+### Lo que falta decidir y construir
+
+1. Proveedor de correo y verificación del dominio `magandhi.com`.
+2. En qué punto exacto del seguimiento se dispara, atado al estado `entregado`.
+3. Plantilla del correo con un solo botón o acción clara, siguiendo el patrón de correo transaccional para no caer en promociones.
+4. Idempotencia: el código se envía una sola vez por pedido y no se insiste con recordatorios.
+
+### Criterios de cierre
+
+- Un pedido marcado como entregado produce exactamente un correo con su código.
+- El código del correo permite dejar una opinión y queda quemado para ese producto.
+- Ningún secreto viaja al navegador ni a los registros.
 
 ## Tramo F2 — pagos y webhook idempotente
 
@@ -127,7 +154,7 @@ La separación debe cubrir panel, grants, RLS y RPC. Ocultar tarjetas no es segu
 ## Pendientes de producto, no bloqueadores de F2
 
 - Políticas públicas de privacidad, entregas, cambios y condiciones.
-- Opiniones reales verificadas.
+- Repaso de textos de la sección de opiniones; su diseño ya quedó aprobado.
 - Cierre anual de Finanzas cuando corresponda.
 - Pulido de exportaciones tras uso real.
 - Favicons finales específicos para Marketing, Producción y Ventas.

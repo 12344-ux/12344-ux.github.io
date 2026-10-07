@@ -2,7 +2,7 @@
 
 **Área nueva del back-office:** "Gestión de opiniones".
 **Corte:** 7 de octubre de 2026.
-**Estado:** base (backend) escrita; pendiente de desplegar y de construir panel + tienda.
+**Estado:** terminado y en producción. Esquema, RPC y Edge Function desplegados; panel interno y tienda pública vivos. Falta únicamente entregar el código al cliente por correo.
 
 Este documento es la memoria de diseño del módulo, igual que `PLANO-INVENTARIO.md` y `PLANO-VENTAS.md`. Describe el porqué de cada decisión; el DDL vive en `supabase/migrations/20261007000000_opiniones_modulo.sql`.
 
@@ -58,10 +58,23 @@ Todas guardadas por `tiene_acceso_opiniones()` (= `tiene_modulo('opiniones')`).
 - Vistas públicas son SECURITY DEFINER (como `catalogo_publico`): anon recibe solo columnas públicas. **No** se recrea `catalogo_publico` (no se tocan sus grants).
 - El código de reseña nunca sale a anon; no se loguea en la Edge Function.
 
-## 8. Pendientes (orden de trabajo)
+## 8. Diseño aprobado de la tienda (7-oct-2026)
 
-1. **Desplegar** la migración `20261007000000` en SQL Editor y verificar (ver `INSTRUCCIONES.md`).
-2. **Desplegar** la Edge Function `enviar-opinion`.
-3. **Panel** "Gestión de opiniones" (`opiniones/` en el back-office): lista por recencia, detalle por producto, responder y ocultar/restaurar. Mostrar el `codigo_resena` del pedido en el detalle de Ventas.
-4. **Tienda**: botón "Dejar una reseña" + render real reusando el diseño aprobado (promedio grande + grid 2col + "ver todas"), leyendo `producto_rating_publico` y `opiniones_publicas` por slug.
-5. **Fase siguiente**: envío del código en el último correo de entrega (requiere montar correos de MAGANDHI).
+Aprobado por el dueño tras revisarlo con una vista de ejemplo que ya se cerró. **Es el esquema que siguen todos los productos**; cambios futuros solo de textos.
+
+- Estrellas **sólidas**: doradas las llenas, grises las vacías, y una parcial con degradado para el decimal exacto. No usar capas superpuestas recortadas: en esta página no pintaban y se veían grises.
+- Promedio real a un decimal **siempre junto al total**.
+- En la ficha, **cuatro** opiniones del mismo tamaño: **sin respuesta de marca** (la respuesta descuadraba las alturas), texto a tres líneas y `Ver opinión completa` solo cuando se recorta, que abre el panel y salta a esa opinión.
+- Selección de las cuatro: con cuatro o menos, las más recientes; con más, las **cuatro mejor calificadas** desempatando por recencia. El resto sigue accesible en el panel.
+- Panel de todas las opiniones: **modal centrado blanco en computador**, **pantalla completa con fondo arena en móvil**. En móvil la cabecera es una sola línea con flecha roja de marca, la palabra «Opiniones» y el orden; los filtros por estrellas solo existen en computador porque en móvil hacían ruido.
+- Orden: recientes, antiguas, mejor y peor calificadas.
+- Fechas relativas desde el registro; fecha exacta en el título emergente.
+- Realce al pasar el cursor **solo** en las cuatro de la ficha.
+- Contorno dorado de marca en tarjetas y en el botón de ver todas.
+- Dejar una reseña exige estrellas; el comentario es opcional.
+
+## 9. Pendientes
+
+1. **Entregar el código al cliente por correo**, en el último correo de seguimiento. Requiere montar el envío de correos de MAGANDHI. Hasta cerrarlo no entran opiniones reales; mientras tanto el código se comparte a mano desde el back-office. Detalle en `ANDAMIOS.md`.
+2. Repaso de textos de la sección pública; el diseño ya está aprobado.
+3. Mostrar el `codigo_resena` del pedido dentro del detalle de Ventas, para copiarlo sin salir del tablero.

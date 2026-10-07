@@ -1,6 +1,6 @@
 # MAGANDHI + Impulse · contexto operativo vigente
 
-**Corte:** 2 de octubre de 2026
+**Corte:** 7 de octubre de 2026
 **Producción interna:** `https://montaguth.institute`
 **Tienda pública:** `https://magandhi.com`
 
@@ -76,6 +76,23 @@ Pendiente real: cierre anual cuando cambie el ejercicio fiscal y pulido de expor
 - Ranking por unidades o ingreso, distinguiendo fuente real/mixta/estimada.
 - Clúster y elasticidad siguen como roadmap, no como módulos terminados.
 
+### Gestión de opiniones — operativo
+
+Quinta área del panel, en `opiniones/`. Guarda las opiniones verificadas de clientes y les da seguimiento.
+
+- Listado de productos con opinión, ordenado por la reseña más reciente primero.
+- Detalle por producto con promedio real, distribución por estrella y las opiniones de la más antigua a la más reciente.
+- Respuesta pública de marca por opinión, editable y removible.
+- Moderación con trazabilidad: «borrar» es ocultar con bitácora de quién, cuándo y por qué, y es reversible. Una opinión oculta sale de la web y del promedio pero no se destruye.
+- Las opiniones verificadas se publican de forma automática, incluidas las negativas reales. Ocultar se reserva para abuso, spam o falsedad, nunca para silenciar críticas.
+- Marcador `es_prueba` para ensayar el flujo sin contaminar promedios.
+
+Verificación de compra sin inicio de sesión: cada pedido lleva un código de reseña único e imposible de adivinar (`pedidos.codigo_resena`), generado por disparador al crear el pedido. La tienda envía ese código a la Edge Function `enviar-opinion`, que llama al RPC `op_registrar_opinion`; este valida el código, exige que el pedido esté entregado, confirma que el producto pertenecía a ese pedido y admite una sola opinión por producto-pedido. La autorización es la posesión del código, no una sesión.
+
+Coherencia del promedio, decisión del dueño: se muestra el promedio real a un decimal **siempre acompañado del total**. No se usa media bayesiana ni suavizado, porque rompería la coherencia con las tarjetas visibles.
+
+Pendiente real: hacer llegar el código al cliente en el último correo de seguimiento. Requiere montar el envío de correos de MAGANDHI, que todavía no existe. Hasta entonces el código se comparte a mano desde el back-office.
+
 ### Ventas — operativo
 
 - Seguimiento de pedidos.
@@ -92,7 +109,7 @@ Pendiente real: entrada automática desde Wompi F2.
 - Auto-RLS activado y exposición automática de tablas desactivada.
 - Las migraciones históricas son inmutables: nunca se reescriben ni se reejecutan para “corregir” producción.
 - Toda corrección nueva se hace con migración forward.
-- `catalogo_publico` es la única superficie anónima deliberada y expone una lista blanca.
+- Las superficies anónimas deliberadas son tres y todas exponen lista blanca: `catalogo_publico`, `producto_rating_publico` y `opiniones_publicas`. Ninguna otra tabla o vista interna tiene acceso para `anon`.
 - Las vistas internas sensibles son `security_invoker`.
 - Tramo 0 fue verificado en producción: matriz de permisos completa, anon bloqueado en vistas/RPC internas y catálogo público disponible.
 
@@ -116,6 +133,7 @@ Pendiente real: entrada automática desde Wompi F2.
 - Presentación y precio web: `campana_producto`.
 - Catálogo anónimo: `catalogo_publico`.
 - Cliente/pedido: `clientes`, `pedidos`, `pedido_items`, `pedido_bitacora`.
+- Opiniones: `opiniones`; superficies anónimas `producto_rating_publico` y `opiniones_publicas`; código de verificación en `pedidos.codigo_resena`.
 
 ### Catálogo público
 
@@ -195,18 +213,19 @@ Debe incorporar:
 - `CONTEXTO-MAGANDHI.md`: fotografía operativa actual.
 - `ANDAMIOS.md`: próximos tramos y criterios de cierre.
 - `supabase/INSTRUCCIONES.md`: runbook acumulativo; sus capítulos antiguos son historia y no autorizan reaplicar migraciones.
-- `docs/PLANO-INVENTARIO.md` y `docs/PLANO-VENTAS.md`: memoria histórica de diseño, no DDL operativo.
+- `docs/PLANO-INVENTARIO.md`, `docs/PLANO-VENTAS.md` y `docs/PLANO-OPINIONES.md`: memoria histórica de diseño, no DDL operativo.
 - `docs/MAPA-CONEXIONES-TANDA2.md`: mapa técnico de las conexiones ya implementadas.
 
 ## 9. Próximo orden de trabajo
 
-1. Aplicar y verificar la migración `20261002000000`.
-2. Redesplegar y verificar `crear-intencion-pago`.
-3. Construir Wompi F2 en sandbox.
-4. Implementar F3 y validar contabilidad.
-5. Ejecutar F4 antes de producción.
-6. Cerrar D3 antes de delegar accesos.
-7. Crear políticas públicas y opiniones reales en la tienda.
+1. Montar el envío de correos de MAGANDHI y entregar el código de reseña en el último correo de seguimiento. Es lo único que falta para que entren opiniones reales.
+2. Aplicar y verificar la migración `20261002000000`.
+3. Redesplegar y verificar `crear-intencion-pago`.
+4. Construir Wompi F2 en sandbox.
+5. Implementar F3 y validar contabilidad.
+6. Ejecutar F4 antes de producción.
+7. Cerrar D3 antes de delegar accesos.
+8. Crear políticas públicas en la tienda.
 
 ## 10. Reglas de entrega
 
