@@ -210,6 +210,8 @@
 
   // Catalogo de productos activos (para el picker). Se lee la tabla productos.
   let productos = [];
+  // Existencias por producto (Map id -> n) o null si no se pudieron leer.
+  let stockPorId = null;
   // Cliente elegido de los candidatos (customer_id) o null = cliente nuevo.
   let clienteElegidoId = null;
 
@@ -229,14 +231,48 @@
       return;
     }
     productos = data || [];
+
+    // Existencias reales (libro de Inventario) para mostrar "Disponibles: N" y
+    // marcar los agotados. El BLOQUEO real vive en crear_pedido (servidor); esto
+    // es solo para avisar a tiempo. Si la migracion 20261008000100 aun no esta
+    // aplicada, el formulario sigue funcionando sin la columna de stock.
+    const st = await supabase.rpc('ventas_stock_disponible');
+    if (!st.error && Array.isArray(st.data)) {
+      stockPorId = new Map(st.data.map((r) => [r.product_id, Number(r.existencias) || 0]));
+    } else {
+      stockPorId = null;
+    }
+  }
+
+  // Existencias de un producto, o null si no se conocen.
+  function stockDe(id) {
+    return stockPorId && stockPorId.has(id) ? stockPorId.get(id) : (stockPorId ? 0 : null);
   }
 
   function opcionesProductos(selId) {
-    return '<option value="">Elige un producto…</option>' + productos.map((p) =>
-      '<option value="' + escaparHTML(p.id) + '"' + (p.id === selId ? ' selected' : '') + '>' +
-        escaparHTML((p.sku ? p.sku + ' · ' : '') + (p.nombre || 'Sin nombre')) +
-      '</option>'
-    ).join('');
+    return '<option value="">Elige un producto…</option>' + productos.map((p) => {
+      const s = stockDe(p.id);
+      const agotado = s !== null && s <= 0;
+      const etiqueta = (p.sku ? p.sku + ' · ' : '') + (p.nombre || 'Sin nombre') +
+        (s === null ? '' : agotado ? ' — Agotado' : ' — Disponibles: ' + s);
+      return '<option value="' + escaparHTML(p.id) + '"' + (p.id === selId ? ' selected' : '') +
+        (agotado ? ' disabled' : '') + '>' + escaparHTML(etiqueta) + '</option>';
+    }).join('');
+  }
+
+  // Suma por producto lo pedido en el formulario y devuelve el primer exceso.
+  function primerExcesoDeStock(items) {
+    if (!stockPorId) return null;
+    const pedido = new Map();
+    items.forEach((it) => pedido.set(it.product_id, (pedido.get(it.product_id) || 0) + it.cantidad));
+    for (const [id, cant] of pedido) {
+      const disp = Math.max(stockDe(id) || 0, 0);
+      if (cant > disp) {
+        const p = productos.find((x) => x.id === id);
+        return { nombre: p ? p.nombre : 'producto', disp, cant };
+      }
+    }
+    return null;
   }
 
   // Agrega una fila de item al pedido.
@@ -452,6 +488,16 @@
         'escribe el precio real de la venta.';
       return;
     }
+    // BLOQUEO FIRME DE STOCK: aviso inmediato (el servidor vuelve a validar).
+    const exceso = primerExcesoDeStock(items);
+    if (exceso) {
+      msg.className = 'vt-msg err';
+      msg.textContent = (exceso.disp > 0
+        ? 'Solo hay ' + exceso.disp + ' unidad(es) de "' + exceso.nombre + '" y el pedido pide ' + exceso.cant + '. '
+        : '"' + exceso.nombre + '" está agotado. ') +
+        'Si la mercancía ya llegó, registra primero la entrada en Producción → Inventarios.';
+      return;
+    }
     // Para cliente nuevo, el nombre es obligatorio (lo exige la RPC). Si se marco
     // un candidato existente (clienteElegidoId), el pedido puede ir sin nombre. D1.1.
     if (!clienteElegidoId && !inNombre.value.trim()) {
@@ -488,6 +534,8 @@
       const total = data?.total != null ? formatearCOP(data.total) : '';
       okTxt.textContent = 'El pedido quedó registrado por ' + total +
         ' y el inventario ya bajó con trazabilidad en el libro.';
+      // El stock cambio: refrescar el selector para el siguiente pedido.
+      await cargarProductos();
       okBox.hidden = false;
       form.reset();
       itemsBody.innerHTML = '';
@@ -500,7 +548,16 @@
       okBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) {
       msg.className = 'vt-msg err';
-      msg.textContent = 'No se pudo registrar el pedido: ' + (err?.message || 'error');
+      const m = err?.message || 'error';
+      if (m.includes('STOCK_INSUFICIENTE')) {
+        // Otro pedido pudo llevarse la ultima unidad mientras llenabas el
+        // formulario: se refresca el stock para que el selector lo refleje.
+        msg.textContent = 'No se registró: ' + m.replace(/^.*STOCK_INSUFICIENTE:\s*/, '');
+        await cargarProductos();
+        itemsBody.querySelectorAll('.vt-it-prod').forEach((sel) => { sel.innerHTML = opcionesProductos(sel.value); });
+      } else {
+        msg.textContent = 'No se pudo registrar el pedido: ' + m;
+      }
     } finally {
       guardar.disabled = false;
       guardar.innerHTML = guardarLabel;

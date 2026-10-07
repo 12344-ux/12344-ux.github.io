@@ -3262,3 +3262,26 @@ de pendientes huérfanos, usuario sin módulo, anon sin acceso a tablas y RPC, y
 re-aplicar la migración sin pisar el copy editado. La Edge Function se ejercitó
 con un simulador de Supabase/Resend: 401 sin sesión, 503 sin llave, HTML
 escapado, Idempotency-Key = envio_id y ningún secreto ni código en logs.
+
+# ST · Bloqueo firme de stock en Ventas
+
+## ST.1. Aplicar (SQL Editor, una sola vez)
+
+Correr `supabase/migrations/20261008000100_ventas_bloqueo_stock.sql`, después de
+`20261008000000_correos_pedido.sql`. Redefine `crear_pedido` con la misma firma
+y agrega `ventas_stock_disponible()`. No requiere tocar Edge Functions.
+
+## ST.2. Evidencia
+
+1. Ventas → Registrar pedido: cada producto muestra «Disponibles: N» y los de 0
+   aparecen como «Agotado» y no se pueden elegir.
+2. Pide más unidades de las disponibles → mensaje «Solo hay N unidad(es)…» y no
+   se crea nada.
+3. Pide exactamente lo disponible → se registra y el stock queda en 0.
+4. Anula ese pedido → el stock vuelve y se puede vender de nuevo.
+
+Probado localmente: 53 migraciones + matriz 171/171 + 13 comprobaciones de
+stock (exceso, sin entradas, dos líneas que suman, rechazo sin rastro, venta
+exacta, anulación que devuelve, usuario sin módulo, anon) + **dos pedidos
+simultáneos por la última unidad**: el segundo esperó el candado ~2 s y fue
+rechazado; existencias finales 0, nunca negativas.
