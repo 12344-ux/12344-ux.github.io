@@ -13,7 +13,7 @@ servidor propio caería en spam desde el primer día.
 |---|---|---|
 | Qué | 4 avisos del pedido | Novedades masivas a un clic |
 | Disparo | A mano desde Seguimiento (hoy) | Campaña desde el panel |
-| Subdominio | `pedidos.magandhi.com` | uno propio (p. ej. `novedades.magandhi.com`) |
+| Subdominio | `updates.magandhi.com` | `news.magandhi.com` |
 | Consentimiento | No requerido: es parte de la compra | **Obligatorio**, registrado, con baja en cada correo (Ley 1581 y Ley 2300 de 2023) |
 
 Subdominios separados para que una queja de marketing no afecte la llegada de
