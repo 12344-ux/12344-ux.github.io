@@ -101,7 +101,7 @@ Entrega del código: va en el correo de «Entregado» (tramo de correos, código
 - Anulación transaccional y movimientos compensatorios de inventario.
 - Portafolio de clientes con métricas derivadas de pedidos reales.
 
-- Correos al cliente (`ventas/correos/`): un correo por etapa del pedido, enviado a mano desde el detalle en Seguimiento, con copy editable sin tocar código, vista previa, prueba a la propia bandeja e historial. El de «Entregado» lleva el código de reseña. Proveedor: Resend, subdominio `pedidos.magandhi.com`. Diseño en `docs/PLANO-CORREO.md`; runbook § CO de `supabase/INSTRUCCIONES.md`.
+- Correos al cliente (`ventas/correos/`): un correo por etapa del pedido, enviado a mano desde el detalle en Seguimiento, con copy editable sin tocar código, vista previa, prueba a la propia bandeja e historial. El de «Entregado» lleva el código de reseña. Proveedor: Resend, subdominio `updates.magandhi.com` (el marketing irá en `news.magandhi.com`). Diseño en `docs/PLANO-CORREO.md`; runbook § CO de `supabase/INSTRUCCIONES.md`.
 
 Pendiente real: entrada automática desde Wompi F2. Desplegar el tramo de correos (cuenta Resend, DNS, migración `20261008000000`, secret y función `enviar-correo-pedido`).
 

@@ -3182,7 +3182,7 @@ despliega.** Orden: (1) Resend + DNS, (2) migración, (3) secret, (4) función,
 
 1. Crear cuenta en <https://resend.com> (plan Free: 3.000 correos/mes, 100/día,
    3 dominios). Nombre del equipo: `MAGANDHI`.
-2. **Domains → Add domain → `pedidos.magandhi.com`**. Región recomendada: São
+2. **Domains → Add domain → `updates.magandhi.com`**. Región recomendada: São
    Paulo (`sa-east-1`), la más cercana a Colombia. Se usa un **subdominio** a
    propósito: la reputación de los avisos de pedido queda separada de la del
    futuro email marketing (que irá en otro subdominio) y no toca a Zoho, que
@@ -3190,16 +3190,16 @@ despliega.** Orden: (1) Resend + DNS, (2) migración, (3) secret, (4) función,
 3. Resend muestra 3 registros (MX, TXT SPF y TXT DKIM). En **Porkbun → DNS** de
    `magandhi.com` se crean tal cual, escribiendo en *Host* **solo la parte
    anterior a `magandhi.com`** (Porkbun la completa):
-   - `MX`  host `send.pedidos` → valor que dé Resend, prioridad `10`.
-   - `TXT` host `send.pedidos` → `v=spf1 include:amazonses.com ~all`.
-   - `TXT` host `resend._domainkey.pedidos` → la llave larga `p=...` que dé Resend.
+   - `MX`  host `send.updates` → valor que dé Resend, prioridad `10`.
+   - `TXT` host `send.updates` → `v=spf1 include:amazonses.com ~all`.
+   - `TXT` host `resend._domainkey.updates` → la llave larga `p=...` que dé Resend.
    No se toca ningún registro existente (los MX/SPF de Zoho en la raíz siguen igual).
 4. **DMARC** (hoy no existe): `TXT` host `_dmarc` →
    `v=DMARC1; p=none; rua=mailto:contacto@magandhi.com`.
    `p=none` solo observa; no bloquea nada.
 5. En Resend pulsar **Verify**. Puede tardar de minutos a unas horas.
 6. **API Keys → Create API key**: nombre `supabase-enviar-correo-pedido`,
-   permiso **Sending access**, dominio `pedidos.magandhi.com`. Se muestra UNA
+   permiso **Sending access**, dominio `updates.magandhi.com`. Se muestra UNA
    vez: copiarla directo al paso CO.4. **Nunca pegarla en el chat, el repo ni
    un archivo.**
 
@@ -3213,7 +3213,7 @@ Pegar y correr `20261008000000_correos_pedido.sql`. Requiere que
 | Nombre | Valor | Obligatorio |
 |---|---|---|
 | `RESEND_API_KEY` | la llave del paso CO.2.6 | Sí |
-| `CORREO_REMITENTE` | `MAGANDHI <pedidos@pedidos.magandhi.com>` | No (es el valor por defecto) |
+| `CORREO_REMITENTE` | `MAGANDHI <orders@updates.magandhi.com>` | No (es el valor por defecto) |
 | `CORREO_RESPONDER_A` | `contacto@magandhi.com` | No (por defecto) |
 
 Sin `RESEND_API_KEY` la función responde 503 con un mensaje claro y no reserva

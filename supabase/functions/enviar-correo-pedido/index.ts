@@ -35,7 +35,7 @@ const RESEND_ENDPOINT = Deno.env.get("RESEND_API_URL") ??
 
 // Configurables por Secrets sin tocar codigo (con valores por defecto sanos).
 const REMITENTE = Deno.env.get("CORREO_REMITENTE") ??
-  "MAGANDHI <pedidos@pedidos.magandhi.com>";
+  "MAGANDHI <orders@updates.magandhi.com>";
 const RESPONDER_A = Deno.env.get("CORREO_RESPONDER_A") ??
   "contacto@magandhi.com";
 const TIENDA = (Deno.env.get("TIENDA_URL") ?? "https://magandhi.com")
