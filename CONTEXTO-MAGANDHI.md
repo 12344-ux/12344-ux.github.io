@@ -76,7 +76,7 @@ Pendiente real: cierre anual cuando cambie el ejercicio fiscal y pulido de expor
 - Ranking por unidades o ingreso, distinguiendo fuente real/mixta/estimada.
 - Clúster y elasticidad siguen como roadmap, no como módulos terminados.
 
-### Email marketing — EM1 operativo (en construcción por tramos)
+### Email marketing — EM1 y EM2 (en construcción por tramos)
 
 Marketing → Email marketing. Diseño completo en `docs/PLANO-EMAIL-MARKETING.md`.
 
@@ -85,7 +85,8 @@ Marketing → Email marketing. Diseño completo en `docs/PLANO-EMAIL-MARKETING.m
 - Alta manual con evidencia obligatoria, edición de temas (Novedades / Ofertas), baja con motivo y reactivación solo con nueva autorización.
 - Vínculo automático contacto ↔ cliente por correo (trigger).
 - Resumen (suscritos, crecimiento por semana, estados, fuentes, temas, clientes con correo aún sin autorizar) y «Correos de seguimiento» (historial de los avisos del pedido).
-- Siguiente: EM2 perfiles + segmentos, EM3 clúster, EM4 campañas (`news.magandhi.com`), EM5 resultados. Captura pública (EM6) y analítica (EM7) esperan la política.
+- EM2: perfil por cliente con datos propios (valor, precio y rebajas, productos y categorías, opiniones, lugar, franja y día de compra, canal) y **Segmentos** por condiciones con vista previa en vivo; la audiencia de una campaña será siempre segmento ∩ suscritos.
+- Siguiente: EM3 clúster, EM4 campañas (`news.magandhi.com`), EM5 resultados. Captura pública (EM6) y analítica (EM7) esperan la política.
 
 ### Gestión de opiniones — operativo
 
