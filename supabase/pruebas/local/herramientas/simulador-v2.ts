@@ -17,6 +17,47 @@ Deno.serve({ port: 54321 }, async (req) => {
   const u = new URL(req.url);
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "POST, OPTIONS" } });
   if (u.pathname === "/__vistos") return Response.json(vistos);
+  // --- Lectura de TABLAS/VISTAS (GET), como hace PostgREST ------------------
+  // Necesario desde Wompi F2: crear-intencion-pago lee catalogo_publico con
+  // .select(...).or(...).limit(1). Se traduce a SQL real contra el Postgres
+  // local. Soporta select=, filtros col=eq.valor y or=(a.eq.x,b.eq.y), limit.
+  const t = u.pathname.match(/^\/rest\/v1\/([a-z_0-9]+)$/);
+  if (req.method === "GET" && t) {
+    const tabla = t[1];
+    const cols = (u.searchParams.get("select") ?? "*").replace(/[^a-z_0-9,*\s]/gi, "");
+    const donde: string[] = [];
+    for (const [k, v] of u.searchParams.entries()) {
+      if (["select", "limit", "offset", "order", "or"].includes(k)) continue;
+      const mm = String(v).match(/^eq\.(.*)$/);
+      if (mm && /^[a-z_0-9]+$/i.test(k)) donde.push(`${k} = ${lit(mm[1])}`);
+    }
+    const or = u.searchParams.get("or");
+    if (or) {
+      const partes = or.replace(/^\(|\)$/g, "").split(",")
+        .map((x) => x.match(/^([a-z_0-9]+)\.eq\.(.*)$/i))
+        .filter(Boolean)
+        .map((mm) => `${mm![1]} = ${lit(mm![2])}`);
+      if (partes.length) donde.push("(" + partes.join(" or ") + ")");
+    }
+    const lim = /^\d{1,4}$/.test(u.searchParams.get("limit") ?? "") ? ` limit ${u.searchParams.get("limit")}` : "";
+    const sql = `select coalesce(jsonb_agg(x), '[]'::jsonb) from (select ${cols} from ${tabla}` +
+      (donde.length ? ` where ${donde.join(" and ")}` : "") + lim + ") x;";
+    const pp = new Deno.Command("psql", {
+      args: ["-q", "-t", "-A", "-v", "ON_ERROR_STOP=1", "-d", "impulse_pruebas"], stdin: "piped", stdout: "piped", stderr: "piped",
+      env: { PGHOST: "/var/lib/pgdata", PGUSER: "postgres" },
+    }).spawn();
+    const ww = pp.stdin.getWriter();
+    await ww.write(new TextEncoder().encode(`set role service_role;\n${sql}\n`));
+    await ww.close();
+    const oo = await pp.output();
+    const salida = new TextDecoder().decode(oo.stdout).trim();
+    const errr = new TextDecoder().decode(oo.stderr).trim();
+    if (!oo.success) {
+      return Response.json({ code: "P0001", message: errr.replace(/^.*?ERROR:\s*/s, "").split("\n")[0] }, { status: 400 });
+    }
+    return new Response(salida.split("\n").pop(), { headers: { "Content-Type": "application/json" } });
+  }
+
   const m = u.pathname.match(/^\/rest\/v1\/rpc\/([a-z_0-9]+)$/);
   if (req.method !== "POST" || !m) return Response.json({ message: "no simulado " + u.pathname }, { status: 404 });
   vistos.push({ rpc: m[1], apikey: req.headers.get("apikey"), auth: req.headers.get("authorization") });

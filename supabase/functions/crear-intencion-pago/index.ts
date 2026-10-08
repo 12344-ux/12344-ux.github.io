@@ -188,6 +188,35 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // IMPORTANTE (linea roja): a proposito NO se lee ningun campo de precio/monto
   // del body. El precio NUNCA sale del navegador; se relee de la BD mas abajo.
 
+  // --- F2: datos del COMPRADOR y procedencia de la visita -------------------
+  // Decision del dueno (8-oct-2026): el pedido web se crea con lo que el
+  // comprador escribio EN LA TIENDA; de Wompi solo se usa la CONFIRMACION del
+  // pago. Por eso estos campos se persisten en la intencion y el webhook los
+  // usa tal cual.
+  // Se recortan a longitudes sanas y se aceptan vacios: la intencion puede
+  // existir sin ellos (el formulario los valida del lado de la tienda) y el
+  // webhook cae a 'Comprador web' si faltara el nombre.
+  const texto = (v: unknown, max: number) =>
+    typeof v === "string" && v.trim() !== "" ? v.trim().slice(0, max) : null;
+  const c = (body?.comprador ?? {}) as Record<string, unknown>;
+  const comprador = {
+    nombre: texto(c.nombre, 120),
+    correo: texto(c.correo, 160),
+    telefono: texto(c.telefono, 40),
+    direccion: texto(c.direccion, 200),
+    ciudad: texto(c.ciudad, 80),
+    departamento: texto(c.departamento, 80),
+    pais: texto(c.pais, 60),
+  };
+  // Procedencia: utm_campaign da ATRIBUCION EXACTA a las campanas de correo
+  // (hoy es aproximada) y mg_vid es el id ALEATORIO de la analitica propia
+  // (sin nombre ni correo) que Metricas esperaba para medir el embudo real
+  // hasta la compra. Se validan con formato estricto: entran a la base.
+  const utmBruto = texto(body?.utm_campaign, 60);
+  const utm = utmBruto && /^[a-z0-9-]{1,60}$/.test(utmBruto) ? utmBruto : null;
+  const vidBruto = texto(body?.mg_vid, 40);
+  const mgVid = vidBruto && /^[A-Za-z0-9_-]{16,40}$/.test(vidBruto) ? vidBruto : null;
+
   // DIAGNOSTICO: marca de entrada para correlacionar la invocacion en los logs.
   // Solo datos no sensibles (que producto se pidio y cuantas unidades).
   console.log(
@@ -365,6 +394,49 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // --- Generar la referencia unica y la moneda ------------------------------
   const referencia = generarReferencia(fila.id ?? fila.slug ?? "prod");
   const moneda = "COP";
+
+  // --- F2: PERSISTIR LA INTENCION ANTES DE FIRMAR ---------------------------
+  // Esta es la frontera que F2 cruza respecto a F1. Se guarda ANTES de firmar
+  // porque la firma es el punto sin retorno: a partir de ahi el comprador puede
+  // pagar, y si no existiera la fila el webhook recibiria un pago que no sabria
+  // a que producto corresponde (dinero huerfano).
+  //
+  // Se guarda el MONTO FIRMADO para que el webhook lo compare con el que
+  // informe Wompi y nunca confie en el monto que llega.
+  //
+  // Si esto falla, NO se firma: es preferible que el comprador reintente que
+  // cobrarle sin poder convertirlo en pedido.
+  const { error: errorIntencion } = await supabase.rpc("pw_registrar_intencion", {
+    p_referencia: referencia,
+    p_campana_id: fila.id ?? null,
+    p_slug: fila.slug ?? null,
+    p_nombre: fila.nombre ?? null,
+    p_cantidad: cantidad,
+    p_precio_unitario: precioTexto,
+    p_monto_centavos: montoEnCentavos,
+    p_entorno: entorno === "prod" ? "prod" : "sandbox",
+    p_comprador: comprador,
+    p_utm_campaign: utm,
+    p_mg_vid: mgVid,
+    p_moneda: moneda,
+  });
+  if (errorIntencion) {
+    // Se loguea el motivo REAL de PostgREST (leccion de F1: no depurar a ciegas).
+    console.error(
+      "[crear-intencion-pago] No se pudo persistir la intencion:",
+      JSON.stringify({
+        message: errorIntencion.message,
+        code: (errorIntencion as { code?: string }).code,
+        details: (errorIntencion as { details?: string }).details,
+        hint: (errorIntencion as { hint?: string }).hint,
+      }),
+    );
+    return json(
+      { error: "No se pudo iniciar el pago. Intenta de nuevo." },
+      500,
+      cors,
+    );
+  }
 
   // --- Calcular la firma de integridad (server-side) ------------------------
   const firmaIntegridad = await calcularFirmaIntegridad(
