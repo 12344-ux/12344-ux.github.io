@@ -3380,3 +3380,35 @@ inyección SQL en el valor: tratado como texto**, guardar/duplicado/archivar,
 aislamiento por módulo y anon). Interfaz en Chromium (PC y celular): 44
 comprobaciones sin errores ni desbordes. Las pruebas de EM1, stock y correos
 siguen pasando.
+
+# EM3 · Análisis de clúster
+
+## EM3.1. Aplicar (SQL Editor, una sola vez)
+
+Correr `supabase/migrations/20261011000000_email_marketing_em3.sql`, después de
+`20261010000000_email_marketing_em2.sql`.
+
+## EM3.2. Qué trae
+
+- Marketing → Marketing Project → **Análisis de clúster**. El cálculo corre en
+  el navegador (`marketing/marketing-project/cluster-core.js`) sobre
+  `mk_perfiles_clientes`, que no trae nombre, correo ni teléfono.
+- «Guardar como segmento» (`em_segmento_desde_cluster`): segmento congelado
+  (tipo clúster) con su origen. Exige permisos de **Marketing y Email marketing**.
+
+## EM3.3. Evidencia
+
+1. Abrir el Análisis de clúster. Con menos de 10 clientes con compras muestra el
+   aviso y la tabla de perfiles; con 10 a 29 marca «Exploratorio».
+2. Con datos suficientes: grupos, calidad (silueta), mapa, comparativo y CSV.
+3. Guardar un grupo → aparece en Email marketing → Segmentos con el rótulo
+   «Análisis de clúster», sin botón Editar.
+
+## EM3.4. Pruebas locales hechas
+
+`node marketing/marketing-project/pruebas-cluster.mjs` (21 pruebas del motor:
+recupera 3 grupos sembrados, determinismo, k forzado, umbrales, datos
+homogéneos, faltantes, silueta de manual). 56 migraciones + matriz 171/171 + 13
+comprobaciones SQL de EM3 (snapshot, ids falsos descartados, duplicados,
+congelado, doble permiso, anon). Interfaz en Chromium PC y celular: 46
+comprobaciones; las de EM1 y EM2 siguen pasando.

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Análisis de clúster</title>
+<meta name="description" content="Análisis de clúster de clientes · Marketing Project de MAGANDHI.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/marketing.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=2">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=2">
+<link rel="stylesheet" href="../marketing.css?v=3">
+
+<!--
+  MAGANDHI · Marketing Project · ANALISIS DE CLUSTER (tramo EM3).
+  Agrupa clientes por comportamiento usando SOLO datos propios
+  (mk_perfiles_clientes: sin nombre, correo ni telefono). El calculo corre en
+  el navegador con cluster-core.js (k-means++ con semilla fija, silueta, mapa
+  por componentes principales). Impulse entrega los grupos y su calidad; la
+  lectura y la decision son humanas. "Guardar como segmento" llama a
+  em_segmento_desde_cluster (exige Marketing + Email marketing).
+  Reglas de honestidad: < 10 clientes no agrupa; < 30 = exploratorio;
+  silueta < 0,25 = sin estructura clara.
+-->
+<style>
+  .cl-vars{display:flex;flex-direction:column;gap:14px;margin-top:4px}
+  .cl-grupo-k{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mk-gris);margin:0 0 7px}
+  .cl-chips{display:flex;flex-wrap:wrap;gap:8px}
+  .cl-chip{position:relative;cursor:pointer;user-select:none}
+  .cl-chip input{position:absolute;opacity:0;pointer-events:none}
+  .cl-chip span{
+    display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--mk-carbon);
+    border:1px solid var(--mk-linea);border-radius:999px;padding:7px 13px;background:var(--mk-tarjeta);
+    transition:border-color .12s ease, background-color .12s ease, color .12s ease;
+  }
+  .cl-chip span:hover{border-color:var(--mk-azul-cl)}
+  .cl-chip input:checked + span{background:var(--mk-marino);border-color:var(--mk-marino);color:#fff}
+  .cl-chip input:focus-visible + span{outline:2px solid var(--mk-marino);outline-offset:2px}
+  .cl-chip small{font-size:11px;font-variant-numeric:tabular-nums;opacity:.7}
+  .cl-chip.poca small{color:var(--mk-acento);opacity:1;font-weight:600}
+  .cl-chip input:checked + span small{color:inherit}
+  .cl-fila-ctrl{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px 18px;align-items:end;margin-top:18px;padding-top:16px;border-top:1px solid var(--mk-linea)}
+
+  .cl-calidad{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;border-radius:999px;padding:5px 12px;background:rgba(255,255,255,.12)}
+  .cl-calidad i{width:9px;height:9px;border-radius:50%}
+  .cl-calidad.clara i{background:#6FCF97}.cl-calidad.moderada i{background:#E8B04B}.cl-calidad.debil i{background:#E07A73}
+  .cl-avisos{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+  .cl-aviso{display:flex;gap:12px;align-items:flex-start;background:var(--mk-tarjeta);border:1px solid var(--mk-linea);border-left:3px solid var(--mk-acento);border-radius:12px;padding:12px 16px;font-size:13px;color:var(--mk-carbon)}
+  .cl-aviso svg{width:19px;height:19px;color:var(--mk-acento);flex:none;margin-top:1px}
+  .cl-aviso strong{color:var(--mk-marino)}
+
+  .cl-dos{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;margin-top:16px}
+  @media (max-width:900px){.cl-dos{grid-template-columns:1fr}}
+  .cl-caja{background:var(--mk-tarjeta);border:1px solid var(--mk-linea);border-radius:var(--mk-radio);padding:18px 20px;min-width:0}
+  .cl-caja h2{margin:0 0 4px;font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mk-gris)}
+  .cl-caja .sub{margin:0 0 12px;font-size:12px;color:var(--mk-gris)}
+  .cl-svg{width:100%;height:auto;display:block}
+  .cl-svg circle{stroke:#fff;stroke-width:1.2;opacity:.9;transition:opacity .15s ease}
+  .cl-svg.foco circle{opacity:.12}
+  .cl-svg.foco circle.on{opacity:1}
+  .cl-svg .eje{stroke:var(--mk-linea)}
+  .cl-ley{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:10px;font-size:12.5px;color:var(--mk-carbon)}
+  .cl-ley button{font-family:inherit;font-size:12.5px;display:inline-flex;align-items:center;gap:7px;background:none;border:0;padding:2px 0;cursor:pointer;color:inherit}
+  .cl-ley i{width:10px;height:10px;border-radius:50%}
+  .cl-kbar{display:flex;flex-direction:column;gap:9px}
+  .cl-kbar li{display:grid;grid-template-columns:auto 1fr 44px;gap:10px;align-items:center;font-size:13px}
+  .cl-kbar .b{height:10px;border-radius:999px;background:rgba(16,28,51,.07);overflow:hidden}
+  .cl-kbar .b span{display:block;height:100%;background:var(--mk-azul-cl);border-radius:999px}
+  .cl-kbar li.sel .b span{background:var(--mk-marino)}
+  .cl-kbar li.sel{font-weight:600;color:var(--mk-marino)}
+  .cl-kbar .v{text-align:right;font-variant-numeric:tabular-nums}
+  .cl-kbar li > span:first-child{white-space:nowrap;min-width:96px}
+  .cl-kbar em{font-style:normal;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mk-acento);margin-left:4px}
+
+  .cl-grupos{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));margin-top:16px}
+  .cl-g{background:var(--mk-tarjeta);border:1px solid var(--mk-linea);border-radius:var(--mk-radio);padding:18px 20px;display:flex;flex-direction:column;gap:12px;border-top:4px solid var(--c)}
+  .cl-g-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+  .cl-g-nom{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mk-gris)}
+  .cl-g-nom i{width:10px;height:10px;border-radius:50%;background:var(--c)}
+  .cl-g h3{margin:4px 0 0;font-size:16px;line-height:1.35;font-weight:600;color:var(--mk-marino)}
+  .cl-g-n{text-align:right;flex:none}
+  .cl-g-n b{display:block;font-size:26px;line-height:1;color:var(--mk-marino);font-variant-numeric:tabular-nums}
+  .cl-g-n span{font-size:11.5px;color:var(--mk-gris)}
+  .cl-rasgos{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+  .cl-rasgos li{font-size:13px;color:var(--mk-carbon);padding-left:16px;position:relative}
+  .cl-rasgos li::before{content:"";position:absolute;left:3px;top:8px;width:6px;height:6px;border-radius:50%;background:var(--c)}
+  .cl-g-pie{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:auto;padding-top:10px;border-top:1px solid var(--mk-linea);font-size:12.5px;color:var(--mk-gris)}
+  .cl-btn{font-family:inherit;font-size:13px;font-weight:600;color:var(--mk-marino);background:var(--mk-tarjeta);border:1px solid var(--mk-linea);border-radius:10px;padding:8px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+  .cl-btn:hover:not(:disabled){border-color:var(--mk-marino)}
+  .cl-btn:disabled{opacity:.45;cursor:not-allowed}
+  .cl-btn svg{width:15px;height:15px}
+
+  .cl-tabla td.g{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  .cl-tabla td.g.alto{color:var(--mk-marino);font-weight:700}
+  .cl-tabla td.g.bajo{color:var(--mk-acento);font-weight:600}
+  .cl-tabla th.g{text-align:right;white-space:nowrap}
+  .cl-tabla th.g i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+  .cl-tabla td.var small{display:block;font-size:11px;color:var(--mk-gris)}
+  .cl-scroll{overflow-x:auto;border-radius:var(--mk-radio)}
+  .cl-acciones{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}
+  details.cl-como{margin-top:16px;background:var(--mk-tarjeta);border:1px solid var(--mk-linea);border-radius:var(--mk-radio);padding:14px 18px}
+  details.cl-como summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--mk-marino)}
+  details.cl-como ol{margin:12px 0 0;padding-left:20px;font-size:13px;color:var(--mk-carbon);display:flex;flex-direction:column;gap:7px}
+
+  /* Modal guardar */
+  .cl-fondo{position:fixed;inset:0;z-index:80;background:rgba(16,28,51,.48);display:flex;align-items:center;justify-content:center;padding:18px}
+  .cl-fondo[hidden]{display:none}
+  .cl-modal{width:min(520px,100%);background:#fff;border-radius:16px;box-shadow:0 24px 60px rgba(16,28,51,.3);padding:22px}
+  .cl-modal h2{margin:0;font-size:18px;color:var(--mk-marino)}
+  .cl-modal p{margin:6px 0 0;font-size:13px;color:var(--mk-gris)}
+  .cl-modal form{display:flex;flex-direction:column;gap:14px;margin-top:16px}
+  .cl-modal label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mk-gris)}
+  .cl-resumen-g{display:flex;gap:10px;flex-wrap:wrap}
+  .cl-resumen-g div{flex:1;min-width:120px;background:rgba(16,28,51,.04);border-radius:10px;padding:10px 12px}
+  .cl-resumen-g b{display:block;font-size:22px;color:var(--mk-marino);font-variant-numeric:tabular-nums}
+  .cl-resumen-g span{font-size:11.5px;color:var(--mk-gris)}
+  .cl-modal .acc{display:flex;justify-content:flex-end;gap:10px}
+  .cl-sec{font-family:inherit;font-size:14px;font-weight:600;color:var(--mk-marino);background:#fff;border:1px solid var(--mk-linea);border-radius:11px;padding:11px 18px;cursor:pointer}
+  .mk-msg.ok{color:#2E7D4F}
+  @media (max-width:640px){.cl-grupos{grid-template-columns:1fr}.mk-hero-meta{gap:16px}}
+</style>
+</head>
+<body class="mk-body">
+
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="mk-wrap" id="cl-main" hidden>
+  <section class="mk-panel" aria-label="Configurar el análisis">
+    <div class="cl-vars" id="cl-vars"></div>
+    <div class="cl-fila-ctrl">
+      <label class="mk-control"><span>Periodo de compras</span>
+        <select class="mk-select" id="cl-periodo">
+          <option value="">Todo el historial</option>
+          <option value="365">Último año</option>
+          <option value="180">Últimos 6 meses</option>
+          <option value="90">Últimos 3 meses</option>
+        </select></label>
+      <label class="mk-control"><span>Número de grupos</span>
+        <select class="mk-select" id="cl-k">
+          <option value="">Automático (recomendado)</option>
+          <option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
+        </select></label>
+      <div class="mk-control"><span>&nbsp;</span>
+        <button class="mk-btn" id="cl-analizar" type="button" style="justify-content:center"><span data-ico="cluster"></span> Analizar</button></div>
+    </div>
+    <p class="mk-msg" id="cl-msg" style="margin:12px 0 0"></p>
+  </section>
+
+  <div id="cl-res"></div>
+</main>
+
+<div class="cl-fondo" id="gu-fondo" hidden>
+  <div class="cl-modal" role="dialog" aria-modal="true" aria-labelledby="gu-tit">
+    <h2 id="gu-tit">Guardar como segmento</h2>
+    <p>El grupo queda congelado tal como está hoy, para que una campaña a este segmento sea reproducible y explicable.</p>
+    <form id="gu-form" novalidate>
+      <div class="cl-resumen-g" id="gu-res"></div>
+      <label>Nombre<input class="mk-input" id="gu-nombre" maxlength="80"></label>
+      <label>Descripción<input class="mk-input" id="gu-desc" maxlength="300"></label>
+      <p class="mk-msg" id="gu-msg"></p>
+      <div class="acc"><button class="cl-sec" type="button" id="gu-cancelar">Cancelar</button><button class="mk-btn" type="submit" id="gu-ok">Guardar segmento</button></div>
+    </form>
+  </div>
+</div>
+
+<script type="module">
+  import { supabase, obtenerPerfil, asegurarAcceso, montarHeader, ICONOS, escaparHTML, formatearNumero } from '../marketing-core.js';
+  import { VARIABLES, VAR, PREDETERMINADAS, cobertura, analizar, formatear, LETRA, UMBRAL_MIN, UMBRAL_EXPLORATORIO } from './cluster-core.js';
+
+  const $ = (id) => document.getElementById(id);
+  // Paleta de grupos: tonos de la marca (marino, terracota, dorado) + apoyos sobrios.
+  const COLORES = ['#101C33', '#A6332E', '#C28A3A', '#5B7BA6', '#2E7D4F', '#8A8578'];
+  const svg = (d) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+  ICONOS.alerta = svg('<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/>');
+  ICONOS.capas = svg('<path d="m12.83 2.18 8.58 3.9a1 1 0 0 1 0 1.83l-8.58 3.9a2 2 0 0 1-1.66 0L2.6 7.91a1 1 0 0 1 0-1.83l8.58-3.9a2 2 0 0 1 1.66 0Z"/><path d="m2.6 12.08 8.57 3.9a2 2 0 0 0 1.66 0l8.57-3.9M2.6 16.95l8.57 3.9a2 2 0 0 0 1.66 0l8.57-3.9"/>');
+  ICONOS.descargar = svg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/>');
+
+  let perfiles = [];
+  let resultado = null;
+  let variablesUsadas = [];
+  let puedeGuardar = false;
+  let grupoAGuardar = null;
+
+  const hoyMenos = (d) => { const t = new Date(); t.setDate(t.getDate() - d); return t.toISOString().slice(0, 10); };
+
+  // ---------------- Datos ----------------
+  async function cargarPerfiles() {
+    const dias = $('cl-periodo').value;
+    const { data, error } = await supabase.rpc('mk_perfiles_clientes', { p_desde: dias ? hoyMenos(Number(dias)) : null, p_hasta: null });
+    if (error) {
+      $('cl-res').innerHTML = '<div class="mk-empty">' + (/mk_perfiles_clientes|function/i.test(error.message || '')
+        ? 'Falta aplicar las migraciones <strong>20261010000000</strong> y <strong>20261011000000</strong> en Supabase.'
+        : 'No se pudieron cargar los perfiles: <strong>' + escaparHTML(error.message) + '</strong>') + '</div>';
+      return false;
+    }
+    perfiles = data || [];
+    pintarVariables();
+    return true;
+  }
+
+  function pintarVariables() {
+    const marcadas = new Set([...document.querySelectorAll('input[name="cl-var"]:checked')].map((x) => x.value));
+    const usar = marcadas.size ? marcadas : new Set(PREDETERMINADAS);
+    const grupos = [...new Set(VARIABLES.map((v) => v.g))];
+    $('cl-vars').innerHTML = grupos.map((g) => '<div><p class="cl-grupo-k">' + escaparHTML(g) + '</p><div class="cl-chips">' +
+      VARIABLES.filter((v) => v.g === g).map((v) => {
+        const cob = perfiles.length ? Math.round(cobertura(perfiles, v.c) * 100) : null;
+        const poca = cob !== null && cob < 30;
+        return '<label class="cl-chip' + (poca ? ' poca' : '') + '" title="' + (cob === null ? '' : cob + '% de los clientes tiene este dato') + '">' +
+          '<input type="checkbox" name="cl-var" value="' + v.c + '"' + (usar.has(v.c) ? ' checked' : '') + '>' +
+          '<span>' + escaparHTML(v.l) + (cob === null ? '' : '<small>' + cob + '%</small>') + '</span></label>';
+      }).join('') + '</div></div>').join('');
+  }
+
+  // ---------------- Analizar ----------------
+  async function correr() {
+    $('cl-msg').className = 'mk-msg'; $('cl-msg').textContent = '';
+    const vars = [...document.querySelectorAll('input[name="cl-var"]:checked')].map((x) => x.value);
+    if (!vars.length) { $('cl-msg').className = 'mk-msg err'; $('cl-msg').textContent = 'Elige al menos una variable.'; return; }
+    $('cl-analizar').disabled = true;
+    $('cl-res').innerHTML = '<p class="mk-empty">Analizando…</p>';
+    if (!(await cargarPerfiles())) { $('cl-analizar').disabled = false; return; }
+    document.querySelectorAll('input[name="cl-var"]').forEach((x) => { x.checked = vars.includes(x.value); });
+    await new Promise((r) => setTimeout(r, 20));
+    variablesUsadas = vars;
+    resultado = analizar(perfiles, vars, Number($('cl-k').value) || null);
+    $('cl-analizar').disabled = false;
+    pintarResultado();
+  }
+
+  function heroHTML(r) {
+    const c = r.calidad;
+    return '<section class="mk-hero" style="margin-top:20px">' +
+      '<div class="mk-hero-main"><span class="mk-hero-lbl">Grupos encontrados</span>' +
+        '<span class="mk-hero-num">' + r.k + '<span class="mk-hero-unidad">grupos de ' + formatearNumero(r.n) + ' clientes</span></span>' +
+        '<span class="mk-hero-sub"><span class="cl-calidad ' + c.nivel + '"><i></i>' + escaparHTML(c.txt) + ' · silueta ' + r.silueta.toFixed(2).replace('.', ',') + '</span></span></div>' +
+      '<div class="mk-hero-meta">' +
+        '<div class="mk-hero-dato"><span class="k">Variables</span><span class="v">' + variablesUsadas.length + '</span></div>' +
+        '<div class="mk-hero-dato"><span class="k">Sugerido</span><span class="v">' + r.sugerido + ' grupos</span></div>' +
+        '<div class="mk-hero-dato"><span class="k">Suscritos</span><span class="v">' + formatearNumero(perfiles.filter((p) => p.suscrito).length) + '</span></div>' +
+      '</div></section>';
+  }
+
+  function avisosHTML(r) {
+    const av = [];
+    if (r.exploratorio) av.push('<strong>Exploratorio: muy pocos datos.</strong> Con ' + r.n + ' clientes (menos de ' + UMBRAL_EXPLORATORIO + ') los grupos pueden ser casualidad. Úsalos como pista, no como conclusión.');
+    if (r.calidad.nivel === 'debil') av.push('<strong>' + r.calidad.txt + '.</strong> ' + r.calidad.detalle);
+    const pocas = variablesUsadas.filter((c) => r.stats[c] && r.stats[c].cobertura < 0.3).map((c) => VAR[c].l + ' (' + Math.round(r.stats[c].cobertura * 100) + '%)');
+    if (pocas.length) av.push('<strong>Poca cobertura:</strong> ' + escaparHTML(pocas.join(', ')) + '. A quien no tiene el dato se le asigna el valor promedio, así que esa variable casi no diferencia. Considera quitarla.');
+    const ctes = variablesUsadas.filter((c) => r.stats[c] && r.stats[c].constante).map((c) => VAR[c].l);
+    if (ctes.length) av.push('<strong>Sin variación:</strong> ' + escaparHTML(ctes.join(', ')) + ' tiene el mismo valor para todos y no se usó.');
+    if (variablesUsadas.some((c) => VAR[c].g === 'Momento')) {
+      const exacta = perfiles.length ? perfiles.reduce((a, p) => a + (Number(p.pct_hora_exacta) || 0), 0) / perfiles.length : 0;
+      if (exacta < 100) av.push('<strong>Hora aproximada:</strong> en pedidos manuales la hora es la del registro, no la de la decisión de compra (' + Math.round(exacta) + '% de los pedidos tiene hora exacta).');
+    }
+    return av.length ? '<div class="cl-avisos">' + av.map((t) => '<div class="cl-aviso">' + ICONOS.alerta + '<span>' + t + '</span></div>').join('') + '</div>' : '';
+  }
+
+  function mapaHTML(r) {
+    const W = 560, H = 340, P = 18;
+    const xs = r.mapa.map((p) => p[0]), ys = r.mapa.map((p) => p[1]);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const sx = (v) => P + (W - 2 * P) * ((v - x0) / ((x1 - x0) || 1));
+    const sy = (v) => H - P - (H - 2 * P) * ((v - y0) / ((y1 - y0) || 1));
+    const pts = r.mapa.map((p, i) => '<circle class="g' + r.labels[i] + '" cx="' + sx(p[0]).toFixed(1) + '" cy="' + sy(p[1]).toFixed(1) + '" r="' + (r.n > 300 ? 3.5 : 5.5) + '" fill="' + COLORES[r.labels[i] % COLORES.length] + '"><title>' + LETRA(r.labels[i]) + '</title></circle>').join('');
+    return '<div class="cl-caja"><h2>Mapa de clientes</h2><p class="sub">Cada punto es un cliente. Los cercanos se parecen en las variables elegidas. Toca un grupo para resaltarlo.</p>' +
+      '<svg class="cl-svg" id="cl-mapa" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Mapa de clientes por grupo">' +
+      '<rect x="0" y="0" width="' + W + '" height="' + H + '" fill="rgba(16,28,51,.02)" rx="10"/>' + pts + '</svg>' +
+      '<div class="cl-ley">' + r.grupos.map((g) => '<button type="button" data-foco="' + g.g + '"><i style="background:' + COLORES[g.g % COLORES.length] + '"></i>' + LETRA(g.g) + ' · ' + g.n + '</button>').join('') + '</div></div>';
+  }
+
+  function kHTML(r) {
+    const max = Math.max(...r.opciones.map((o) => o.silueta), 0.01);
+    return '<div class="cl-caja"><h2>¿Cuántos grupos?</h2><p class="sub">Silueta: qué tan separados quedan los grupos (de -1 a 1; más alto es mejor).</p><ul class="cl-kbar" style="list-style:none;margin:0;padding:0">' +
+      r.opciones.map((o) => '<li class="' + (o.k === r.k ? 'sel' : '') + '"><span>' + o.k + ' grupos' + (o.k === r.sugerido ? '<em>sug.</em>' : '') + '</span>' +
+        '<span class="b"><span style="width:' + Math.max(2, (Math.max(0, o.silueta) / max) * 100) + '%"></span></span>' +
+        '<span class="v">' + o.silueta.toFixed(2).replace('.', ',') + '</span></li>').join('') + '</ul>' +
+      '<p class="sub" style="margin:14px 0 0">' + escaparHTML(r.calidad.detalle) + '</p></div>';
+  }
+
+  function gruposHTML(r) {
+    return '<div class="cl-grupos">' + r.grupos.map((g) =>
+      '<article class="cl-g" style="--c:' + COLORES[g.g % COLORES.length] + '">' +
+        '<div class="cl-g-top"><div><span class="cl-g-nom"><i></i>' + LETRA(g.g) + '</span><h3>' + escaparHTML(g.titular) + '</h3></div>' +
+          '<div class="cl-g-n"><b>' + g.n + '</b><span>' + Math.round(g.pct) + '% de clientes</span></div></div>' +
+        (g.rasgos.length ? '<ul class="cl-rasgos">' + g.rasgos.map((x) => '<li>' + escaparHTML(x.txt[0].toUpperCase() + x.txt.slice(1)) + '</li>').join('') + '</ul>'
+          : '<p style="margin:0;font-size:13px;color:var(--mk-gris)">Ninguna variable se aleja del promedio general de forma notable.</p>') +
+        '<div class="cl-g-pie"><span>' + g.suscritos + ' de ' + g.n + ' suscritos a correos</span>' +
+          '<button class="cl-btn" type="button" data-guardar="' + g.g + '"' + (puedeGuardar ? '' : ' disabled title="Requiere el permiso de Email marketing"') + '>' + ICONOS.capas + 'Guardar como segmento</button></div>' +
+      '</article>').join('') + '</div>';
+  }
+
+  function tablaHTML(r) {
+    const celda = (c, g) => {
+      const def = VAR[c], m = g ? g.medias[c] : r.general[c];
+      if (def.t === 'cat') {
+        if (!g) { const tot = Object.values(m || {}).reduce((a, b) => a + b, 0); const top = Object.entries(m || {}).sort((a, b) => b[1] - a[1])[0];
+          return top ? escaparHTML(def.etiqueta ? def.etiqueta(top[0]) : top[0]) + ' · ' + Math.round(100 * top[1] / tot) + '%' : '—'; }
+        return m ? escaparHTML(def.etiqueta ? def.etiqueta(m.valor) : m.valor) + ' · ' + Math.round(m.pct) + '%' : '—';
+      }
+      if (def.t === 'bool') return m === null || m === undefined ? '—' : Math.round(m) + '% sí';
+      return formatear(def, m);
+    };
+    const clase = (c, g) => {
+      const x = g.rasgos.find((y) => y.c === c);
+      return x ? (x.ef > 0 ? ' alto' : ' bajo') : '';
+    };
+    return '<div class="mk-tabla-caja"><p class="mk-tabla-titulo">Comparativo por grupo</p><div class="cl-scroll"><table class="mk-tabla cl-tabla"><thead><tr><th>Variable</th><th class="g">General</th>' +
+      r.grupos.map((g) => '<th class="g"><i style="background:' + COLORES[g.g % COLORES.length] + '"></i>' + LETRA(g.g) + '</th>').join('') + '</tr></thead><tbody>' +
+      variablesUsadas.map((c) => '<tr><td class="var">' + escaparHTML(VAR[c].l) + '<small>Cobertura ' + Math.round((r.stats[c] ? r.stats[c].cobertura : 0) * 100) + '%</small></td>' +
+        '<td class="g">' + celda(c, null) + '</td>' + r.grupos.map((g) => '<td class="g' + clase(c, g) + '">' + celda(c, g) + '</td>').join('') + '</tr>').join('') +
+      '<tr><td class="var">Clientes</td><td class="g">' + r.n + '</td>' + r.grupos.map((g) => '<td class="g">' + g.n + '</td>').join('') + '</tr>' +
+      '</tbody></table></div></div>' +
+      '<div class="cl-acciones"><span style="font-size:12.5px;color:var(--mk-gris)">En negrilla, los rasgos que más distinguen a cada grupo (en terracota, por debajo del promedio).</span>' +
+      '<button class="cl-btn" type="button" id="cl-csv">' + ICONOS.descargar + 'Exportar CSV</button></div>';
+  }
+
+  function comoHTML() {
+    return '<details class="cl-como"><summary>Cómo se calcula</summary><ol>' +
+      '<li>Se arma un perfil por cliente con sus compras, precios, opiniones, lugar y momento de compra, solo con datos de MAGANDHI y <strong>sin nombre, correo ni teléfono</strong>.</li>' +
+      '<li>Montos y conteos se comparan en escala logarítmica, para que un cliente que gasta mucho no aplaste al resto, y todas las variables se llevan a la misma escala. A quien le falta un dato se le asigna el promedio.</li>' +
+      '<li>Se agrupan con <em>k-means++</em> usando una semilla fija: los mismos datos siempre dan los mismos grupos.</li>' +
+      '<li>Se prueba de 2 a 6 grupos y se sugiere el número con mejor <em>silueta</em>. Puedes elegir otro.</li>' +
+      '<li>El retrato de cada grupo muestra las variables en las que más se aleja del promedio general.</li>' +
+      '<li>Impulse entrega los grupos y su calidad; la interpretación y la decisión son tuyas.</li></ol></details>';
+  }
+
+  function pintarResultado() {
+    const r = resultado;
+    if (r.estado === 'pocos') {
+      $('cl-res').innerHTML = '<div class="mk-empty"><strong>Aún no hay suficientes clientes para agrupar.</strong><br>Hay ' + r.n + ' clientes con compras en este periodo y se necesitan al menos ' + UMBRAL_MIN + '. Agrupar con menos daría grupos de casualidad. ' + (r.n ? 'Abajo está el perfil de cada uno.' : '') + '</div>' + (r.n ? tablaPerfiles() : '');
+      return;
+    }
+    if (r.estado === 'sin_variacion') {
+      $('cl-res').innerHTML = '<div class="mk-empty"><strong>Las variables elegidas tienen el mismo valor para todos.</strong><br>Elige otras para que haya algo que distinguir.</div>';
+      return;
+    }
+    $('cl-res').innerHTML = heroHTML(r) + avisosHTML(r) +
+      '<div class="cl-dos">' + mapaHTML(r) + kHTML(r) + '</div>' + gruposHTML(r) + tablaHTML(r) + comoHTML();
+    const mapa = $('cl-mapa');
+    document.querySelectorAll('[data-foco]').forEach((b) => b.addEventListener('click', () => {
+      const g = b.dataset.foco, activo = mapa.dataset.foco === g;
+      mapa.classList.toggle('foco', !activo); mapa.dataset.foco = activo ? '' : g;
+      mapa.querySelectorAll('circle').forEach((c) => c.classList.toggle('on', !activo && c.classList.contains('g' + g)));
+    }));
+    document.querySelectorAll('[data-guardar]').forEach((b) => b.addEventListener('click', () => abrirGuardar(r.grupos[Number(b.dataset.guardar)])));
+    $('cl-csv').addEventListener('click', exportar);
+  }
+
+  function tablaPerfiles() {
+    const vars = variablesUsadas.filter((c) => VAR[c].t !== 'cat');
+    return '<div class="mk-tabla-caja"><div class="cl-scroll"><table class="mk-tabla cl-tabla"><thead><tr><th>Cliente</th>' + vars.map((c) => '<th class="g">' + escaparHTML(VAR[c].l) + '</th>').join('') + '</tr></thead><tbody>' +
+      perfiles.map((p) => '<tr><td>#' + escaparHTML(String(p.cliente_ref).slice(0, 8).toUpperCase()) + '</td>' + vars.map((c) => '<td class="g">' +
+        (VAR[c].t === 'bool' ? (p[c] === null || p[c] === undefined ? '—' : (p[c] ? 'Sí' : 'No')) : formatear(VAR[c], p[c] === null || p[c] === undefined ? null : Number(p[c]))) + '</td>').join('') + '</tr>').join('') +
+      '</tbody></table></div></div>';
+  }
+
+  // ---------------- Exportar ----------------
+  function exportar() {
+    const r = resultado, cols = ['grupo', 'cliente_ref', ...variablesUsadas];
+    const esc = (v) => { const s = v === null || v === undefined ? '' : String(v); return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    const filas = perfiles.map((p, i) => [LETRA(r.labels[i]), p.cliente_ref, ...variablesUsadas.map((c) => (typeof p[c] === 'number' ? String(p[c]).replace('.', ',') : p[c]))].map(esc).join(';'));
+    const blob = new Blob(['\uFEFF' + cols.join(';') + '\n' + filas.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'analisis-cluster-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  // ---------------- Guardar como segmento ----------------
+  function abrirGuardar(g) {
+    grupoAGuardar = g;
+    $('gu-nombre').value = (LETRA(g.g) + ' · ' + g.titular).slice(0, 80);
+    $('gu-desc').value = ('Clúster de ' + new Date().toLocaleDateString('es-CO') + ' · ' + variablesUsadas.map((c) => VAR[c].l).join(', ')).slice(0, 300);
+    $('gu-res').innerHTML = '<div><b>' + g.n + '</b><span>clientes en el grupo</span></div><div><b>' + g.suscritos + '</b><span>recibirían una campaña hoy</span></div>';
+    $('gu-msg').className = 'mk-msg'; $('gu-msg').textContent = g.suscritos ? '' : 'Ninguno de estos clientes está suscrito todavía: el segmento se guarda, pero hoy no recibiría correos.';
+    $('gu-fondo').hidden = false;
+    $('gu-nombre').focus();
+  }
+  const cerrarGuardar = () => { $('gu-fondo').hidden = true; grupoAGuardar = null; };
+  $('gu-cancelar').addEventListener('click', cerrarGuardar);
+  $('gu-fondo').addEventListener('click', (e) => { if (e.target === $('gu-fondo')) cerrarGuardar(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('gu-fondo').hidden) cerrarGuardar(); });
+
+  $('gu-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const g = grupoAGuardar, r = resultado;
+    const nombre = $('gu-nombre').value.trim();
+    if (!nombre) { $('gu-msg').className = 'mk-msg err'; $('gu-msg').textContent = 'Ponle un nombre.'; return; }
+    const clientes = g.idx.map((i) => perfiles[i].cliente_ref);
+    $('gu-ok').disabled = true;
+    const { data, error } = await supabase.rpc('em_segmento_desde_cluster', {
+      p_nombre: nombre, p_descripcion: $('gu-desc').value, p_clientes: clientes,
+      p_origen: {
+        variables: variablesUsadas, k: r.k, grupo: String.fromCharCode(65 + g.g), silueta: Math.round(r.silueta * 1000) / 1000,
+        calidad: r.calidad.nivel, exploratorio: r.exploratorio, clientes_analizados: r.n,
+        periodo: $('cl-periodo').value ? 'ultimos_' + $('cl-periodo').value + '_dias' : 'todo', retrato: g.titular, rasgos: g.rasgos.map((x) => x.txt)
+      }
+    });
+    $('gu-ok').disabled = false;
+    if (error) {
+      const m = error.message || '';
+      $('gu-msg').className = 'mk-msg err';
+      $('gu-msg').textContent = m.includes('EM_SEGMENTO_DUPLICADO') ? 'Ya hay un segmento activo con ese nombre.'
+        : m.includes('EM_SIN_ACCESO') ? 'Guardar segmentos requiere los permisos de Marketing y de Email marketing.'
+        : 'No se pudo guardar: ' + m;
+      return;
+    }
+    cerrarGuardar();
+    window.location.href = '../email-marketing/segmentos.html?guardado=' + encodeURIComponent(data.id);
+  });
+
+  // ---------------- Arranque ----------------
+  $('cl-analizar').addEventListener('click', correr);
+  $('cl-periodo').addEventListener('change', () => { cargarPerfiles(); });
+
+  (async () => {
+    const acceso = await asegurarAcceso(document.body, '../../panel.html');
+    if (!acceso) return;
+    montarHeader({
+      titulo: 'Análisis de clúster',
+      kicker: 'MARKETING PROJECT · CLIENTES',
+      lead: 'Agrupa a tus clientes por cómo compran, cuánto pagan, cómo califican y desde dónde. Impulse muestra los grupos y qué tan claros son; la lectura la haces tú.',
+      sesion: acceso.sesion,
+      areaLabel: 'MARKETING PROJECT',
+      volverHref: 'index.html',
+      volverTexto: 'Marketing Project'
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+    const p = acceso.perfil || (await obtenerPerfil());
+    puedeGuardar = !!p && (p.rol === 'admin' || (Array.isArray(p.modulos) && p.modulos.includes('email_marketing')));
+    $('cl-main').hidden = false;
+    pintarVariables();
+    if (await cargarPerfiles()) await correr();
+  })();
+</script>
+
+</body>
+</html>

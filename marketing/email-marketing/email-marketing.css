@@ -456,3 +456,11 @@
   .em-modal-fondo{padding:0}
   .em-modal.em-modal-ancho{max-height:100vh;height:100%;border-radius:0}
 }
+
+/* Segmentos desde el Analisis de cluster (EM3) */
+.sg-origen{display:flex;flex-direction:column;gap:8px;background:rgba(16,28,51,.03);border-radius:10px;padding:10px 12px}
+.sg-origen-k{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mk-acento)}
+.sg-origen-k svg{width:14px;height:14px}
+.sg-origen p{margin:0;font-size:13px;color:var(--mk-carbon)}
+.sg-origen-q{font-size:11.5px;color:var(--mk-gris)}
+.sg-card.nuevo{border-color:var(--mk-marino);box-shadow:0 0 0 3px rgba(16,28,51,.12)}

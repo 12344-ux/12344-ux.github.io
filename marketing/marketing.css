@@ -369,4 +369,9 @@ body.mk-body{
      kicker de la pantalla. */
   .mk-header{padding:12px 16px}
   .mk-word + .mk-sep,.mk-area{display:none}
+  /* El boton volver con textos largos ("Marketing Project") empujaba el
+     wordmark fuera de la pantalla: se recorta con puntos suspensivos. */
+  .mk-header-left{gap:10px}
+  .mk-volver span{max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mk-word{letter-spacing:.16em;font-size:16px}
 }
