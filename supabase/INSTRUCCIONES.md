@@ -3700,3 +3700,49 @@ con los RPC reales: **34/34** (incluye CORS, 413, Resend caído, campo trampa,
 logs sin correos/IP/tokens/llaves). De punta a punta en Chromium (tienda →
 función → base → correo → enlace → confirmación), PC y celular: **42/42**.
 Panel: 18/18; EM5 66/66 y EM5.1 30/30 siguen pasando.
+
+# MT1 · Métricas (área nueva) + analítica propia de la tienda (EM7)
+
+Diseño en `docs/PLANO-METRICAS.md`.
+
+## MT1.1. Aplicar la migración (SQL Editor, una sola vez)
+
+Correr `supabase/migrations/20261016000000_metricas_m1.sql`, después de
+`20261015000000_email_marketing_em6.sql`.
+
+## MT1.2. Desplegar la Edge Function `tienda-eventos`
+
+Dashboard → Edge Functions → **Deploy a new function** → nombre exacto
+`tienda-eventos` → pegar `supabase/functions/tienda-eventos/index.ts` → Deploy.
+**Verify JWT: APAGADO.** Usa el secreto opcional `EM_IP_SAL` si existe.
+
+## MT1.3. Encender y comprobar
+
+1. Panel → **Métricas** (tarjeta nueva) → pestaña **Tienda** → «Encender
+   analítica» (exige la política registrada; con `borrador-0` sirve para probar).
+2. Abre magandhi.com en otro navegador o en modo incógnito → aparece el aviso
+   «Tú decides» → **Aceptar** → navega el home y un producto, toca «Comprar».
+3. En Métricas → **En vivo**, en menos de 30 s aparecen «Visitantes ahora» y la
+   actividad («Miró … · Tocó «Comprar»»).
+4. Repite con **Rechazar**: no aparece nada nuevo.
+5. **Ventas** muestra los pedidos registrados (no depende de la analítica).
+
+```sql
+-- Esperado: false | false | true  (nadie más que la función escribe eventos)
+select has_function_privilege('anon','mt_registrar_eventos(text,text,jsonb,text)','execute'),
+       has_function_privilege('authenticated','mt_registrar_eventos(text,text,jsonb,text)','execute'),
+       has_function_privilege('service_role','mt_registrar_eventos(text,text,jsonb,text)','execute');
+```
+
+## MT1.4. Pruebas locales hechas
+
+61 migraciones + matriz 170/170 + EM5 61/61 + EM5.1 32/32 + EM6 44/44 +
+`supabase/pruebas/local/metricas-m1.sql` **40/40**. Función `tienda-eventos`
+con RPC reales: **18/18** (lista blanca, bots, 30 por lote, 413, 600/h por IP sin
+guardarla, CORS con caché, logs sin datos). Tienda de punta a punta en Chromium,
+PC y celular: **40/40** (sin aviso si está apagada, nada antes de decidir,
+Rechazar igual de fácil y sin identificador, preferencias reabren el aviso,
+origen de campaña, producto visto, botón real «Comprar ahora», nada de URLs
+enviadas). Área Métricas con datos realistas (168 pedidos, ~5.300 eventos) en
+PC y celular: **66/66**, sin desbordes ni errores; EM5 66/66, EM5.1 30/30 y EM6
+18/18 siguen pasando.
