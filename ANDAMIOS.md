@@ -1,7 +1,7 @@
 # ANDAMIOS · próximos tramos MAGANDHI / Impulse
 
 **Corte:** 7 de octubre de 2026
-**Punto de retorno:** Tramo 0 cerrado; F1 Wompi operativo en sandbox; puesta al día preparada; Opiniones terminado y desplegado. Correos del pedido construidos y probados localmente, pendientes de despliegue; luego Wompi F2.
+**Punto de retorno (8-oct-2026):** correos del pedido en producción; bloqueo de stock aplicado; Email marketing EM1–EM4 aplicados y desplegados. **Siguiente en Email marketing: EM5** (relevo en `docs/PLANO-EMAIL-MARKETING.md` §11). Siguiente del negocio: Wompi F2.
 
 Este archivo contiene solo trabajo pendiente y criterios de cierre. Las fases terminadas y decisiones vigentes están consolidadas en `CONTEXTO-MAGANDHI.md`; el historial anterior permanece en Git.
 
@@ -16,12 +16,12 @@ Este archivo contiene solo trabajo pendiente y criterios de cierre. Las fases te
 | Campañas | ✅ Operativo | Ficha, publicación, galería, slug, vínculo y tope |
 | Ventas | ✅ Operativo | Pedidos, estados, anulación y portafolio |
 | Opiniones | ✅ Operativo | Esquema, RPC y Edge Function desplegados; panel y tienda vivos |
-| Correos del pedido (4 etapas + código de reseña) | 🟡 Código listo | Falta cuenta Resend, DNS, migración `20261008000000`, secret y función (§ CO) |
-| Email marketing EM1 (contactos y consentimiento) | 🟡 Código listo | Falta aplicar `20261009000000` (§ EM1) |
-| Email marketing EM2 (perfiles + segmentos) | 🟡 Código listo | Falta aplicar `20261010000000` (§ EM2) |
-| Email marketing EM3 (análisis de clúster) | 🟡 Código listo | Falta aplicar `20261011000000` (§ EM3) |
-| Email marketing EM4 (campañas) | 🟡 Código listo | Falta aplicar `20261012000000` y desplegar `em-campana` (§ EM4) |
-| Email marketing EM5 (resultados) | ⏭️ Siguiente | Webhook firmado de Resend, clics y ventas atribuidas |
+| Correos del pedido (4 etapas + código de reseña) | ✅ Producción | Resend `updates.magandhi.com`, probado en Gmail (Principal) |
+| Email marketing EM1 (contactos y consentimiento) | ✅ Aplicado | |
+| Email marketing EM2 (perfiles + segmentos) | ✅ Aplicado | |
+| Email marketing EM3 (análisis de clúster) | ✅ Aplicado | |
+| Email marketing EM4 (campañas) | ✅ Producción | `em-campana` desplegada; envío probado por el dueño |
+| Email marketing EM5 (resultados) | ⏭️ Siguiente | Relevo detallado en `docs/PLANO-EMAIL-MARKETING.md` §11.2 |
 | Email marketing EM6–EM7 (captura pública y analítica) | ⏸️ Después | Requieren la política de tratamiento de datos |
 | Tramo 0 | ✅ Verificado | Matriz 170/170 y anon bloqueado en superficies internas |
 | Wompi F1 | ✅ Sandbox | Intención firmada y checkout cargando |

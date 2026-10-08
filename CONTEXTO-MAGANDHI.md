@@ -76,7 +76,7 @@ Pendiente real: cierre anual cuando cambie el ejercicio fiscal y pulido de expor
 - Ranking por unidades o ingreso, distinguiendo fuente real/mixta/estimada.
 - Análisis de clúster operativo (EM3). Elasticidad sigue como roadmap.
 
-### Email marketing — EM1 a EM4 (en construcción por tramos)
+### Email marketing — EM1 a EM4 en producción · siguiente EM5
 
 Marketing → Email marketing. Diseño completo en `docs/PLANO-EMAIL-MARKETING.md`.
 
@@ -105,7 +105,7 @@ Verificación de compra sin inicio de sesión: cada pedido lleva un código de r
 
 Coherencia del promedio, decisión del dueño: se muestra el promedio real a un decimal **siempre acompañado del total**. No se usa media bayesiana ni suavizado, porque rompería la coherencia con las tarjetas visibles.
 
-Entrega del código: va en el correo de «Entregado» (tramo de correos, código listo). Hasta desplegarlo, el código se comparte a mano desde el back-office.
+Entrega del código: va en el correo de «Entregado», ya en producción. Opiniones reales habilitadas.
 
 ### Ventas — operativo
 
@@ -118,7 +118,7 @@ Entrega del código: va en el correo de «Entregado» (tramo de correos, código
 
 - Correos del pedido: un correo por etapa, enviado a mano desde el detalle en Seguimiento. El de «Entregado» lleva el código de reseña. Proveedor: Resend, subdominio `updates.magandhi.com`. Los textos viven en `correo_plantillas` y se cambian con un SQL que entrega Kiro (el editor `ventas/correos/` se retiró en EM1). Diseño en `docs/PLANO-CORREO.md`.
 
-Pendiente real: entrada automática desde Wompi F2. Desplegar el tramo de correos (cuenta Resend, DNS, migración `20261008000000`, secret y función `enviar-correo-pedido`).
+Pendiente real: entrada automática desde Wompi F2 (y con ella, el primer correo del pedido automático). Los correos del pedido ya están en producción.
 
 ## 3. Supabase: estado acumulativo
 
@@ -235,7 +235,7 @@ Debe incorporar:
 
 ## 9. Próximo orden de trabajo
 
-1. Desplegar los correos del pedido (§ CO de `supabase/INSTRUCCIONES.md`). Es lo único que falta para que entren opiniones reales. Después: política de tratamiento de datos → captura de consentimiento «Novedades» → software de email marketing.
+1. Email marketing **EM5** (resultados de campañas): relevo completo en `docs/PLANO-EMAIL-MARKETING.md` §11. Correos del pedido y EM1–EM4 ya están en producción.
 2. Aplicar y verificar la migración `20261002000000`.
 3. Redesplegar y verificar `crear-intencion-pago`.
 4. Construir Wompi F2 en sandbox.

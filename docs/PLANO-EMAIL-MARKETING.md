@@ -1,6 +1,6 @@
 # PLANO · Email marketing + Análisis de clúster + Analítica propia
 
-**Corte:** 8 de octubre de 2026 · **Estado:** propuesta para aprobación del dueño. No hay código todavía.
+**Corte:** 8 de octubre de 2026 · **Estado:** aprobado por el dueño. EM1–EM4 construidos y mergeados; **siguiente: EM5**. Ver §11 (estado real y relevo).
 **Piezas relacionadas:** `docs/PLANO-CORREO.md` (correos del pedido, ya en producción), `docs/PLANO-OPINIONES.md`, `docs/PLANO-VENTAS.md`.
 
 ---
@@ -272,10 +272,69 @@ Eventos mínimos: `pagina_vista`, `producto_visto`, `clic_comprar`, `checkout_in
 
 ---
 
-## 10. Decisiones que el dueño debe confirmar
+## 10. Decisiones del dueño (cerradas)
 
-1. **Módulo propio `email_marketing`** separado del de Marketing (recomendado por PII y D3).
-2. **Ventana de atribución manual de 7 días** tras un clic (ajustable).
-3. **Umbrales del clúster:** exploratorio con menos de 30 clientes, no agrupa con menos de 10, sin estructura con silueta menor a 0,25.
-4. **Temas de preferencia iniciales:** «Novedades» y «Ofertas», o uno solo.
-5. ¿Agregar el campo opcional **«hora de la venta»** en Registrar pedido?
+1. ✅ Módulo propio `email_marketing` (PII; el de Marketing no basta).
+2. ✅ Ventana de atribución manual: **7 días** tras un clic.
+3. ✅ Umbrales del clúster: < 10 no agrupa, < 30 exploratorio, silueta < 0,25 sin estructura.
+4. ✅ Temas: **Novedades** y **Ofertas**.
+5. ⏸️ Campo «hora de la venta» en Registrar pedido: sin decidir (no bloquea nada).
+6. ✅ Captura automática en la tienda (EM6): casilla **desmarcada y siempre visible** (nunca mostrarla u ocultarla según el correo: revelaría quién está suscrito), separada de la compra, con **doble confirmación** por correo. Se activa con la política publicada y, para la casilla del checkout, con Wompi F2.
+7. ✅ El panel «Correos al cliente» se retiró: los textos de los correos del pedido se cambian con un SQL que entrega Kiro.
+
+
+---
+
+## 11. Estado real y relevo para la próxima sesión (8-oct-2026)
+
+### 11.1 Qué está construido (todo mergeado en `main`)
+
+| Tramo | Migración | Piezas | Estado en producción |
+|---|---|---|---|
+| Correos del pedido | `20261008000000` | Edge Function `enviar-correo-pedido`, bloque en Seguimiento | ✅ Desplegado y probado (Gmail → Principal) |
+| Bloqueo de stock | `20261008000100` | `crear_pedido` + `ventas_stock_disponible` | ✅ Aplicado |
+| EM1 Contactos | `20261009000000` | Resumen, Contactos, Correos de seguimiento | ✅ Aplicado |
+| EM2 Perfiles + segmentos | `20261010000000` | `mk_perfiles_clientes`, Segmentos | ✅ Aplicado |
+| EM3 Clúster | `20261011000000` | `marketing-project/analisis-cluster.html` + `cluster-core.js` | ✅ Aplicado |
+| EM4 Campañas | `20261012000000` | Edge Function `em-campana`, `campanas.html` | ✅ Aplicado y desplegado; el dueño probó un envío con éxito |
+
+Resend: `updates.magandhi.com` (pedidos, **sin rastreo a propósito**: el botón de reseña lleva el código) y `news.magandhi.com` (campañas, rastreo de clics/aperturas vía `links.news`), ambos verificados, región São Paulo, TLS oportunista. Secrets en Supabase: `RESEND_API_KEY` (Sending access, solo pedidos) y `RESEND_MARKETING_API_KEY` (Full access, solo funciones `em-*`). DMARC `p=none` en la raíz cubre ambos.
+
+**Pendiente de verificar con el dueño:** si registró la política solo para probar el envío sin tenerla publicada en magandhi.com, volverla a pendiente:
+`update em_config set politica_publicada = false where id;`
+
+### 11.2 EM5 · Resultados — qué hay que construir
+
+Objetivo: por campaña, embudo **enviados → entregados → clics → pedidos y valor atribuidos**, más rebotes, quejas y bajas; supresión automática; y la sección de resultados en `campanas.html` (hoy dice «llegan en el siguiente tramo»).
+
+Lo que ya existe y EM5 debe usar:
+- `em_campana_destinatarios` (audiencia congelada por campaña, con `contacto_id`, `customer_id`, `resend_contact_id`).
+- `em_campanas.utm_campaign` (único) y `resend_broadcast_id`; los enlaces a magandhi.com ya salen con `utm_source=email&utm_medium=email&utm_campaign=<utm>`.
+- `em_contactos.estado` admite `rebotado` y `queja`; `em_consentimiento_bitacora.accion` admite `rebote` y `queja`.
+- El Resumen (`em_resumen`) ya pinta estados; agregar salud de la lista (rebotes < 4 %, spam < 0,08 %, límites de Resend).
+
+Diseño acordado (§3.5 y §6):
+1. **Tabla `em_eventos`**: `resend_event_id` único (idempotencia), `tipo` (`entregado`, `rebote`, `queja`, `apertura`, `clic`, `baja`, `retrasado`), `campana_id`, `contacto_id`, `enlace`, `cuando`, `payload` mínimo (sin el HTML).
+2. **Edge Function `em-webhook`** (pública, sin sesión): verificar firma **Svix** con el secreto `whsec_…` (headers `svix-id`, `svix-timestamp`, `svix-signature`; rechazar timestamps de más de 5 min); escribir por un RPC security definer **solo ejecutable por service_role** o validando la firma dentro de la función. El plan gratis tiene **1 endpoint de webhook**: este mismo atiende también los eventos de `updates` (correos del pedido → `correo_envios`, p. ej. marcar rebotes). Distinguir por el dominio del `from` o por los `tags` (`tipo=pedido|prueba`).
+3. **Supresión**: rebote permanente → contacto `rebotado`; queja → `queja`; baja (`contact.updated` con `unsubscribed=true`) → `baja`; todo con bitácora (`actor` null = automático). Nunca volver a `suscrito` desde un webhook.
+4. **Atribución** (vista o RPC `em_campana_resultados`): pedido **web** con `utm_campaign` = exacta (requiere que Wompi F2 guarde el UTM en la intención/pedido; hasta entonces, columna lista y vacía); pedido **manual** del mismo `customer_id` en los **7 días** siguientes a un **clic** suyo = «atribuido (aproximado)». Pedidos anulados no cuentan.
+5. **UI**: tarjeta de resultados en la campaña enviada (embudo, enlaces más clicados, bajas, rebotes, ventas atribuidas separando exactas/aproximadas) y columna de resultados en la lista. **Aperturas siempre rotuladas como aproximadas.**
+6. **Runbook para el dueño**: Resend → Webhooks → Add endpoint → URL de `em-webhook` → eventos `email.*` y `contact.updated` → copiar el *signing secret* a Supabase Secrets como `RESEND_WEBHOOK_SECRET` (nunca al chat). La función se despliega con **Verify JWT APAGADO** (Resend no envía JWT; la firma Svix es el candado).
+
+Antes de codificar, **verificar en la documentación vigente de Resend** los nombres exactos de eventos y del payload (`https://resend.com/docs/llms.txt` → sección Webhooks), como se hizo en EM4.
+
+### 11.3 Endpoints de Resend ya verificados (EM4)
+
+- `POST /contacts` `{email, first_name, unsubscribed, segments:[{id}]}` · `GET /contacts/{id|email}` · `PATCH /contacts/{id|email}`.
+- `POST /contacts/{contact_id}/segments/{segment_id}` · `POST /segments {name}`.
+- `POST /broadcasts {segment_id, from, subject, html, text, reply_to, name, topic_id?, send, scheduled_at?}` · `POST /broadcasts/{id}/cancel`.
+- Marcadores en el HTML: `{{{RESEND_UNSUBSCRIBE_URL}}}` y `{{{contact.first_name|alternativa}}}`.
+- Límite: 10 peticiones/s por equipo (la función pausa 220 ms y reintenta en 429).
+
+### 11.4 Cómo se probó cada tramo (repetir el método en EM5)
+
+PostgreSQL 15 local con `supabase/pruebas/local/supabase-simulado.sql` + todas las migraciones + matriz de permisos (171/171) + pruebas SQL por tramo; Edge Functions con `deno check` y un simulador local de Supabase/Resend; interfaz en Chromium headless (PC 1280 y celular 390) con Supabase simulado, comprobando DOM, desbordes y errores de JS. Capturas solo de 1280×900 o menores. En EM5, simular además la firma Svix (válida, inválida, vencida y evento repetido).
+
+### 11.5 Después de EM5
+
+EM6 (captura pública + doble confirmación) cuando la política esté publicada; EM7 (analítica propia con consentimiento de cookies) con la sección de cookies en la política; D3 antes de delegar accesos; **Wompi F2** sigue siendo el siguiente gran tramo del negocio.
