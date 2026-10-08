@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
-<link rel="stylesheet" href="email-marketing.css?v=3">
+<link rel="stylesheet" href="email-marketing.css?v=5">
 
 <!--
   MAGANDHI · Marketing · EMAIL MARKETING · RESUMEN (tramo EM1).
@@ -38,19 +38,45 @@
 <script type="module">
   import {
     supabase, ICONOS, escaparHTML, formatearNumero, asegurarAccesoEM, montarArea,
-    ESTADOS, FUENTES, formatearFecha, fechaRelativa
+    ESTADOS, FUENTES, formatearFecha, fechaRelativa, mensajeError
   } from './em-core.js';
 
   const $ = (id) => document.getElementById(id);
   const n = (x) => Number(x) || 0;
 
+  let esAdmin = false;
   function avisoPolitica(cfg) {
     if (cfg && cfg.politica_publicada) {
-      return '<div class="em-aviso ok">' + ICONOS.escudo + '<div><strong>Política de tratamiento de datos publicada</strong>' +
-        '<p>Versión vigente: ' + escaparHTML(cfg.politica_version) + '. Las nuevas autorizaciones quedan registradas bajo esta versión.</p></div></div>';
+      return '<div class="em-aviso ok">' + ICONOS.escudo + '<div><strong>Política de tratamiento de datos publicada · versión ' + escaparHTML(cfg.politica_version) + '</strong>' +
+        '<p>Las campañas están habilitadas y cada nueva autorización queda registrada bajo esta versión.' +
+        (cfg.politica_url ? ' <a href="' + escaparHTML(cfg.politica_url) + '" target="_blank" rel="noopener">Ver la política</a>.' : '') + '</p>' +
+        (esAdmin ? '<button class="em-btn-sec" type="button" id="pol-abrir">Registrar una nueva versión</button>' + formPolitica(cfg) : '') + '</div></div>';
     }
     return '<div class="em-aviso">' + ICONOS.escudo + '<div><strong>Política de tratamiento de datos: pendiente</strong>' +
-      '<p>Ya puedes registrar contactos que te autoricen, siempre con su evidencia. El formulario público de la tienda sigue apagado y las campañas se habilitarán cuando la política esté publicada en magandhi.com.</p></div></div>';
+      '<p>Ya puedes registrar contactos que te autoricen, siempre con su evidencia, y preparar campañas con pruebas a tu correo. El envío a tus contactos y el formulario de la tienda se habilitan cuando la política esté publicada en magandhi.com.</p>' +
+      (esAdmin ? '<button class="em-btn-sec" type="button" id="pol-abrir">Ya la publiqué: registrarla</button>' + formPolitica(cfg) : '') + '</div></div>';
+  }
+  function formPolitica(cfg) {
+    return '<form class="em-politica-form" id="pol-form" hidden novalidate>' +
+      '<div class="em-fila2"><label class="em-campo"><span>Dirección de la política</span><input class="mk-input" id="pol-url" placeholder="https://magandhi.com/politica-de-datos" value="' + escaparHTML((cfg && cfg.politica_url) || '') + '"></label>' +
+      '<label class="em-campo"><span>Versión</span><input class="mk-input" id="pol-ver" maxlength="40" placeholder="1.0"></label></div>' +
+      '<label class="em-confirmo"><input type="checkbox" id="pol-ok"><span>Confirmo que esta política ya está <strong>publicada y visible</strong> en esa dirección.</span></label>' +
+      '<p class="em-msg" id="pol-msg" hidden></p>' +
+      '<div class="em-form-acciones" style="justify-content:flex-start"><button class="mk-btn" type="submit">Registrar política</button></div></form>';
+  }
+  function cablearPolitica() {
+    const ab = document.getElementById('pol-abrir'), f = document.getElementById('pol-form');
+    if (!ab || !f) return;
+    ab.addEventListener('click', () => { f.hidden = !f.hidden; if (!f.hidden) document.getElementById('pol-url').focus(); });
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const m = document.getElementById('pol-msg');
+      const show = (t, c) => { m.hidden = false; m.textContent = t; m.className = 'em-msg' + (c ? ' ' + c : ''); };
+      if (!document.getElementById('pol-ok').checked) { show('Marca la confirmación.', 'err'); return; }
+      const { error } = await supabase.rpc('em_config_politica', { p_publicada: true, p_url: document.getElementById('pol-url').value.trim(), p_version: document.getElementById('pol-ver').value.trim() });
+      if (error) { show(mensajeError(error), 'err'); return; }
+      location.reload();
+    });
   }
 
   function graficoSemanas(semanas) {
@@ -89,6 +115,7 @@
 
   function pintar(r) {
     $('em-aviso').innerHTML = avisoPolitica(r.config);
+    cablearPolitica();
     const pe = r.por_estado || {};
     const suscritos = n(pe.suscrito);
     const total = n(r.total);
@@ -175,6 +202,7 @@
   (async () => {
     const acceso = await asegurarAccesoEM(document.body, '../index.html');
     if (!acceso) return;
+    esAdmin = acceso.perfil && acceso.perfil.rol === 'admin';
     montarArea({
       activa: 'resumen',
       titulo: 'Email marketing',

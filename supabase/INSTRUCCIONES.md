@@ -3412,3 +3412,64 @@ homogéneos, faltantes, silueta de manual). 56 migraciones + matriz 171/171 + 13
 comprobaciones SQL de EM3 (snapshot, ids falsos descartados, duplicados,
 congelado, doble permiso, anon). Interfaz en Chromium PC y celular: 46
 comprobaciones; las de EM1 y EM2 siguen pasando.
+
+# EM4 · Email marketing: campañas
+
+## EM4.1. Aplicar (SQL Editor, una sola vez)
+
+Correr `supabase/migrations/20261012000000_email_marketing_em4.sql`, después de
+`20261011000000_email_marketing_em3.sql`.
+
+## EM4.2. Resend (ya hecho)
+
+- Dominio `news.magandhi.com` verificado, con rastreo de clics y aperturas
+  (subdominio `links.news`).
+- Secret `RESEND_MARKETING_API_KEY` (Full access) en Supabase. La llave de los
+  correos del pedido (`RESEND_API_KEY`) sigue limitada y no se toca.
+- Opcional: `CORREO_MARKETING_REMITENTE` (por defecto
+  `MAGANDHI <novedades@news.magandhi.com>`).
+
+## EM4.3. Desplegar la Edge Function `em-campana`
+
+Dashboard → Edge Functions → **Deploy a new function** → nombre exacto
+`em-campana` → pegar `supabase/functions/em-campana/index.ts` → Deploy.
+**Verify JWT encendido.** No usa service_role: llama a los RPC con la sesión.
+
+## EM4.4. Flujo
+
+1. Email marketing → **Campañas** → «Nueva campaña».
+2. Bloques: título, texto, imagen, producto destacado (de Campañas), botón
+   (uno solo) y separador. Vista previa en computador y celular, generada por la
+   misma función que envía.
+3. «Enviarme una prueba» → llega a tu correo de login con la franja «PRUEBA».
+4. «Revisar y enviar»: muestra el número exacto de destinatarios
+   (segmento ∩ suscritos ∩ tema). **El envío real queda bloqueado hasta
+   registrar la política** (Resumen → «Ya la publiqué: registrarla», solo admin).
+5. Al confirmar: se congela la audiencia → se preparan los contactos en Resend
+   por tandas (barra de progreso) → se crea y envía/programa el Broadcast. Si
+   algo se interrumpe, «Continuar envío» lo retoma sin duplicar.
+6. Cancelar: borrador, en preparación o programada (también la cancela en Resend).
+
+Quien se dio de baja desde un correo de Resend se detecta al preparar el envío:
+se excluye y queda de baja también en tu lista, con bitácora.
+
+## EM4.5. Evidencia
+
+1. Prueba a tu correo de una campaña con producto destacado: revisar carpeta
+   (Principal/Promociones/Spam) y que el enlace «Dejar de recibir» aparezca.
+2. Con la política aún pendiente: «Revisar y enviar» muestra el bloqueo.
+3. Tras registrar la política: enviar una campaña a un segmento de prueba que
+   solo te contenga a ti (crea un contacto con tu correo y un segmento por
+   condición «Ciudad es …» o por tema). Verificar en Resend → Broadcasts.
+
+## EM4.6. Pruebas locales hechas
+
+57 migraciones + matriz 171/171 + 32 comprobaciones SQL de EM4 (validación de
+bloques y enlaces, un solo botón, audiencia por tema, bloqueo por política,
+N cambiado, programación fuera de rango, congelado, baja en Resend respetada,
+doble envío imposible, reintento tras fallo, cancelación de programada,
+permisos y anon). Función `em-campana` contra un simulador de Supabase/Resend
+(vista, prueba, confirmar, sincronizar con contacto nuevo/existente/dado de
+baja, enviar, programar, cancelar; marcador de baja, saludo personalizado, UTM,
+HTML escapado, ningún secreto en logs). Interfaz en Chromium PC y celular: 50
+comprobaciones; EM1–EM3 siguen pasando.

@@ -72,7 +72,7 @@ const TABS = [
   { id: 'resumen', txt: 'Resumen', href: 'index.html', ico: 'panel' },
   { id: 'contactos', txt: 'Contactos', href: 'contactos.html', ico: 'usuarios' },
   { id: 'segmentos', txt: 'Segmentos', href: 'segmentos.html', ico: 'capas' },
-  { id: 'campanas', txt: 'Campañas', ico: 'enviar', pronto: true },
+  { id: 'campanas', txt: 'Campañas', href: 'campanas.html', ico: 'enviar' },
   { id: 'seguimiento', txt: 'Correos de seguimiento', href: 'seguimiento.html', ico: 'historial', menor: true }
 ];
 
@@ -197,7 +197,12 @@ export function mensajeError(err) {
     ['EM_SEGMENTO_NOMBRE', 'Ponle un nombre al segmento.'],
     ['EM_SEGMENTO_SIN_REGLAS', 'Agrega al menos una condición.'],
     ['EM_SEGMENTO_DUPLICADO', 'Ya hay un segmento activo con ese nombre.'],
-    ['EM_SEGMENTO_NO_EXISTE', 'El segmento no existe.']
+    ['EM_SEGMENTO_NO_EXISTE', 'El segmento no existe.'],
+    ['EM_CAMPANA_NOMBRE', 'Ponle un nombre interno a la campaña.'],
+    ['EM_CAMPANA_NO_EDITABLE', 'Esta campaña ya no es un borrador.'],
+    ['EM_CAMPANA_NO_EXISTE', 'La campaña no existe.'],
+    ['EM_POLITICA_URL', 'La dirección de la política debe estar en https://magandhi.com/…'],
+    ['EM_POLITICA_VERSION', 'Escribe la versión de la política (por ejemplo, 1.0).']
   ];
   for (const [k, t] of tabla) if (m.includes(k)) return t;
   return 'No se pudo completar: ' + m;
