@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../marca.css?v=2">
-<link rel="stylesheet" href="ventas.css?v=1">
+<link rel="stylesheet" href="ventas.css?v=3">
 
 <!--
   MAGANDHI · Area de Ventas · HOME del area (carpeta).
@@ -30,6 +30,10 @@
 <script type="module" src="../auth-guard.js"></script>
 
 <main class="vt-wrap" id="vt-main" hidden>
+  <!-- Pagos web que requieren revision (Wompi F2). Solo se pinta si hay
+       alguno: un aviso que aparece siempre deja de ser un aviso. -->
+  <div id="vt-revisiones"></div>
+
   <div class="vt-cards">
     <a class="vt-card" href="seguimiento-pedidos/index.html">
       <span class="vt-card-ico" data-ico="recibo"></span>
@@ -54,7 +58,83 @@
 </main>
 
 <script type="module">
-  import { asegurarAcceso, montarHeader, ICONOS } from './ventas-core.js';
+  import { asegurarAcceso, montarHeader, ICONOS, supabase, escaparHTML, formatearCOP, formatearMomento } from './ventas-core.js';
+
+  // --------------------------------------------------------------------------
+  // PAGOS WEB QUE REQUIEREN REVISION (Wompi F2)
+  // --------------------------------------------------------------------------
+  // Un pago APROBADO que no se pudo convertir en pedido. Por decision del
+  // dueno no se crea un pedido imposible: se avisa aqui, con los datos de
+  // contacto, para resolverlo a mano (reponer el stock o devolver el dinero).
+  // Cerrarlo EXIGE una nota: queda constancia de que se hizo, nada se borra.
+  // Si la migracion de F2 aun no esta aplicada, el bloque simplemente no se
+  // pinta (no se le grita al usuario por un tramo que no esta desplegado).
+  // --------------------------------------------------------------------------
+  const MOTIVO = (m) => {
+    const t = String(m || '');
+    if (/STOCK_INSUFICIENTE|existencias/i.test(t)) return 'El pago entró pero ya no había unidades disponibles.';
+    if (/no coincide/i.test(t)) return 'El monto que informó Wompi no coincide con el que se firmó.';
+    if (/producto de Inventario ligado/i.test(t)) return 'La campaña no tiene un producto de Inventario ligado.';
+    return t || 'No se pudo convertir el pago en pedido.';
+  };
+
+  async function pintarRevisiones() {
+    const caja = document.getElementById('vt-revisiones');
+    const { data, error } = await supabase.rpc('pw_revisiones');
+    if (error || !data || !Number(data.pendientes)) { caja.innerHTML = ''; return; }
+
+    const n = Number(data.pendientes);
+    caja.innerHTML =
+      '<section class="vt-revisiones" role="region" aria-label="Pagos que requieren revisión">' +
+        '<div class="vt-rev-cab">' + (ICONOS.alerta || ICONOS.recibo || '') +
+          '<div><h2 class="vt-rev-tit">' + n + (n === 1 ? ' pago recibido sin pedido' : ' pagos recibidos sin pedido') + '</h2>' +
+          '<p class="vt-rev-sub">El cliente pagó y el pago fue aprobado, pero no se pudo crear el pedido. ' +
+          'Resuélvelo con el cliente (repón el producto y entrégalo, o devuelve el dinero) y déjalo anotado aquí.</p></div></div>' +
+        '<ul class="vt-rev-lista">' + data.lista.map((x) => {
+          const ref = escaparHTML(x.referencia);
+          const contacto = [
+            x.comprador ? '<span><b>' + escaparHTML(x.comprador) + '</b></span>' : '',
+            x.correo ? '<span>' + escaparHTML(x.correo) + '</span>' : '',
+            x.telefono ? '<span>' + escaparHTML(x.telefono) + '</span>' : '',
+            x.metodo_pago ? '<span>pagó con ' + escaparHTML(x.metodo_pago) + '</span>' : '',
+          ].filter(Boolean).join('');
+          return '<li class="vt-rev-item" data-ref="' + ref + '">' +
+            '<div class="vt-rev-dato">' +
+              '<span class="vt-rev-prod">' + escaparHTML(x.nombre || x.slug || 'Producto') + '</span>' +
+              ' · <span class="vt-rev-monto">$' + formatearCOP(Math.round(Number(x.monto_centavos || 0) / 100)) + '</span>' +
+              '<p class="vt-rev-motivo">' + escaparHTML(MOTIVO(x.motivo)) + '</p>' +
+              (contacto ? '<p class="vt-rev-contacto">' + contacto + '</p>' : '') +
+              '<p class="vt-rev-ref">Referencia ' + ref + ' · ' + escaparHTML(formatearMomento(x.actualizado || x.creado)) + '</p>' +
+            '</div>' +
+            '<div class="vt-rev-acc">' +
+              '<label class="sr-only" for="nota-' + ref + '">Qué hiciste para resolverlo</label>' +
+              '<textarea class="vt-rev-nota" id="nota-' + ref + '" maxlength="300" ' +
+                'placeholder="¿Qué hiciste? Ej.: devolví el dinero por Nequi"></textarea>' +
+              '<button class="vt-rev-btn" type="button" data-resolver="' + ref + '">Marcar como resuelto</button>' +
+              '<p class="vt-rev-msg" data-msg="' + ref + '"></p>' +
+            '</div></li>';
+        }).join('') + '</ul></section>';
+
+    caja.querySelectorAll('[data-resolver]').forEach((b) => {
+      b.addEventListener('click', async () => {
+        const ref = b.dataset.resolver;
+        const nota = caja.querySelector('#nota-' + CSS.escape(ref)).value.trim();
+        const msg = caja.querySelector('[data-msg="' + ref + '"]');
+        if (!nota) { msg.className = 'vt-rev-msg err'; msg.textContent = 'Escribe qué hiciste para resolverlo.'; return; }
+        b.disabled = true; msg.className = 'vt-rev-msg'; msg.textContent = 'Guardando…';
+        const { error: e2 } = await supabase.rpc('pw_resolver_revision', { p_referencia: ref, p_nota: nota });
+        if (e2) {
+          b.disabled = false; msg.className = 'vt-rev-msg err';
+          msg.textContent = /PW_NOTA_OBLIGATORIA/.test(e2.message) ? 'Escribe qué hiciste para resolverlo.'
+            : /PW_SIN_ACCESO/.test(e2.message) ? 'Tu usuario no puede resolver pagos.'
+            : 'No se pudo guardar: ' + e2.message;
+          return;
+        }
+        msg.className = 'vt-rev-msg ok'; msg.textContent = 'Resuelto.';
+        await pintarRevisiones();
+      });
+    });
+  }
 
   (async () => {
     const main = document.getElementById('vt-main');
@@ -76,6 +156,8 @@
     });
 
     main.hidden = false;
+    // Al final: el aviso de pagos sin pedido no debe retrasar el area.
+    try { await pintarRevisiones(); } catch (_) { /* tramo F2 sin aplicar: sin aviso */ }
   })();
 </script>
 
