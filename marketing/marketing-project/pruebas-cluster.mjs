@@ -3,7 +3,7 @@
 //   node marketing/marketing-project/pruebas-cluster.mjs
 // ============================================================
 import {
-  analizar, kmeans, silueta, prepararMatriz, prng, cobertura, UMBRAL_MIN, UMBRAL_EXPLORATORIO
+  analizar, kmeans, silueta, prepararMatriz, prng, cobertura, VAR, UMBRAL_MIN, UMBRAL_EXPLORATORIO
 } from './cluster-core.js';
 
 let fallos = 0;
@@ -69,6 +69,19 @@ ok('datos faltantes se imputan sin romper', rf.estado === 'ok' && rf.labels.ever
 const Xs = [[0, 0], [0, 1], [10, 10], [10, 11]];
 ok('silueta de manual (≈0,93)', Math.abs(silueta(Xs, [0, 0, 1, 1], 2) - 0.929) < 0.01);
 ok('k-means separa el caso de manual', (() => { const k = kmeans(Xs, 2); return k.labels[0] === k.labels[1] && k.labels[2] === k.labels[3] && k.labels[0] !== k.labels[2]; })());
+
+// EM5.1: respuesta a email. Dos grupos claros: responden (muchos clics) y no responden.
+const em = Array.from({ length: 40 }, (_, i) => {
+  const resp = i < 20;
+  return { cliente_ref: 'e' + i, email_campanas_recibidas: 6, email_pct_clic: resp ? 60 + (i % 5) : (i % 3),
+           email_clics_90d: resp ? 5 + (i % 4) : 0, email_dias_desde_ultimo_clic: resp ? 3 + (i % 5) : null };
+});
+const re = analizar(em, ['email_pct_clic', 'email_clics_90d']);
+ok('email: separa a quienes responden de quienes no (k=2)', re.estado === 'ok' && re.k === 2 &&
+   re.labels.slice(0, 20).every((l) => l === re.labels[0]) && re.labels.slice(20).every((l) => l === re.labels[20]) && re.labels[0] !== re.labels[20]);
+ok('email: catálogo trae las 5 variables nuevas', ['email_campanas_recibidas', 'email_pct_clic', 'email_clics_90d', 'email_dias_desde_ultimo_clic', 'email_compras_atribuidas'].every((c) => VAR[c] && VAR[c].g === 'Respuesta a email'));
+ok('email: NULL cuenta como falta de dato (cobertura 50 %)', Math.abs(cobertura(em, 'email_dias_desde_ultimo_clic') - 0.5) < 1e-9);
+ok('email: retrato en palabras', re.grupos.some((g) => (g.rasgos || []).some((x) => /hacen clic en más campañas/.test(x.txt))) && re.grupos.some((g) => (g.rasgos || []).some((x) => /casi no hacen clic/.test(x.txt))));
 
 console.log(fallos ? '\n' + fallos + ' FALLOS' : '\nTODO OK');
 process.exit(fallos ? 1 : 0);

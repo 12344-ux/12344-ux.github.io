@@ -89,7 +89,7 @@
 <script type="module">
   import {
     supabase, ICONOS, escaparHTML, formatearNumero, asegurarAccesoEM, montarArea,
-    badgeEstado, fechaRelativa, mensajeError
+    badgeEstado, fechaRelativa, formatearFecha, mensajeError
   } from './em-core.js';
 
   const $ = (id) => document.getElementById(id);
@@ -130,8 +130,21 @@
     { g: 'Momento', c: 'dia_moda', t: 'txt', l: 'Día en el que más compra', o: () => DIAS, nul: 1 },
     { g: 'Lista', c: 'tema', t: 'arr', l: 'Tema', op: { incluye: 'está suscrito a', no_incluye: 'no está suscrito a' }, o: () => opciones.temas.map((x) => [x.codigo, x.nombre]) },
     { g: 'Lista', c: 'fuente', t: 'txt', l: 'Llegó por', o: () => FUENTES },
-    { g: 'Lista', c: 'dias_en_lista', t: 'num', l: 'Días en la lista', u: 'días' }
+    { g: 'Lista', c: 'dias_en_lista', t: 'num', l: 'Días en la lista', u: 'días' },
+    // EM5.1 · Respuesta a email. Solo clics y compras: las aperturas son aproximadas y no se usan para decidir.
+    { g: 'Respuesta a email', c: 'clico_campana', t: 'arr', l: 'Campaña', op: { incluye: 'hizo clic en', no_incluye: 'no hizo clic en' }, o: opcionesCampanas, vacio: 'Aún no has enviado campañas' },
+    { g: 'Respuesta a email', c: 'recibio_campana', t: 'arr', l: 'Campaña recibida', op: { incluye: 'recibió', no_incluye: 'no recibió' }, o: opcionesCampanas, vacio: 'Aún no has enviado campañas' },
+    { g: 'Respuesta a email', c: 'clics_90d', t: 'num', l: 'Clics en los últimos 90 días' },
+    { g: 'Respuesta a email', c: 'dias_desde_ultimo_clic', t: 'num', l: 'Días desde su último clic', u: 'días', nul: 1 },
+    { g: 'Respuesta a email', c: 'campanas_seguidas_sin_clic', t: 'num', l: 'Campañas seguidas sin hacer clic' },
+    { g: 'Respuesta a email', c: 'pct_campanas_clic', t: 'num', l: '% de campañas en las que hizo clic', u: '%', nul: 1 },
+    { g: 'Respuesta a email', c: 'campanas_con_clic', t: 'num', l: 'Campañas en las que hizo clic' },
+    { g: 'Respuesta a email', c: 'campanas_recibidas', t: 'num', l: 'Campañas recibidas' },
+    { g: 'Respuesta a email', c: 'compras_por_email', t: 'num', l: 'Compras atribuidas a correos' }
   ];
+  function opcionesCampanas() {
+    return (opciones.campanas || []).map((x) => [x.id, x.nombre + (x.fecha ? ' · ' + formatearFecha(x.fecha) : '')]);
+  }
   const CAMPO = Object.fromEntries(CAMPOS.map((f) => [f.c, f]));
   const OPS = {
     num: [['gte', 'mayor o igual a'], ['gt', 'mayor que'], ['lte', 'menor o igual a'], ['lt', 'menor que'], ['eq', 'igual a'], ['ne', 'distinto de'], ['entre', 'entre'], ['tiene', 'tiene el dato'], ['no_tiene', 'no tiene el dato']],
@@ -147,7 +160,9 @@
     { n: 'Calificaron con 4 o 5 estrellas', d: 'Clientes satisfechos.', r: [{ campo: 'estrellas_prom', op: 'gte', valor: '4' }] },
     { n: 'Suscritos que aún no compran', d: 'Interesados por convertir.', r: [{ campo: 'es_cliente', op: 'es', valor: 'false' }] },
     { n: 'Clientes frecuentes', d: 'Tres pedidos o más.', r: [{ campo: 'num_pedidos', op: 'gte', valor: '3' }] },
-    { n: 'Compran con descuento', d: 'Sensibles al precio.', r: [{ campo: 'pct_rebajado', op: 'gt', valor: '0' }, { campo: 'tema', op: 'incluye', valor: 'ofertas' }] }
+    { n: 'Compran con descuento', d: 'Sensibles al precio.', r: [{ campo: 'pct_rebajado', op: 'gt', valor: '0' }, { campo: 'tema', op: 'incluye', valor: 'ofertas' }] },
+    { n: 'Hicieron clic y no compraron', d: 'Interesados recientes para un segundo empujón.', r: [{ campo: 'clics_90d', op: 'gte', valor: '1' }, { campo: 'compras_por_email', op: 'eq', valor: '0' }] },
+    { n: 'Llevan 4 campañas sin clic', d: 'Escríbeles menos: cuida la reputación de tus envíos.', r: [{ campo: 'campanas_seguidas_sin_clic', op: 'gte', valor: '4' }] }
   ];
 
   // ---------------- Utilidades ----------------
@@ -179,7 +194,9 @@
     precio_min: 'precio mínimo', precio_max: 'precio máximo', pct_rebajado: 'rebajas', productos_distintos: 'surtido',
     categoria_dominante: 'categoría', estrellas_prom: 'estrellas', num_opiniones: 'opiniones', pct_opinadas: '% opinado',
     dias_entrega_opinion: 'tiempo para opinar', es_local: 'Tunja', ciudad: 'ciudad', franja_moda: 'franja',
-    dia_moda: 'día', pct_web: 'canal web', suscrito: 'suscrito'
+    dia_moda: 'día', pct_web: 'canal web', suscrito: 'suscrito',
+    email_campanas_recibidas: 'campañas recibidas', email_pct_clic: '% de clic en correos', email_clics_90d: 'clics 90 días',
+    email_dias_desde_ultimo_clic: 'último clic', email_compras_atribuidas: 'compras por correo'
   };
   const CALIDAD = { clara: 'estructura clara', moderada: 'estructura moderada', debil: 'sin estructura clara' };
   function origenCluster(o) {
@@ -279,6 +296,7 @@
     }
     const ops = f.o ? f.o() : [];
     if (f.t === 'txt' && op === 'contiene') return '<input class="mk-input sg-v" value="' + escaparHTML(valor || '') + '" aria-label="Texto">';
+    if (!ops.length && f.vacio) return '<select class="mk-select sg-v" disabled aria-label="Valor"><option value="">' + escaparHTML(f.vacio) + '</option></select>';
     if (!ops.length || (f.libre && valor && !ops.some(([k]) => k.toLowerCase() === String(valor).toLowerCase()))) {
       return '<input class="mk-input sg-v" value="' + escaparHTML(valor || '') + '" placeholder="' + (ops.length ? '' : 'Aún no hay datos: escríbelo') + '" aria-label="Valor">';
     }

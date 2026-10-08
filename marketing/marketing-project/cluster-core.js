@@ -49,7 +49,14 @@ export const VARIABLES = [
   { c: 'franja_moda', g: 'Momento', l: 'Franja de compra', t: 'cat', frase: (v) => 'compran ' + (FRANJAS[v] || v), etiqueta: (v) => FRANJAS[v] ? FRANJAS[v].replace(/^(de |en la )/, '') : v },
   { c: 'dia_moda', g: 'Momento', l: 'Día de compra', t: 'cat', frase: (v) => 'compran ' + (DIAS[v] || v), etiqueta: (v) => DIAS[v] ? DIAS[v].replace(/^los /, '') : v },
   { c: 'pct_web', g: 'Canal', l: '% pedidos por la web', t: 'num', f: 'pct', alto: 'compran más por la web', bajo: 'compran más por canal manual' },
-  { c: 'suscrito', g: 'Lista', l: 'Suscrito a correos', t: 'bool', alto: 'están suscritos a los correos', bajo: 'no están suscritos a los correos' }
+  { c: 'suscrito', g: 'Respuesta a email', l: 'Suscrito a correos', t: 'bool', alto: 'están suscritos a los correos', bajo: 'no están suscritos a los correos' },
+  // EM5.1 · Respuesta a email. NULL = nunca recibio una campana (no es "0 clics"):
+  // la cobertura lo deja ver. Sin aperturas: son aproximadas.
+  { c: 'email_campanas_recibidas', g: 'Respuesta a email', l: 'Campañas recibidas', t: 'num', log: true, f: 'num', alto: 'reciben más campañas', bajo: 'reciben menos campañas' },
+  { c: 'email_pct_clic', g: 'Respuesta a email', l: '% de campañas con clic', t: 'num', f: 'pct', alto: 'hacen clic en más campañas', bajo: 'casi no hacen clic en las campañas' },
+  { c: 'email_clics_90d', g: 'Respuesta a email', l: 'Clics en los últimos 90 días', t: 'num', log: true, f: 'num', alto: 'hacen más clics en los correos', bajo: 'hacen pocos clics en los correos' },
+  { c: 'email_dias_desde_ultimo_clic', g: 'Respuesta a email', l: 'Días desde su último clic', t: 'num', log: true, f: 'dias', alto: 'hace tiempo no hacen clic en un correo', bajo: 'hicieron clic en un correo hace poco' },
+  { c: 'email_compras_atribuidas', g: 'Respuesta a email', l: 'Compras atribuidas a correos', t: 'num', log: true, f: 'num', alto: 'compran más gracias a los correos', bajo: 'compran poco a partir de los correos' }
 ];
 export const VAR = Object.fromEntries(VARIABLES.map((v) => [v.c, v]));
 export const PREDETERMINADAS = ['num_pedidos', 'gasto_total', 'dias_desde_ultima_compra', 'precio_prom', 'estrellas_prom'];
