@@ -334,7 +334,7 @@ PostgreSQL 15 local con `supabase/pruebas/local/supabase-simulado.sql` + todas l
 
 ### 11.5 Después de EM5
 
-EM6 construido (formulario + doble confirmación, apagado por defecto). Siguiente: EM7 (analítica propia + aviso de cookies), luego Wompi F2. Antes, la nota histórica: EM6 (captura pública + doble confirmación) cuando la política esté publicada; EM7 (analítica propia con consentimiento de cookies) con la sección de cookies en la política; D3 antes de delegar accesos; **Wompi F2** sigue siendo el siguiente gran tramo del negocio.
+EM6 construido (formulario + doble confirmación, apagado por defecto; ver §11.6). Siguiente: **EM7** (analítica propia + aviso de cookies), luego **Wompi F2** (incluye la casilla de suscripción del checkout). **D3** antes de delegar accesos. Las políticas existen como estructura provisional en `magandhi.com/politicas/`; el dueño redacta el texto final antes de abrir la tienda.
 
 ### 11.6 EM6 · decisiones de implementación (8-oct-2026)
 
