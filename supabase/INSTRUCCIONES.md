@@ -3640,3 +3640,63 @@ previa/guardar/audiencia de campaña con reglas nuevas, perfil del clúster sin
 PII, permisos). Motor del clúster `pruebas-cluster.mjs` 25/25 (separa a quienes
 responden de quienes no). Interfaz en Chromium PC y celular: Segmentos y Clúster
 30/30; las 66 de EM5 siguen pasando.
+
+# EM6 · Captura pública con doble confirmación
+
+Formulario de novedades en magandhi.com. **Pedir no inscribe a nadie**: la
+persona confirma desde su correo. Nace **apagado**; tú lo enciendes desde el
+Resumen.
+
+## EM6.1. Aplicar la migración (SQL Editor, una sola vez)
+
+Correr `supabase/migrations/20261015000000_email_marketing_em6.sql`, después de
+`20261014000000_email_marketing_em5_1.sql`.
+
+## EM6.2. Desplegar la Edge Function `em-suscripcion`
+
+Dashboard → Edge Functions → **Deploy a new function** → nombre exacto
+`em-suscripcion` → pegar `supabase/functions/em-suscripcion/index.ts` → Deploy.
+**Verify JWT: APAGADO** (la tienda no tiene sesión; escribe solo por RPC de
+service_role). Usa el secreto que ya existe `RESEND_MARKETING_API_KEY`.
+
+Opcional (recomendado): secreto `EM_IP_SAL` con un texto largo al azar. Se usa
+para el hash diario de la IP (límite de intentos); sin él se usa la llave de
+servicio como sal.
+
+## EM6.3. Registrar la política BORRADOR y encender
+
+1. Email marketing → Resumen → «Ya la publiqué: registrarla»:
+   dirección `https://magandhi.com/politicas/datos/`, versión `borrador-0`.
+2. En la tarjeta «Formulario de la tienda» → **Encender el formulario**.
+
+Con versión `borrador-*`, todo funciona para probar, y **quien se suscriba con
+esa versión nunca recibirá una campaña real**: al registrar la versión
+definitiva quedan fuera solos (la revisión de cada campaña lo dice).
+
+## EM6.4. Evidencia
+
+1. magandhi.com muestra «Entérate primero de lo que escogemos» arriba del
+   footer. La casilla de autorización arranca **desmarcada**.
+2. Suscríbete con tu correo → mensaje «Si el correo es correcto, te llegará un
+   enlace…» → llega «Confirma tu suscripción a MAGANDHI».
+3. Botón del correo → «Suscripción confirmada». En Contactos aparece con fuente
+   «Formulario de la tienda» y la prueba (solicitud, confirmación, versión).
+4. Repite con el mismo correo → mismo mensaje, **no** llega otro correo (no
+   revela quién está suscrito).
+5. Apaga el formulario → desaparece de la tienda.
+
+Cada correo de confirmación gasta del cupo de 100/día de Resend.
+
+## EM6.5. Pruebas locales hechas
+
+60 migraciones + matriz 170/170 + EM5 61/61 + EM5.1 32/32 +
+`supabase/pruebas/local/em6-captura.sql` **44/44** (apagado por defecto, no se
+enciende sin política, validaciones, la solicitud no crea contacto, token solo
+como hash y de un uso, vencido a 48 h, no revela si existe, 3 correos por
+dirección/día, 10 solicitudes por IP/día sin guardar la IP, rebotados sin
+correo, baja que vuelve con nueva prueba, vínculo con cliente, regla borrador,
+purga, permisos). Función `em-suscripcion` contra PostgREST + Resend simulados
+con los RPC reales: **34/34** (incluye CORS, 413, Resend caído, campo trampa,
+logs sin correos/IP/tokens/llaves). De punta a punta en Chromium (tienda →
+función → base → correo → enlace → confirmación), PC y celular: **42/42**.
+Panel: 18/18; EM5 66/66 y EM5.1 30/30 siguen pasando.

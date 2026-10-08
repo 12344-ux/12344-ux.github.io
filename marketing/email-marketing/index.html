@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
-<link rel="stylesheet" href="email-marketing.css?v=7">
+<link rel="stylesheet" href="email-marketing.css?v=8">
 
 <!--
   MAGANDHI · Marketing · EMAIL MARKETING · RESUMEN (tramo EM1).
@@ -46,6 +46,41 @@
 
   let esAdmin = false;
   let salud = null; // em_salud_lista (EM5); null si la migracion aun no esta
+  let captura = null; // em_captura_estado (EM6); null si la migracion aun no esta
+
+  function bloqueCaptura() {
+    if (!captura) return '';
+    const on = !!captura.activa;
+    const btn = esAdmin
+      ? (on ? '<button class="em-btn-sec" type="button" id="cap-btn" data-activar="0">Apagar el formulario</button>'
+            : '<button class="mk-btn" type="button" id="cap-btn" data-activar="1"' + (captura.politica_publicada ? '' : ' disabled title="Primero registra la política"') + '>Encender el formulario</button>')
+      : '';
+    return '<section class="em-card" style="margin-top:16px"><h2 class="em-card-titulo">Formulario de la tienda</h2>' +
+      '<p style="margin:0 0 12px;font-size:14px"><span class="em-badge ' + (on ? 'ok' : 'pendiente') + '">' + (on ? 'Encendido' : 'Apagado') + '</span> ' +
+        (on ? 'magandhi.com muestra el formulario de novedades. Cada persona confirma desde su correo antes de entrar a la lista.'
+            : 'La tienda no muestra el formulario.' + (captura.politica_publicada ? '' : ' Para encenderlo, primero registra la política.')) + '</p>' +
+      '<div class="em-datos em-datos-3">' +
+        '<div class="em-dato"><span class="k">Esperando confirmación</span><span class="v">' + formatearNumero(captura.pendientes) + '</span></div>' +
+        '<div class="em-dato"><span class="k">Solicitudes · 30 días</span><span class="v">' + formatearNumero(captura.solicitudes_30d) + '</span></div>' +
+        '<div class="em-dato"><span class="k">Confirmadas · 30 días</span><span class="v">' + formatearNumero(captura.confirmadas_30d) + '</span></div>' +
+      '</div>' +
+      (n(captura.contactos_borrador) ? '<p class="em-pie">' + formatearNumero(captura.contactos_borrador) + ' contactos entraron con una versión borrador de la política: cuando registres la versión definitiva, no recibirán campañas reales.</p>' : '') +
+      '<p class="em-msg" id="cap-msg" hidden></p>' +
+      (btn ? '<div class="em-form-acciones" style="justify-content:flex-start;margin-top:12px">' + btn + '</div>' : '') +
+    '</section>';
+  }
+  function cablearCaptura() {
+    const b = document.getElementById('cap-btn');
+    if (!b) return;
+    b.addEventListener('click', async () => {
+      const activar = b.dataset.activar === '1';
+      if (activar && !window.confirm('Se mostrará el formulario de novedades en magandhi.com. ¿Encenderlo?')) return;
+      b.disabled = true;
+      const { error } = await supabase.rpc('em_config_captura', { p_activa: activar });
+      if (error) { const m = document.getElementById('cap-msg'); m.hidden = false; m.className = 'em-msg err'; m.textContent = mensajeError(error); b.disabled = false; return; }
+      location.reload();
+    });
+  }
 
   function bloqueSalud() {
     if (!salud) return '';
@@ -72,6 +107,11 @@
   }
   function avisoPolitica(cfg) {
     if (cfg && cfg.politica_publicada) {
+      if (/^borrador/i.test(cfg.politica_version || '')) {
+        return '<div class="em-aviso">' + ICONOS.escudo + '<div><strong>Política en versión borrador · ' + escaparHTML(cfg.politica_version) + '</strong>' +
+          '<p>Sirve para probar todo de punta a punta. Quien se suscriba con esta versión nunca recibirá una campaña real: al registrar la versión definitiva quedan fuera solos.</p>' +
+          (esAdmin ? '<button class="em-btn-sec" type="button" id="pol-abrir">Registrar la versión definitiva</button>' + formPolitica(cfg) : '') + '</div></div>';
+      }
       return '<div class="em-aviso ok">' + ICONOS.escudo + '<div><strong>Política de tratamiento de datos publicada · versión ' + escaparHTML(cfg.politica_version) + '</strong>' +
         '<p>Las campañas están habilitadas y cada nueva autorización queda registrada bajo esta versión.' +
         (cfg.politica_url ? ' <a href="' + escaparHTML(cfg.politica_url) + '" target="_blank" rel="noopener">Ver la política</a>.' : '') + '</p>' +
@@ -152,7 +192,8 @@
           '<p>Registra a las personas que te autoricen recibir novedades y ofertas. Cada alta guarda la prueba del permiso: por dónde lo dio, cuándo y qué texto aceptó.</p>' +
           '<a class="mk-btn" href="contactos.html?nuevo=1">' + ICONOS.usuarioMas + ' Agregar el primer contacto</a>' +
         '</div>' +
-        insightClientes(r) + bloqueSalud() + bloqueSeguimiento(r);
+        insightClientes(r) + bloqueCaptura() + bloqueSalud() + bloqueSeguimiento(r);
+      cablearCaptura();
       return;
     }
 
@@ -202,7 +243,8 @@
         '<section class="em-card"><h2 class="em-card-titulo">Qué quieren recibir</h2>' + filasBarras(temas, suscritos) +
           '<p class="em-pie">Cada persona puede elegir uno o ambos temas.</p></section>' +
       '</div>' +
-      insightClientes(r) + bloqueSalud() + bloqueSeguimiento(r);
+      insightClientes(r) + bloqueCaptura() + bloqueSalud() + bloqueSeguimiento(r);
+    cablearCaptura();
   }
 
   function insightClientes(r) {
@@ -235,8 +277,9 @@
       sesion: acceso.sesion
     });
     $('em-main').hidden = false;
-    const [{ data, error }, sl] = await Promise.all([supabase.rpc('em_resumen'), supabase.rpc('em_salud_lista')]);
+    const [{ data, error }, sl, cp] = await Promise.all([supabase.rpc('em_resumen'), supabase.rpc('em_salud_lista'), supabase.rpc('em_captura_estado')]);
     salud = sl && !sl.error ? sl.data : null;
+    captura = cp && !cp.error ? cp.data : null;
     if (error) {
       $('em-contenido').innerHTML = '<div class="mk-empty">' + (/em_resumen|function/i.test(error.message || '')
         ? 'Falta aplicar la migración <strong>20261009000000_email_marketing_em1.sql</strong> en Supabase.'

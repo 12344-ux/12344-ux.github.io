@@ -299,6 +299,7 @@ Eventos mínimos: `pagina_vista`, `producto_visto`, `clic_comprar`, `checkout_in
 | EM4 Campañas | `20261012000000` | Edge Function `em-campana`, `campanas.html` | ✅ Aplicado y desplegado; el dueño probó un envío con éxito |
 | EM5 Resultados | `20261013000000` | Edge Function `em-webhook` (Verify JWT apagado, firma Svix), resultados en `campanas.html`, salud en el Resumen, entrega en Seguimiento, campañas en la ficha | ✅ Aplicado, desplegado y webhook conectado (Resend → 200) |
 | EM5.1 Respuesta a email | `20261014000000` | 5 variables de email en `mk_perfiles_clientes` (clúster) + 9 condiciones de Segmentos (`em__perfil_email`) | 🟡 Construido y probado; falta aplicar (`INSTRUCCIONES.md` EM5.1) |
+| EM6 Captura pública | `20261015000000` | Edge Function `em-suscripcion` (Verify JWT apagado), formulario `suscripcion/` en la tienda, `/suscripcion/confirmar/`, tarjeta «Formulario de la tienda» en el Resumen | 🟡 Construido y probado; falta aplicar/desplegar (`INSTRUCCIONES.md` EM6) |
 
 Resend: `updates.magandhi.com` (pedidos, **sin rastreo a propósito**: el botón de reseña lleva el código) y `news.magandhi.com` (campañas, rastreo de clics/aperturas vía `links.news`), ambos verificados, región São Paulo, TLS oportunista. Secrets en Supabase: `RESEND_API_KEY` (Sending access, solo pedidos) y `RESEND_MARKETING_API_KEY` (Full access, solo funciones `em-*`). DMARC `p=none` en la raíz cubre ambos.
 
@@ -333,4 +334,13 @@ PostgreSQL 15 local con `supabase/pruebas/local/supabase-simulado.sql` + todas l
 
 ### 11.5 Después de EM5
 
-Aplicar EM5.1. Después: EM6 (captura pública + doble confirmación) cuando la política esté publicada; EM7 (analítica propia con consentimiento de cookies) con la sección de cookies en la política; D3 antes de delegar accesos; **Wompi F2** sigue siendo el siguiente gran tramo del negocio.
+EM6 construido (formulario + doble confirmación, apagado por defecto; ver §11.6). Siguiente: **EM7** (analítica propia + aviso de cookies), luego **Wompi F2** (incluye la casilla de suscripción del checkout). **D3** antes de delegar accesos. Las políticas existen como estructura provisional en `magandhi.com/politicas/`; el dueño redacta el texto final antes de abrir la tienda.
+
+### 11.6 EM6 · decisiones de implementación (8-oct-2026)
+
+- **La solicitud no es un contacto.** Vive en `em_confirmaciones` (48 h, purga a 7 días). Solo al confirmar se crea o reactiva el contacto, con la prueba completa. Un tercero que escribe un correo ajeno no lo inscribe.
+- **Token** de 256 bits en el **fragmento** del enlace (`#t=`, no viaja a ningún servidor ni en el referer); en la base, solo sha256. La página de confirmación lo borra de la barra de direcciones.
+- **Respuesta pública única** exista o no el correo. Límites: 10 solicitudes por IP-hash al día, 3 correos por dirección al día. Campo trampa.
+- **Política borrador:** quien se suscribe bajo `borrador-*` queda excluido de `em__audiencia` en cuanto la versión vigente deja de ser borrador.
+- El correo de confirmación sale por `news.magandhi.com` con `RESEND_MARKETING_API_KEY`, `tags.tipo=confirmacion_suscripcion`.
+- **Pendiente para Wompi F2:** la casilla de suscripción en el checkout reutilizará `em_publico_suscribir` (misma doble confirmación).

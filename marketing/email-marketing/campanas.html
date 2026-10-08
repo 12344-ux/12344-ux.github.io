@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
-<link rel="stylesheet" href="email-marketing.css?v=7">
+<link rel="stylesheet" href="email-marketing.css?v=8">
 
 <!--
   MAGANDHI · Marketing · EMAIL MARKETING · CAMPANAS (tramo EM4).
@@ -600,6 +600,7 @@
     const avisos = [];
     if (!pol) avisos.push('<div class="em-aviso">' + ICONOS.escudo + '<div><strong>Envío bloqueado hasta publicar la política</strong><p>Regístrala en el <a href="index.html">Resumen</a> cuando esté publicada en magandhi.com. Mientras tanto puedes enviarte pruebas.</p></div></div>');
     if (a.sin_nombre && /\{nombre\}/.test($('ed-asunto').value + JSON.stringify(bloques))) avisos.push('<p class="em-msg err">' + formatearNumero(a.sin_nombre) + ' destinatarios no tienen nombre: donde dice {nombre} les quedará vacío. Usa {nombre|alternativa} para cubrirlos.</p>');
+    if (Number(a.excluidos_borrador) > 0) avisos.push('<p class="em-pie">' + formatearNumero(a.excluidos_borrador) + ' contactos de este segmento se suscribieron con la política borrador y no reciben campañas reales.</p>');
     if (seg && seg.tipo === 'cluster') avisos.push('<p class="em-pie">Segmento congelado desde un Análisis de clúster: los miembros son los de ese día.</p>');
     const min = new Date(Date.now() + 10 * 60000), max = new Date(Date.now() + 29 * 86400000);
     const loc = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
