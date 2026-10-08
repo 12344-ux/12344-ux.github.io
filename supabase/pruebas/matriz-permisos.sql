@@ -109,7 +109,9 @@ declare
     'em_campana_pendientes','em_campana_set_segmento_resend','em_campana_destinatario_resultado',
     'em_campana_reservar_envio','em_campana_marcar_enviada','em_campana_cancelar','em_config_politica',
     -- EM5 (lectura). em_webhook_registrar NO va: solo service_role.
-    'em_campana_resultados','em_campanas_resultados_lista','em_salud_lista','em_contacto_campanas'
+    'em_campana_resultados','em_campanas_resultados_lista','em_salud_lista','em_contacto_campanas',
+    -- EM6 (panel). em_publico_* NO van: solo service_role.
+    'em_config_captura','em_captura_estado'
   ];
   v_extra text;
 begin
