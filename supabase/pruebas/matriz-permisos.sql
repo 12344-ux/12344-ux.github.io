@@ -115,7 +115,10 @@ declare
     -- Metricas M1 (capa de datos). mt_publico_config / mt_registrar_eventos NO: solo service_role.
     'tiene_acceso_metricas','tiene_acceso_datos_metricas','mt_config_analitica','mt_en_vivo','mt_ventas','mt_tienda',
     -- Metricas M2 (capa de datos). mt_email/mt_opiniones/mt_inventario con guardia de datos.
-    'mt_email','mt_opiniones','mt_inventario'
+    'mt_email','mt_opiniones','mt_inventario',
+    -- Pagos web F2: el panel lee y resuelve; pw_registrar_intencion y
+    -- pw_procesar_pago NO van (solo service_role, las usa la Edge Function).
+    'tiene_acceso_pagos','pw_revisiones','pw_resolver_revision'
   ];
   v_extra text;
 begin
