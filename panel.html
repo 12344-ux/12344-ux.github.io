@@ -220,6 +220,15 @@
       <p>Opiniones verificadas de clientes: calificacion por producto, respuesta de marca y moderacion con bitacora.</p>
     </a>
 
+    <!-- METRICAS (datos organizados de toda la operacion; capa compartida) -->
+    <a class="mg-mod-card" id="mg-card-metricas" href="metricas/index.html" hidden>
+      <span class="mg-mod-ico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>
+      </span>
+      <h3>Metricas</h3>
+      <p>La operacion en datos: ventas en vivo, interaccion con la tienda y el camino a la compra, organizados en graficas.</p>
+    </a>
+
   </section>
 
   <!-- Placeholder: solo visible si el usuario NO puede ver ningun area. -->
@@ -273,6 +282,7 @@
         { id: 'produccion', claves: ['produccion', 'inventarios'],  card: 'mg-card-produccion' },
         { id: 'ventas',     claves: ['ventas', 'pedidos', 'clientes', 'portafolio'], card: 'mg-card-ventas' },
         { id: 'opiniones',  claves: ['opiniones'],                  card: 'mg-card-opiniones' },
+        { id: 'metricas',   claves: ['metricas'],                   card: 'mg-card-metricas' },
       ];
 
       const esAdmin = perfil?.rol === 'admin';

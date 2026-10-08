@@ -9,6 +9,7 @@ Estos favicons distinguen superficies internas de `montaguth.institute`. No form
 - `marketing.png`: Marketing, actualmente comparte el arte azul general.
 - `produccion.png`: Producción/Inventarios, actualmente comparte el arte azul general.
 - `ventas.png`: Ventas, actualmente comparte el arte azul general.
+- `metricas.png`: Métricas, copia temporal del arte azul general (misma regla que Marketing, Producción y Ventas).
 
 Marketing, Producción y Ventas son **copias temporales deliberadas**, no tres identidades terminadas. Evitan favicons rotos y mantienen una sola familia azul mientras se decide si cada área necesita un símbolo propio. No deben describirse como “oficiales distintos”.
 

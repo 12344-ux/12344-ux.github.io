@@ -92,6 +92,10 @@ Marketing → Email marketing. Diseño completo en `docs/PLANO-EMAIL-MARKETING.m
 - EM5.1 (construido, por aplicar): la respuesta a email alimenta el análisis. 5 variables en el clúster (campañas recibidas, % con clic, clics 90 días, días desde el último clic, compras atribuidas) y 9 condiciones en Segmentos (hizo/no hizo clic en una campaña, campañas seguidas sin clic…). Sin aperturas: son aproximadas.
 - EM6 (construido, por aplicar/desplegar): formulario de novedades en magandhi.com con doble confirmación (`em-suscripcion`), apagado por defecto y encendible solo por admin con la política registrada. Política en versión `borrador-*` para probar: esos contactos nunca reciben campañas reales. Captura pública (EM6) y analítica (EM7) esperan la política.
 
+### Métricas — M1 construido (por aplicar/desplegar)
+
+Sexta área del panel (`metricas/`), módulo propio `metricas`. Recolecta, organiza y muestra (no interpreta). Pestañas En vivo (refresco 30 s), Ventas y Tienda con gráficas propias en SVG. Capa de datos compartida `mt_*` (agregados sin PII) que también consumen Marketing y Ventas. Analítica propia de la tienda (EM7) con aviso de consentimiento, sin Meta/Google, sin IP ni URLs de procedencia, 13 meses. Diseño en `docs/PLANO-METRICAS.md`. Siguiente: M2 (Email, Opiniones, Inventario).
+
 ### Gestión de opiniones — operativo
 
 Quinta área del panel, en `opiniones/`. Guarda las opiniones verificadas de clientes y les da seguimiento.
@@ -237,7 +241,7 @@ Debe incorporar:
 
 ## 9. Próximo orden de trabajo
 
-1. Aplicar/desplegar **EM6** (`supabase/INSTRUCCIONES.md` §EM6). Siguiente: EM7 (analítica propia + aviso de cookies) y después Wompi F2. Las políticas existen como estructura provisional en magandhi.com/politicas/ (el dueño redacta el texto final antes de abrir).
+1. Aplicar/desplegar **Métricas M1** (`supabase/INSTRUCCIONES.md` §MT1). Siguiente: Métricas M2 y después Wompi F2. Las políticas existen como estructura provisional en magandhi.com/politicas/ (el dueño redacta el texto final antes de abrir).
 2. Aplicar y verificar la migración `20261002000000`.
 3. Redesplegar y verificar `crear-intencion-pago`.
 4. Construir Wompi F2 en sandbox.

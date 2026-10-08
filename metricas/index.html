@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Métricas · En vivo</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../marca-areas/metricas.png?v=1">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=2">
+<meta name="theme-color" content="#101C33">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=2">
+<link rel="stylesheet" href="metricas.css?v=4">
+<!--
+  MAGANDHI · METRICAS · EN VIVO (M1). Lo que pasa ahora en la tienda y en las
+  ventas. Se refresca solo cada 30 s (se pausa si la pestaña no esta visible).
+  Datos: RPC mt_en_vivo() (capa compartida, sin datos personales).
+-->
+</head>
+<body class="mt-body">
+<script type="module" src="../auth-guard.js"></script>
+<main class="mt-wrap" id="mt-main" hidden>
+  <div id="vv-aviso"></div>
+  <div class="mt-kpis" id="vv-kpis"><div class="mt-kpi mt-esqueleto" style="height:110px"></div><div class="mt-kpi mt-esqueleto" style="height:110px"></div><div class="mt-kpi mt-esqueleto" style="height:110px"></div><div class="mt-kpi mt-esqueleto" style="height:110px"></div></div>
+  <div class="mt-grid mt-g21">
+    <section class="mt-card">
+      <div class="mt-card-cab"><div><h2 class="mt-card-tit">Hoy, hora a hora</h2><p class="mt-card-sub" id="vv-hoy-sub">Visitantes únicos por hora</p></div>
+        <div class="mt-chips" role="group" aria-label="Qué mostrar"><button type="button" class="mt-chip" data-serie="visitantes" aria-pressed="true">Visitantes</button><button type="button" class="mt-chip" data-serie="pedidos" aria-pressed="false">Pedidos</button></div></div>
+      <div id="vv-horas"></div>
+      <div class="mt-ley" style="margin-top:8px"><span><i class="cuadro" style="background:#101C33"></i>Horas anteriores</span><span><i class="cuadro" style="background:#A6332E"></i>Hora actual</span></div>
+    </section>
+    <section class="mt-card">
+      <div class="mt-card-cab"><div><h2 class="mt-card-tit">Dónde están ahora</h2><p class="mt-card-sub">Páginas con visitantes · últimos 30 min</p></div></div>
+      <div id="vv-paginas"></div>
+    </section>
+  </div>
+  <div class="mt-grid mt-g2 mt-mt">
+    <section class="mt-card">
+      <div class="mt-card-cab"><div><h2 class="mt-card-tit">Actividad reciente en la tienda</h2><p class="mt-card-sub">Últimas 24 horas · sin datos de quién</p></div></div>
+      <ul class="mt-actividad" id="vv-actividad"></ul>
+    </section>
+    <section class="mt-card">
+      <div class="mt-card-cab"><div><h2 class="mt-card-tit">Últimos pedidos</h2><p class="mt-card-sub">Registrados en Ventas o pagados en la web</p></div></div>
+      <div id="vv-pedidos"></div>
+    </section>
+  </div>
+</main>
+
+<script type="module">
+  import { supabase, montarArea, ICONOS, esc, num, cop, copCorto, delta, kpi, vacio, grafBarras, filas, hora, haceCuanto, fechaCorta, mensajeError, CANALES, ORIGENES, DISPOSITIVOS, pintarSparks } from './metricas-core.js';
+  import { avisoAnalitica } from './metricas-avisos.js';
+  const $ = (id) => document.getElementById(id);
+  let datos = null, serie = 'visitantes', timer = null, ctx = null, ultimaCarga = null;
+
+  const RUTAS = (r, nombre) => nombre || (r === '/' ? 'Inicio' : /^\/producto/.test(r) ? 'Ficha de producto' : /^\/politicas/.test(r) ? 'Políticas' : /^\/suscripcion/.test(r) ? 'Suscripción' : r);
+  const EVT = {
+    pagina_vista: ['ojo', 'Vio', ''], producto_visto: ['bolsa', 'Miró', ''], clic_comprar: ['cursor', 'Tocó «Comprar»', 'fuerte'],
+    checkout_iniciado: ['tarjeta', 'Fue al pago', 'fuerte'], compra: ['pedido', 'Compró', 'fuerte'], llegada_campana: ['sobre', 'Llegó desde un correo', '']
+  };
+
+  function pintar() {
+    const d = datos;
+    $('vv-aviso').innerHTML = avisoAnalitica(d.analitica_activa, ctx.esAdmin);
+    $('vv-kpis').innerHTML =
+      kpi({ k: 'Visitantes ahora', v: num(d.visitantes_5m), pie: 'últimos 5 minutos', destacado: true }) +
+      kpi({ k: 'Últimos 30 min', v: num(d.visitantes_30m), pie: 'visitantes únicos' }) +
+      kpi({ k: 'Visitantes hoy', v: num(d.visitantes_hoy), pie: num(d.vistas_hoy) + ' páginas vistas' }) +
+      kpi({ k: 'Pedidos hoy', v: num(d.pedidos_hoy), pie: delta(d.pedidos_hoy, d.pedidos_mismo_dia_semana_pasada) + ' vs. hace una semana' }) +
+      kpi({ k: 'Ingresos hoy', v: copCorto(d.ingresos_hoy), pie: delta(d.ingresos_hoy, d.ingresos_mismo_dia_semana_pasada) + ' vs. hace una semana' });
+    pintarSparks($('vv-kpis'));
+
+    const hAhora = new Date().getHours();
+    $('vv-hoy-sub').textContent = serie === 'visitantes' ? 'Visitantes únicos por hora' : 'Pedidos registrados por hora';
+    grafBarras($('vv-horas'), {
+      alto: 210, aria: 'Hoy hora a hora',
+      datos: d.por_hora.map((x) => ({ et: x.h % 3 === 0 ? x.h + 'h' : '', v: x[serie], clase: x.h === hAhora ? 'ahora' : x.h > hAhora ? 'tenue' : '',
+        tip: '<span class="t">' + x.h + ':00 – ' + x.h + ':59</span><b>' + num(x[serie]) + '</b> ' + (serie === 'visitantes' ? 'visitantes' : 'pedidos') })),
+    });
+
+    $('vv-paginas').innerHTML = d.activos_por_pagina.length
+      ? filas(d.activos_por_pagina.map((p) => ({ n: RUTAS(p.ruta, p.nombre), v: p.visitantes, sub: p.visitantes === 1 ? 'persona' : 'personas' })))
+      : vacio('Nadie navegando', d.analitica_activa ? 'En los últimos 30 minutos no hubo visitas medidas.' : 'La analítica de la tienda está apagada.');
+
+    $('vv-actividad').innerHTML = d.eventos.length ? d.eventos.map((e) => {
+      const [ic, verbo, cls] = EVT[e.tipo] || ['ojo', e.tipo, ''];
+      const que = e.tipo === 'llegada_campana' ? '' : (e.nombre || RUTAS(e.ruta));
+      const det = [e.origen ? ORIGENES[e.origen] : '', e.dispositivo ? DISPOSITIVOS[e.dispositivo] : ''].filter(Boolean).join(' · ');
+      return '<li><span class="ico ' + cls + '">' + ICONOS[ic] + '</span><span class="t">' + esc(verbo) + (que ? ' <b>' + esc(que) + '</b>' : '') +
+        (det ? '<small>' + esc(det) + '</small>' : '') + '</span><span class="c">' + esc(haceCuanto(e.cuando)) + '</span></li>';
+    }).join('') : '<li style="display:block">' + vacio('Sin actividad', 'Aquí aparecerá cada visita, producto visto o clic en «Comprar».') + '</li>';
+
+    $('vv-pedidos').innerHTML = d.pedidos.length ? '<div class="mt-tabla-caja"><table class="mt-tabla"><thead><tr><th>Pedido</th><th>Cuándo</th><th>Ciudad</th><th class="d">Unid.</th><th class="d">Total</th></tr></thead><tbody>' +
+      d.pedidos.map((p) => '<tr><td><span class="mt-ref">' + esc(p.ref) + '</span> <span class="mt-badge' + (p.canal === 'web' ? ' web' : '') + '">' + esc(p.canal === 'web' ? 'Web' : 'Manual') + '</span></td>' +
+        '<td>' + esc(haceCuanto(p.creado)) + '</td><td>' + esc(p.ciudad || '—') + '</td><td class="d">' + num(p.unidades) + '</td><td class="d">' + cop(p.total) + '</td></tr>').join('') +
+      '</tbody></table></div>' : vacio('Todavía no hay pedidos', 'Los pedidos que registres en Ventas aparecerán aquí al instante.');
+    pintarEstadoVivo();
+  }
+
+  function pintarEstadoVivo() {
+    const el = $('vv-estado'); if (!el) return;
+    const pausado = document.visibilityState !== 'visible';
+    el.className = 'mt-vivo' + (pausado ? ' pausa' : '');
+    el.innerHTML = '<i></i>' + (pausado ? 'En pausa' : 'En vivo') + (ultimaCarga ? ' · actualizado ' + esc(hora(ultimaCarga.toISOString())) : '');
+  }
+
+  async function cargar() {
+    const { data, error } = await supabase.rpc('mt_en_vivo');
+    if (error) { $('vv-kpis').innerHTML = '<div class="mt-aviso" style="grid-column:1/-1">' + ICONOS.info + '<div><strong>No se pudo cargar</strong><p>' + esc(mensajeError(error)) + '</p></div></div>'; return; }
+    datos = data; ultimaCarga = new Date(); pintar();
+  }
+  function programar() { clearInterval(timer); timer = setInterval(() => { if (document.visibilityState === 'visible') cargar(); }, 30000); }
+
+  document.querySelectorAll('[data-serie]').forEach((b) => b.addEventListener('click', () => {
+    serie = b.dataset.serie;
+    document.querySelectorAll('[data-serie]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    if (datos) pintar();
+  }));
+  document.addEventListener('visibilitychange', () => { pintarEstadoVivo(); if (document.visibilityState === 'visible') cargar(); });
+  document.addEventListener('mt:analitica', cargar);
+
+  (async () => {
+    ctx = await montarArea({ activa: 'vivo', titulo: 'En vivo', lead: 'Lo que está pasando ahora en la tienda y en las ventas. Se actualiza solo cada 30 segundos.',
+      extraCabecera: '<span class="mt-vivo" id="vv-estado"><i></i>En vivo</span>' });
+    if (!ctx) return;
+    await cargar(); programar();
+  })();
+</script>
+</body>
+</html>

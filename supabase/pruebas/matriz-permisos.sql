@@ -111,7 +111,9 @@ declare
     -- EM5 (lectura). em_webhook_registrar NO va: solo service_role.
     'em_campana_resultados','em_campanas_resultados_lista','em_salud_lista','em_contacto_campanas',
     -- EM6 (panel). em_publico_* NO van: solo service_role.
-    'em_config_captura','em_captura_estado'
+    'em_config_captura','em_captura_estado',
+    -- Metricas M1 (capa de datos). mt_publico_config / mt_registrar_eventos NO: solo service_role.
+    'tiene_acceso_metricas','tiene_acceso_datos_metricas','mt_config_analitica','mt_en_vivo','mt_ventas','mt_tienda'
   ];
   v_extra text;
 begin
