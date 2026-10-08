@@ -1,6 +1,6 @@
 # PLANO · Email marketing + Análisis de clúster + Analítica propia
 
-**Corte:** 8 de octubre de 2026 · **Estado:** aprobado por el dueño. EM1–EM4 en producción; **EM5 construido y probado (pendiente de aplicar/desplegar)**. Ver §11 (estado real y relevo).
+**Corte:** 8 de octubre de 2026 · **Estado:** aprobado por el dueño. EM1–EM5 en producción; **EM5.1 construido (pendiente de aplicar)**. Ver §11 (estado real y relevo).
 **Piezas relacionadas:** `docs/PLANO-CORREO.md` (correos del pedido, ya en producción), `docs/PLANO-OPINIONES.md`, `docs/PLANO-VENTAS.md`.
 
 ---
@@ -181,7 +181,7 @@ Se calculan en el servidor con un RPC `mk_perfiles_clientes(desde, hasta)`, secu
 | **Geografía** | ciudad · departamento · local (Tunja) o nacional | snapshot de dirección del pedido |
 | **Tiempo** | día de la semana y franja horaria de compra · días entre compras | `pedidos` (ver 4.4) |
 | **Canal** | % manual / web | `pedidos.canal` |
-| **Respuesta a email** | suscrito sí/no · clics en los últimos 90 días · compras atribuidas | `em_contactos`, `em_eventos` |
+| **Respuesta a email** ✅ EM5.1 | suscrito sí/no · campañas recibidas · % de campañas con clic · clics en los últimos 90 días · días desde su último clic · compras atribuidas (sin aperturas: son aproximadas). NULL = nunca recibió una campaña | `em_contactos`, `em_campana_destinatarios`, `em_eventos` |
 | **Comportamiento web** *(EM7)* | visitas · productos vistos · franja horaria de navegación · vistas antes de comprar | analítica propia |
 
 Las variables de texto (ciudad, categoría) se convierten en indicadores 0/1, y todas se escalan para que ninguna domine por tener números grandes. Las opiniones se usan para **entender**, no para presionar: un grupo de calificaciones bajas apunta a "recuperar con un mejor servicio", nunca a "insistir con más correos".
@@ -297,7 +297,8 @@ Eventos mínimos: `pagina_vista`, `producto_visto`, `clic_comprar`, `checkout_in
 | EM2 Perfiles + segmentos | `20261010000000` | `mk_perfiles_clientes`, Segmentos | ✅ Aplicado |
 | EM3 Clúster | `20261011000000` | `marketing-project/analisis-cluster.html` + `cluster-core.js` | ✅ Aplicado |
 | EM4 Campañas | `20261012000000` | Edge Function `em-campana`, `campanas.html` | ✅ Aplicado y desplegado; el dueño probó un envío con éxito |
-| EM5 Resultados | `20261013000000` | Edge Function `em-webhook` (Verify JWT apagado, firma Svix), resultados en `campanas.html`, salud en el Resumen, entrega en Seguimiento, campañas en la ficha | 🟡 Construido y probado localmente; falta aplicar, desplegar y conectar el webhook (`INSTRUCCIONES.md` EM5) |
+| EM5 Resultados | `20261013000000` | Edge Function `em-webhook` (Verify JWT apagado, firma Svix), resultados en `campanas.html`, salud en el Resumen, entrega en Seguimiento, campañas en la ficha | ✅ Aplicado, desplegado y webhook conectado (Resend → 200) |
+| EM5.1 Respuesta a email | `20261014000000` | 5 variables de email en `mk_perfiles_clientes` (clúster) + 9 condiciones de Segmentos (`em__perfil_email`) | 🟡 Construido y probado; falta aplicar (`INSTRUCCIONES.md` EM5.1) |
 
 Resend: `updates.magandhi.com` (pedidos, **sin rastreo a propósito**: el botón de reseña lleva el código) y `news.magandhi.com` (campañas, rastreo de clics/aperturas vía `links.news`), ambos verificados, región São Paulo, TLS oportunista. Secrets en Supabase: `RESEND_API_KEY` (Sending access, solo pedidos) y `RESEND_MARKETING_API_KEY` (Full access, solo funciones `em-*`). DMARC `p=none` en la raíz cubre ambos.
 
@@ -332,4 +333,4 @@ PostgreSQL 15 local con `supabase/pruebas/local/supabase-simulado.sql` + todas l
 
 ### 11.5 Después de EM5
 
-Primero cerrar EM5 en producción (EM5.1–EM5.4). Después: EM6 (captura pública + doble confirmación) cuando la política esté publicada; EM7 (analítica propia con consentimiento de cookies) con la sección de cookies en la política; D3 antes de delegar accesos; **Wompi F2** sigue siendo el siguiente gran tramo del negocio.
+Aplicar EM5.1. Después: EM6 (captura pública + doble confirmación) cuando la política esté publicada; EM7 (analítica propia con consentimiento de cookies) con la sección de cookies en la política; D3 antes de delegar accesos; **Wompi F2** sigue siendo el siguiente gran tramo del negocio.

@@ -67,11 +67,11 @@ insert into em_eventos (svix_id, evento, tipo, origen, campana_id, contacto_id, 
   ('msg_y_6', 'email.opened',  'apertura', 'campana', 'b1000000-0000-4000-8000-000000000003', 'a1000000-0000-4000-8000-00000000000c', now() - interval '1 day');
 
 -- Pedidos: Ana hoy (atribuido aprox. a C3), Beto y Caro hace 40 d (antes de clics recientes), Fede hace 5 d.
-insert into pedidos (id, customer_id, fecha_orden, total, creado) values
-  ('d1000000-0000-4000-8000-00000000000a', 'c1000000-0000-4000-8000-00000000000a', current_date, 30000, now()),
-  ('d1000000-0000-4000-8000-00000000000b', 'c1000000-0000-4000-8000-00000000000b', current_date - 40, 20000, now() - interval '40 days'),
-  ('d1000000-0000-4000-8000-00000000000c', 'c1000000-0000-4000-8000-00000000000c', current_date - 40, 10000, now() - interval '40 days'),
-  ('d1000000-0000-4000-8000-00000000000f', 'c1000000-0000-4000-8000-00000000000f', current_date - 5, 15000, now() - interval '5 days');
+insert into pedidos (id, customer_id, fecha_orden, total, creado, ciudad) values
+  ('d1000000-0000-4000-8000-00000000000a', 'c1000000-0000-4000-8000-00000000000a', current_date, 30000, now(), 'Tunja'),
+  ('d1000000-0000-4000-8000-00000000000b', 'c1000000-0000-4000-8000-00000000000b', current_date - 40, 20000, now() - interval '40 days', 'Tunja'),
+  ('d1000000-0000-4000-8000-00000000000c', 'c1000000-0000-4000-8000-00000000000c', current_date - 40, 10000, now() - interval '40 days', 'Bogotá'),
+  ('d1000000-0000-4000-8000-00000000000f', 'c1000000-0000-4000-8000-00000000000f', current_date - 5, 15000, now() - interval '5 days', 'Tunja');
 
 -- ---------------- em__perfil_email ----------------
 create temp table pe as select * from em__perfil_email();

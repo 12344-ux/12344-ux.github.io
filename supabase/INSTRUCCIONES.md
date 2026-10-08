@@ -3590,3 +3590,53 @@ librería oficial `svix`**, logs sin correos ni secretos). Interfaz en Chromium
 PC 1280 y celular 390: **66/66** (embudo, ventas exactas/aproximadas, sin
 webhook, sin la migración aplicada, salud, entrega, ficha; sin desbordes ni
 errores de JS nuevos).
+
+# EM5.1 · La respuesta a email alimenta el clúster y los Segmentos
+
+Sin Edge Functions, sin secretos y sin cambios en Resend: es solo SQL + pantallas.
+
+## EM5.1.1. Aplicar (SQL Editor, una sola vez)
+
+Correr `supabase/migrations/20261014000000_email_marketing_em5_1.sql`, después de
+`20261013000000_email_marketing_em5.sql`. Recrea `mk_perfiles_clientes` (misma
+entrada, 5 columnas más) y amplía la lista blanca de reglas de segmentos.
+
+## EM5.1.2. Qué trae
+
+- **Análisis de clúster** → grupo nuevo «Respuesta a email»: campañas recibidas,
+  % de campañas con clic, clics en 90 días, días desde su último clic y compras
+  atribuidas a correos. Quien nunca recibió una campaña **no tiene el dato** (no
+  cuenta como «0 clics»): la cobertura lo muestra.
+- **Segmentos** → grupo nuevo «Respuesta a email»: hizo / no hizo clic en una
+  campaña, recibió / no recibió una campaña, clics en 90 días, días desde su
+  último clic, campañas seguidas sin clic, % de campañas con clic, campañas con
+  clic, campañas recibidas y compras atribuidas. Dos ideas nuevas: «Hicieron clic
+  y no compraron» y «Llevan 4 campañas sin clic».
+- **Las aperturas no entran a propósito**: son aproximadas (Apple Mail abre los
+  correos solo); decidir con ellas sería decidir con un dato que miente.
+
+## EM5.1.3. Evidencia
+
+1. Email marketing → Segmentos → Nuevo → «Elige un dato…» muestra el grupo
+   «Respuesta a email». Con «Campaña · hizo clic en» aparecen tus campañas
+   enviadas por nombre y fecha.
+2. Marketing Project → Análisis de clúster muestra el grupo «Respuesta a email»
+   con su cobertura (hoy baja: crece con cada campaña).
+
+```sql
+-- Debe devolver las 5 columnas nuevas (con sesión de admin, o como postgres)
+select cliente_ref, email_campanas_recibidas, email_pct_clic, email_clics_90d,
+       email_dias_desde_ultimo_clic, email_compras_atribuidas
+  from mk_perfiles_clientes() limit 5;
+```
+
+## EM5.1.4. Pruebas locales hechas
+
+59 migraciones + matriz 170/170 + EM5 61/61 + `supabase/pruebas/local/em5-1-respuesta-email.sql`
+**32/32** (cálculo por contacto, clic viejo cuenta para % pero no para 90 días,
+aperturas no cuentan, programadas a futuro y excluidos no cuentan, sin dato ≠ 0,
+9 reglas nuevas y combinadas con las de EM2, aperturas e inyección rechazadas,
+previa/guardar/audiencia de campaña con reglas nuevas, perfil del clúster sin
+PII, permisos). Motor del clúster `pruebas-cluster.mjs` 25/25 (separa a quienes
+responden de quienes no). Interfaz en Chromium PC y celular: Segmentos y Clúster
+30/30; las 66 de EM5 siguen pasando.
