@@ -3832,3 +3832,91 @@ campaña con entregados/clics/pedidos exactos+aproximados, salud; permisos y que
 la capa no expone correos ni nombres). Área Métricas en Chromium con datos
 realistas, PC 1280 y celular 390: **108/108**, sin desbordes ni errores
 (incluye En vivo, Ventas y Tienda de M1, que siguen pasando).
+
+# F2 · Pagos web (intención persistida + webhook idempotente)
+
+Diseño en `docs/PLANO-PAGOS.md`. **Wompi sigue en sandbox hasta F4.**
+
+## F2.1. Aplicar la migración
+
+Correr `supabase/migrations/20261019000000_pagos_wompi_f2.sql`, después de
+`20261018000000`. Crea `pagos_intencion`, `pagos_eventos`, las RPC
+`pw_registrar_intencion` / `pw_procesar_pago` (solo `service_role`) y
+`pw_revisiones` / `pw_resolver_revision` (panel).
+
+## F2.2. Secretos de Wompi (Edge Functions → Secrets)
+
+El **secreto de eventos** es distinto de la llave privada y del secreto de
+integridad que ya usa F1. Está en el Dashboard de Wompi → **Mi cuenta** →
+*Secretos para integración técnica*.
+
+| Secret | Valor |
+|---|---|
+| `WOMPI_EVENTS_SANDBOX` | el secreto de eventos de **sandbox** (`test_events_…`) |
+| `WOMPI_EVENTS_PROD` | el de **producción** (`prod_events_…`), cuando llegue F4 |
+
+Nunca van al repositorio, ni a una tabla, ni al navegador, ni a los registros.
+
+## F2.3. Desplegar `wompi-webhook`
+
+Edge Functions → **Deploy a new function** → nombre exacto `wompi-webhook` →
+pegar `supabase/functions/wompi-webhook/index.ts` → Deploy.
+**Verify JWT: APAGADO** (Wompi no manda sesión de Supabase; la autenticidad la
+da el checksum).
+
+## F2.4. Redesplegar `crear-intencion-pago`
+
+Ahora **persiste la intención antes de firmar**. Reemplazar el contenido de la
+función existente (no borrarla) y dejar **Verify JWT activado**, como estaba.
+
+## F2.5. Configurar la URL de eventos en Wompi
+
+Dashboard de Wompi → URL de eventos del ambiente **Sandbox**:
+
+```
+https://<tu-proyecto>.supabase.co/functions/v1/wompi-webhook
+```
+
+Wompi exige una URL distinta por ambiente, para no mezclar pruebas con dinero
+real. El campo `environment` del evento elige el secreto, así que un evento de
+sandbox nunca se valida con el secreto de producción.
+
+## F2.6. Comprobar en sandbox
+
+1. En magandhi.com, comprar con las tarjetas de prueba de Wompi.
+2. En el panel → **Ventas → Seguimiento** debe aparecer el pedido con
+   `canal = web`, el nombre que escribió el comprador y el stock descontado.
+3. Verificar que **no** hay pedidos duplicados (Wompi reintenta si algo falla).
+
+```sql
+-- Un pago, un pedido. Esperado: una fila por referencia, estado procesada.
+select referencia, estado, pedido_id, estado_wompi, revision_motivo
+  from pagos_intencion order by creado desc limit 10;
+
+-- El libro de avisos: cada (transaccion, estado) una sola vez.
+select transaccion_id, estado_wompi, resultado, recibido
+  from pagos_eventos order by recibido desc limit 10;
+```
+
+Si un pago aprobado **no** se pudo convertir en pedido (sin stock, monto que no
+coincide o campaña sin producto ligado), la intención queda en
+`requiere_revision` y sale en `pw_revisiones()`. Se resuelve a mano con
+`pw_resolver_revision(referencia, nota)` — la nota es obligatoria.
+
+Diagnóstico: Edge Functions → `wompi-webhook` → pestaña **Logs** (no
+"Invocations"), líneas `[wompi-webhook]`.
+
+## F2.7. Pruebas locales hechas
+
+- `supabase/pruebas/local/pagos-f2.sql` **40/40** (capa de datos).
+- `herramientas/correr-wompi-webhook.sh` **21/21** con **checksums reales**:
+  firma alterada / ausente / con otro secreto / de otro ambiente → 401;
+  `properties` con un campo extra sigue validando (no están fijas en el
+  código); checksum por header y en mayúsculas; aviso repetido → un solo
+  pedido; evento ajeno → 200 ignorado.
+- `herramientas/correr-intencion-f2.sh` **19/19 + 12/12**: la intención se
+  persiste antes de firmar con el monto releído del servidor, el precio del
+  navegador se ignora, `utm_campaign` y `mg_vid` inválidos no entran, y el
+  **ciclo completo** tienda → firma → webhook → pedido deja el pedido
+  `canal=web` con la atribución exacta y una sola salida de inventario.
+- Matriz de permisos **170/170 TODO PASA**.
