@@ -1,4 +1,19 @@
 -- ============================================================
+-- ⛔ SUPERADA · NO APLICAR (decision del 8-oct-2026)
+-- ------------------------------------------------------------
+-- Esta migracion quedo escrita el 2-oct-2026 y NUNCA se aplico en produccion.
+-- Despues se aplico 20261003000000 (campanas · jubilar hook_corto), que RECREO
+-- la vista catalogo_publico con una version MAS NUEVA (sin hook_corto) que ya
+-- incluye la regla "campana sin product_id_ref = no comprable".
+-- Aplicar este archivo HOY seria un RETROCESO: devolveria la vista a la version
+-- vieja y reviviria hook_corto.
+-- Su contenido vigente (publicacion con candado, cierre de puertas latentes de
+-- Finanzas y borrado en el bucket campanas) se re-emitio forward en
+--     20261018000000_puesta_al_dia_sin_vista.sql
+-- que es la que SI debe aplicarse. Este archivo se conserva solo como historia.
+-- ============================================================
+
+-- ============================================================
 -- PUESTA AL DIA · seguridad operativa acumulativa
 -- Fecha: 2026-10-02
 --
