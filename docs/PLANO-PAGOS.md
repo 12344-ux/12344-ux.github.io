@@ -1,6 +1,8 @@
 # PLANO · Pagos web (Wompi F2 → F4)
 
-**Corte:** 8 de octubre de 2026 · **Estado:** F2 en construcción. Wompi permanece en **sandbox** hasta F4.
+**Corte:** 8 de octubre de 2026 · **Estado:** **F2 construido y probado** (pendiente de aplicar/desplegar: runbook F2 en `supabase/INSTRUCCIONES.md`). Wompi permanece en **sandbox** hasta F4.
+
+Piezas de F2: migración `20261019000000`, Edge Function `wompi-webhook`, `crear-intencion-pago` modificada (persiste antes de firmar), aviso de pagos sin pedido en la portada de Ventas, y la tienda enviando comprador + procedencia.
 
 ## 0. El problema que resuelve F2
 
@@ -92,3 +94,17 @@ Asiento contable automático (F3), paso a producción (F4), carrito de varios pr
 - La referencia permite identificar la intención sin inferencias.
 - El pedido aparece en Seguimiento y alimenta Portafolio, Ranking y Métricas.
 - Ningún secreto llega al navegador ni a los registros.
+
+
+## 8. Aviso de pagos sin pedido (portada de Ventas)
+
+Si un pago aprobado no se pudo convertir en pedido, aparece arriba del área un bloque con el borde terracota: cuántos son, el motivo **en lenguaje claro** (no el error técnico de la base), el monto en pesos y los datos de contacto para resolverlo. Cerrarlo exige una **nota obligatoria** y queda constancia de quién y cuándo. Si no hay pendientes **no se pinta nada**: un aviso que aparece siempre deja de ser un aviso.
+
+Corrección de paso: el encabezado del área se desbordaba en 390 px (el rótulo «ÁREA DE VENTAS» empujaba el ancho a 477 px y dejaba el avatar fuera de pantalla). Era un error previo a este tramo; se corrigió ocultando lo decorativo en pantallas angostas, como ya hacía Métricas.
+
+## 9. Procedencia de la compra (tienda)
+
+`window.mgProcedencia()` en `analitica/analitica.js` devuelve dos cosas con criterios distintos a propósito:
+
+- **`utm_campaign`**: el identificador de *nuestra* campaña, tomado de la URL que la persona abrió y recordado durante la visita (para que la compra se atribuya aunque ocurra dos páginas después). No identifica a nadie, así que viaja siempre: es lo que permite decir con honestidad «esta venta vino de este correo».
+- **`mg_vid`**: el identificador aleatorio del navegador. **Solo existe si la persona aceptó la analítica.** Si la rechazó, la compra no lleva identificador y no se crea uno para la ocasión.
