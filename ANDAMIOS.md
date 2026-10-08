@@ -1,7 +1,7 @@
 # ANDAMIOS · próximos tramos MAGANDHI / Impulse
 
-**Corte:** 7 de octubre de 2026
-**Punto de retorno (8-oct-2026):** correos del pedido en producción; bloqueo de stock aplicado; Email marketing EM1–EM4 aplicados y desplegados. **Siguiente en Email marketing: EM5** (relevo en `docs/PLANO-EMAIL-MARKETING.md` §11). Siguiente del negocio: Wompi F2.
+**Corte:** 8 de octubre de 2026
+**Punto de retorno:** Email marketing **EM1–EM7 completo** y Métricas **M1 y M2** en producción. **Siguiente: aplicar `20261018000000_puesta_al_dia_sin_vista.sql` y construir Wompi F2.** La estructura interna está terminada; lo único que falta para cerrar la fase de construcción es la cadena de pagos (F2 → F3 → F4).
 
 Este archivo contiene solo trabajo pendiente y criterios de cierre. Las fases terminadas y decisiones vigentes están consolidadas en `CONTEXTO-MAGANDHI.md`; el historial anterior permanece en Git.
 
@@ -21,42 +21,55 @@ Este archivo contiene solo trabajo pendiente y criterios de cierre. Las fases te
 | Email marketing EM2 (perfiles + segmentos) | ✅ Aplicado | |
 | Email marketing EM3 (análisis de clúster) | ✅ Aplicado | |
 | Email marketing EM4 (campañas) | ✅ Producción | `em-campana` desplegada; envío probado por el dueño |
-| Email marketing EM5 (resultados) | ⏭️ Siguiente | Relevo detallado en `docs/PLANO-EMAIL-MARKETING.md` §11.2 |
-| Email marketing EM6–EM7 (captura pública y analítica) | ⏸️ Después | Requieren la política de tratamiento de datos |
+| Email marketing EM5 + EM5.1 (resultados y respuesta a email) | ✅ Producción | Webhook Svix conectado |
+| Email marketing EM6–EM7 (captura pública y analítica) | ✅ Producción, **apagadas a propósito** | El dueño abre la tienda cuando esté todo; la política definitiva la redacta él |
+| Métricas M1 (En vivo, Ventas, Tienda) | ✅ Producción | |
+| Métricas M2 (Email, Opiniones, Inventario) | ✅ Producción | `20261017000000` aplicada |
 | Tramo 0 | ✅ Verificado | Matriz 170/170 y anon bloqueado en superficies internas |
 | Wompi F1 | ✅ Sandbox | Intención firmada y checkout cargando |
-| Puesta al día 2026-10-02 | 🟡 Código listo | Falta aplicar SQL y redesplegar Edge Function |
+| Puesta al día 2026-10-02 | ⛔ **SUPERADA, no aplicar** | Aplicarla hoy retrocedería la vista `catalogo_publico`; ver `INSTRUCCIONES.md` §0 |
+| Puesta al día forward `20261018000000` | ⏭️ **Siguiente** | Solo los 3 huecos medidos; no toca la vista. Probada 18/18 + matriz 170/170 |
 | Wompi F2 | ⏭️ Siguiente | Webhook, idempotencia, intención persistida y pedido |
 | Wompi F3 | ⏸️ Después de F2 | Asiento contable automático |
 | Wompi F4 | ⏸️ Después de F3 | Paso controlado a producción |
 | D3 permisos granulares | ⏸️ Antes de delegar | Separar capacidades antes del primer no-admin |
 
-## Tramo inmediato P0 — desplegar la puesta al día
+## Tramo inmediato P0 — puesta al día forward
 
-### Código ya preparado
+### Qué aplicar
 
-- `supabase/migrations/20261002000000_puesta_al_dia_seguridad_operativa.sql`
-- `supabase/functions/crear-intencion-pago/index.ts`
+`supabase/migrations/20261018000000_puesta_al_dia_sin_vista.sql`, una sola vez en
+SQL Editor. **No** aplicar `20261002000000` (superada: retrocedería la vista).
 
-### Acciones manuales del dueño
+Cierra los tres huecos que se midieron en producción el 8-oct-2026:
 
-1. Ejecutar la migración nueva una sola vez en SQL Editor.
-2. Registrar fecha y resultado de la ejecución.
-3. Redesplegar `crear-intencion-pago` conservando sus secrets.
-4. No cambiar todavía el entorno a producción.
+1. `cm_publicar_campana` exige producto de Inventario ligado y activo + precio positivo.
+2. Se retiran las 5 puertas latentes de escritura directa en Finanzas.
+3. Marketing puede borrar imágenes huérfanas solo en el bucket `campanas`.
+
+La vista `catalogo_publico` **no se toca**: la versión del 3-oct ya trae la regla
+«campaña sin `product_id_ref` = no comprable».
+
+### Por qué importa para F2
+
+F2 convierte un pago aprobado en pedido y baja stock. Una campaña publicada sin
+producto de Inventario ligado sería vender algo sin existencias detrás. El
+candado (1) es el que lo impide.
 
 ### Evidencia obligatoria
 
-- Campaña sin `product_id_ref`: no se puede publicar o aparece no comprable.
-- Campaña con producto activo y precio positivo: puede publicarse.
-- `anon`: continúa sin leer vistas/tablas internas.
-- Finanzas: asientos siguen creándose/editarse/anularse mediante RPC.
-- Storage `campanas`: Marketing puede eliminar keys de un intento fallido; anon no.
-- Edge Function por slug: HTTP 200 en sandbox.
-- Edge Function por UUID sin slug: retorno usa `?id=`, no `?slug=` vacío.
-- Cantidad distinta de 1: HTTP 400.
+- La consulta de verificación de `INSTRUCCIONES.md` §0 devuelve `true, 0, true, true`.
+- Campaña sin Inventario ligado: no publicable. Con producto activo y precio: publicable.
+- Finanzas sigue guardando asientos por RPC.
+- El checkout de la tienda sigue abriendo (la intención de pago lee el catálogo).
 
-El tramo no queda ✅ por ver “Success”; se cierra con estas comprobaciones.
+El tramo no queda ✅ por ver "Success"; se cierra con estas comprobaciones.
+
+### Lección registrada
+
+Producción se había desviado del registro de migraciones y el arnés local, que
+aplica **todas**, daba falsa confianza. Cuando haya desviación, simular el estado
+real con `supabase/pruebas/local/herramientas/correr-puesta-al-dia.sh`.
 
 ## Tramo correo — entregar el código de reseña
 

@@ -1,9 +1,10 @@
 # Supabase · runbook operativo MAGANDHI / Impulse
 
-> **Estado al 2-oct-2026:** las migraciones hasta `20250606000200` y el Tramo 0
-> fueron verificadas en producción. La siguiente acción es aplicar
-> `20261002000000_puesta_al_dia_seguridad_operativa.sql` y redesplegar
-> `crear-intencion-pago`. Después se retoma Wompi F2.
+> **Estado al 8-oct-2026:** en producción están aplicadas las migraciones hasta
+> `20261017000000` (Métricas M2), **excepto `20261002000000`, que quedó SUPERADA
+> y no debe aplicarse** (ver §0). `crear-intencion-pago` fue redesplegada.
+> La siguiente acción es aplicar `20261018000000_puesta_al_dia_sin_vista.sql`
+> y después construir Wompi F2.
 >
 > **Regla de migraciones:** los archivos ya aplicados son historia inmutable.
 > Nunca se reejecutan como arreglo o rollback sobre la base actual. Toda
@@ -18,20 +19,61 @@ desplegado hasta que el dueño lo ejecute en SQL Editor; una Edge Function tampo
 está desplegada hasta redesplegarla. Los datos personales del administrador y los
 secretos se consultan en los paneles privados, no se repiten en este repositorio.
 
-## 0. Puesta al día pendiente
+## 0. Puesta al día · ⛔ la del 2-oct quedó SUPERADA
 
-1. Abrir `supabase/migrations/20261002000000_puesta_al_dia_seguridad_operativa.sql`.
-2. Ejecutarlo **una sola vez** en SQL Editor.
-3. Verificar:
-   - campaña sin Inventario ligado: no publicable/no comprable;
-   - campaña ligada, producto activo y precio positivo: publicable;
-   - anon continúa bloqueado en vistas/RPC internas;
-   - Finanzas sigue escribiendo mediante RPC;
-   - Marketing puede eliminar keys fallidas solo en el bucket `campanas`.
-4. Redesplegar `supabase/functions/crear-intencion-pago/index.ts` conservando los
-   secrets del entorno.
-5. Probar intención por slug y por UUID; el retorno UUID debe usar `?id=`.
-6. Mantener Wompi en sandbox.
+**No apliques `20261002000000_puesta_al_dia_seguridad_operativa.sql`.** Nunca
+entró en producción y hoy aplicarla sería un **retroceso**: la migración
+`20261003000000` (ya aplicada) recreó la vista `catalogo_publico` con una versión
+más nueva, sin `hook_corto`, que ya trae la regla «campaña sin `product_id_ref` =
+no comprable». Correr la del 2-oct devolvería la vista a la versión vieja.
+
+Estado real **medido** en producción el 8-oct-2026 con una consulta de solo
+lectura:
+
+| Comprobación | Valor | Lectura |
+|---|---|---|
+| `cm_publicar_campana` con candado | `false` | faltaba |
+| Puertas latentes de Finanzas | `5` | faltaba cerrarlas |
+| Borrado en bucket `campanas` | `false` | faltaba |
+| Vista = la del 3-oct | `true` | **ya estaba: no se toca** |
+
+### Lo que sí hay que aplicar
+
+`supabase/migrations/20261018000000_puesta_al_dia_sin_vista.sql`, una sola vez en
+SQL Editor. Re-emite forward **solo los tres huecos reales** y **no toca la
+vista**. Es idempotente.
+
+Verificación después de aplicarla:
+
+```sql
+select
+  (select pg_get_functiondef(p.oid) like '%product_id_ref%'
+     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'cm_publicar_campana' limit 1)  as publicar_con_candado,
+  (select count(*) from pg_policies where schemaname = 'public'
+     and policyname in ('asientos_insert_modulo','asientos_update_modulo',
+                        'asiento_lineas_insert_modulo','asiento_lineas_update_modulo',
+                        'asiento_bitacora_insert_modulo'))                      as finanzas_puertas_latentes,
+  exists (select 1 from pg_policies
+           where tablename = 'objects' and policyname = 'campanas_delete_marketing') as storage_borrado_ok,
+  (select obj_description('catalogo_publico'::regclass) like '%JUBILAR hook_corto%') as vista_es_la_del_3oct;
+```
+
+Esperado: `true`, `0`, `true`, `true`. Si `vista_es_la_del_3oct` pasa a `false`,
+se aplicó el archivo equivocado.
+
+En el panel: una campaña **sin** producto de Inventario ligado no debe poder
+publicarse; con producto activo y precio positivo, sí. Finanzas sigue guardando
+asientos (escribe por RPC, no por policy). Mantener Wompi en **sandbox**.
+
+### Lección de proceso (no repetir)
+
+El arnés local `pg.sh` aplica **todas** las migraciones, así que daba falsa
+confianza: localmente `cm_publicar_campana` tenía candado y en producción no.
+Cuando producción se desvíe del registro, hay que **simular el estado real**.
+Para eso existe `supabase/pruebas/local/herramientas/correr-puesta-al-dia.sh`,
+que omite a propósito la migración no aplicada y comprueba el antes y el después
+(18/18 + matriz 170/170).
 
 ## 0bis. Campañas · jubilar HOOK CORTO y orden por arrastrar y soltar
 
