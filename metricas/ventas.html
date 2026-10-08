@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Métricas · Ventas</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../marca-areas/metricas.png?v=1">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=2">
+<meta name="theme-color" content="#101C33">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=2">
+<link rel="stylesheet" href="metricas.css?v=4">
+<!-- MAGANDHI · METRICAS · VENTAS (M1). RPC mt_ventas(desde, hasta): periodo +
+     periodo anterior de igual largo. Pedidos anulados no cuentan. -->
+</head>
+<body class="mt-body">
+<script type="module" src="../auth-guard.js"></script>
+<main class="mt-wrap" id="mt-main" hidden>
+  <div class="mt-barra"><div id="vt-chips"></div><span class="mt-rango" id="vt-rango"></span></div>
+  <div class="mt-kpis" id="vt-kpis"><div class="mt-kpi mt-esqueleto" style="height:120px"></div><div class="mt-kpi mt-esqueleto" style="height:120px"></div><div class="mt-kpi mt-esqueleto" style="height:120px"></div><div class="mt-kpi mt-esqueleto" style="height:120px"></div></div>
+  <section class="mt-card">
+    <div class="mt-card-cab"><div><h2 class="mt-card-tit" id="vt-serie-tit">Ingresos por día</h2><p class="mt-card-sub">Pasa el cursor para ver cada día</p></div>
+      <div class="mt-chips" role="group" aria-label="Qué mostrar"><button type="button" class="mt-chip" data-serie="ingresos" aria-pressed="true">Ingresos</button><button type="button" class="mt-chip" data-serie="pedidos" aria-pressed="false">Pedidos</button></div></div>
+    <div id="vt-serie"></div>
+    <div class="mt-ley" style="margin-top:10px" id="vt-ley"></div>
+  </section>
+  <div class="mt-grid mt-g2 mt-mt">
+    <section class="mt-card"><div class="mt-card-cab"><div><h2 class="mt-card-tit">Productos que más venden</h2><p class="mt-card-sub">Por ingresos en el periodo</p></div></div><div id="vt-productos"></div></section>
+    <section class="mt-card"><div class="mt-card-cab"><div><h2 class="mt-card-tit">Ciudades</h2><p class="mt-card-sub">Pedidos por ciudad de entrega</p></div></div><div id="vt-ciudades"></div></section>
+  </div>
+  <div class="mt-grid mt-g21 mt-mt">
+    <section class="mt-card"><div class="mt-card-cab"><div><h2 class="mt-card-tit">Cuándo se vende</h2><p class="mt-card-sub" id="vt-calor-sub">Pedidos por día de la semana y hora</p></div></div><div id="vt-calor"></div></section>
+    <section class="mt-card"><div class="mt-card-cab"><div><h2 class="mt-card-tit">Por canal</h2><p class="mt-card-sub">Ingresos del periodo</p></div></div><div id="vt-canal"></div></section>
+  </div>
+</main>
+
+<script type="module">
+  import { supabase, montarArea, ICONOS, esc, num, cop, copCorto, delta, kpi, vacio, grafLinea, filas, reparto, calor, chipsPeriodo, rangoDe, fechaCorta, fechaLarga, mensajeError, CANALES, pintarSparks } from './metricas-core.js';
+  const $ = (id) => document.getElementById(id);
+  const p0 = new URLSearchParams(location.search).get('periodo');
+  let periodo = ['7', '30', '90', '365'].includes(p0) ? p0 : '30', serie = 'ingresos', datos = null;
+
+  function pintar() {
+    const d = datos, t = d.totales, a = d.totales_anterior;
+    $('vt-rango').textContent = fechaCorta(d.desde) + ' – ' + fechaCorta(d.hasta) + ' · comparado con ' + fechaCorta(d.anterior.desde) + ' – ' + fechaCorta(d.anterior.hasta);
+    const vsAnt = (x, y, f) => delta(x, y) + ' <span>antes ' + esc(f(y)) + '</span>';
+    $('vt-kpis').innerHTML =
+      kpi({ k: 'Ingresos', v: copCorto(t.ingresos), pie: vsAnt(t.ingresos, a.ingresos, copCorto), destacado: true, spark: d.serie.map((x) => x.ingresos) }) +
+      kpi({ k: 'Pedidos', v: num(t.pedidos), pie: vsAnt(t.pedidos, a.pedidos, num), spark: d.serie.map((x) => x.pedidos) }) +
+      kpi({ k: 'Ticket promedio', v: copCorto(t.ticket), pie: vsAnt(t.ticket, a.ticket, copCorto) }) +
+      kpi({ k: 'Unidades', v: num(t.unidades), pie: vsAnt(t.unidades, a.unidades, num) }) +
+      kpi({ k: 'Clientes', v: num(t.clientes), pie: num(t.clientes_nuevos) + (Number(t.clientes_nuevos) === 1 ? ' nuevo' : ' nuevos') + ' en el periodo' });
+    pintarSparks($('vt-kpis'));
+
+    const esIng = serie === 'ingresos';
+    $('vt-serie-tit').textContent = esIng ? 'Ingresos por día' : 'Pedidos por día';
+    const serieAnt = esIng ? d.serie_anterior.map((x) => x.ingresos) : null;
+    grafLinea($('vt-serie'), {
+      aria: 'Ventas por día', alto: 260, etiquetas: d.serie.map((x) => x.fecha),
+      formato: esIng ? cop : num, formatoEje: esIng ? copCorto : num,
+      series: [{ nombre: esIng ? 'Ingresos' : 'Pedidos', datos: d.serie.map((x) => x[serie]), area: true }]
+        .concat(serieAnt ? [{ nombre: 'Periodo anterior', datos: serieAnt, clase: 'comp' }] : []),
+      etiquetaTip: (i) => fechaLarga(d.serie[i].fecha) + (serieAnt ? ' · vs ' + fechaCorta(d.serie_anterior[i]?.fecha || d.serie[i].fecha) : ''),
+    });
+    $('vt-ley').innerHTML = '<span><i></i>' + (esIng ? 'Ingresos' : 'Pedidos') + '</span>' + (serieAnt ? '<span><i class="comp"></i>Periodo anterior</span>' : '');
+
+    $('vt-productos').innerHTML = d.productos.length
+      ? filas(d.productos.map((p) => ({ n: p.nombre, v: p.ingresos, sub: num(p.unidades) + ' u.' })), { formato: copCorto })
+      : vacio('Sin ventas en este periodo', 'Cuando registres pedidos, aquí verás qué productos mueven más.');
+    $('vt-ciudades').innerHTML = d.ciudades.length
+      ? filas(d.ciudades.map((c) => ({ n: c.ciudad, v: c.pedidos, sub: copCorto(c.ingresos) })))
+      : vacio('Sin ventas en este periodo', 'Las ciudades salen de la dirección de entrega de cada pedido.');
+    $('vt-calor').innerHTML = d.calor.length ? calor(d.calor, { unidad: 'pedidos' }) : vacio('Sin ventas en este periodo', 'Aquí verás qué días y a qué horas se vende más.');
+    $('vt-calor-sub').textContent = 'Pedidos por día de la semana y hora' + (Number(d.pct_hora_exacta) < 100 && d.calor.length ? ' · en pedidos manuales es la hora en que se registraron' : '');
+    const canales = Object.entries(d.por_canal || {}).map(([k, v]) => ({ n: CANALES[k] || k, v: v.ingresos }));
+    $('vt-canal').innerHTML = canales.length ? reparto(canales, { formato: copCorto }) : vacio('Sin ventas', 'Manual (registradas en Ventas) o web (pagadas en la tienda).');
+  }
+
+  async function cargar() {
+    const r = rangoDe(periodo);
+    history.replaceState(null, '', '?periodo=' + periodo);
+    $('vt-chips').innerHTML = chipsPeriodo(periodo);
+    $('vt-chips').querySelectorAll('[data-periodo]').forEach((b) => b.addEventListener('click', () => { periodo = b.dataset.periodo; cargar(); }));
+    const { data, error } = await supabase.rpc('mt_ventas', { p_desde: r.desde, p_hasta: r.hasta });
+    if (error) { $('vt-kpis').innerHTML = '<div class="mt-aviso" style="grid-column:1/-1">' + ICONOS.info + '<div><strong>No se pudo cargar</strong><p>' + esc(mensajeError(error)) + '</p></div></div>'; return; }
+    datos = data; pintar();
+  }
+  document.querySelectorAll('[data-serie]').forEach((b) => b.addEventListener('click', () => {
+    serie = b.dataset.serie; document.querySelectorAll('[data-serie]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); if (datos) pintar();
+  }));
+
+  (async () => {
+    const ctx = await montarArea({ activa: 'ventas', titulo: 'Ventas', lead: 'Cuánto, qué, dónde y cuándo se vende, comparado con el periodo anterior de igual duración.' });
+    if (!ctx) return;
+    await cargar();
+  })();
+</script>
+</body>
+</html>
