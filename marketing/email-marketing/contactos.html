@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
-<link rel="stylesheet" href="email-marketing.css?v=5">
+<link rel="stylesheet" href="email-marketing.css?v=6">
 
 <!--
   MAGANDHI · Marketing · EMAIL MARKETING · CONTACTOS (tramo EM1).
@@ -226,6 +226,11 @@
   function detalleEvento(b) {
     const d = b.detalle || {};
     if (b.accion === 'baja' && d.motivo) return 'Motivo: ' + d.motivo;
+    if (d.origen === 'resend_webhook') {
+      if (d.motivo) return d.motivo;
+      if (b.accion === 'baja') return 'Pulsó «Dejar de recibir» en un correo';
+      if (b.accion === 'rebote') return d.correo_envio_id ? 'Rebotó un correo del pedido: la dirección no existe' : 'Rebote permanente: la dirección no existe';
+    }
     if ((b.accion === 'alta' || b.accion === 'reactivacion') && d.evidencia) return 'Por ' + (CANALES[d.evidencia.canal] || d.evidencia.canal);
     if (b.accion === 'edicion' && d.antes && d.despues) {
       const cambios = [];
@@ -247,9 +252,13 @@
     $('ficha-cerrar').focus();
     history.replaceState(null, '', '?id=' + encodeURIComponent(id));
 
-    const { data, error } = await supabase.rpc('em_contacto_detalle', { p_id: id });
+    const [{ data, error }, cc] = await Promise.all([
+      supabase.rpc('em_contacto_detalle', { p_id: id }),
+      supabase.rpc('em_contacto_campanas', { p_id: id })
+    ]);
     if (fichaId !== id) return;
     if (error || !data) { $('ficha-body').innerHTML = '<p class="em-msg err">' + escaparHTML(mensajeError(error)) + '</p>'; return; }
+    data.campanas = cc && !cc.error ? (cc.data || []) : null; // null = migracion EM5 sin aplicar
     pintarFicha(data);
   }
 
@@ -304,6 +313,15 @@
         '<span class="em-resultado ' + escaparHTML(e.estado) + '"><i></i>' + escaparHTML(formatearFecha(e.creado)) + '</span></span></div>').join('') +
       '</section>' : '';
 
+    const EVT = { entregado: 'entregado', apertura: 'abrió', clic: 'hizo clic', rebote: 'rebotó', queja: 'marcó spam', suprimido: 'no entregado' };
+    const camps = d.campanas;
+    const bloqueCamp = camps && camps.length ? '<section class="em-bloque"><h3>' + ICONOS.historial + 'Campañas recibidas</h3>' +
+      camps.slice(0, 10).map((x) => {
+        const ev = (x.eventos || []).filter((t) => EVT[t]).sort((a, b) => Object.keys(EVT).indexOf(a) - Object.keys(EVT).indexOf(b));
+        return '<div class="em-kv"><span class="k"><a href="campanas.html?id=' + encodeURIComponent(x.campana_id) + '">' + escaparHTML(x.nombre) + '</a></span>' +
+          '<span class="v">' + escaparHTML(x.cuando ? formatearFecha(x.cuando) : '—') + (ev.length ? ' · ' + escaparHTML(ev.map((t) => EVT[t]).join(', ')) : '') + '</span></div>';
+      }).join('') + '<p class="em-pie">«Abrió» es aproximado; los clics son exactos.</p></section>' : '';
+
     const bloqueHist = '<section class="em-bloque"><h3>' + ICONOS.historial + 'Historial del permiso</h3><ul class="em-timeline">' +
       (d.bitacora || []).map((b) => '<li class="' + (b.accion === 'baja' ? 'baja' : '') + '">' + escaparHTML(ACCIONES[b.accion] || b.accion) +
         '<span class="cuando">' + escaparHTML(formatearMomento(b.cuando)) + (b.actor_correo ? ' · ' + escaparHTML(b.actor_correo) : ' · automático') + '</span>' +
@@ -319,7 +337,7 @@
       : '<section class="em-bloque"><h3>' + ICONOS.info + 'Inactivo</h3><p class="em-pie" style="margin:0 0 10px">No recibe campañas. Solo se reactiva si la persona vuelve a autorizar, con nueva evidencia.</p>' +
           '<div class="em-form-acciones"><button class="em-btn-sec" type="button" id="re-btn">Registrar nueva autorización</button></div></section>';
 
-    $('ficha-body').innerHTML = bloqueEstado + bloqueConsent + (activo ? bloqueEditar : '') + bloqueCliente + bloqueSeg + bloqueHist + bloqueBaja;
+    $('ficha-body').innerHTML = bloqueEstado + bloqueConsent + (activo ? bloqueEditar : '') + bloqueCliente + bloqueCamp + bloqueSeg + bloqueHist + bloqueBaja;
     cablearFicha(c);
   }
 

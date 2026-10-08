@@ -578,3 +578,59 @@
   .cp-item{flex-direction:column;align-items:flex-start}
   .cp-item-num{text-align:left}
 }
+
+/* ============================================================
+   RESULTADOS (EM5) · mismo azul del back-office, sin color nuevo
+   ============================================================ */
+.rs-embudo{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
+.rs-embudo li{display:grid;grid-template-columns:150px 1fr 92px;align-items:center;gap:12px;font-size:13.5px}
+.rs-embudo .et{color:var(--mk-carbon)}
+.rs-embudo .et small{display:block;font-size:11px;color:var(--mk-gris)}
+.rs-embudo .bar{height:10px;border-radius:999px;background:rgba(16,28,51,.06);overflow:hidden}
+.rs-embudo .bar span{display:block;height:100%;border-radius:999px;background:var(--mk-marino)}
+.rs-embudo li.aprox .bar span{background:var(--mk-azul-cl)}
+.rs-embudo .num{text-align:right;font-variant-numeric:tabular-nums;color:var(--mk-marino);font-weight:600}
+.rs-embudo .num small{display:block;font-weight:400;font-size:11px;color:var(--mk-gris)}
+.rs-problemas{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
+.rs-problemas .em-dato .v{font-size:20px}
+.rs-tit{margin:20px 0 8px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mk-gris)}
+.rs-enlaces{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.rs-enlaces li{display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:9px 12px;border-radius:10px;background:rgba(16,28,51,.035)}
+.rs-enlaces .url{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mk-carbon)}
+.rs-enlaces b{flex:none;font-variant-numeric:tabular-nums;color:var(--mk-marino)}
+.rs-ventas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rs-ventas .em-dato .v{font-size:20px}
+.rs-ventas .em-dato .s{display:block;font-size:12px;color:var(--mk-gris);margin-top:2px}
+.rs-tabla{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+.rs-tabla th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--mk-gris);padding:6px 8px;border-bottom:1px solid var(--mk-linea)}
+.rs-tabla td{padding:8px;border-bottom:1px solid var(--mk-linea);font-variant-numeric:tabular-nums}
+.rs-tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:rgba(16,28,51,.07);color:var(--mk-marino)}
+.rs-tag.aprox{background:transparent;border:1px dashed var(--mk-azul-cl);color:var(--mk-gris)}
+.rs-espera{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--mk-carbon);background:rgba(16,28,51,.04);border-radius:12px;padding:12px 14px;margin-top:4px}
+.rs-espera svg{width:18px;height:18px;flex:none;color:var(--mk-marino);margin-top:1px}
+.cp-item-rs{display:flex;gap:14px;margin-top:6px;font-size:12px;color:var(--mk-gris)}
+.cp-item-rs b{color:var(--mk-marino);font-variant-numeric:tabular-nums}
+
+/* Salud de la lista (Resumen) */
+.sl-fila{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.sl-med{background:rgba(16,28,51,.035);border-radius:10px;padding:12px 14px}
+.sl-med .k{display:block;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mk-gris)}
+.sl-med .v{display:block;font-size:24px;font-weight:600;color:var(--mk-marino);font-variant-numeric:tabular-nums;line-height:1.25}
+.sl-med.alerta .v{color:var(--mk-acento)}
+.sl-med .lim{display:block;font-size:11.5px;color:var(--mk-gris)}
+.sl-barra{position:relative;height:6px;border-radius:999px;background:rgba(16,28,51,.06);margin-top:8px;overflow:hidden}
+.sl-barra span{display:block;height:100%;border-radius:999px;background:var(--mk-marino)}
+.sl-med.alerta .sl-barra span{background:var(--mk-acento)}
+
+/* Entrega en Correos de seguimiento */
+.em-resultado.entregado{color:#2E7D4F}.em-resultado.entregado i{background:#2E7D4F}
+.em-resultado.rebote,.em-resultado.queja{color:var(--mk-acento)}.em-resultado.rebote i,.em-resultado.queja i{background:var(--mk-acento)}
+.em-resultado.retrasado{color:var(--mk-gris)}.em-resultado.retrasado i{background:var(--mk-azul-cl)}
+
+@media (max-width:560px){
+  .rs-embudo li{grid-template-columns:1fr 70px;gap:4px 10px}
+  .rs-embudo .bar{grid-column:1 / -1;grid-row:2}
+  .rs-problemas{grid-template-columns:repeat(2,1fr)}
+  .rs-ventas{grid-template-columns:1fr}
+  .rs-tabla .em-ocultar-movil{display:none}
+}

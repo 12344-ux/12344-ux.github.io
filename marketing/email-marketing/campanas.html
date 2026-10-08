@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
-<link rel="stylesheet" href="email-marketing.css?v=5">
+<link rel="stylesheet" href="email-marketing.css?v=6">
 
 <!--
   MAGANDHI · Marketing · EMAIL MARKETING · CAMPANAS (tramo EM4).
@@ -133,7 +133,7 @@
 <script type="module">
   import {
     supabase, ICONOS, escaparHTML, formatearNumero, asegurarAccesoEM, montarArea,
-    formatearFecha, formatearMomento, fechaRelativa, mensajeError
+    formatearFecha, formatearMomento, fechaRelativa, mensajeError, formatearCOP
   } from './em-core.js';
   import { optimizarImagen, BUCKET_CAMPANAS, urlPublicaImagen } from '../marketing-core.js';
 
@@ -157,7 +157,7 @@
   const badge = (e) => '<span class="em-badge ' + (ESTADO[e] || ['', ''])[1] + '">' + escaparHTML((ESTADO[e] || [e])[0]) + '</span>';
   const TIPOS = { titulo: 'Título', texto: 'Texto', imagen: 'Imagen', boton: 'Botón', producto: 'Producto destacado', separador: 'Separador' };
 
-  let campanas = [], segmentos = [], temas = [], productos = [], config = null;
+  let campanas = [], segmentos = [], temas = [], productos = [], config = null, resultadosLista = {};
   let actual = null;        // { id, estado, ... } o null si es nueva
   let bloques = [];
   let sucio = false, previaTimer = null, previaSeq = 0, audTimer = null, audSeq = 0, audiencia = null;
@@ -178,12 +178,13 @@
 
   // ---------------- Carga ----------------
   async function cargarBase() {
-    const [c, s, t, p, cfg] = await Promise.all([
+    const [c, s, t, p, cfg, rl] = await Promise.all([
       supabase.rpc('em_campanas_lista'),
       supabase.rpc('em_segmentos_lista', { p_archivados: false }),
       supabase.from('em_temas').select('codigo, nombre').eq('activo', true).order('orden'),
       supabase.from('catalogo_publico').select('slug, nombre, precio_venta, agotado').order('nombre'),
-      supabase.from('em_config').select('politica_publicada, politica_version').limit(1)
+      supabase.from('em_config').select('politica_publicada, politica_version').limit(1),
+      supabase.rpc('em_campanas_resultados_lista')
     ]);
     if (c.error) {
       $('lista').innerHTML = '<div class="mk-empty">' + (/em_campanas_lista|function/i.test(c.error.message || '')
@@ -194,6 +195,7 @@
     }
     campanas = c.data || []; segmentos = s.data || []; temas = t.data || []; productos = p.data || [];
     config = (cfg.data || [])[0] || null;
+    resultadosLista = (rl && !rl.error && rl.data) || {}; // sin la migracion EM5, la lista sigue igual
     return true;
   }
 
@@ -222,7 +224,11 @@
         '<div class="cp-item-main"><div class="cp-item-top">' + badge(x.estado) + '<h3>' + escaparHTML(x.nombre_interno) + '</h3></div>' +
           '<p class="cp-item-asunto">' + (x.asunto ? escaparHTML(x.asunto) : '<span class="em-tenue">Sin asunto</span>') + '</p>' +
           '<p class="cp-item-meta">' + (x.segmento ? escaparHTML(x.segmento) + (x.tema ? ' · ' + escaparHTML(x.tema) : '') : '<span class="em-tenue">Sin segmento</span>') + ' · ' + escaparHTML(cuando) + '</p>' +
-          (x.error && x.estado !== 'enviada' ? '<p class="cp-item-err">' + escaparHTML(x.error) + '</p>' : '') + '</div>' +
+          (x.error && x.estado !== 'enviada' ? '<p class="cp-item-err">' + escaparHTML(x.error) + '</p>' : '') +
+          (x.estado === 'enviada' && resultadosLista[x.id] ? '<p class="cp-item-rs">' +
+            '<span><b>' + formatearNumero(resultadosLista[x.id].entregados) + '</b> entregados</span>' +
+            '<span><b>' + formatearNumero(resultadosLista[x.id].clics) + '</b> con clic</span>' +
+            '<span><b>' + formatearNumero(resultadosLista[x.id].pedidos) + '</b> ' + (Number(resultadosLista[x.id].pedidos) === 1 ? 'pedido' : 'pedidos') + '</span></p>' : '') + '</div>' +
         '<div class="cp-item-num">' + (x.audiencia_n ? '<b>' + formatearNumero(x.audiencia_n) + '</b><span>destinatarios</span>' : '<span class="em-tenue">' + x.bloques + ' bloques</span>') + '</div>' +
       '</article>';
     }).join('') + '</div>';
@@ -263,7 +269,7 @@
     ['ed-nombre', 'ed-asunto', 'ed-preheader', 'ed-segmento', 'ed-tema'].forEach((k) => { $(k).disabled = ro; });
     $('ed-agregar').hidden = ro;
     $('v-editor').classList.toggle('solo-lectura', ro);
-    pintarEstado(); pintarAcciones(); pintarSoloLectura(); pintarBloques(); bandeja(); calcularAudiencia(); programarPrevia(0);
+    pintarEstado(); pintarAcciones(); pintarSoloLectura(); cargarResultados(); pintarBloques(); bandeja(); calcularAudiencia(); programarPrevia(0);
     sucio = false; msg('');
     window.scrollTo(0, 0);
   }
@@ -308,12 +314,82 @@
       (d.confirmada_por_correo ? '<p class="em-pie">Confirmó el envío: ' + escaparHTML(d.confirmada_por_correo) + ' · ' + escaparHTML(formatearMomento(actual.confirmada_en)) + '</p>' : '') +
       (dst.excluidos ? '<p class="em-pie">Los excluidos se habían dado de baja desde un correo anterior; ya figuran de baja en tu lista.</p>' : '') +
       (actual.error && actual.estado !== 'enviada' ? '<p class="em-msg err">' + escaparHTML(actual.error) + '</p>' : '') +
-      '<p class="em-pie" style="margin-top:6px">Los resultados (entregados, clics y ventas) llegan en el siguiente tramo.</p>' +
+      '<div id="rs-caja"></div>' +
       '<details class="cp-hist"><summary>Historial</summary><ul class="em-timeline" style="margin-top:10px">' + (d.bitacora || []).map((b) =>
         '<li>' + escaparHTML(ACC[b.accion] || b.accion) + '<span class="cuando">' + escaparHTML(formatearMomento(b.cuando)) + (b.actor_correo ? ' · ' + escaparHTML(b.actor_correo) : '') + '</span>' +
         (b.accion === 'fallo' && b.detalle && b.detalle.error ? '<span class="det">' + escaparHTML(b.detalle.error) + '</span>' : '') + '</li>').join('') + '</ul></details>' +
     '</section>';
   }
+
+  // ---------------- Resultados (EM5) ----------------
+  const pct = (a, b) => (b ? Math.round((100 * Number(a || 0)) / b) : 0);
+  async function cargarResultados() {
+    const caja = $('rs-caja');
+    if (!caja || !actual || actual.estado !== 'enviada') return;
+    const id = actual.id;
+    caja.innerHTML = '<p class="em-pie">Cargando resultados…</p>';
+    const { data: r, error } = await supabase.rpc('em_campana_resultados', { p_id: id });
+    if (!actual || actual.id !== id || !$('rs-caja')) return;
+    if (error) {
+      caja.innerHTML = '<p class="em-pie">' + (/em_campana_resultados|function/i.test(error.message || '')
+        ? 'Los resultados se activan al aplicar la migración <strong>20261013000000_email_marketing_em5.sql</strong>.'
+        : escaparHTML(mensajeError(error))) + '</p>';
+      return;
+    }
+    caja.innerHTML = pintarResultados(r);
+  }
+
+  function pintarResultados(r) {
+    const dest = Number(r.destinatarios || 0);
+    const v = r.ventas || {};
+    const pedidos = Number(v.exactas_n || 0) + Number(v.aprox_n || 0);
+    const hayEventos = !!r.primer_evento || r.archivado;
+    if (!hayEventos) {
+      return '<h3 class="rs-tit">Resultados</h3><div class="rs-espera">' + ICONOS.reloj + '<span>' +
+        (r.webhook_ultimo_evento
+          ? 'Aún no llegan avisos de esta campaña. Resend los manda a medida que entrega cada correo: suelen aparecer en pocos minutos.'
+          : 'Todavía no ha llegado ningún aviso de Resend. Falta conectar el webhook (Supabase → INSTRUCCIONES, tramo EM5). Mientras tanto, los resultados están en Resend → Broadcasts.') +
+        '</span></div>';
+    }
+    const fila = (et, sub, n, base, cls) =>
+      '<li class="' + (cls || '') + '"><span class="et">' + et + (sub ? '<small>' + sub + '</small>' : '') + '</span>' +
+      '<span class="bar"><span style="width:' + Math.min(100, pct(n, base)) + '%"></span></span>' +
+      '<span class="num">' + formatearNumero(n) + '<small>' + pct(n, base) + '%</small></span></li>';
+    const enlaces = (r.enlaces || []);
+    return '<h3 class="rs-tit">Resultados' + (r.archivado ? ' · archivados' : '') + '</h3>' +
+      '<ul class="rs-embudo">' +
+        fila('Destinatarios', '', dest, dest) +
+        fila('Entregados', '', r.entregados, dest) +
+        fila('Abrieron', 'aproximado', r.aperturas, dest, 'aprox') +
+        fila('Hicieron clic', formatearNumero(r.clics_total) + ' clics en total', r.clics_personas, dest) +
+        fila('Pedidos', pedidos ? (v.aprox_n ? 'incluye aproximados' : 'exactos') : '', pedidos, dest) +
+      '</ul>' +
+      '<p class="em-pie">«Abrieron» es aproximado: algunos correos (Apple Mail, por ejemplo) se abren solos al llegar. Los clics y las entregas sí son exactos.</p>' +
+      '<div class="rs-problemas">' +
+        '<div class="em-dato"><span class="k">Rebotes</span><span class="v' + (r.rebotes ? ' err' : '') + '">' + formatearNumero(r.rebotes) + '</span></div>' +
+        '<div class="em-dato"><span class="k">Spam</span><span class="v' + (r.quejas ? ' err' : '') + '">' + formatearNumero(r.quejas) + '</span></div>' +
+        '<div class="em-dato"><span class="k">Bajas · aprox.</span><span class="v">' + formatearNumero(r.bajas) + '</span></div>' +
+        '<div class="em-dato"><span class="k">No entregados</span><span class="v">' + formatearNumero(Number(r.suprimidos || 0) + Number(r.fallidos || 0)) + '</span></div>' +
+      '</div>' +
+      ((r.rebotes || r.quejas || r.suprimidos) ? '<p class="em-pie">Quien rebotó, marcó spam o estaba suprimido ya quedó fuera de todo envío futuro, con su registro en el historial del contacto.</p>' : '') +
+      (r.bajas ? '<p class="em-pie">Las bajas se cuentan en la última campaña que la persona recibió antes de darse de baja (Resend no dice desde cuál).</p>' : '') +
+      '<h3 class="rs-tit">Enlaces más clicados</h3>' +
+      (enlaces.length ? '<ul class="rs-enlaces">' + enlaces.map((e) =>
+        '<li><span class="url" title="' + escaparHTML(e.enlace) + '">' + escaparHTML(String(e.enlace).replace(/^https?:\/\/(www\.)?/, '')) + '</span>' +
+        '<b>' + formatearNumero(e.clics) + (Number(e.clics) === 1 ? ' clic' : ' clics') + '</b></li>').join('') + '</ul>'
+        : '<p class="em-vacio-mini">Nadie ha hecho clic todavía.</p>') +
+      '<h3 class="rs-tit">Ventas atribuidas</h3>' +
+      '<div class="rs-ventas">' +
+        '<div class="em-dato"><span class="k">Exactas</span><span class="v">' + formatCOPs(v.exactas_valor) + '</span><span class="s">' + formatearNumero(v.exactas_n) + ' pedidos web con la etiqueta de esta campaña</span></div>' +
+        '<div class="em-dato"><span class="k">Aproximadas</span><span class="v">' + formatCOPs(v.aprox_valor) + '</span><span class="s">' + formatearNumero(v.aprox_n) + ' pedidos de quien hizo clic, dentro de los 7 días siguientes</span></div>' +
+      '</div>' +
+      ((v.pedidos || []).length ? '<table class="rs-tabla"><thead><tr><th>Pedido</th><th class="em-ocultar-movil">Cliente</th><th>Fecha</th><th>Total</th><th>Tipo</th></tr></thead><tbody>' +
+        v.pedidos.map((p) => '<tr><td>' + escaparHTML(p.ref) + '</td><td class="em-ocultar-movil">' + escaparHTML(p.cliente || '') + '</td><td>' + escaparHTML(formatearFecha(p.fecha)) + '</td>' +
+          '<td>' + formatCOPs(p.total) + '</td><td><span class="rs-tag' + (p.tipo === 'aproximada' ? ' aprox' : '') + '">' + (p.tipo === 'aproximada' ? 'Aproximada' : 'Exacta') + '</span></td></tr>').join('') +
+        '</tbody></table>' : '') +
+      '<p class="em-pie">Exacta: la compra llegó por un enlace de esta campaña (pagos web, cuando exista Wompi F2). Aproximada: un pedido de la misma persona en los 7 días siguientes a su clic; si hizo clic en varias campañas, cuenta solo la del último clic. Los pedidos anulados no cuentan.</p>';
+  }
+  const formatCOPs = (n) => formatearCOP(Number(n || 0));
 
   // ---------------- Bloques ----------------
   function opcionesProducto(sel) {
