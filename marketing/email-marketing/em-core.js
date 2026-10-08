@@ -183,6 +183,7 @@ export function mensajeError(err) {
   const m = (err && err.message) || String(err || '');
   const tabla = [
     ['EM_SIN_ACCESO', 'Tu usuario no tiene el permiso de Email marketing.'],
+    ['EM_POLITICA_PENDIENTE', 'Primero registra la política de tratamiento de datos (arriba, en este Resumen).'],
     ['EM_CORREO_INVALIDO', 'Ese correo no parece válido. Revísalo.'],
     ['EM_CANAL_INVALIDO', 'Elige por dónde dio la autorización.'],
     ['EM_EVIDENCIA_REQUERIDA', 'Describe cómo autorizó la persona (mínimo 10 caracteres). Es la prueba legal del permiso.'],

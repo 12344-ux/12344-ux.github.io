@@ -89,7 +89,8 @@ Marketing → Email marketing. Diseño completo en `docs/PLANO-EMAIL-MARKETING.m
 - EM3: **Análisis de clúster** en Marketing Project (k-means++ con semilla fija, silueta, retrato en palabras, mapa, comparativo, CSV; reglas de pocos datos) y «Guardar como segmento» congelado.
 - EM4: **Campañas** por bloques (título, texto, imagen, producto destacado, botón único, separador), vista previa PC/celular, prueba a tu correo, revisión final con N exacto, envío o programación vía Resend Broadcasts desde `news.magandhi.com`, cancelación. Envío real bloqueado hasta registrar la política publicada.
 - EM5 (en producción, webhook de Resend conectado y verificado): webhook firmado `em-webhook` (Svix, Verify JWT apagado, escribe solo como service_role), supresión automática con historial, resultados por campaña (embudo, enlaces, rebotes/spam/bajas, ventas exactas y aproximadas con último clic + 7 días), salud de la lista contra los límites de Resend, entrega de los correos del pedido. Eventos crudos 13 meses.
-- EM5.1 (construido, por aplicar): la respuesta a email alimenta el análisis. 5 variables en el clúster (campañas recibidas, % con clic, clics 90 días, días desde el último clic, compras atribuidas) y 9 condiciones en Segmentos (hizo/no hizo clic en una campaña, campañas seguidas sin clic…). Sin aperturas: son aproximadas. Captura pública (EM6) y analítica (EM7) esperan la política.
+- EM5.1 (construido, por aplicar): la respuesta a email alimenta el análisis. 5 variables en el clúster (campañas recibidas, % con clic, clics 90 días, días desde el último clic, compras atribuidas) y 9 condiciones en Segmentos (hizo/no hizo clic en una campaña, campañas seguidas sin clic…). Sin aperturas: son aproximadas.
+- EM6 (construido, por aplicar/desplegar): formulario de novedades en magandhi.com con doble confirmación (`em-suscripcion`), apagado por defecto y encendible solo por admin con la política registrada. Política en versión `borrador-*` para probar: esos contactos nunca reciben campañas reales. Captura pública (EM6) y analítica (EM7) esperan la política.
 
 ### Gestión de opiniones — operativo
 
@@ -236,7 +237,7 @@ Debe incorporar:
 
 ## 9. Próximo orden de trabajo
 
-1. Aplicar Email marketing **EM5.1** (`supabase/INSTRUCCIONES.md` §EM5.1). Luego EM6 cuando la política esté publicada (y EM7, la analítica propia con cookies).
+1. Aplicar/desplegar **EM6** (`supabase/INSTRUCCIONES.md` §EM6). Siguiente: EM7 (analítica propia + aviso de cookies) y después Wompi F2. Las políticas existen como estructura provisional en magandhi.com/politicas/ (el dueño redacta el texto final antes de abrir).
 2. Aplicar y verificar la migración `20261002000000`.
 3. Redesplegar y verificar `crear-intencion-pago`.
 4. Construir Wompi F2 en sandbox.

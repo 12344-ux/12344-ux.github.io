@@ -641,3 +641,7 @@
   .rs-tag .l{display:none}
   .rs-tag .c{display:inline}
 }
+
+/* EM6 · tres datos que se acomodan en celular */
+.em-datos-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:560px){.em-datos-3{grid-template-columns:repeat(2,minmax(0,1fr))}}
