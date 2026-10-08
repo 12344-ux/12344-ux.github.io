@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Campañas · Email marketing</title>
+<meta name="description" content="Campañas de Email marketing · Área de Marketing de MAGANDHI.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/marketing.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=2">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=2">
+<link rel="stylesheet" href="../marketing.css?v=3">
+<link rel="stylesheet" href="email-marketing.css?v=4">
+
+<!--
+  MAGANDHI · Marketing · EMAIL MARKETING · CAMPANAS (tramo EM4).
+  Lista de campanas + editor por bloques (titulo, texto, imagen, boton,
+  producto destacado de Campanas, separador) con vista previa generada por la
+  MISMA funcion que envia (em-campana, modo vista) en PC y celular, envio de
+  prueba al propio correo, y revision final: el humano ve el numero exacto de
+  destinatarios y pulsa enviar. El envio se hace en pasos visibles:
+  confirmar (congela la audiencia) -> preparar contactos en Resend por tandas
+  -> enviar o programar. Si se interrumpe, se retoma desde la campana.
+  Parametros: ?id=<uuid> abre una campana; ?nueva=1 abre una en blanco.
+-->
+</head>
+<body class="mk-body">
+
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="mk-wrap" id="em-main" hidden>
+  <!-- ===== Lista ===== -->
+  <section id="v-lista">
+    <div id="cp-aviso"></div>
+    <div class="em-toolbar">
+      <select class="mk-select" id="f-estado" aria-label="Estado">
+        <option value="">Todas</option>
+        <option value="borrador">Borradores</option>
+        <option value="programada">Programadas</option>
+        <option value="enviada">Enviadas</option>
+        <option value="preparando">En preparación</option>
+        <option value="cancelada">Canceladas</option>
+      </select>
+      <p class="em-contador" id="contador" style="margin:0;flex:1"></p>
+      <button class="mk-btn" id="btn-nueva" type="button"><span data-ico="mas"></span> Nueva campaña</button>
+    </div>
+    <div id="lista"><p class="mk-empty">Cargando campañas…</p></div>
+  </section>
+
+  <!-- ===== Editor ===== -->
+  <section id="v-editor" hidden>
+    <div class="cp-barra">
+      <button class="em-btn-sec cp-volver" type="button" id="ed-volver"><span data-ico="flecha"></span> Campañas</button>
+      <input class="mk-input cp-nombre" id="ed-nombre" maxlength="100" placeholder="Nombre interno de la campaña" aria-label="Nombre interno">
+      <span id="ed-estado"></span>
+      <span class="cp-guardado" id="ed-guardado"></span>
+      <div class="cp-barra-acc" id="ed-acciones"></div>
+    </div>
+    <p class="em-msg" id="ed-msg" hidden></p>
+
+    <div class="cp-grid">
+      <div class="cp-col">
+        <div id="ed-solo-lectura"></div>
+        <section class="em-card cp-para" id="ed-para">
+          <h2 class="em-card-titulo">Para quién</h2>
+          <div class="em-fila2">
+            <label class="em-campo"><span>Segmento</span><select class="mk-select" id="ed-segmento"></select></label>
+            <label class="em-campo"><span>Tema</span><select class="mk-select" id="ed-tema"></select></label>
+          </div>
+          <div class="cp-audiencia" id="ed-audiencia"><b>—</b><span>Elige segmento y tema para ver cuántas personas lo recibirían.</span></div>
+        </section>
+
+        <section class="em-card">
+          <h2 class="em-card-titulo">Bandeja de entrada</h2>
+          <div class="cp-bandeja">
+            <span class="em-ini">M</span>
+            <div><b>MAGANDHI</b><span class="cp-b-asunto" id="pv-asunto">Asunto del correo</span><span class="cp-b-pre" id="pv-pre">Texto de vista previa…</span></div>
+          </div>
+          <label class="em-campo"><span>Asunto</span>
+            <input class="mk-input" id="ed-asunto" maxlength="150" placeholder="Ej.: {nombre}, ya estamos en Instagram"></label>
+          <label class="em-campo"><span>Texto de vista previa</span>
+            <input class="mk-input" id="ed-preheader" maxlength="200" placeholder="La línea gris que aparece junto al asunto"></label>
+          <p class="em-ayuda">Escribe <code>{nombre}</code> para saludar por el nombre, o <code>{nombre|amiga}</code> para usar «amiga» cuando no tengamos el nombre.</p>
+        </section>
+
+        <section class="em-card">
+          <h2 class="em-card-titulo">Contenido <span class="em-tenue" style="text-transform:none;letter-spacing:0;font-weight:400" id="ed-nbloques"></span></h2>
+          <div class="cp-bloques" id="ed-bloques"></div>
+          <div class="cp-agregar" id="ed-agregar">
+            <span>Agregar</span>
+            <button type="button" data-add="titulo"><span data-ico="titulo"></span>Título</button>
+            <button type="button" data-add="texto"><span data-ico="texto"></span>Texto</button>
+            <button type="button" data-add="imagen"><span data-ico="imagen"></span>Imagen</button>
+            <button type="button" data-add="producto"><span data-ico="bolsa"></span>Producto</button>
+            <button type="button" data-add="boton"><span data-ico="cursor"></span>Botón</button>
+            <button type="button" data-add="separador"><span data-ico="separador"></span>Separador</button>
+          </div>
+        </section>
+      </div>
+
+      <aside class="cp-previa">
+        <div class="cp-previa-barra">
+          <span>Vista previa</span>
+          <div class="sg-modo" role="radiogroup" aria-label="Dispositivo">
+            <label><input type="radio" name="disp" value="pc" checked><span>Computador</span></label>
+            <label><input type="radio" name="disp" value="movil"><span>Celular</span></label>
+          </div>
+        </div>
+        <div class="cp-marco" id="pv-marco"><div class="cp-cargando" id="pv-estado">Generando vista previa…</div></div>
+        <p class="em-pie">Así llega a la bandeja. El pie con «Dejar de recibir estos correos» lo agrega el sistema en cada envío.</p>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<!-- Revision final -->
+<div class="em-modal-fondo" id="rv-fondo" hidden>
+  <div class="em-modal" role="dialog" aria-modal="true" aria-labelledby="rv-tit">
+    <div class="em-modal-head">
+      <span class="ico" data-ico="enviar"></span>
+      <div><h2 id="rv-tit">Revisión final</h2><p>Un envío masivo no se puede deshacer. Revisa con calma.</p></div>
+      <button class="em-x" id="rv-cerrar" type="button" aria-label="Cerrar"><span data-ico="equis"></span></button>
+    </div>
+    <div class="em-form" id="rv-cuerpo"></div>
+  </div>
+</div>
+
+<script type="module">
+  import {
+    supabase, ICONOS, escaparHTML, formatearNumero, asegurarAccesoEM, montarArea,
+    formatearFecha, formatearMomento, fechaRelativa, mensajeError
+  } from './em-core.js';
+  import { optimizarImagen, BUCKET_CAMPANAS, urlPublicaImagen } from '../marketing-core.js';
+
+  const $ = (id) => document.getElementById(id);
+  const svg = (d) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+  ICONOS.titulo = svg('<path d="M6 12h12M6 20V4M18 20V4"/>');
+  ICONOS.texto = svg('<path d="M15 18H3M17 6H3M21 12H3"/>');
+  ICONOS.bolsa = svg('<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/>');
+  ICONOS.cursor = svg('<path d="M9 9 4 4M4 9V4h5"/><rect width="12" height="8" x="9" y="12" rx="2"/>');
+  ICONOS.separador = svg('<path d="M3 12h18M8 6h8M8 18h8"/>');
+  ICONOS.subir = svg('<path d="m18 15-6-6-6 6"/>');
+  ICONOS.bajar = svg('<path d="m6 9 6 6 6-6"/>');
+  ICONOS.basura = svg('<path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>');
+  ICONOS.copiar = svg('<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>');
+  ICONOS.reloj = svg('<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>');
+
+  const ESTADO = {
+    borrador: ['Borrador', 'pendiente'], preparando: ['En preparación', 'pendiente'], programada: ['Programada', 'suscrito'],
+    enviada: ['Enviada', 'ok'], cancelada: ['Cancelada', 'baja'], fallida: ['Falló', 'problema']
+  };
+  const badge = (e) => '<span class="em-badge ' + (ESTADO[e] || ['', ''])[1] + '">' + escaparHTML((ESTADO[e] || [e])[0]) + '</span>';
+  const TIPOS = { titulo: 'Título', texto: 'Texto', imagen: 'Imagen', boton: 'Botón', producto: 'Producto destacado', separador: 'Separador' };
+
+  let campanas = [], segmentos = [], temas = [], productos = [], config = null;
+  let actual = null;        // { id, estado, ... } o null si es nueva
+  let bloques = [];
+  let sucio = false, previaTimer = null, previaSeq = 0, audTimer = null, audSeq = 0, audiencia = null;
+
+  // ---------------- Comunicación con la función ----------------
+  async function fn(body) {
+    try {
+      const { data, error } = await supabase.functions.invoke('em-campana', { body });
+      if (error) {
+        let j = null; try { j = await error.context.json(); } catch (_) {}
+        let t = (j && j.error) || error.message || 'Error';
+        if (/Failed to send a request|FunctionsFetchError/i.test(t)) t = 'No se pudo contactar la función em-campana. ¿Ya está desplegada?';
+        return { ok: false, error: t, data: j };
+      }
+      return { ok: true, data };
+    } catch (e) { return { ok: false, error: 'Sin conexión: ' + (e?.message || e) }; }
+  }
+
+  // ---------------- Carga ----------------
+  async function cargarBase() {
+    const [c, s, t, p, cfg] = await Promise.all([
+      supabase.rpc('em_campanas_lista'),
+      supabase.rpc('em_segmentos_lista', { p_archivados: false }),
+      supabase.from('em_temas').select('codigo, nombre').eq('activo', true).order('orden'),
+      supabase.from('catalogo_publico').select('slug, nombre, precio_venta, agotado').order('nombre'),
+      supabase.from('em_config').select('politica_publicada, politica_version').limit(1)
+    ]);
+    if (c.error) {
+      $('lista').innerHTML = '<div class="mk-empty">' + (/em_campanas_lista|function/i.test(c.error.message || '')
+        ? 'Falta aplicar la migración <strong>20261012000000_email_marketing_em4.sql</strong> en Supabase.'
+        : escaparHTML(mensajeError(c.error))) + '</div>';
+      $('btn-nueva').disabled = true;
+      return false;
+    }
+    campanas = c.data || []; segmentos = s.data || []; temas = t.data || []; productos = p.data || [];
+    config = (cfg.data || [])[0] || null;
+    return true;
+  }
+
+  // ---------------- Lista ----------------
+  function pintarLista() {
+    $('cp-aviso').innerHTML = config && config.politica_publicada ? '' :
+      '<div class="em-aviso">' + ICONOS.escudo + '<div><strong>Puedes preparar campañas y enviarte pruebas</strong>' +
+      '<p>El envío a tus contactos se habilita cuando la política de tratamiento de datos esté publicada y registrada en el <a href="index.html">Resumen</a>.</p></div></div>';
+    const f = $('f-estado').value;
+    const lista = campanas.filter((x) => !f || x.estado === f);
+    $('contador').textContent = campanas.length ? formatearNumero(lista.length) + (lista.length === 1 ? ' campaña' : ' campañas') : '';
+    if (!campanas.length) {
+      $('lista').innerHTML = '<div class="em-bienvenida"><div class="ico">' + ICONOS.enviar + '</div><h2>Tu primera campaña</h2>' +
+        '<p>Arma el correo por bloques, elige a qué segmento va y revisa cómo se ve en computador y celular antes de enviarlo.</p>' +
+        '<button class="mk-btn" type="button" id="btn-nueva-vacia">' + ICONOS.mas + ' Crear campaña</button></div>';
+      $('btn-nueva-vacia').addEventListener('click', () => abrir(null));
+      return;
+    }
+    if (!lista.length) { $('lista').innerHTML = '<div class="mk-empty">No hay campañas con ese estado.</div>'; return; }
+    $('lista').innerHTML = '<div class="cp-lista">' + lista.map((x) => {
+      const cuando = x.estado === 'enviada' ? 'Enviada ' + formatearMomento(x.enviada_en)
+        : x.estado === 'programada' ? 'Sale el ' + formatearMomento(x.programada_para)
+        : x.estado === 'preparando' ? 'Preparando: ' + formatearNumero(x.listos) + ' de ' + formatearNumero(x.audiencia_n) + ' contactos listos'
+        : 'Editada ' + fechaRelativa(x.actualizado).toLowerCase();
+      return '<article class="cp-item" tabindex="0" data-id="' + escaparHTML(x.id) + '">' +
+        '<div class="cp-item-main"><div class="cp-item-top">' + badge(x.estado) + '<h3>' + escaparHTML(x.nombre_interno) + '</h3></div>' +
+          '<p class="cp-item-asunto">' + (x.asunto ? escaparHTML(x.asunto) : '<span class="em-tenue">Sin asunto</span>') + '</p>' +
+          '<p class="cp-item-meta">' + (x.segmento ? escaparHTML(x.segmento) + (x.tema ? ' · ' + escaparHTML(x.tema) : '') : '<span class="em-tenue">Sin segmento</span>') + ' · ' + escaparHTML(cuando) + '</p>' +
+          (x.error && x.estado !== 'enviada' ? '<p class="cp-item-err">' + escaparHTML(x.error) + '</p>' : '') + '</div>' +
+        '<div class="cp-item-num">' + (x.audiencia_n ? '<b>' + formatearNumero(x.audiencia_n) + '</b><span>destinatarios</span>' : '<span class="em-tenue">' + x.bloques + ' bloques</span>') + '</div>' +
+      '</article>';
+    }).join('') + '</div>';
+    $('lista').querySelectorAll('.cp-item').forEach((el) => {
+      const ir = () => abrir(el.dataset.id);
+      el.addEventListener('click', ir);
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter') ir(); });
+    });
+  }
+  $('f-estado').addEventListener('change', pintarLista);
+  $('btn-nueva').addEventListener('click', () => abrir(null));
+
+  // ---------------- Editor ----------------
+  const editable = () => !actual || actual.estado === 'borrador';
+
+  async function abrir(id) {
+    actual = null; bloques = []; audiencia = null;
+    if (id) {
+      const { data, error } = await supabase.rpc('em_campana_detalle', { p_id: id });
+      if (error) { window.alert(mensajeError(error)); return; }
+      actual = Object.assign({}, data.campana, { estado: data.estado_visible, detalle: data });
+      bloques = Array.isArray(actual.contenido) ? actual.contenido.map((b) => Object.assign({}, b)) : [];
+    } else {
+      bloques = [{ tipo: 'titulo', texto: 'Hola, {nombre|}' }, { tipo: 'texto', texto: '' }];
+    }
+    $('v-lista').hidden = true; $('v-editor').hidden = false;
+    history.replaceState(null, '', id ? '?id=' + encodeURIComponent(id) : '?nueva=1');
+    $('ed-nombre').value = actual ? actual.nombre_interno : '';
+    $('ed-asunto').value = actual ? actual.asunto : '';
+    $('ed-preheader').value = actual ? (actual.preheader || '') : '';
+    $('ed-segmento').innerHTML = '<option value="">Elige un segmento…</option>' + segmentos.map((s) =>
+      '<option value="' + escaparHTML(s.id) + '">' + escaparHTML(s.nombre) + ' · ' + formatearNumero(s.suscritos) + ' suscritos</option>').join('') +
+      (actual && actual.detalle.segmento && !segmentos.some((s) => s.id === actual.segmento_id) ? '<option value="' + escaparHTML(actual.segmento_id) + '">' + escaparHTML(actual.detalle.segmento.nombre) + ' (archivado)</option>' : '');
+    $('ed-segmento').value = actual && actual.segmento_id ? actual.segmento_id : '';
+    $('ed-tema').innerHTML = temas.map((t) => '<option value="' + escaparHTML(t.codigo) + '">' + escaparHTML(t.nombre) + '</option>').join('');
+    $('ed-tema').value = actual && actual.tema ? actual.tema : (temas[0] ? temas[0].codigo : '');
+    const ro = !editable();
+    ['ed-nombre', 'ed-asunto', 'ed-preheader', 'ed-segmento', 'ed-tema'].forEach((k) => { $(k).disabled = ro; });
+    $('ed-agregar').hidden = ro;
+    $('v-editor').classList.toggle('solo-lectura', ro);
+    pintarEstado(); pintarAcciones(); pintarSoloLectura(); pintarBloques(); bandeja(); calcularAudiencia(); programarPrevia(0);
+    sucio = false; msg('');
+    window.scrollTo(0, 0);
+  }
+
+  function pintarEstado() {
+    $('ed-estado').innerHTML = badge(actual ? actual.estado : 'borrador');
+  }
+
+  function pintarAcciones() {
+    const e = actual ? actual.estado : 'borrador';
+    let h = '';
+    if (e === 'borrador') {
+      h = '<button class="em-btn-sec" type="button" id="ac-guardar">Guardar</button>' +
+          '<button class="em-btn-sec" type="button" id="ac-prueba">' + ICONOS.sobre + 'Enviarme una prueba</button>' +
+          '<button class="mk-btn" type="button" id="ac-revisar">' + ICONOS.enviar + 'Revisar y enviar</button>';
+    } else {
+      if (e === 'preparando') h += '<button class="mk-btn" type="button" id="ac-continuar">Continuar envío</button>';
+      if (['borrador', 'preparando', 'programada'].includes(e)) h += '<button class="em-btn-peligro" type="button" id="ac-cancelar">Cancelar campaña</button>';
+      h += '<button class="em-btn-sec" type="button" id="ac-prueba">' + ICONOS.sobre + 'Enviarme una prueba</button>';
+    }
+    if (actual) h += '<button class="em-btn-sec" type="button" id="ac-duplicar" title="Crear un borrador igual">' + ICONOS.copiar + 'Duplicar</button>';
+    $('ed-acciones').innerHTML = h;
+    $('ac-guardar')?.addEventListener('click', () => guardar(true));
+    $('ac-prueba')?.addEventListener('click', prueba);
+    $('ac-revisar')?.addEventListener('click', revisar);
+    $('ac-continuar')?.addEventListener('click', () => abrirRevision(true));
+    $('ac-cancelar')?.addEventListener('click', cancelar);
+    $('ac-duplicar')?.addEventListener('click', duplicar);
+  }
+
+  function pintarSoloLectura() {
+    if (editable()) { $('ed-solo-lectura').innerHTML = ''; return; }
+    const d = actual.detalle, dst = d.destinatarios || {};
+    const ACC = { crear: 'Creada', editar: 'Editada', duplicar: 'Duplicada', prueba: 'Prueba enviada', confirmar: 'Envío confirmado', enviar: 'Enviada', programar: 'Programada', cancelar: 'Cancelada', fallo: 'Falló un intento' };
+    $('ed-solo-lectura').innerHTML = '<section class="em-card cp-resumen">' +
+      '<div class="em-datos" style="grid-template-columns:repeat(3,1fr)">' +
+        '<div class="em-dato"><span class="k">Destinatarios</span><span class="v">' + formatearNumero(dst.listos || actual.audiencia_n || 0) + '</span></div>' +
+        '<div class="em-dato"><span class="k">' + (actual.estado === 'programada' ? 'Sale' : 'Enviada') + '</span><span class="v" style="font-size:15px;padding-top:6px">' +
+          escaparHTML(actual.estado === 'programada' ? formatearMomento(actual.programada_para) : actual.enviada_en ? formatearMomento(actual.enviada_en) : '—') + '</span></div>' +
+        '<div class="em-dato"><span class="k">Excluidos</span><span class="v">' + formatearNumero(dst.excluidos || 0) + '</span></div>' +
+      '</div>' +
+      (d.confirmada_por_correo ? '<p class="em-pie">Confirmó el envío: ' + escaparHTML(d.confirmada_por_correo) + ' · ' + escaparHTML(formatearMomento(actual.confirmada_en)) + '</p>' : '') +
+      (dst.excluidos ? '<p class="em-pie">Los excluidos se habían dado de baja desde un correo anterior; ya figuran de baja en tu lista.</p>' : '') +
+      (actual.error && actual.estado !== 'enviada' ? '<p class="em-msg err">' + escaparHTML(actual.error) + '</p>' : '') +
+      '<p class="em-pie" style="margin-top:6px">Los resultados (entregados, clics y ventas) llegan en el siguiente tramo.</p>' +
+      '<details class="cp-hist"><summary>Historial</summary><ul class="em-timeline" style="margin-top:10px">' + (d.bitacora || []).map((b) =>
+        '<li>' + escaparHTML(ACC[b.accion] || b.accion) + '<span class="cuando">' + escaparHTML(formatearMomento(b.cuando)) + (b.actor_correo ? ' · ' + escaparHTML(b.actor_correo) : '') + '</span>' +
+        (b.accion === 'fallo' && b.detalle && b.detalle.error ? '<span class="det">' + escaparHTML(b.detalle.error) + '</span>' : '') + '</li>').join('') + '</ul></details>' +
+    '</section>';
+  }
+
+  // ---------------- Bloques ----------------
+  function opcionesProducto(sel) {
+    return '<option value="">Elige un producto publicado…</option>' + productos.map((p) =>
+      '<option value="' + escaparHTML(p.slug) + '"' + (p.slug === sel ? ' selected' : '') + '>' + escaparHTML(p.nombre) +
+      (p.agotado ? ' (agotado)' : '') + '</option>').join('');
+  }
+
+  function cuerpoBloque(b, i) {
+    const ro = !editable() ? ' disabled' : '';
+    switch (b.tipo) {
+      case 'titulo': return '<input class="mk-input" data-k="texto" maxlength="150" value="' + escaparHTML(b.texto || '') + '" placeholder="Ej.: Hola, {nombre|}"' + ro + '>';
+      case 'texto': return '<textarea class="mk-input" data-k="texto" maxlength="3000" rows="4" placeholder="Escribe el mensaje. Una línea en blanco separa párrafos."' + ro + '>' + escaparHTML(b.texto || '') + '</textarea>';
+      case 'boton': return '<div class="em-fila2"><input class="mk-input" data-k="texto" maxlength="40" value="' + escaparHTML(b.texto || '') + '" placeholder="Texto del botón"' + ro + '>' +
+        '<input class="mk-input" data-k="url" maxlength="600" value="' + escaparHTML(b.url || '') + '" placeholder="https://…"' + ro + '></div>' +
+        '<p class="em-ayuda">Un solo botón por correo: así llega a la bandeja principal. Los enlaces a magandhi.com se marcan solos para medir ventas.</p>';
+      case 'producto': return '<select class="mk-select" data-k="slug"' + ro + '>' + opcionesProducto(b.slug) + '</select>' +
+        '<input class="mk-input" data-k="boton_texto" maxlength="40" value="' + escaparHTML(b.boton_texto || '') + '" placeholder="Texto del botón (por defecto «Ver producto»)" style="margin-top:8px"' + ro + '>' +
+        '<p class="em-ayuda">Toma la foto, el nombre y el precio actuales de Campañas.</p>';
+      case 'imagen': return (b.url ? '<img class="cp-img" src="' + escaparHTML(b.url) + '" alt="">' : '') +
+        (ro ? '' : '<label class="em-btn-sec cp-subir">' + ICONOS.imagen + (b.url ? 'Cambiar imagen' : 'Subir imagen') + '<input type="file" accept="image/*" data-subir="' + i + '" hidden></label>') +
+        '<div class="em-fila2" style="margin-top:8px"><input class="mk-input" data-k="alt" maxlength="150" value="' + escaparHTML(b.alt || '') + '" placeholder="Descripción de la imagen"' + ro + '>' +
+        '<input class="mk-input" data-k="enlace" maxlength="600" value="' + escaparHTML(b.enlace || '') + '" placeholder="Enlace al tocarla (opcional)"' + ro + '></div>';
+      default: return '<p class="em-ayuda" style="margin:0">Una línea fina para separar secciones.</p>';
+    }
+  }
+
+  function pintarBloques() {
+    $('ed-nbloques').textContent = '· ' + bloques.length + (bloques.length === 1 ? ' bloque' : ' bloques');
+    if (!bloques.length) { $('ed-bloques').innerHTML = '<p class="em-vacio-mini">Agrega bloques para armar el correo.</p>'; return; }
+    const ro = !editable();
+    $('ed-bloques').innerHTML = bloques.map((b, i) =>
+      '<div class="cp-bloque" data-i="' + i + '"><div class="cp-bloque-cab"><span class="cp-bloque-tipo">' + (ICONOS[{ titulo: 'titulo', texto: 'texto', imagen: 'imagen', boton: 'cursor', producto: 'bolsa', separador: 'separador' }[b.tipo]] || '') + escaparHTML(TIPOS[b.tipo] || b.tipo) + '</span>' +
+        (ro ? '' : '<span class="cp-bloque-acc"><button type="button" class="sg-icono" data-mover="-1" aria-label="Subir"' + (i === 0 ? ' disabled' : '') + '>' + ICONOS.subir + '</button>' +
+          '<button type="button" class="sg-icono" data-mover="1" aria-label="Bajar"' + (i === bloques.length - 1 ? ' disabled' : '') + '>' + ICONOS.bajar + '</button>' +
+          '<button type="button" class="sg-icono" data-quitar aria-label="Quitar bloque">' + ICONOS.basura + '</button></span>') +
+      '</div>' + cuerpoBloque(b, i) + '</div>').join('');
+    $('ed-bloques').querySelectorAll('.cp-bloque').forEach((el) => {
+      const i = Number(el.dataset.i);
+      el.querySelectorAll('[data-k]').forEach((inp) => inp.addEventListener(inp.tagName === 'SELECT' ? 'change' : 'input', () => {
+        bloques[i][inp.dataset.k] = inp.value; cambio();
+      }));
+      el.querySelector('[data-quitar]')?.addEventListener('click', () => {
+        const b = bloques[i];
+        const vacio = !(b.texto || b.url || b.slug);
+        if (!vacio && !window.confirm('¿Quitar este bloque de ' + (TIPOS[b.tipo] || '').toLowerCase() + '?')) return;
+        bloques.splice(i, 1); pintarBloques(); cambio();
+      });
+      el.querySelectorAll('[data-mover]').forEach((bt) => bt.addEventListener('click', () => {
+        const j = i + Number(bt.dataset.mover);
+        [bloques[i], bloques[j]] = [bloques[j], bloques[i]]; pintarBloques(); cambio();
+      }));
+      el.querySelector('[data-subir]')?.addEventListener('change', (e) => subirImagen(i, e.target.files[0]));
+    });
+  }
+
+  $('ed-agregar').querySelectorAll('[data-add]').forEach((b) => b.addEventListener('click', () => {
+    const tipo = b.dataset.add;
+    if (tipo === 'boton' && bloques.some((x) => x.tipo === 'boton')) { msg('Un correo de campaña lleva un solo botón (así llega a la bandeja principal). Edita el que ya tienes.', 'err'); return; }
+    if (bloques.length >= 30) { msg('Máximo 30 bloques.', 'err'); return; }
+    bloques.push(tipo === 'boton' ? { tipo, texto: 'Ver en la tienda', url: 'https://magandhi.com/' } : { tipo });
+    pintarBloques(); cambio();
+    const ult = $('ed-bloques').lastElementChild; ult?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    ult?.querySelector('input,textarea,select')?.focus();
+  }));
+
+  async function subirImagen(i, archivo) {
+    if (!archivo) return;
+    msg('Optimizando y subiendo la imagen…');
+    try {
+      const img = await optimizarImagen(archivo, { maxBorde: 1200, calidad: 0.85, preferirWebp: false });
+      const key = 'email/' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10) + '.' + img.ext;
+      const { error } = await supabase.storage.from(BUCKET_CAMPANAS).upload(key, img.blob, { contentType: img.tipo, upsert: false });
+      if (error) throw error;
+      bloques[i].url = urlPublicaImagen(key);
+      pintarBloques(); cambio(); msg('Imagen lista.', 'ok');
+    } catch (e) {
+      msg('No se pudo subir la imagen: ' + (e?.message || e) + '. Subir imágenes requiere también el permiso de Marketing.', 'err');
+    }
+  }
+
+  // ---------------- Cambios, bandeja, previa, audiencia ----------------
+  function cambio() { sucio = true; $('ed-guardado').textContent = 'Cambios sin guardar'; bandeja(); programarPrevia(); }
+  ['ed-nombre', 'ed-asunto', 'ed-preheader'].forEach((k) => $(k).addEventListener('input', cambio));
+  ['ed-segmento', 'ed-tema'].forEach((k) => $(k).addEventListener('change', () => { cambio(); calcularAudiencia(); }));
+  document.querySelectorAll('input[name="disp"]').forEach((r) => r.addEventListener('change', () => {
+    $('pv-marco').classList.toggle('movil', document.querySelector('input[name="disp"]:checked').value === 'movil');
+  }));
+
+  const conNombre = (s) => (s || '').replace(/\{nombre(?:\|([^{}]*))?\}/g, 'Ana');
+  function bandeja() {
+    $('pv-asunto').textContent = conNombre($('ed-asunto').value) || 'Asunto del correo';
+    $('pv-pre').textContent = conNombre($('ed-preheader').value) || 'Texto de vista previa…';
+  }
+
+  function programarPrevia(ms) { clearTimeout(previaTimer); previaTimer = setTimeout(previa, ms === undefined ? 600 : ms); }
+  async function previa() {
+    const seq = ++previaSeq;
+    $('pv-marco').classList.add('cargando');
+    const t = temas.find((x) => x.codigo === $('ed-tema').value);
+    const r = await fn({ modo: 'vista', asunto: $('ed-asunto').value, preheader: $('ed-preheader').value, contenido: bloques, tema_nombre: t ? t.nombre : '' });
+    if (seq !== previaSeq) return;
+    $('pv-marco').classList.remove('cargando');
+    if (!r.ok) { $('pv-marco').innerHTML = '<div class="cp-cargando">' + escaparHTML(r.error) + '</div>'; return; }
+    let fr = $('pv-marco').querySelector('iframe');
+    if (!fr) { $('pv-marco').innerHTML = ''; fr = document.createElement('iframe'); fr.setAttribute('sandbox', ''); fr.title = 'Vista previa del correo'; $('pv-marco').appendChild(fr); }
+    fr.srcdoc = r.data.html;
+  }
+
+  async function calcularAudiencia() {
+    const seg = $('ed-segmento').value, tema = $('ed-tema').value;
+    const caja = $('ed-audiencia');
+    if (!seg || !tema) { audiencia = null; caja.innerHTML = '<b>—</b><span>Elige segmento y tema para ver cuántas personas lo recibirían.</span>'; return; }
+    clearTimeout(audTimer);
+    audTimer = setTimeout(async () => {
+      const seq = ++audSeq;
+      const { data, error } = await supabase.rpc('em_campana_audiencia', { p_segmento_id: seg, p_tema: tema });
+      if (seq !== audSeq) return;
+      if (error) { caja.innerHTML = '<b>—</b><span>' + escaparHTML(mensajeError(error)) + '</span>'; return; }
+      audiencia = data;
+      const t = temas.find((x) => x.codigo === tema);
+      caja.innerHTML = '<b>' + formatearNumero(data.n) + '</b><span>' + (data.n === 1 ? 'persona recibiría' : 'personas recibirían') + ' esta campaña: están en el segmento, suscritas y quieren recibir <strong>' + escaparHTML(t ? t.nombre : tema) + '</strong>.' +
+        (data.sin_nombre ? ' ' + formatearNumero(data.sin_nombre) + ' sin nombre registrado.' : '') + '</span>';
+    }, 250);
+  }
+
+  function msg(t, cls) { const m = $('ed-msg'); m.hidden = !t; m.textContent = t || ''; m.className = 'em-msg' + (cls ? ' ' + cls : ''); }
+
+  // ---------------- Guardar / prueba / duplicar / cancelar ----------------
+  async function guardar(avisar) {
+    if (!editable()) return true;
+    const nombre = $('ed-nombre').value.trim();
+    if (!nombre) { msg('Ponle un nombre interno a la campaña (solo lo ves tú).', 'err'); $('ed-nombre').focus(); return false; }
+    const { data, error } = await supabase.rpc('em_campana_guardar', {
+      p_id: actual ? actual.id : null, p_nombre: nombre, p_asunto: $('ed-asunto').value, p_preheader: $('ed-preheader').value,
+      p_contenido: bloques, p_segmento_id: $('ed-segmento').value || null, p_tema: $('ed-tema').value || null
+    });
+    if (error) { msg(mensajeError(error).replace('No se pudo completar: ', '') .replace(/EM_CONTENIDO_INVALIDO:?/, 'Contenido no válido:'), 'err'); return false; }
+    if (!actual) {
+      actual = { id: data.id, estado: 'borrador' };
+      history.replaceState(null, '', '?id=' + encodeURIComponent(data.id));
+      pintarAcciones();
+    }
+    sucio = false;
+    $('ed-guardado').textContent = 'Guardado ' + new Date().toTimeString().slice(0, 5);
+    if (avisar) msg('Borrador guardado.', 'ok');
+    return true;
+  }
+
+  async function prueba() {
+    if (!$('ed-asunto').value.trim()) { msg('Escribe un asunto antes de enviarte la prueba.', 'err'); $('ed-asunto').focus(); return; }
+    if (editable() && !(await guardar(false))) return;
+    const b = $('ac-prueba'); b.disabled = true; msg('Enviando prueba…');
+    const t = temas.find((x) => x.codigo === $('ed-tema').value);
+    const r = await fn({ modo: 'prueba', campana_id: actual ? actual.id : null, asunto: $('ed-asunto').value, preheader: $('ed-preheader').value, contenido: bloques, tema_nombre: t ? t.nombre : '' });
+    b.disabled = false;
+    msg(r.ok ? 'Prueba enviada a ' + r.data.destinatario + '. Revisa Principal, Promociones y Spam.' : r.error, r.ok ? 'ok' : 'err');
+  }
+
+  async function duplicar() {
+    if (sucio && editable() && !(await guardar(false))) return;
+    const { data, error } = await supabase.rpc('em_campana_duplicar', { p_id: actual.id });
+    if (error) { msg(mensajeError(error), 'err'); return; }
+    await cargarBase(); await abrir(data.id); msg('Copia creada como borrador.', 'ok');
+  }
+
+  async function cancelar() {
+    const motivo = window.prompt(actual.estado === 'programada'
+      ? 'Se cancelará el envío programado y nadie lo recibirá. Escribe el motivo:'
+      : 'La campaña se cancelará. Escribe el motivo:');
+    if (motivo === null) return;
+    const r = await fn({ modo: 'cancelar', campana_id: actual.id, motivo });
+    if (!r.ok) { msg(r.error, 'err'); return; }
+    await cargarBase(); await abrir(actual.id); msg('Campaña cancelada.', 'ok');
+  }
+
+  function avisoValidacion() {
+    if (!$('ed-asunto').value.trim()) return 'Falta el asunto.';
+    if (!$('ed-segmento').value) return 'Elige el segmento que recibirá la campaña.';
+    const util = bloques.some((b) => (['titulo', 'texto'].includes(b.tipo) && (b.texto || '').trim()) || (b.tipo === 'imagen' && b.url) || (b.tipo === 'producto' && b.slug));
+    if (!util) return 'El correo no tiene contenido todavía.';
+    for (const b of bloques) {
+      if (b.tipo === 'boton' && (!(b.texto || '').trim() || !/^https:\/\//.test(b.url || ''))) return 'El botón necesita texto y un enlace que empiece por https://';
+      if (b.tipo === 'imagen' && !b.url) return 'Hay un bloque de imagen sin imagen.';
+      if (b.tipo === 'imagen' && b.enlace && !/^https:\/\//.test(b.enlace)) return 'El enlace de la imagen debe empezar por https://';
+      if (b.tipo === 'producto' && !b.slug) return 'Hay un bloque de producto sin producto elegido.';
+    }
+    return '';
+  }
+
+  async function revisar() {
+    const v = avisoValidacion();
+    if (v) { msg(v, 'err'); return; }
+    if (!(await guardar(false))) return;
+    abrirRevision(false);
+  }
+
+  // ---------------- Revisión final y envío ----------------
+  async function abrirRevision(continuar) {
+    $('rv-fondo').hidden = false;
+    const c = $('rv-cuerpo');
+    if (continuar) { c.innerHTML = '<p class="em-pie">Retomando el envío…</p>'; await procesoEnvio(); return; }
+    c.innerHTML = '<p class="em-pie">Calculando la audiencia…</p>';
+    const { data: a, error } = await supabase.rpc('em_campana_audiencia', { p_segmento_id: $('ed-segmento').value, p_tema: $('ed-tema').value });
+    if (error) { c.innerHTML = '<p class="em-msg err">' + escaparHTML(mensajeError(error)) + '</p>'; return; }
+    const seg = segmentos.find((s) => s.id === $('ed-segmento').value), t = temas.find((x) => x.codigo === $('ed-tema').value);
+    const pol = a.politica_publicada;
+    const avisos = [];
+    if (!pol) avisos.push('<div class="em-aviso">' + ICONOS.escudo + '<div><strong>Envío bloqueado hasta publicar la política</strong><p>Regístrala en el <a href="index.html">Resumen</a> cuando esté publicada en magandhi.com. Mientras tanto puedes enviarte pruebas.</p></div></div>');
+    if (a.sin_nombre && /\{nombre\}/.test($('ed-asunto').value + JSON.stringify(bloques))) avisos.push('<p class="em-msg err">' + formatearNumero(a.sin_nombre) + ' destinatarios no tienen nombre: donde dice {nombre} les quedará vacío. Usa {nombre|alternativa} para cubrirlos.</p>');
+    if (seg && seg.tipo === 'cluster') avisos.push('<p class="em-pie">Segmento congelado desde un Análisis de clúster: los miembros son los de ese día.</p>');
+    const min = new Date(Date.now() + 10 * 60000), max = new Date(Date.now() + 29 * 86400000);
+    const loc = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    c.innerHTML = avisos.join('') +
+      '<div class="cp-rv">' +
+        '<div><span>Para</span><b>' + escaparHTML(seg ? seg.nombre : '—') + ' · ' + escaparHTML(t ? t.nombre : '') + '</b></div>' +
+        '<div><span>De</span><b>MAGANDHI &lt;novedades@news.magandhi.com&gt;</b></div>' +
+        '<div><span>Asunto</span><b>' + escaparHTML(conNombre($('ed-asunto').value)) + '</b></div>' +
+        '<div><span>Respuestas a</span><b>contacto@magandhi.com</b></div>' +
+      '</div>' +
+      '<div class="cp-rv-n"><b>' + formatearNumero(a.n) + '</b><span>' + (a.n === 1 ? 'persona recibirá' : 'personas recibirán') + ' este correo</span></div>' +
+      (a.muestra && a.muestra.length ? '<p class="em-pie">Por ejemplo: ' + a.muestra.slice(0, 4).map((m) => escaparHTML(m.nombre || m.correo)).join(', ') + (a.n > 4 ? '…' : '') + '</p>' : '') +
+      '<div class="em-campo"><span>Cuándo</span><div class="em-opciones">' +
+        '<label class="em-opcion"><input type="radio" name="rv-cuando" value="ya" checked>Enviar ahora</label>' +
+        '<label class="em-opcion"><input type="radio" name="rv-cuando" value="prog">Programar</label></div>' +
+        '<input class="mk-input" type="datetime-local" id="rv-fecha" min="' + loc(min) + '" max="' + loc(max) + '" value="' + loc(new Date(Date.now() + 86400000)) + '" hidden></div>' +
+      '<label class="em-confirmo"><input type="checkbox" id="rv-ok"><span>Revisé el contenido en computador y celular, me envié una prueba y confirmo que va a <strong>' + formatearNumero(a.n) + ' personas</strong> que autorizaron recibir ' + escaparHTML(t ? t.nombre.toLowerCase() : 'estos correos') + '.</span></label>' +
+      '<p class="em-msg" id="rv-msg" hidden></p>' +
+      '<div class="em-form-acciones"><button class="em-btn-sec" type="button" id="rv-no">Volver al editor</button>' +
+        '<button class="mk-btn" type="button" id="rv-si" disabled>' + ICONOS.enviar + '<span id="rv-si-txt">Enviar a ' + formatearNumero(a.n) + ' personas</span></button></div>';
+    const actualizarBoton = () => {
+      const prog = document.querySelector('input[name="rv-cuando"]:checked').value === 'prog';
+      $('rv-fecha').hidden = !prog;
+      $('rv-si-txt').textContent = prog ? 'Programar para ' + formatearNumero(a.n) + ' personas' : 'Enviar a ' + formatearNumero(a.n) + ' personas';
+      $('rv-si').disabled = !pol || !a.n || !$('rv-ok').checked;
+    };
+    document.querySelectorAll('input[name="rv-cuando"]').forEach((r) => r.addEventListener('change', actualizarBoton));
+    $('rv-ok').addEventListener('change', actualizarBoton);
+    $('rv-no').addEventListener('click', cerrarRevision);
+    $('rv-si').addEventListener('click', async () => {
+      const prog = document.querySelector('input[name="rv-cuando"]:checked').value === 'prog';
+      let cuando = null;
+      if (prog) {
+        const d = new Date($('rv-fecha').value);
+        if (isNaN(d) || d < new Date(Date.now() + 5 * 60000)) { rvMsg('Elige una fecha al menos 10 minutos en el futuro.', 'err'); return; }
+        cuando = d.toISOString();
+      }
+      $('rv-si').disabled = true; rvMsg('Confirmando…');
+      const r = await fn({ modo: 'confirmar', campana_id: actual.id, n: a.n, programada_para: cuando });
+      if (!r.ok) {
+        if (r.data && r.data.codigo === 'EM_AUDIENCIA_CAMBIO') { rvMsg('La audiencia cambió: ahora son ' + formatearNumero(r.data.audiencia) + '. Revisa de nuevo.', 'err'); setTimeout(() => abrirRevision(false), 1500); return; }
+        rvMsg(r.error, 'err'); $('rv-si').disabled = false; return;
+      }
+      await procesoEnvio();
+    });
+  }
+  function rvMsg(t, cls) { const m = $('rv-msg'); if (!m) return; m.hidden = !t; m.textContent = t || ''; m.className = 'em-msg' + (cls ? ' ' + cls : ''); }
+  function cerrarRevision() { $('rv-fondo').hidden = true; }
+  $('rv-cerrar').addEventListener('click', cerrarRevision);
+
+  async function procesoEnvio() {
+    const c = $('rv-cuerpo');
+    const paso = (p, total, txt) => {
+      c.innerHTML = '<div class="cp-progreso"><p class="cp-prog-t">' + escaparHTML(txt) + '</p>' +
+        '<div class="sg-previa-barra"><span style="width:' + (total ? Math.round(100 * p / total) : 0) + '%"></span></div>' +
+        '<p class="em-pie">No cierres esta ventana. Si se interrumpe, retómalo desde la campaña con «Continuar envío».</p></div>';
+    };
+    const total = (actual.audiencia_n || (await supabase.rpc('em_campana_detalle', { p_id: actual.id })).data?.campana?.audiencia_n || 0);
+    let restantes = total, hechos = 0, vueltas = 0;
+    paso(0, total, 'Preparando contactos…');
+    while (restantes > 0 && vueltas < 200) {
+      vueltas++;
+      const r = await fn({ modo: 'sincronizar', campana_id: actual.id });
+      if (!r.ok) { return finEnvio(false, r.error); }
+      restantes = r.data.restantes; hechos = total - restantes;
+      paso(hechos, total, 'Preparando contactos: ' + formatearNumero(hechos) + ' de ' + formatearNumero(total));
+      if (!r.data.procesados && restantes > 0) return finEnvio(false, 'La preparación no avanza. Intenta de nuevo en un minuto.');
+    }
+    paso(total, total, 'Enviando a Resend…');
+    const e = await fn({ modo: 'enviar', campana_id: actual.id });
+    if (!e.ok) return finEnvio(false, e.error);
+    finEnvio(true, e.data.programada ? 'Campaña programada para ' + formatearNumero(e.data.destinatarios) + ' personas.' : 'Campaña enviada a ' + formatearNumero(e.data.destinatarios) + ' personas.');
+  }
+
+  async function finEnvio(ok, texto) {
+    $('rv-cuerpo').innerHTML = '<div class="cp-fin ' + (ok ? 'ok' : 'err') + '">' + (ok ? ICONOS.check : ICONOS.alerta) +
+      '<p>' + escaparHTML(texto) + '</p>' + (ok ? '<p class="em-pie">Resend la entrega en los próximos minutos.</p>' : '<p class="em-pie">Nada se envió dos veces. Puedes retomarlo con «Continuar envío».</p>') +
+      '<button class="mk-btn" type="button" id="rv-fin">Listo</button></div>';
+    $('rv-fin').addEventListener('click', cerrarRevision);
+    await cargarBase(); await abrir(actual.id);
+  }
+
+  // ---------------- Navegación ----------------
+  async function volver() {
+    if (sucio && editable() && !window.confirm('Tienes cambios sin guardar. ¿Salir sin guardar?')) return;
+    sucio = false; actual = null;
+    $('v-editor').hidden = true; $('v-lista').hidden = false;
+    history.replaceState(null, '', location.pathname);
+    await cargarBase(); pintarLista();
+  }
+  $('ed-volver').addEventListener('click', volver);
+  window.addEventListener('beforeunload', (e) => { if (sucio && editable()) { e.preventDefault(); e.returnValue = ''; } });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !$('rv-fondo').hidden && !$('rv-cuerpo').querySelector('.cp-progreso')) cerrarRevision();
+    if ((e.ctrlKey || e.metaKey) && e.key === 's' && !$('v-editor').hidden) { e.preventDefault(); guardar(true); }
+  });
+
+  // ---------------- Arranque ----------------
+  (async () => {
+    const acceso = await asegurarAccesoEM(document.body, '../index.html');
+    if (!acceso) return;
+    montarArea({
+      activa: 'campanas',
+      titulo: 'Campañas',
+      lead: 'Arma correos para tus segmentos, revísalos en computador y celular y envíalos o prográmalos. El botón final siempre lo pulsas tú.',
+      sesion: acceso.sesion
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+    $('em-main').hidden = false;
+    if (!(await cargarBase())) return;
+    const p = new URLSearchParams(location.search);
+    if (p.get('id')) await abrir(p.get('id'));
+    else if (p.get('nueva')) await abrir(null);
+    else pintarLista();
+  })();
+</script>
+
+</body>
+</html>
