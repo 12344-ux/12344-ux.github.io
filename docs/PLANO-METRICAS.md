@@ -59,12 +59,10 @@ Pestañas **Email** (lista y campañas), **Opiniones** e **Inventario** (stock, 
 
 ## 5. Relevo para la próxima sesión: M2 (8-oct-2026)
 
-### 5.1 Estado
+### 5.1 Estado (verificado el 8-oct-2026 con sondeos de solo lectura)
 
-- **M1 mergeado** (back-office PR #238 y tienda PR #87). **Confirma con el dueño** si ya aplicó `20261016000000_metricas_m1.sql`, si desplegó `tienda-eventos` con Verify JWT apagado y si probó la sección MT1.3 de `INSTRUCCIONES.md`.
-  - Sondeo sin escribir nada: `POST https://bxlzipwxyxdtffnuizbz.supabase.co/functions/v1/tienda-eventos` con `{"modo":"config"}` debe responder `{"activa":…}`.
-  - Llamar `rpc/mt_en_vivo` con la llave publishable debe dar `permission denied` (42501). Si da «not found», la migración no está aplicada.
-- **Antes de M2**, verifica también EM6 (`em-suscripcion`): el dueño no ha confirmado la prueba de su paso 5.
+- **EM6 y Métricas M1 están en producción.** Ambas migraciones están aplicadas: `rpc/mt_en_vivo` y `rpc/em_publico_config` responden 42501 a la llave publishable. `tienda-eventos` y `em-suscripcion` están desplegadas y responden `{"activa":false}`. magandhi.com ya carga los dos scripts.
+- **El formulario de suscripción y la analítica están APAGADOS a propósito**: el dueño aún no abre la tienda. El dueño todavía no ha hecho la prueba de punta a punta (encender → suscribirse/aceptar → confirmar). Es opcional y no bloquea M2.
 - Las políticas de magandhi.com son **estructura provisional** (`borrador-0`). El dueño escribirá el texto definitivo antes de abrir la tienda; no las redactes tú.
 
 ### 5.2 Qué construir en M2
