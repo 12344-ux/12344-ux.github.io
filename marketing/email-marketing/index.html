@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
-<link rel="stylesheet" href="email-marketing.css?v=5">
+<link rel="stylesheet" href="email-marketing.css?v=7">
 
 <!--
   MAGANDHI · Marketing · EMAIL MARKETING · RESUMEN (tramo EM1).
@@ -45,6 +45,31 @@
   const n = (x) => Number(x) || 0;
 
   let esAdmin = false;
+  let salud = null; // em_salud_lista (EM5); null si la migracion aun no esta
+
+  function bloqueSalud() {
+    if (!salud) return '';
+    const env = n(salud.enviados);
+    const med = (k, v, lim, txtLim) => {
+      const alerta = v !== null && v !== undefined && Number(v) >= lim;
+      const ancho = v === null || v === undefined ? 0 : Math.min(100, (Number(v) / lim) * 100);
+      return '<div class="sl-med' + (alerta ? ' alerta' : '') + '"><span class="k">' + k + '</span>' +
+        '<span class="v">' + (v === null || v === undefined ? '—' : String(v).replace('.', ',') + '%') + '</span>' +
+        '<span class="lim">' + txtLim + '</span><div class="sl-barra"><span style="width:' + ancho + '%"></span></div></div>';
+    };
+    const sinWebhook = !salud.ultimo_evento;
+    return '<section class="em-card" style="margin-top:16px"><h2 class="em-card-titulo">Salud de la lista · 60 días</h2>' +
+      (sinWebhook
+        ? '<p class="em-vacio-mini">Todavía no ha llegado ningún aviso de Resend. Al conectar el webhook (tramo EM5) aquí verás rebotes y quejas contra los límites de Resend.</p>'
+        : '<div class="sl-fila">' +
+            med('Rebotes', salud.tasa_rebote, n(salud.limite_rebote), 'Límite de Resend: menos de 4 %') +
+            med('Marcados como spam', salud.tasa_queja, n(salud.limite_queja), 'Límite de Resend: menos de 0,08 %') +
+          '</div>' +
+          '<p class="em-pie">Sobre ' + formatearNumero(env) + ' correos enviados (campañas y avisos del pedido). ' +
+            (n(salud.suprimidos_auto_30d) ? formatearNumero(salud.suprimidos_auto_30d) + ' contactos salieron solos de la lista en 30 días por rebote, spam o baja desde el correo. ' : '') +
+            'Último aviso de Resend: ' + escaparHTML(fechaRelativa(salud.ultimo_evento).toLowerCase()) + '.</p>') +
+      '</section>';
+  }
   function avisoPolitica(cfg) {
     if (cfg && cfg.politica_publicada) {
       return '<div class="em-aviso ok">' + ICONOS.escudo + '<div><strong>Política de tratamiento de datos publicada · versión ' + escaparHTML(cfg.politica_version) + '</strong>' +
@@ -127,7 +152,7 @@
           '<p>Registra a las personas que te autoricen recibir novedades y ofertas. Cada alta guarda la prueba del permiso: por dónde lo dio, cuándo y qué texto aceptó.</p>' +
           '<a class="mk-btn" href="contactos.html?nuevo=1">' + ICONOS.usuarioMas + ' Agregar el primer contacto</a>' +
         '</div>' +
-        insightClientes(r) + bloqueSeguimiento(r);
+        insightClientes(r) + bloqueSalud() + bloqueSeguimiento(r);
       return;
     }
 
@@ -177,7 +202,7 @@
         '<section class="em-card"><h2 class="em-card-titulo">Qué quieren recibir</h2>' + filasBarras(temas, suscritos) +
           '<p class="em-pie">Cada persona puede elegir uno o ambos temas.</p></section>' +
       '</div>' +
-      insightClientes(r) + bloqueSeguimiento(r);
+      insightClientes(r) + bloqueSalud() + bloqueSeguimiento(r);
   }
 
   function insightClientes(r) {
@@ -210,7 +235,8 @@
       sesion: acceso.sesion
     });
     $('em-main').hidden = false;
-    const { data, error } = await supabase.rpc('em_resumen');
+    const [{ data, error }, sl] = await Promise.all([supabase.rpc('em_resumen'), supabase.rpc('em_salud_lista')]);
+    salud = sl && !sl.error ? sl.data : null;
     if (error) {
       $('em-contenido').innerHTML = '<div class="mk-empty">' + (/em_resumen|function/i.test(error.message || '')
         ? 'Falta aplicar la migración <strong>20261009000000_email_marketing_em1.sql</strong> en Supabase.'

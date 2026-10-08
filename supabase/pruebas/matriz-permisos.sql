@@ -95,7 +95,21 @@ declare
     'cm_publicar_campana','cm_retirar_placeholder','crear_pedido','editar_asiento',
     'estado_resultados','guardar_asiento','incrementar_uso_cuenta','inv_crear_producto',
     'inv_editar_producto','inv_registrar_movimiento','pagos_config_para_intencion',
-    'tiene_acceso_inventario','tiene_acceso_marketing','tiene_acceso_ventas','tiene_modulo'
+    'tiene_acceso_inventario','tiene_acceso_marketing','tiene_acceso_ventas','tiene_modulo',
+    -- Campanas (reordenar), Opiniones, Correos del pedido y stock
+    'cm_reordenar_campanas','op_ocultar_opinion','op_opiniones_producto','op_responder_opinion',
+    'op_resumen_productos','tiene_acceso_opiniones','correo_guardar_plantilla','correo_pedido_preparar',
+    'correo_pedido_resultado','correo_prueba_preparar','correo_ref_pedido','ventas_stock_disponible',
+    -- Email marketing EM1-EM4 (cada una con su guardia interna)
+    'tiene_acceso_email_marketing','em_alta_manual','em_editar_contacto','em_dar_baja','em_resumen',
+    'em_contacto_detalle','em_correos_seguimiento','mk_perfiles_clientes','em_segmento_previa',
+    'em_segmento_guardar','em_segmento_archivar','em_segmentos_lista','em_segmento_opciones',
+    'em_segmento_desde_cluster','em_campana_guardar','em_campana_duplicar','em_campana_audiencia',
+    'em_campanas_lista','em_campana_detalle','em_campana_registrar_prueba','em_campana_confirmar',
+    'em_campana_pendientes','em_campana_set_segmento_resend','em_campana_destinatario_resultado',
+    'em_campana_reservar_envio','em_campana_marcar_enviada','em_campana_cancelar','em_config_politica',
+    -- EM5 (lectura). em_webhook_registrar NO va: solo service_role.
+    'em_campana_resultados','em_campanas_resultados_lista','em_salud_lista','em_contacto_campanas'
   ];
   v_extra text;
 begin
@@ -257,11 +271,11 @@ begin
        and has_function_privilege('authenticated', p.oid, 'execute');
     r_pers := r_pers || 'authenticated'::text;
     r_obj  := r_obj  || 'EXECUTE sobre funciones de public'::text;
-    r_esp  := r_esp  || 'LISTA BLANCA (26)'::text;
+    r_esp  := r_esp  || ('LISTA BLANCA (' || array_length(v_lista_blanca, 1) || ')');
     -- Se compara como CONJUNTO (el orden de texto depende de la collation).
     r_obt  := r_obt  || case
       when coalesce(v_funcs_auth, '{}') @> v_lista_blanca
-       and v_lista_blanca @> coalesce(v_funcs_auth, '{}') then 'LISTA BLANCA (26)'
+       and v_lista_blanca @> coalesce(v_funcs_auth, '{}') then 'LISTA BLANCA (' || array_length(v_lista_blanca, 1) || ')'
       else 'DISTINTO. Sobran: ' || coalesce((select string_agg(x, ', ') from unnest(v_funcs_auth) x where x <> all (v_lista_blanca)), '-')
         || ' · Faltan: ' || coalesce((select string_agg(x, ', ') from unnest(v_lista_blanca) x where x <> all (coalesce(v_funcs_auth, '{}'))), '-')
     end;

@@ -1,6 +1,6 @@
 # PLANO · Email marketing + Análisis de clúster + Analítica propia
 
-**Corte:** 8 de octubre de 2026 · **Estado:** aprobado por el dueño. EM1–EM4 construidos y mergeados; **siguiente: EM5**. Ver §11 (estado real y relevo).
+**Corte:** 8 de octubre de 2026 · **Estado:** aprobado por el dueño. EM1–EM4 en producción; **EM5 construido y probado (pendiente de aplicar/desplegar)**. Ver §11 (estado real y relevo).
 **Piezas relacionadas:** `docs/PLANO-CORREO.md` (correos del pedido, ya en producción), `docs/PLANO-OPINIONES.md`, `docs/PLANO-VENTAS.md`.
 
 ---
@@ -132,7 +132,7 @@ Variables: `{nombre}` con respaldo ("Hola" si no hay nombre). La vista previa en
 
 ### 3.5 Eventos y resultados
 
-**`em_eventos`**: un evento por fila, llegado por webhook. Campos: `resend_event_id` (único, para idempotencia), `tipo` (`entregado`, `rebote`, `queja`, `apertura`, `clic`, `baja`), `campana_id`, `contacto_id`, `enlace`, `cuando`, `payload` mínimo.
+**`em_eventos`**: un evento por fila, llegado por webhook. Campos: `svix_id` (único, para idempotencia: Resend repite el mismo `svix-id` en cada reintento), `tipo` (`entregado`, `rebote`, `queja`, `apertura`, `clic`, `baja`), `campana_id`, `contacto_id`, `enlace`, `cuando`, `payload` mínimo.
 
 **Ventas generadas (atribución).** Vista `em_campana_resultados`:
 - **Web (desde Wompi F2):** cada enlace de campaña lleva `utm_campaign`. La tienda lo guarda en la intención de pago, así que la atribución es exacta.
@@ -297,31 +297,26 @@ Eventos mínimos: `pagina_vista`, `producto_visto`, `clic_comprar`, `checkout_in
 | EM2 Perfiles + segmentos | `20261010000000` | `mk_perfiles_clientes`, Segmentos | ✅ Aplicado |
 | EM3 Clúster | `20261011000000` | `marketing-project/analisis-cluster.html` + `cluster-core.js` | ✅ Aplicado |
 | EM4 Campañas | `20261012000000` | Edge Function `em-campana`, `campanas.html` | ✅ Aplicado y desplegado; el dueño probó un envío con éxito |
+| EM5 Resultados | `20261013000000` | Edge Function `em-webhook` (Verify JWT apagado, firma Svix), resultados en `campanas.html`, salud en el Resumen, entrega en Seguimiento, campañas en la ficha | 🟡 Construido y probado localmente; falta aplicar, desplegar y conectar el webhook (`INSTRUCCIONES.md` EM5) |
 
 Resend: `updates.magandhi.com` (pedidos, **sin rastreo a propósito**: el botón de reseña lleva el código) y `news.magandhi.com` (campañas, rastreo de clics/aperturas vía `links.news`), ambos verificados, región São Paulo, TLS oportunista. Secrets en Supabase: `RESEND_API_KEY` (Sending access, solo pedidos) y `RESEND_MARKETING_API_KEY` (Full access, solo funciones `em-*`). DMARC `p=none` en la raíz cubre ambos.
 
 **Pendiente de verificar con el dueño:** si registró la política solo para probar el envío sin tenerla publicada en magandhi.com, volverla a pendiente:
 `update em_config set politica_publicada = false where id;`
 
-### 11.2 EM5 · Resultados — qué hay que construir
+### 11.2 EM5 · Resultados — construido (8-oct-2026)
 
-Objetivo: por campaña, embudo **enviados → entregados → clics → pedidos y valor atribuidos**, más rebotes, quejas y bajas; supresión automática; y la sección de resultados en `campanas.html` (hoy dice «llegan en el siguiente tramo»).
+Runbook completo en `supabase/INSTRUCCIONES.md` §EM5. Lo esencial para quien siga:
 
-Lo que ya existe y EM5 debe usar:
-- `em_campana_destinatarios` (audiencia congelada por campaña, con `contacto_id`, `customer_id`, `resend_contact_id`).
-- `em_campanas.utm_campaign` (único) y `resend_broadcast_id`; los enlaces a magandhi.com ya salen con `utm_source=email&utm_medium=email&utm_campaign=<utm>`.
-- `em_contactos.estado` admite `rebotado` y `queja`; `em_consentimiento_bitacora.accion` admite `rebote` y `queja`.
-- El Resumen (`em_resumen`) ya pinta estados; agregar salud de la lista (rebotes < 4 %, spam < 0,08 %, límites de Resend).
-
-Diseño acordado (§3.5 y §6):
-1. **Tabla `em_eventos`**: `resend_event_id` único (idempotencia), `tipo` (`entregado`, `rebote`, `queja`, `apertura`, `clic`, `baja`, `retrasado`), `campana_id`, `contacto_id`, `enlace`, `cuando`, `payload` mínimo (sin el HTML).
-2. **Edge Function `em-webhook`** (pública, sin sesión): verificar firma **Svix** con el secreto `whsec_…` (headers `svix-id`, `svix-timestamp`, `svix-signature`; rechazar timestamps de más de 5 min); escribir por un RPC security definer **solo ejecutable por service_role** o validando la firma dentro de la función. El plan gratis tiene **1 endpoint de webhook**: este mismo atiende también los eventos de `updates` (correos del pedido → `correo_envios`, p. ej. marcar rebotes). Distinguir por el dominio del `from` o por los `tags` (`tipo=pedido|prueba`).
-3. **Supresión**: rebote permanente → contacto `rebotado`; queja → `queja`; baja (`contact.updated` con `unsubscribed=true`) → `baja`; todo con bitácora (`actor` null = automático). Nunca volver a `suscrito` desde un webhook.
-4. **Atribución** (vista o RPC `em_campana_resultados`): pedido **web** con `utm_campaign` = exacta (requiere que Wompi F2 guarde el UTM en la intención/pedido; hasta entonces, columna lista y vacía); pedido **manual** del mismo `customer_id` en los **7 días** siguientes a un **clic** suyo = «atribuido (aproximado)». Pedidos anulados no cuentan.
-5. **UI**: tarjeta de resultados en la campaña enviada (embudo, enlaces más clicados, bajas, rebotes, ventas atribuidas separando exactas/aproximadas) y columna de resultados en la lista. **Aperturas siempre rotuladas como aproximadas.**
-6. **Runbook para el dueño**: Resend → Webhooks → Add endpoint → URL de `em-webhook` → eventos `email.*` y `contact.updated` → copiar el *signing secret* a Supabase Secrets como `RESEND_WEBHOOK_SECRET` (nunca al chat). La función se despliega con **Verify JWT APAGADO** (Resend no envía JWT; la firma Svix es el candado).
-
-Antes de codificar, **verificar en la documentación vigente de Resend** los nombres exactos de eventos y del payload (`https://resend.com/docs/llms.txt` → sección Webhooks), como se hizo en EM4.
+- **Correlación:** cada aviso de Resend trae `data.broadcast_id` → `em_campanas.resend_broadcast_id`, y `data.to[0]` → `em_campana_destinatarios.correo`. Los correos del pedido se reconocen por `data.email_id` = `correo_envios.proveedor_id`. Los envíos de prueba (`tags.tipo` = `prueba` / `prueba_campana`) se ignoran.
+- **Idempotencia:** por el header `svix-id` (índice único en `em_eventos.svix_id`).
+- **Escritura:** solo `em_webhook_registrar(svix_id, evento)`, ejecutable **solo por service_role**. La función envía la llave de servicio en `apikey` **y** `Authorization` (lección de Wompi F1).
+- **Respuestas:** 200 para procesado/repetido/ignorado; 400/401/413 para lo inválido (Resend no insiste); 500/503 solo para fallos nuestros (Resend reintenta ~28 h). Si fallara muchas veces, Resend apaga el webhook y avisa por correo.
+- **Decisiones cerradas del dueño (8-oct):** (1) atribución aproximada = pedido no anulado, registrado después del clic, con `fecha_orden` entre el día del clic y +7 días, y solo para la campaña del **último** clic; (2) bajas por campaña = última campaña recibida antes de la baja, rotulado «aprox.»; (3) rebote permanente de un correo del pedido → contacto `rebotado`; (4) `email.suppressed` → `rebotado` («Suprimida por Resend»); (5) eventos crudos 13 meses, luego totales congelados en `em_campana_resultados_archivo`.
+- **Reglas duras:** el rebote temporal no suprime; los estados solo empeoran (suscrito < baja < rebotado < queja); un webhook nunca vuelve a suscribir; no se guarda IP ni navegador del clic; aperturas siempre «aproximadas».
+- **Atribución exacta:** `pedidos.utm_campaign` existe y está vacía. **Wompi F2** debe: (a) que la tienda conserve el `utm_campaign` de la URL de llegada y lo mande a la intención de pago, y (b) que el pedido web lo guarde. Sin eso, todo se atribuye como aproximado.
+- **Matriz de permisos:** su lista blanca de `authenticated` estaba desactualizada desde Opiniones (marcaba 1 falla). Se puso al día; el conteo ahora es dinámico. Cada tramo nuevo que agregue RPC para usuarios del panel debe agregarlos ahí.
+- **Arnés de pruebas de EM5:** `supabase/pruebas/local/em5-resultados.sql` (61 comprobaciones; corre después de `correr-local.sh` y lo deshace todo).
 
 ### 11.3 Endpoints de Resend ya verificados (EM4)
 
@@ -331,10 +326,10 @@ Antes de codificar, **verificar en la documentación vigente de Resend** los nom
 - Marcadores en el HTML: `{{{RESEND_UNSUBSCRIBE_URL}}}` y `{{{contact.first_name|alternativa}}}`.
 - Límite: 10 peticiones/s por equipo (la función pausa 220 ms y reintenta en 429).
 
-### 11.4 Cómo se probó cada tramo (repetir el método en EM5)
+### 11.4 Cómo se probó cada tramo (repetir el método en EM6/EM7)
 
-PostgreSQL 15 local con `supabase/pruebas/local/supabase-simulado.sql` + todas las migraciones + matriz de permisos (171/171) + pruebas SQL por tramo; Edge Functions con `deno check` y un simulador local de Supabase/Resend; interfaz en Chromium headless (PC 1280 y celular 390) con Supabase simulado, comprobando DOM, desbordes y errores de JS. Capturas solo de 1280×900 o menores. En EM5, simular además la firma Svix (válida, inválida, vencida y evento repetido).
+PostgreSQL 15 local con `supabase/pruebas/local/supabase-simulado.sql` + todas las migraciones + matriz de permisos (171/171) + pruebas SQL por tramo; Edge Functions con `deno check` y un simulador local de Supabase/Resend; interfaz en Chromium headless (PC 1280 y celular 390) con Supabase simulado, comprobando DOM, desbordes y errores de JS. Capturas solo de 1280×900 o menores. En EM5 se simuló además la firma Svix (válida, inválida, vencida, repetida y cruzada con la librería oficial `npm:svix`) con un PostgREST mínimo que ejecuta el RPC real como service_role. Ojo: el sandbox bloquea `python -m http.server` lanzado desde bash; el servidor estático para Chromium se levanta dentro del propio script de prueba.
 
 ### 11.5 Después de EM5
 
-EM6 (captura pública + doble confirmación) cuando la política esté publicada; EM7 (analítica propia con consentimiento de cookies) con la sección de cookies en la política; D3 antes de delegar accesos; **Wompi F2** sigue siendo el siguiente gran tramo del negocio.
+Primero cerrar EM5 en producción (EM5.1–EM5.4). Después: EM6 (captura pública + doble confirmación) cuando la política esté publicada; EM7 (analítica propia con consentimiento de cookies) con la sección de cookies en la política; D3 antes de delegar accesos; **Wompi F2** sigue siendo el siguiente gran tramo del negocio.

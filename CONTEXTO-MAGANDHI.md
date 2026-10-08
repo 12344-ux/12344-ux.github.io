@@ -76,7 +76,7 @@ Pendiente real: cierre anual cuando cambie el ejercicio fiscal y pulido de expor
 - Ranking por unidades o ingreso, distinguiendo fuente real/mixta/estimada.
 - Análisis de clúster operativo (EM3). Elasticidad sigue como roadmap.
 
-### Email marketing — EM1 a EM4 en producción · siguiente EM5
+### Email marketing — EM1 a EM4 en producción · EM5 construido (por aplicar)
 
 Marketing → Email marketing. Diseño completo en `docs/PLANO-EMAIL-MARKETING.md`.
 
@@ -88,7 +88,7 @@ Marketing → Email marketing. Diseño completo en `docs/PLANO-EMAIL-MARKETING.m
 - EM2: perfil por cliente con datos propios (valor, precio y rebajas, productos y categorías, opiniones, lugar, franja y día de compra, canal) y **Segmentos** por condiciones con vista previa en vivo; la audiencia de una campaña será siempre segmento ∩ suscritos.
 - EM3: **Análisis de clúster** en Marketing Project (k-means++ con semilla fija, silueta, retrato en palabras, mapa, comparativo, CSV; reglas de pocos datos) y «Guardar como segmento» congelado.
 - EM4: **Campañas** por bloques (título, texto, imagen, producto destacado, botón único, separador), vista previa PC/celular, prueba a tu correo, revisión final con N exacto, envío o programación vía Resend Broadcasts desde `news.magandhi.com`, cancelación. Envío real bloqueado hasta registrar la política publicada.
-- Siguiente: EM5 resultados (webhook, clics, ventas atribuidas). Captura pública (EM6) y analítica (EM7) esperan la política.
+- EM5 (construido, pendiente de aplicar/desplegar): webhook firmado `em-webhook` (Svix, Verify JWT apagado, escribe solo como service_role), supresión automática con historial, resultados por campaña (embudo, enlaces, rebotes/spam/bajas, ventas exactas y aproximadas con último clic + 7 días), salud de la lista contra los límites de Resend, entrega de los correos del pedido. Eventos crudos 13 meses. Captura pública (EM6) y analítica (EM7) esperan la política.
 
 ### Gestión de opiniones — operativo
 
@@ -235,7 +235,7 @@ Debe incorporar:
 
 ## 9. Próximo orden de trabajo
 
-1. Email marketing **EM5** (resultados de campañas): relevo completo en `docs/PLANO-EMAIL-MARKETING.md` §11. Correos del pedido y EM1–EM4 ya están en producción.
+1. Cerrar Email marketing **EM5** en producción: aplicar la migración, desplegar `em-webhook`, conectar el webhook en Resend y dar la evidencia (`supabase/INSTRUCCIONES.md` §EM5).
 2. Aplicar y verificar la migración `20261002000000`.
 3. Redesplegar y verificar `crear-intencion-pago`.
 4. Construir Wompi F2 en sandbox.

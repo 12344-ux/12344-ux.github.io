@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
-<link rel="stylesheet" href="email-marketing.css?v=5">
+<link rel="stylesheet" href="email-marketing.css?v=7">
 
 <!--
   MAGANDHI · Marketing · EMAIL MARKETING · CORREOS DE SEGUIMIENTO (tramo EM1).
@@ -91,8 +91,9 @@
       return;
     }
     const RES = { enviado: 'Enviado', fallido: 'Falló', pendiente: 'En curso' };
+    const ENT = { entregado: 'Entregado', rebote: 'Rebotó', queja: 'Marcó spam', retrasado: 'Retrasado' };
     $('lista').innerHTML = '<div class="em-tabla-caja"><table class="mk-tabla"><thead><tr>' +
-      '<th>Cuándo</th><th>Pedido</th><th>Etapa</th><th class="em-ocultar-movil">Destinatario</th><th>Resultado</th>' +
+      '<th>Cuándo</th><th>Pedido</th><th>Etapa</th><th class="em-ocultar-movil">Destinatario</th><th>Resultado</th><th class="em-ocultar-movil">Entrega</th>' +
       '</tr></thead><tbody>' + filas.map((e) =>
         '<tr><td class="mk-num">' + escaparHTML(formatearMomento(e.creado)) + '</td>' +
         '<td>' + (e.pedido_ref ? '<span class="em-ref">' + escaparHTML(e.pedido_ref) + '</span>' : '<span class="em-tenue">—</span>') +
@@ -101,7 +102,9 @@
           (e.es_reenvio ? ' <span class="em-chip">Reenvío</span>' : '') + (e.es_prueba ? ' <span class="em-chip">Prueba</span>' : '') + '</td>' +
         '<td class="em-ocultar-movil" style="word-break:break-all">' + escaparHTML(e.destinatario) + '</td>' +
         '<td><span class="em-resultado ' + escaparHTML(e.estado) + '"><i></i>' + escaparHTML(RES[e.estado] || e.estado) + '</span>' +
-          (e.estado === 'fallido' && e.error ? '<span class="em-error-linea">' + escaparHTML(e.error) + '</span>' : '') + '</td></tr>'
+          (e.estado === 'fallido' && e.error ? '<span class="em-error-linea">' + escaparHTML(e.error) + '</span>' : '') + '</td>' +
+        '<td class="em-ocultar-movil">' + (e.entrega ? '<span class="em-resultado ' + escaparHTML(e.entrega) + '" title="' + escaparHTML(formatearMomento(e.entrega_en)) + '"><i></i>' +
+          escaparHTML(ENT[e.entrega] || e.entrega) + '</span>' : (e.estado === 'enviado' ? '<span class="em-tenue">Sin aviso aún</span>' : '<span class="em-tenue">—</span>')) + '</td></tr>'
       ).join('') + '</tbody></table></div>';
   }
 
