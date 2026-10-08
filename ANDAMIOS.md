@@ -20,7 +20,8 @@ Este archivo contiene solo trabajo pendiente y criterios de cierre. Las fases te
 | Email marketing EM1 (contactos y consentimiento) | 🟡 Código listo | Falta aplicar `20261009000000` (§ EM1) |
 | Email marketing EM2 (perfiles + segmentos) | 🟡 Código listo | Falta aplicar `20261010000000` (§ EM2) |
 | Email marketing EM3 (análisis de clúster) | 🟡 Código listo | Falta aplicar `20261011000000` (§ EM3) |
-| Email marketing EM4–EM5 (campañas y resultados) | ⏭️ Siguiente | Requiere verificar `news.magandhi.com` en Resend |
+| Email marketing EM4 (campañas) | 🟡 Código listo | Falta aplicar `20261012000000` y desplegar `em-campana` (§ EM4) |
+| Email marketing EM5 (resultados) | ⏭️ Siguiente | Webhook firmado de Resend, clics y ventas atribuidas |
 | Email marketing EM6–EM7 (captura pública y analítica) | ⏸️ Después | Requieren la política de tratamiento de datos |
 | Tramo 0 | ✅ Verificado | Matriz 170/170 y anon bloqueado en superficies internas |
 | Wompi F1 | ✅ Sandbox | Intención firmada y checkout cargando |

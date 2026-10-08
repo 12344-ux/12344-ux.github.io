@@ -112,10 +112,10 @@ function renderBloques(bl: Bloque[], prods: Map<string, Producto>, utm: string, 
       if (!p) return `<p style="${F}font-size:13px;color:#A6332E;">[Producto no disponible: ${esc(b.slug)}]</p>`;
       const url = conUtm(`${TIENDA}/producto/?slug=${encodeURIComponent(p.slug)}`, utm);
       return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 22px 0;border:1px solid #D9AE6E;border-radius:14px;">
-        ${p.imagen ? `<tr><td style="padding:16px 16px 0 16px;"><a href="${esc(url)}"><img src="${esc(p.imagen)}" alt="${esc(p.nombre)}" width="494" style="display:block;width:100%;max-width:494px;height:auto;border:0;border-radius:10px;"></a></td></tr>` : ""}
-        <tr><td style="${F}padding:14px 18px 2px 18px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#C28A3A;font-weight:600;">Elegido por MAGANDHI</td></tr>
-        <tr><td style="${F}padding:2px 18px 4px 18px;font-size:17px;font-weight:600;color:#111111;">${esc(p.nombre)}</td></tr>
-        <tr><td style="${F}padding:0 18px 12px 18px;font-size:16px;color:#111111;">${p.precio_venta ? esc(cop(p.precio_venta)) : ""}${p.agotado ? ` <span style="font-size:12px;color:#A6332E;">· Agotado por ahora</span>` : ""}</td></tr>
+        ${p.imagen ? `<tr><td align="center" style="padding:20px 16px 4px 16px;"><a href="${esc(url)}"><img src="${esc(p.imagen)}" alt="${esc(p.nombre)}" width="220" style="display:block;width:220px;max-width:60%;height:auto;border:0;border-radius:10px;margin:0 auto;"></a></td></tr>` : ""}
+        <tr><td align="center" style="${F}padding:14px 18px 2px 18px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#C28A3A;font-weight:600;">Elegido por MAGANDHI</td></tr>
+        <tr><td align="center" style="${F}padding:2px 18px 4px 18px;font-size:17px;font-weight:600;color:#111111;">${esc(p.nombre)}</td></tr>
+        <tr><td align="center" style="${F}padding:0 18px 12px 18px;font-size:16px;color:#111111;">${p.precio_venta ? esc(cop(p.precio_venta)) : ""}${p.agotado ? ` <span style="font-size:12px;color:#A6332E;">· Agotado por ahora</span>` : ""}</td></tr>
         <tr><td align="center" style="padding:0 18px 6px 18px;">${boton(b.boton_texto ? String(b.boton_texto) : "Ver producto", url)}</td></tr></table>`;
     }
     return "";
