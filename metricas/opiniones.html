@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Métricas · Opiniones</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../marca-areas/metricas.png?v=1">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=2">
+<meta name="theme-color" content="#101C33">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=2">
+<link rel="stylesheet" href="metricas.css?v=5">
+<!-- MAGANDHI · METRICAS · OPINIONES (M2). RPC mt_opiniones(desde, hasta).
+     Promedio REAL siempre con el total N (sin suavizado bayesiano: regla del
+     dueño). Excluye opiniones de prueba y ocultas. -->
+</head>
+<body class="mt-body">
+<script type="module" src="../auth-guard.js"></script>
+<main class="mt-wrap" id="mt-main" hidden>
+  <div class="mt-barra"><div id="op-chips"></div><span class="mt-rango" id="op-rango"></span></div>
+  <div class="mt-kpis" id="op-kpis"><div class="mt-kpi mt-esqueleto" style="height:120px"></div><div class="mt-kpi mt-esqueleto" style="height:120px"></div><div class="mt-kpi mt-esqueleto" style="height:120px"></div><div class="mt-kpi mt-esqueleto" style="height:120px"></div></div>
+  <div class="mt-grid mt-g21">
+    <section class="mt-card"><div class="mt-card-cab"><div><h2 class="mt-card-tit">Calificación general</h2><p class="mt-card-sub">Promedio real de todas las opiniones verificadas · siempre con su total</p></div></div><div id="op-prom"></div></section>
+    <section class="mt-card"><div class="mt-card-cab"><div><h2 class="mt-card-tit">Distribución</h2><p class="mt-card-sub" id="op-distrib-sub">En el periodo</p></div></div><div id="op-distrib"></div></section>
+  </div>
+  <section class="mt-card mt-mt">
+    <div class="mt-card-cab"><div><h2 class="mt-card-tit">Opiniones por mes</h2><p class="mt-card-sub">Últimos 12 meses · pasa el cursor para ver el promedio de cada mes</p></div></div>
+    <div id="op-meses"></div>
+  </section>
+  <div class="mt-grid mt-g2 mt-mt">
+    <section class="mt-card"><div class="mt-card-cab"><div><h2 class="mt-card-tit">Productos por calificación</h2><p class="mt-card-sub">Promedio real de cada producto, con su total</p></div></div><div id="op-productos"></div></section>
+    <section class="mt-card"><div class="mt-card-cab"><div><h2 class="mt-card-tit">Pedidos con opinión</h2><p class="mt-card-sub">De los pedidos entregados en el periodo</p></div></div><div id="op-cobertura"></div></section>
+  </div>
+</main>
+
+<script type="module">
+  import { supabase, montarArea, ICONOS, esc, num, delta, kpi, vacio, grafBarras, estrellas, distribucion, chipsPeriodo, rangoDe, fechaCorta, mensajeError, pintarSparks } from './metricas-core.js';
+  const $ = (id) => document.getElementById(id);
+  const p0 = new URLSearchParams(location.search).get('periodo');
+  let periodo = ['7', '30', '90', '365'].includes(p0) ? p0 : '90', datos = null;
+  const un = (n, s, p) => num(n) + ' ' + (Number(n) === 1 ? s : p);
+  const mesCorto = (iso) => { const d = new Date(String(iso).slice(0, 10) + 'T12:00:00'); return d.toLocaleDateString('es-CO', { month: 'short' }).replace('.', ''); };
+  const mesLargo = (iso) => { const d = new Date(String(iso).slice(0, 10) + 'T12:00:00'); return d.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }); };
+  const dec = (v) => v == null ? '—' : Number(v).toFixed(1).replace('.', ',');
+
+  function pintar() {
+    const d = datos, r = d.resumen;
+    $('op-rango').textContent = fechaCorta(d.desde) + ' – ' + fechaCorta(d.hasta);
+    $('op-kpis').innerHTML =
+      kpi({ k: 'Opiniones (periodo)', v: num(r.total), pie: delta(r.total, r.total_anterior) + ' vs. periodo anterior', destacado: true }) +
+      kpi({ k: 'Promedio del periodo', v: dec(r.promedio), pie: r.total ? un(r.total, 'opinión', 'opiniones') : 'sin opiniones aún' }) +
+      kpi({ k: 'Pedidos con opinión', v: (d.cobertura.pct == null ? '—' : d.cobertura.pct + '%'), pie: num(d.cobertura.con_opinion) + ' de ' + num(d.cobertura.entregados) + ' entregados' }) +
+      kpi({ k: 'Con respuesta', v: num(r.con_respuesta), pie: 'respondidas por el equipo' });
+    pintarSparks($('op-kpis'));
+
+    // Promedio GLOBAL, siempre con N (regla del dueño: nunca un número sin su total).
+    $('op-prom').innerHTML = r.total_global ? (
+      '<div class="mt-prom"><span class="mt-prom-n">' + dec(r.promedio_global) + '</span>' +
+      '<div class="mt-prom-lado">' + estrellas(r.promedio_global, { tam: 22 }) +
+      '<small>' + un(r.total_global, 'opinión verificada', 'opiniones verificadas') + ' en total</small></div></div>' +
+      '<p class="mt-pie">Promedio real, sin ajustes. Un solo dato siempre va con su total para no exagerar con pocas opiniones.</p>'
+    ) : vacio('Aún no hay opiniones verificadas', 'Cuando un cliente deje su opinión con el código de reseña, el promedio real aparecerá aquí con su total.');
+
+    const totDist = d.distribucion.reduce((a, x) => a + Number(x.n), 0);
+    $('op-distrib-sub').textContent = 'En el periodo · ' + un(totDist, 'opinión', 'opiniones');
+    $('op-distrib').innerHTML = totDist ? distribucion(d.distribucion) : vacio('Sin opiniones en el periodo', 'Aquí verás cuántas de 5, 4, 3, 2 y 1 estrella.');
+
+    const conMes = d.por_mes.some((m) => m.n);
+    $('op-meses').innerHTML = conMes ? '' : vacio('Sin opiniones en los últimos 12 meses', 'Cada barra será la cantidad de opiniones de ese mes.');
+    if (conMes) grafBarras($('op-meses'), { aria: 'Opiniones por mes', alto: 220,
+      datos: d.por_mes.map((m) => ({ et: mesCorto(m.mes), v: m.n, tip: '<span class="t">' + esc(mesLargo(m.mes)) + '</span><b>' + un(m.n, 'opinión', 'opiniones') + '</b>' + (m.promedio != null ? '<div style="margin-top:3px">Promedio ' + dec(m.promedio) + ' ★</div>' : '') })) });
+
+    $('op-productos').innerHTML = d.productos.length ? (
+      '<ul class="mt-filas">' + d.productos.map((p) => '<li class="mt-fila"><span class="n" title="' + esc(p.nombre) + '">' + esc(p.nombre) + '</span>' +
+        '<span class="v" style="display:inline-flex;align-items:center;gap:8px">' + estrellas(p.promedio, { tam: 15 }) + '<span>' + dec(p.promedio) + '<small>' + un(p.n, 'op.', 'op.') + '</small></span></span></li>').join('') + '</ul>'
+    ) : vacio('Sin opiniones por producto', 'Cuando lleguen opiniones, verás el promedio real de cada producto con su total.');
+
+    const cob = d.cobertura;
+    $('op-cobertura').innerHTML = cob.entregados ? (
+      '<div class="mt-prom" style="margin-bottom:12px"><span class="mt-prom-n">' + (cob.pct == null ? '0' : cob.pct) + '%</span>' +
+      '<div class="mt-prom-lado"><small>' + num(cob.con_opinion) + ' de ' + num(cob.entregados) + ' pedidos entregados tienen al menos una opinión</small></div></div>' +
+      '<div class="mt-fila"><span class="n">Con opinión</span><span class="v">' + num(cob.con_opinion) + '</span><span class="b"><span style="width:' + (cob.pct || 0) + '%"></span></span></div>' +
+      '<p class="mt-pie">La invitación a opinar va en el correo de «Entregado», con el código de reseña.</p>'
+    ) : vacio('Sin pedidos entregados en el periodo', 'Aquí verás qué proporción de los pedidos entregados terminó dejando una opinión.');
+  }
+
+  async function cargar() {
+    const r = rangoDe(periodo);
+    history.replaceState(null, '', '?periodo=' + periodo);
+    $('op-chips').innerHTML = chipsPeriodo(periodo);
+    $('op-chips').querySelectorAll('[data-periodo]').forEach((b) => b.addEventListener('click', () => { periodo = b.dataset.periodo; cargar(); }));
+    const { data, error } = await supabase.rpc('mt_opiniones', { p_desde: r.desde, p_hasta: r.hasta });
+    if (error) { $('op-kpis').innerHTML = '<div class="mt-aviso" style="grid-column:1/-1">' + ICONOS.info + '<div><strong>No se pudo cargar</strong><p>' + esc(mensajeError(error)) + '</p></div></div>'; return; }
+    datos = data; pintar();
+  }
+
+  (async () => {
+    const ctx = await montarArea({ activa: 'opiniones', titulo: 'Opiniones', lead: 'La calificación real de los clientes: promedio con su total, distribución por estrellas, cómo evoluciona y qué productos destacan.' });
+    if (!ctx) return;
+    await cargar();
+  })();
+</script>
+</body>
+</html>

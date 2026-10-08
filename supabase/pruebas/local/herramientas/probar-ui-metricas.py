@@ -105,6 +105,47 @@ with sync_playwright() as p:
         if CAPTURAS and ancho == 1280: pg.screenshot(path="/projects/sandbox/pruebas-em5/mt-tienda-pc.png", clip={"x": 0, "y": 0, "width": 1280, "height": 1200})
         c.close()
 
+        # ---------- Email ----------
+        llamadas.clear()
+        c, pg, err = abrir(b, ancho, "email.html")
+        chk(pg.locator("#em-kpis .mt-kpi").count() == 4 and pg.locator("#em-kpis .mt-kpi.destacado").count() == 1, f"{d} email: 4 indicadores, uno destacado")
+        chk(pg.locator("#em-serie path.linea").count() == 2, f"{d} email: altas y bajas por día")
+        chk(pg.locator("#em-campanas tbody tr").count() >= 1 and "Campaña demo" in pg.text_content("#em-campanas"), f"{d} email: campañas lado a lado")
+        chk(pg.locator("#em-estados .mt-reparto span").count() >= 1 and pg.locator("#em-temas .mt-reparto span").count() >= 1, f"{d} email: estados y temas")
+        chk(pg.locator("#em-salud .mt-medidor").count() == 2, f"{d} email: salud con rebotes y quejas vs. límite")
+        chk(hover_tip(pg, "#em-serie"), f"{d} email: lectura al pasar el cursor")
+        pg.click("[data-periodo='90']"); pg.wait_for_timeout(1600)
+        chk("periodo=90" in pg.url and llamadas.count("mt_email") == 2, f"{d} email: cambiar de periodo vuelve a consultar")
+        chk(not desb(pg) and not err, f"{d} email: sin desborde ni errores {err[:1]}")
+        if CAPTURAS and ancho == 1280: pg.click("[data-periodo='30']"); pg.wait_for_timeout(1400); pg.screenshot(path="/projects/sandbox/pruebas-em5/mt-email-pc.png", clip={"x": 0, "y": 0, "width": 1280, "height": 1250})
+        if CAPTURAS and ancho == 390: pg.screenshot(path="/projects/sandbox/pruebas-em5/mt-email-movil.png", clip={"x": 0, "y": 0, "width": 390, "height": 1500})
+        c.close()
+
+        # ---------- Opiniones ----------
+        c, pg, err = abrir(b, ancho, "opiniones.html")
+        chk(pg.locator("#op-kpis .mt-kpi").count() == 4, f"{d} opiniones: 4 indicadores")
+        chk(pg.locator("#op-prom .mt-prom-n").count() == 1 and pg.locator("#op-prom .mt-estrellas svg").count() == 5, f"{d} opiniones: promedio real grande con estrellas")
+        chk(pg.locator("#op-distrib .mt-distrib-fila").count() == 5, f"{d} opiniones: distribución 5→1 estrellas")
+        chk(pg.locator("#op-meses svg .barra").count() == 12, f"{d} opiniones: 12 meses")
+        chk(pg.locator("#op-productos .mt-fila").count() >= 1 and pg.locator("#op-productos .mt-estrellas").count() >= 1, f"{d} opiniones: productos por calificación con estrellas")
+        chk("%" in pg.text_content("#op-cobertura"), f"{d} opiniones: cobertura de pedidos con opinión")
+        chk(not desb(pg) and not err, f"{d} opiniones: sin desborde ni errores {err[:1]}")
+        if CAPTURAS and ancho == 1280: pg.screenshot(path="/projects/sandbox/pruebas-em5/mt-opiniones-pc.png", clip={"x": 0, "y": 0, "width": 1280, "height": 1250})
+        if CAPTURAS and ancho == 390: pg.screenshot(path="/projects/sandbox/pruebas-em5/mt-opiniones-movil.png", clip={"x": 0, "y": 0, "width": 390, "height": 1500})
+        c.close()
+
+        # ---------- Inventario ----------
+        c, pg, err = abrir(b, ancho, "inventario.html")
+        chk(pg.locator("#iv-kpis .mt-kpi").count() == 4 and pg.locator("#iv-kpis .mt-kpi.destacado").count() == 1, f"{d} inventario: 4 indicadores, uno destacado")
+        chk(pg.locator("#iv-semanas svg .barra").count() == 12, f"{d} inventario: 12 semanas de rotación")
+        chk(pg.locator("#iv-tabla tbody tr").count() >= 1 and pg.locator("#iv-tabla .mt-badge").count() >= 1, f"{d} inventario: tabla de existencias con estado")
+        chk(pg.locator("#iv-alertas .mt-aviso").count() == 1, f"{d} inventario: alerta de bajo stock visible")
+        chk(hover_tip(pg, "#iv-semanas"), f"{d} inventario: lectura al pasar el cursor")
+        chk(not desb(pg) and not err, f"{d} inventario: sin desborde ni errores {err[:1]}")
+        if CAPTURAS and ancho == 1280: pg.screenshot(path="/projects/sandbox/pruebas-em5/mt-inventario-pc.png", clip={"x": 0, "y": 0, "width": 1280, "height": 1200})
+        if CAPTURAS and ancho == 390: pg.screenshot(path="/projects/sandbox/pruebas-em5/mt-inventario-movil.png", clip={"x": 0, "y": 0, "width": 390, "height": 1400})
+        c.close()
+
         # ---------- Analítica apagada ----------
         sql("update em_config set analitica_activa = false where id")
         c, pg, err = abrir(b, ancho, "tienda.html")

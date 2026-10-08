@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Métricas · Inventario</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../marca-areas/metricas.png?v=1">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=2">
+<meta name="theme-color" content="#101C33">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=2">
+<link rel="stylesheet" href="metricas.css?v=5">
+<!-- MAGANDHI · METRICAS · INVENTARIO (M2). RPC mt_inventario(): foto del AHORA.
+     Existencias (derivadas del libro), rotación por semana, días de inventario
+     estimados y alertas de bajo stock. Sin periodo: el stock es del momento. -->
+</head>
+<body class="mt-body">
+<script type="module" src="../auth-guard.js"></script>
+<main class="mt-wrap" id="mt-main" hidden>
+  <div class="mt-barra"><span class="mt-vivo"><i></i>Foto del momento</span><span class="mt-rango" id="iv-rango"></span></div>
+  <div class="mt-kpis" id="iv-kpis"><div class="mt-kpi mt-esqueleto" style="height:120px"></div><div class="mt-kpi mt-esqueleto" style="height:120px"></div><div class="mt-kpi mt-esqueleto" style="height:120px"></div><div class="mt-kpi mt-esqueleto" style="height:120px"></div></div>
+  <div id="iv-alertas"></div>
+  <section class="mt-card">
+    <div class="mt-card-cab"><div><h2 class="mt-card-tit">Unidades vendidas por semana</h2><p class="mt-card-sub">Últimas 12 semanas · todos los productos</p></div></div>
+    <div id="iv-semanas"></div>
+  </section>
+  <section class="mt-card mt-mt">
+    <div class="mt-card-cab"><div><h2 class="mt-card-tit">Existencias por producto</h2><p class="mt-card-sub">Primero lo agotado y lo que está bajo mínimo</p></div></div>
+    <div id="iv-tabla"></div>
+    <p class="mt-pie">Días de inventario estimados a partir de la venta diaria promedio de los últimos 30 días. Un producto sin ventas recientes no muestra estimación.</p>
+  </section>
+</main>
+
+<script type="module">
+  import { supabase, montarArea, ICONOS, esc, num, cop, copCorto, kpi, vacio, grafBarras, mensajeError } from './metricas-core.js';
+  const $ = (id) => document.getElementById(id);
+
+  const semLargo = (iso) => { const d = new Date(String(iso).slice(0, 10) + 'T12:00:00'); const f = d.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }); const h = new Date(d); h.setDate(h.getDate() + 6); return f + ' – ' + h.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }); };
+  const semCorto = (iso) => { const d = new Date(String(iso).slice(0, 10) + 'T12:00:00'); return d.getDate() + '/' + (d.getMonth() + 1); };
+
+  function pintar(d) {
+    const t = d.totales;
+    $('iv-rango').textContent = 'al ' + new Date(d.hoy + 'T12:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+    $('iv-kpis').innerHTML =
+      kpi({ k: 'Unidades en stock', v: num(t.unidades_total), pie: num(t.productos_activos) + ' productos activos', destacado: true }) +
+      kpi({ k: 'Valor en costo', v: copCorto(t.valor_costo), pie: 'de las existencias actuales' }) +
+      kpi({ k: 'Bajo mínimo', v: num(t.bajo_stock), pie: 'en o por debajo del stock mínimo' }) +
+      kpi({ k: 'Agotados', v: num(t.agotados), pie: 'sin existencias' });
+
+    $('iv-alertas').innerHTML = d.alertas.length ? (
+      '<div class="mt-aviso" style="border-left-color:var(--mt-acento)">' + ICONOS.alerta + '<div><strong>' + num(d.alertas.length) + (d.alertas.length === 1 ? ' producto necesita atención' : ' productos necesitan atención') + '</strong>' +
+      '<p>' + d.alertas.map((a) => esc(a.nombre) + ' (' + (a.agotado ? 'agotado' : a.existencias + ' u., mín. ' + a.stock_minimo) + ')').join(' · ') + '</p></div></div>'
+    ) : '';
+
+    const haySem = d.por_semana.some((s) => s.unidades);
+    $('iv-semanas').innerHTML = haySem ? '' : vacio('Sin ventas en las últimas 12 semanas', 'Cada barra será las unidades vendidas esa semana.');
+    if (haySem) grafBarras($('iv-semanas'), { aria: 'Unidades vendidas por semana', alto: 220,
+      datos: d.por_semana.map((s) => ({ et: semCorto(s.semana), v: s.unidades, tip: '<span class="t">Semana del ' + esc(semLargo(s.semana)) + '</span><b>' + num(s.unidades) + (s.unidades === 1 ? ' unidad' : ' unidades') + '</b>' })) });
+
+    $('iv-tabla').innerHTML = d.productos.length ? (
+      '<div class="mt-tabla-caja"><table class="mt-tabla"><thead><tr><th>Producto</th><th class="d">Existencias</th><th class="d">Mínimo</th><th class="d">Vendidas 30 d</th><th class="d">Días de inv. (est.)</th><th>Estado</th></tr></thead><tbody>' +
+      d.productos.map((p) => '<tr><td class="n" title="' + esc(p.nombre) + '">' + esc(p.nombre) + '<br><small style="color:var(--mt-gris)">' + esc(p.sku) + '</small></td>' +
+        '<td class="d"><b>' + num(p.existencias) + '</b></td><td class="d">' + num(p.stock_minimo) + '</td><td class="d">' + num(p.vendidas_30d) + '</td>' +
+        '<td class="d">' + (p.dias_inventario == null ? '—' : num(p.dias_inventario) + ' d') + '</td>' +
+        '<td>' + (p.agotado ? '<span class="mt-badge" style="background:rgba(166,51,46,.1);color:var(--mt-acento)">Agotado</span>' : p.bajo ? '<span class="mt-badge" style="background:rgba(201,146,46,.14);color:#9A6B16">Bajo</span>' : '<span class="mt-badge web">Suficiente</span>') + '</td></tr>').join('') +
+      '</tbody></table></div>'
+    ) : vacio('Sin productos activos', 'Da de alta productos en Producción/Inventario para verlos aquí.');
+  }
+
+  async function cargar() {
+    const { data, error } = await supabase.rpc('mt_inventario');
+    if (error) { $('iv-kpis').innerHTML = '<div class="mt-aviso" style="grid-column:1/-1">' + ICONOS.info + '<div><strong>No se pudo cargar</strong><p>' + esc(mensajeError(error)) + '</p></div></div>'; return; }
+    pintar(data);
+  }
+
+  (async () => {
+    const ctx = await montarArea({ activa: 'inventario', titulo: 'Inventario', lead: 'Cuánto hay de cada producto ahora mismo, qué tan rápido se vende y qué está por agotarse.' });
+    if (!ctx) return;
+    await cargar();
+  })();
+</script>
+</body>
+</html>
