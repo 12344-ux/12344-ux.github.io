@@ -19,7 +19,8 @@ Este archivo contiene solo trabajo pendiente y criterios de cierre. Las fases te
 | Correos del pedido (4 etapas + código de reseña) | 🟡 Código listo | Falta cuenta Resend, DNS, migración `20261008000000`, secret y función (§ CO) |
 | Email marketing EM1 (contactos y consentimiento) | 🟡 Código listo | Falta aplicar `20261009000000` (§ EM1) |
 | Email marketing EM2 (perfiles + segmentos) | 🟡 Código listo | Falta aplicar `20261010000000` (§ EM2) |
-| Email marketing EM3–EM5 | ⏭️ Siguiente | Ver `docs/PLANO-EMAIL-MARKETING.md` §8 |
+| Email marketing EM3 (análisis de clúster) | 🟡 Código listo | Falta aplicar `20261011000000` (§ EM3) |
+| Email marketing EM4–EM5 (campañas y resultados) | ⏭️ Siguiente | Requiere verificar `news.magandhi.com` en Resend |
 | Email marketing EM6–EM7 (captura pública y analítica) | ⏸️ Después | Requieren la política de tratamiento de datos |
 | Tramo 0 | ✅ Verificado | Matriz 170/170 y anon bloqueado en superficies internas |
 | Wompi F1 | ✅ Sandbox | Intención firmada y checkout cargando |
@@ -162,7 +163,7 @@ La separación debe cubrir panel, grants, RLS y RPC. Ocultar tarjetas no es segu
 - Cierre anual de Finanzas cuando corresponda.
 - Pulido de exportaciones tras uso real.
 - Favicons finales específicos para Marketing, Producción y Ventas.
-- Clúster y elasticidad cuando exista necesidad validada.
+- Elasticidad cuando exista necesidad validada.
 
 ## Reglas duras
 

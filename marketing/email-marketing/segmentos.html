@@ -14,8 +14,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
-<link rel="stylesheet" href="../marketing.css?v=2">
-<link rel="stylesheet" href="email-marketing.css?v=2">
+<link rel="stylesheet" href="../marketing.css?v=3">
+<link rel="stylesheet" href="email-marketing.css?v=3">
 
 <!--
   MAGANDHI · Marketing · EMAIL MARKETING · SEGMENTOS (tramo EM2).
@@ -172,6 +172,27 @@
     return f.l + ' ' + opTxt + ' ' + fmtValor(f, r.valor);
   }
 
+  // Origen de un segmento guardado desde el Analisis de cluster.
+  const NOMBRE_VAR = {
+    num_pedidos: 'pedidos', gasto_total: 'gasto', ticket_promedio: 'valor por pedido', unidades: 'unidades',
+    dias_desde_ultima_compra: 'última compra', dias_entre_compras: 'frecuencia', precio_prom: 'precio promedio',
+    precio_min: 'precio mínimo', precio_max: 'precio máximo', pct_rebajado: 'rebajas', productos_distintos: 'surtido',
+    categoria_dominante: 'categoría', estrellas_prom: 'estrellas', num_opiniones: 'opiniones', pct_opinadas: '% opinado',
+    dias_entrega_opinion: 'tiempo para opinar', es_local: 'Tunja', ciudad: 'ciudad', franja_moda: 'franja',
+    dia_moda: 'día', pct_web: 'canal web', suscrito: 'suscrito'
+  };
+  const CALIDAD = { clara: 'estructura clara', moderada: 'estructura moderada', debil: 'sin estructura clara' };
+  function origenCluster(o) {
+    const vars = (o.variables || []).map((v) => NOMBRE_VAR[v] || v);
+    return '<div class="sg-origen"><span class="sg-origen-k">' + ICONOS.chispa + 'Análisis de clúster' +
+        (o.grupo ? ' · Grupo ' + escaparHTML(o.grupo) + ' de ' + escaparHTML(o.k) : '') + '</span>' +
+      (o.retrato ? '<p>' + escaparHTML(o.retrato) + '</p>' : '') +
+      '<ul class="sg-condiciones">' + vars.map((v) => '<li>' + escaparHTML(v) + '</li>').join('') + '</ul>' +
+      '<span class="sg-origen-q">' + escaparHTML(CALIDAD[o.calidad] || '') + (o.exploratorio ? ' · exploratorio' : '') +
+        (o.clientes_analizados ? ' · de ' + formatearNumero(o.clientes_analizados) + ' clientes analizados' : '') + '</span></div>';
+  }
+  let resaltar = new URLSearchParams(location.search).get('guardado');
+
   // ---------------- Lista ----------------
   async function cargar() {
     const { data, error } = await supabase.rpc('em_segmentos_lista', { p_archivados: $('f-archivados').checked });
@@ -203,16 +224,17 @@
     $('lista').innerHTML = '<div class="sg-grid">' + segmentos.map((s) => {
       const reglas = (s.definicion && s.definicion.reglas) || [];
       const pct = s.coinciden ? Math.round(s.suscritos / s.coinciden * 100) : 0;
-      return '<article class="sg-card" data-id="' + escaparHTML(s.id) + '">' +
+      return '<article class="sg-card' + (s.id === resaltar ? ' nuevo' : '') + '" data-id="' + escaparHTML(s.id) + '">' +
         '<div class="sg-card-top"><div style="min-width:0"><h3>' + escaparHTML(s.nombre) + '</h3>' +
           (s.descripcion ? '<p>' + escaparHTML(s.descripcion) + '</p>' : '') + '</div>' +
           '<div class="sg-card-num"><b>' + formatearNumero(s.suscritos) + '</b><span>suscritos</span></div></div>' +
-        '<ul class="sg-condiciones">' + reglas.map((r, i) => '<li>' + (i ? '<em>' + (s.definicion.modo === 'o' ? 'o' : 'y') + '</em>' : '') + escaparHTML(resumenRegla(r)) + '</li>').join('') + '</ul>' +
+        (s.tipo === 'cluster' ? origenCluster(s.origen || {})
+          : '<ul class="sg-condiciones">' + reglas.map((r, i) => '<li>' + (i ? '<em>' + (s.definicion.modo === 'o' ? 'o' : 'y') + '</em>' : '') + escaparHTML(resumenRegla(r)) + '</li>').join('') + '</ul>') +
         '<div class="sg-card-barra" title="' + pct + '% de quienes cumplen están suscritos"><span style="width:' + pct + '%"></span></div>' +
-        '<div class="sg-card-pie"><span>' + formatearNumero(s.coinciden) + ' cumplen · actualizado ' + escaparHTML(fechaRelativa(s.actualizado).toLowerCase()) + '</span>' +
+        '<div class="sg-card-pie"><span>' + formatearNumero(s.coinciden) + (s.tipo === 'cluster' ? ' clientes congelados' : ' cumplen') + ' · ' + escaparHTML(fechaRelativa(s.actualizado).toLowerCase()) + '</span>' +
           '<span class="sg-card-acc">' +
             (arch ? '<button type="button" class="em-btn-sec sg-mini" data-restaurar="' + escaparHTML(s.id) + '">Restaurar</button>'
-                  : '<button type="button" class="em-btn-sec sg-mini" data-editar="' + escaparHTML(s.id) + '">' + ICONOS.lapiz + 'Editar</button>' +
+                  : (s.tipo === 'reglas' ? '<button type="button" class="em-btn-sec sg-mini" data-editar="' + escaparHTML(s.id) + '">' + ICONOS.lapiz + 'Editar</button>' : '') +
                     '<button type="button" class="sg-icono" data-archivar="' + escaparHTML(s.id) + '" aria-label="Archivar ' + escaparHTML(s.nombre) + '" title="Archivar">' + ICONOS.archivo + '</button>') +
           '</span></div>' +
       '</article>';
@@ -451,8 +473,13 @@
     if (!op.error && op.data) opciones = Object.assign(opciones, op.data);
     if (!(await cargar())) return;
     const p = new URLSearchParams(location.search);
+    if (resaltar && segmentos.some((x) => x.id === resaltar)) {
+      const s = segmentos.find((x) => x.id === resaltar);
+      $('contador').innerHTML = '<span class="em-msg ok">Segmento «' + escaparHTML(s.nombre) + '» guardado desde el Análisis de clúster: ' + formatearNumero(s.suscritos) + ' suscritos lo recibirían.</span>';
+      history.replaceState(null, '', location.pathname);
+    }
     if (p.get('nuevo')) abrirEditor();
-    else if (p.get('id')) { const s = segmentos.find((x) => x.id === p.get('id')); if (s) abrirEditor(s); }
+    else if (p.get('id')) { const s = segmentos.find((x) => x.id === p.get('id')); if (s && s.tipo === 'reglas') abrirEditor(s); }
   })();
 </script>
 
