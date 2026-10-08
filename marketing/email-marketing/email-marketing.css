@@ -604,7 +604,10 @@
 .rs-tabla{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
 .rs-tabla th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--mk-gris);padding:6px 8px;border-bottom:1px solid var(--mk-linea)}
 .rs-tabla td{padding:8px;border-bottom:1px solid var(--mk-linea);font-variant-numeric:tabular-nums}
-.rs-tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:rgba(16,28,51,.07);color:var(--mk-marino)}
+.rs-tabla-caja{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.rs-fecha{white-space:nowrap}
+.rs-tag .c{display:none}
+.rs-tag{display:inline-block;white-space:nowrap;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:rgba(16,28,51,.07);color:var(--mk-marino)}
 .rs-tag.aprox{background:transparent;border:1px dashed var(--mk-azul-cl);color:var(--mk-gris)}
 .rs-espera{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--mk-carbon);background:rgba(16,28,51,.04);border-radius:12px;padding:12px 14px;margin-top:4px}
 .rs-espera svg{width:18px;height:18px;flex:none;color:var(--mk-marino);margin-top:1px}
@@ -633,4 +636,8 @@
   .rs-problemas{grid-template-columns:repeat(2,1fr)}
   .rs-ventas{grid-template-columns:1fr}
   .rs-tabla .em-ocultar-movil{display:none}
+  .rs-tabla{font-size:12.5px}
+  .rs-tabla th,.rs-tabla td{padding:7px 4px}
+  .rs-tag .l{display:none}
+  .rs-tag .c{display:inline}
 }
