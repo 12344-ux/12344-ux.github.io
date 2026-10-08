@@ -40,6 +40,17 @@ create temp table vista_antes as
 select obj_description('catalogo_publico'::regclass) as com,
        md5(pg_get_viewdef('catalogo_publico'::regclass)) as def;
 
+-- Campana YA PUBLICADA pero incompleta (sin producto ligado), como las que
+-- pueden existir en produccion. La migracion NO debe despublicarla: el candado
+-- valida al PUBLICAR, no retroactivamente. Nada se cae al aplicar.
+insert into productos (id, sku, nombre, precio_venta, activo)
+  values ('b4000000-0000-4000-8000-000000000001', 'PAD-PREV', 'Producto previo', 7000, true);
+insert into campana_producto (id, nombre, slug, precio_venta, product_id_ref, publicado, activo) values
+  ('a4000000-0000-4000-8000-000000000001', 'Publicada sin producto', 'pad-prev-sin', 7000, null, true, true),
+  ('a4000000-0000-4000-8000-000000000002', 'Publicada completa',     'pad-prev-ok',  7000, 'b4000000-0000-4000-8000-000000000001', true, true);
+create temp table publicadas_antes as
+  select count(*) as n from campana_producto where publicado;
+
 -- ---------- 2. Aplicar la migracion nueva ----------
 \ir ../../migrations/20261018000000_puesta_al_dia_sin_vista.sql
 
@@ -70,6 +81,16 @@ select pg_temp.chk(
   has_table_privilege('service_role', 'catalogo_publico', 'select')
   and has_table_privilege('anon', 'catalogo_publico', 'select'),
   'la intencion de pago y la tienda siguen leyendo el catalogo');
+
+-- ---------- 4bis. NADA de lo que ya funciona se cae al aplicar ----------
+select pg_temp.chk((select n from publicadas_antes) = (select count(*) from campana_producto where publicado),
+  'aplicar la migracion NO despublica ninguna campana existente (ni las incompletas)');
+select pg_temp.chk((select publicado from campana_producto where id = 'a4000000-0000-4000-8000-000000000001'),
+  'una campana publicada SIN producto ligado sigue publicada (el candado solo valida al publicar)');
+select pg_temp.chk(
+  (select count(*) from catalogo_publico) >= 1
+  and (select agotado from catalogo_publico where slug = 'pad-prev-sin') is true,
+  'la tienda sigue sirviendo el catalogo y la campana sin producto aparece como agotada (regla del 3-oct)');
 
 -- ---------- 5. Comportamiento real del candado ----------
 -- Sin begin/rollback a proposito: esta base local se recrea en cada corrida
@@ -142,6 +163,30 @@ exception when others then
 end $$;
 select pg_temp.chk(pg_temp.asiento() = 'OK',
   'Finanzas: guardar_asiento sigue funcionando sin las policies directas');
+
+-- Las OTRAS dos escrituras de Finanzas (editar y anular) tambien tocan
+-- asientos / asiento_lineas / asiento_bitacora. Si cerrar las puertas las
+-- rompiera, se veria aqui.
+create or replace function pg_temp.fin_ciclo() returns text language plpgsql as $$
+declare v_id uuid;
+begin
+  set local role authenticated;
+  perform set_config('request.jwt.claims', '{"sub":"7e590000-0000-4000-8000-0000000000a2","role":"authenticated"}', true);
+  v_id := guardar_asiento(current_date, 'PRUEBA ciclo completo',
+            '[{"cuenta_codigo":"111005","debe":2000,"haber":0},{"cuenta_codigo":"413505","debe":0,"haber":2000}]'::jsonb);
+  perform editar_asiento(v_id, current_date, 'PRUEBA ciclo editado',
+            '[{"cuenta_codigo":"111005","debe":3000,"haber":0},{"cuenta_codigo":"413505","debe":0,"haber":3000}]'::jsonb);
+  perform anular_asiento(v_id, 'prueba');
+  execute 'reset role';
+  return 'OK';
+exception when others then
+  execute 'reset role';
+  return sqlerrm;
+end $$;
+select pg_temp.chk(pg_temp.fin_ciclo() = 'OK',
+  'Finanzas: editar_asiento y anular_asiento tambien siguen funcionando (con bitacora)');
+select pg_temp.chk((select count(*) from asiento_bitacora) >= 2,
+  'Finanzas: la bitacora sigue registrando (editar y anular dejaron rastro)');
 
 select case when ok then 'pasa' else 'FALLA' end || ' | ' || que from pg_temp.r order by n;
 select 'RESUMEN | ' || count(*) || ' comprobaciones · ' || count(*) filter (where not ok) || ' fallan' from pg_temp.r;
