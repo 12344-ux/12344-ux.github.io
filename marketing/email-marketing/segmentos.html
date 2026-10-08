@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Segmentos · Email marketing</title>
+<meta name="description" content="Segmentos de Email marketing · Área de Marketing de MAGANDHI.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/marketing.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=2">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=2">
+<link rel="stylesheet" href="../marketing.css?v=2">
+<link rel="stylesheet" href="email-marketing.css?v=2">
+
+<!--
+  MAGANDHI · Marketing · EMAIL MARKETING · SEGMENTOS (tramo EM2).
+  Grupos de contactos definidos por CONDICIONES sobre datos propios (compras,
+  precio, productos, opiniones, lugar, momento, lista). Dinamicos: se
+  recalculan cada vez. Editor con vista previa EN VIVO (em_segmento_previa):
+  cuantos cumplen y cuantos recibirian (solo suscritos).
+  Las reglas viajan como {campo, op, valor}; el servidor las valida contra una
+  lista blanca (em__segmento_where). Parametros: ?nuevo=1, ?id=<uuid>.
+-->
+</head>
+<body class="mk-body">
+
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="mk-wrap" id="em-main" hidden>
+  <div class="em-toolbar">
+    <p class="em-contador" id="contador" style="margin:0;flex:1"></p>
+    <label class="em-opcion"><input type="checkbox" id="f-archivados">Ver archivados</label>
+    <button class="mk-btn" id="btn-nuevo" type="button"><span data-ico="mas"></span> Nuevo segmento</button>
+  </div>
+  <div id="lista"><p class="mk-empty">Cargando segmentos…</p></div>
+</main>
+
+<!-- Editor -->
+<div class="em-modal-fondo" id="ed-fondo" hidden>
+  <div class="em-modal em-modal-ancho" role="dialog" aria-modal="true" aria-labelledby="ed-titulo">
+    <div class="em-modal-head">
+      <span class="ico" data-ico="capas"></span>
+      <div><h2 id="ed-titulo">Nuevo segmento</h2><p>Define a quién quieres hablarle. El grupo se recalcula solo cada vez que lo uses.</p></div>
+      <button class="em-x" id="ed-cerrar" type="button" aria-label="Cerrar"><span data-ico="equis"></span></button>
+    </div>
+    <div class="sg-editor">
+      <form class="em-form sg-form" id="ed-form" novalidate>
+        <div class="em-fila2">
+          <label class="em-campo"><span>Nombre <em>*</em></span>
+            <input class="mk-input" id="ed-nombre" maxlength="80" placeholder="Ej.: Clientes de Tunja"></label>
+          <label class="em-campo"><span>Descripción</span>
+            <input class="mk-input" id="ed-desc" maxlength="300" placeholder="Para qué sirve este grupo"></label>
+        </div>
+        <div class="sg-ideas" id="ed-ideas"></div>
+        <div class="em-campo">
+          <span>Incluir a quienes cumplan</span>
+          <div class="sg-modo" role="radiogroup" aria-label="Cómo combinar las condiciones">
+            <label><input type="radio" name="modo" value="y" checked><span>Todas las condiciones</span></label>
+            <label><input type="radio" name="modo" value="o"><span>Cualquiera de ellas</span></label>
+          </div>
+        </div>
+        <div class="sg-reglas" id="ed-reglas"></div>
+        <button class="em-btn-sec sg-agregar" type="button" id="ed-agregar"><span data-ico="mas"></span> Agregar condición</button>
+        <p class="em-msg" id="ed-msg" hidden></p>
+        <div class="em-form-acciones">
+          <button class="em-btn-sec" type="button" id="ed-cancelar">Cancelar</button>
+          <button class="mk-btn" type="submit" id="ed-guardar">Guardar segmento</button>
+        </div>
+      </form>
+      <aside class="sg-previa" aria-live="polite">
+        <p class="sg-previa-k">Recibirían una campaña</p>
+        <p class="sg-previa-num"><span id="pv-num">—</span><small>suscritos</small></p>
+        <div class="sg-previa-barra"><span id="pv-barra"></span></div>
+        <p class="sg-previa-sub" id="pv-sub">Agrega una condición para ver el tamaño del grupo.</p>
+        <ul class="sg-previa-datos" id="pv-datos"></ul>
+        <p class="sg-previa-k" style="margin-top:16px">Quiénes son</p>
+        <ul class="sg-muestra" id="pv-muestra"><li class="em-tenue">—</li></ul>
+        <p class="em-pie" id="pv-nota"></p>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import {
+    supabase, ICONOS, escaparHTML, formatearNumero, asegurarAccesoEM, montarArea,
+    badgeEstado, fechaRelativa, mensajeError
+  } from './em-core.js';
+
+  const $ = (id) => document.getElementById(id);
+  let opciones = { ciudades: [], departamentos: [], categorias: [], productos: [], temas: [] };
+  let segmentos = [];
+  let editandoId = null;
+  let previaTimer = null, previaSeq = 0;
+  let sucio = false;
+
+  // ---------------- Catalogo de campos (espejo de la lista blanca del servidor) ----------------
+  const FRANJAS = [['madrugada', 'Madrugada (0–6 h)'], ['manana', 'Mañana (6–12 h)'], ['tarde', 'Tarde (12–18 h)'], ['noche', 'Noche (18–24 h)']];
+  const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'].map((d) => [d, d === 'miercoles' ? 'Miércoles' : d === 'sabado' ? 'Sábado' : d[0].toUpperCase() + d.slice(1)]);
+  const FUENTES = [['manual', 'Registro manual'], ['formulario_tienda', 'Formulario de la tienda'], ['casilla_checkout', 'Casilla al comprar']];
+
+  const CAMPOS = [
+    { g: 'Compras', c: 'es_cliente', t: 'bool', l: 'Ya es cliente' },
+    { g: 'Compras', c: 'num_pedidos', t: 'num', l: 'Número de pedidos' },
+    { g: 'Compras', c: 'gasto_total', t: 'num', l: 'Gasto total', u: '$' },
+    { g: 'Compras', c: 'ticket_promedio', t: 'num', l: 'Valor promedio por pedido', u: '$', nul: 1 },
+    { g: 'Compras', c: 'unidades', t: 'num', l: 'Unidades compradas' },
+    { g: 'Compras', c: 'dias_desde_ultima_compra', t: 'num', l: 'Días desde la última compra', u: 'días', nul: 1 },
+    { g: 'Compras', c: 'dias_entre_compras', t: 'num', l: 'Días promedio entre compras', u: 'días', nul: 1 },
+    { g: 'Precio', c: 'precio_prom', t: 'num', l: 'Precio promedio que paga', u: '$', nul: 1 },
+    { g: 'Precio', c: 'precio_min', t: 'num', l: 'Precio más bajo que pagó', u: '$', nul: 1 },
+    { g: 'Precio', c: 'precio_max', t: 'num', l: 'Precio más alto que pagó', u: '$', nul: 1 },
+    { g: 'Precio', c: 'pct_rebajado', t: 'num', l: '% de unidades compradas con rebaja', u: '%', nul: 1 },
+    { g: 'Productos', c: 'compro_producto', t: 'arr', l: 'Producto', op: { incluye: 'compró', no_incluye: 'no compró' }, o: () => opciones.productos.map((p) => [p.id, p.nombre]) },
+    { g: 'Productos', c: 'compro_categoria', t: 'arr', l: 'Categoría', op: { incluye: 'compró de', no_incluye: 'no compró de' }, o: () => opciones.categorias.map((x) => [x, x]) },
+    { g: 'Productos', c: 'categoria_dominante', t: 'txt', l: 'Categoría en la que más gasta', o: () => opciones.categorias.map((x) => [x, x]), nul: 1 },
+    { g: 'Productos', c: 'productos_distintos', t: 'num', l: 'Productos distintos comprados' },
+    { g: 'Opiniones', c: 'estrellas_prom', t: 'num', l: 'Estrellas promedio que da', u: '★', nul: 1 },
+    { g: 'Opiniones', c: 'num_opiniones', t: 'num', l: 'Opiniones dejadas' },
+    { g: 'Opiniones', c: 'pct_opinadas', t: 'num', l: '% de sus compras que opinó', u: '%', nul: 1 },
+    { g: 'Lugar', c: 'es_local', t: 'bool', l: 'Compra en Tunja' },
+    { g: 'Lugar', c: 'ciudad', t: 'txt', l: 'Ciudad', o: () => opciones.ciudades.map((x) => [x, x]), libre: 1, nul: 1 },
+    { g: 'Lugar', c: 'departamento', t: 'txt', l: 'Departamento', o: () => opciones.departamentos.map((x) => [x, x]), libre: 1, nul: 1 },
+    { g: 'Momento', c: 'franja_moda', t: 'txt', l: 'Franja en la que más compra', o: () => FRANJAS, nul: 1 },
+    { g: 'Momento', c: 'dia_moda', t: 'txt', l: 'Día en el que más compra', o: () => DIAS, nul: 1 },
+    { g: 'Lista', c: 'tema', t: 'arr', l: 'Tema', op: { incluye: 'está suscrito a', no_incluye: 'no está suscrito a' }, o: () => opciones.temas.map((x) => [x.codigo, x.nombre]) },
+    { g: 'Lista', c: 'fuente', t: 'txt', l: 'Llegó por', o: () => FUENTES },
+    { g: 'Lista', c: 'dias_en_lista', t: 'num', l: 'Días en la lista', u: 'días' }
+  ];
+  const CAMPO = Object.fromEntries(CAMPOS.map((f) => [f.c, f]));
+  const OPS = {
+    num: [['gte', 'mayor o igual a'], ['gt', 'mayor que'], ['lte', 'menor o igual a'], ['lt', 'menor que'], ['eq', 'igual a'], ['ne', 'distinto de'], ['entre', 'entre'], ['tiene', 'tiene el dato'], ['no_tiene', 'no tiene el dato']],
+    txt: [['eq', 'es'], ['ne', 'no es'], ['contiene', 'contiene'], ['tiene', 'tiene el dato'], ['no_tiene', 'no tiene el dato']],
+    bool: [['es', 'es']],
+    arr: [['incluye', 'incluye'], ['no_incluye', 'no incluye']]
+  };
+  const sinValor = (op) => op === 'tiene' || op === 'no_tiene';
+
+  const IDEAS = [
+    { n: 'Clientes de Tunja', d: 'Compran en la ciudad: entrega inmediata.', r: [{ campo: 'es_local', op: 'es', valor: 'true' }] },
+    { n: 'No compran hace 60 días', d: 'Clientes para reactivar.', r: [{ campo: 'dias_desde_ultima_compra', op: 'gt', valor: '60' }] },
+    { n: 'Calificaron con 4 o 5 estrellas', d: 'Clientes satisfechos.', r: [{ campo: 'estrellas_prom', op: 'gte', valor: '4' }] },
+    { n: 'Suscritos que aún no compran', d: 'Interesados por convertir.', r: [{ campo: 'es_cliente', op: 'es', valor: 'false' }] },
+    { n: 'Clientes frecuentes', d: 'Tres pedidos o más.', r: [{ campo: 'num_pedidos', op: 'gte', valor: '3' }] },
+    { n: 'Compran con descuento', d: 'Sensibles al precio.', r: [{ campo: 'pct_rebajado', op: 'gt', valor: '0' }, { campo: 'tema', op: 'incluye', valor: 'ofertas' }] }
+  ];
+
+  // ---------------- Utilidades ----------------
+  const soloDigitos = (s) => String(s || '').replace(/[^\d.,-]/g, '').replace(/\./g, '').replace(',', '.');
+  function fmtValor(f, v) {
+    if (f.t === 'num') {
+      const show = (x) => f.u === '$' ? '$' + formatearNumero(x) : formatearNumero(x) + (f.u && f.u !== '$' ? (f.u === '%' ? '%' : ' ' + f.u) : '');
+      if (String(v).includes(',')) { const [a, b] = String(v).split(','); return show(a) + ' y ' + show(b); }
+      return show(v);
+    }
+    if (f.t === 'bool') return v === 'true' ? 'sí' : 'no';
+    const op = f.o ? f.o().find(([k]) => k === v) : null;
+    return op ? op[1] : v;
+  }
+  function resumenRegla(r) {
+    const f = CAMPO[r.campo];
+    if (!f) return r.campo;
+    if (f.t === 'bool') return (r.valor === 'true' ? '' : 'No: ') + f.l;
+    const opTxt = (f.op && f.op[r.op]) || (OPS[f.t].find(([k]) => k === r.op) || [, r.op])[1];
+    if (f.t === 'arr') return opTxt[0].toUpperCase() + opTxt.slice(1) + ' ' + fmtValor(f, r.valor);
+    if (sinValor(r.op)) return f.l + ': ' + opTxt;
+    return f.l + ' ' + opTxt + ' ' + fmtValor(f, r.valor);
+  }
+
+  // ---------------- Lista ----------------
+  async function cargar() {
+    const { data, error } = await supabase.rpc('em_segmentos_lista', { p_archivados: $('f-archivados').checked });
+    if (error) {
+      $('lista').innerHTML = '<div class="mk-empty">' + (/em_segmentos_lista|function/i.test(error.message || '')
+        ? 'Falta aplicar la migración <strong>20261010000000_email_marketing_em2.sql</strong> en Supabase.'
+        : escaparHTML(mensajeError(error))) + '</div>';
+      $('btn-nuevo').disabled = true;
+      return false;
+    }
+    segmentos = data || [];
+    pintarLista();
+    return true;
+  }
+
+  function pintarLista() {
+    const arch = $('f-archivados').checked;
+    $('contador').textContent = segmentos.length ? formatearNumero(segmentos.length) + (arch ? ' archivados' : (segmentos.length === 1 ? ' segmento activo' : ' segmentos activos')) : '';
+    if (!segmentos.length) {
+      $('lista').innerHTML = arch
+        ? '<div class="mk-empty">No hay segmentos archivados.</div>'
+        : '<div class="em-bienvenida"><div class="ico">' + ICONOS.capas + '</div><h2>Crea tu primer segmento</h2>' +
+            '<p>Un segmento es un grupo de tu lista definido con datos reales: dónde compran, cuánto, qué productos, cómo califican. Empieza con una idea o arma el tuyo.</p>' +
+            '<div class="sg-ideas-vacio">' + IDEAS.map((x, i) => '<button type="button" class="sg-idea" data-idea="' + i + '"><b>' + escaparHTML(x.n) + '</b><span>' + escaparHTML(x.d) + '</span></button>').join('') + '</div>' +
+          '</div>';
+      $('lista').querySelectorAll('[data-idea]').forEach((b) => b.addEventListener('click', () => abrirEditor(null, IDEAS[Number(b.dataset.idea)])));
+      return;
+    }
+    $('lista').innerHTML = '<div class="sg-grid">' + segmentos.map((s) => {
+      const reglas = (s.definicion && s.definicion.reglas) || [];
+      const pct = s.coinciden ? Math.round(s.suscritos / s.coinciden * 100) : 0;
+      return '<article class="sg-card" data-id="' + escaparHTML(s.id) + '">' +
+        '<div class="sg-card-top"><div style="min-width:0"><h3>' + escaparHTML(s.nombre) + '</h3>' +
+          (s.descripcion ? '<p>' + escaparHTML(s.descripcion) + '</p>' : '') + '</div>' +
+          '<div class="sg-card-num"><b>' + formatearNumero(s.suscritos) + '</b><span>suscritos</span></div></div>' +
+        '<ul class="sg-condiciones">' + reglas.map((r, i) => '<li>' + (i ? '<em>' + (s.definicion.modo === 'o' ? 'o' : 'y') + '</em>' : '') + escaparHTML(resumenRegla(r)) + '</li>').join('') + '</ul>' +
+        '<div class="sg-card-barra" title="' + pct + '% de quienes cumplen están suscritos"><span style="width:' + pct + '%"></span></div>' +
+        '<div class="sg-card-pie"><span>' + formatearNumero(s.coinciden) + ' cumplen · actualizado ' + escaparHTML(fechaRelativa(s.actualizado).toLowerCase()) + '</span>' +
+          '<span class="sg-card-acc">' +
+            (arch ? '<button type="button" class="em-btn-sec sg-mini" data-restaurar="' + escaparHTML(s.id) + '">Restaurar</button>'
+                  : '<button type="button" class="em-btn-sec sg-mini" data-editar="' + escaparHTML(s.id) + '">' + ICONOS.lapiz + 'Editar</button>' +
+                    '<button type="button" class="sg-icono" data-archivar="' + escaparHTML(s.id) + '" aria-label="Archivar ' + escaparHTML(s.nombre) + '" title="Archivar">' + ICONOS.archivo + '</button>') +
+          '</span></div>' +
+      '</article>';
+    }).join('') + '</div>';
+    $('lista').querySelectorAll('[data-editar]').forEach((b) => b.addEventListener('click', () => abrirEditor(segmentos.find((s) => s.id === b.dataset.editar))));
+    $('lista').querySelectorAll('[data-archivar]').forEach((b) => b.addEventListener('click', async () => {
+      const s = segmentos.find((x) => x.id === b.dataset.archivar);
+      if (!window.confirm('¿Archivar «' + s.nombre + '»? Deja de aparecer en la lista, pero no se borra: lo puedes restaurar cuando quieras.')) return;
+      const { error } = await supabase.rpc('em_segmento_archivar', { p_id: s.id, p_archivar: true });
+      if (error) { window.alert(mensajeError(error)); return; }
+      await cargar();
+    }));
+    $('lista').querySelectorAll('[data-restaurar]').forEach((b) => b.addEventListener('click', async () => {
+      const { error } = await supabase.rpc('em_segmento_archivar', { p_id: b.dataset.restaurar, p_archivar: false });
+      if (error) { window.alert(mensajeError(error)); return; }
+      await cargar();
+    }));
+  }
+
+  $('f-archivados').addEventListener('change', cargar);
+
+  // ---------------- Editor: filas de condicion ----------------
+  function opcionesCampo(sel) {
+    const grupos = [...new Set(CAMPOS.map((f) => f.g))];
+    return '<option value="">Elige un dato…</option>' + grupos.map((g) =>
+      '<optgroup label="' + escaparHTML(g) + '">' + CAMPOS.filter((f) => f.g === g).map((f) =>
+        '<option value="' + f.c + '"' + (f.c === sel ? ' selected' : '') + '>' + escaparHTML(f.l) + '</option>').join('') + '</optgroup>').join('');
+  }
+
+  function controlValor(f, op, valor) {
+    if (!f || sinValor(op)) return '';
+    if (f.t === 'bool') return '<select class="mk-select sg-v" aria-label="Valor"><option value="true"' + (valor !== 'false' ? ' selected' : '') + '>Sí</option><option value="false"' + (valor === 'false' ? ' selected' : '') + '>No</option></select>';
+    if (f.t === 'num') {
+      const pre = f.u === '$' ? '<span class="sg-u">$</span>' : '';
+      const post = f.u && f.u !== '$' ? '<span class="sg-u">' + escaparHTML(f.u) + '</span>' : '';
+      if (op === 'entre') {
+        const [a, b] = String(valor || ',').split(',');
+        return '<span class="sg-num">' + pre + '<input class="mk-input sg-v sg-a" inputmode="decimal" value="' + escaparHTML(a || '') + '" aria-label="Desde"></span>' +
+          '<span class="sg-y">y</span><span class="sg-num">' + pre + '<input class="mk-input sg-v sg-b" inputmode="decimal" value="' + escaparHTML(b || '') + '" aria-label="Hasta">' + post + '</span>';
+      }
+      return '<span class="sg-num">' + pre + '<input class="mk-input sg-v" inputmode="decimal" value="' + escaparHTML(valor || '') + '" aria-label="Valor">' + post + '</span>';
+    }
+    const ops = f.o ? f.o() : [];
+    if (f.t === 'txt' && op === 'contiene') return '<input class="mk-input sg-v" value="' + escaparHTML(valor || '') + '" aria-label="Texto">';
+    if (!ops.length || (f.libre && valor && !ops.some(([k]) => k.toLowerCase() === String(valor).toLowerCase()))) {
+      return '<input class="mk-input sg-v" value="' + escaparHTML(valor || '') + '" placeholder="' + (ops.length ? '' : 'Aún no hay datos: escríbelo') + '" aria-label="Valor">';
+    }
+    return '<select class="mk-select sg-v" aria-label="Valor"><option value="">Elige…</option>' + ops.map(([k, t]) =>
+      '<option value="' + escaparHTML(k) + '"' + (String(k).toLowerCase() === String(valor || '').toLowerCase() ? ' selected' : '') + '>' + escaparHTML(t) + '</option>').join('') + '</select>';
+  }
+
+  function filaRegla(r) {
+    r = r || {};
+    const div = document.createElement('div');
+    div.className = 'sg-regla';
+    div.innerHTML = '<span class="sg-conector"></span>' +
+      '<select class="mk-select sg-campo" aria-label="Dato">' + opcionesCampo(r.campo) + '</select>' +
+      '<select class="mk-select sg-op" aria-label="Condición"></select>' +
+      '<span class="sg-valor"></span>' +
+      '<button type="button" class="sg-icono sg-quitar" aria-label="Quitar condición">' + ICONOS.equis + '</button>';
+    const campo = div.querySelector('.sg-campo'), opSel = div.querySelector('.sg-op'), val = div.querySelector('.sg-valor');
+    const pintarOps = (opActual, valor) => {
+      const f = CAMPO[campo.value];
+      if (!f) { opSel.innerHTML = ''; opSel.disabled = true; val.innerHTML = ''; return; }
+      opSel.disabled = false;
+      opSel.innerHTML = OPS[f.t].filter(([k]) => f.nul || !sinValor(k)).map(([k, t]) =>
+        '<option value="' + k + '"' + (k === opActual ? ' selected' : '') + '>' + escaparHTML((f.op && f.op[k]) || t) + '</option>').join('');
+      opSel.hidden = f.t === 'bool';
+      val.innerHTML = controlValor(f, opSel.value, valor);
+      val.querySelectorAll('.sg-v').forEach((x) => x.addEventListener(x.tagName === 'SELECT' ? 'change' : 'input', cambio));
+      formatoMiles(val, f);
+    };
+    campo.addEventListener('change', () => { pintarOps(null, ''); cambio(); });
+    opSel.addEventListener('change', () => { const v = leerValor(div); val.innerHTML = controlValor(CAMPO[campo.value], opSel.value, v); val.querySelectorAll('.sg-v').forEach((x) => x.addEventListener(x.tagName === 'SELECT' ? 'change' : 'input', cambio)); formatoMiles(val, CAMPO[campo.value]); cambio(); });
+    div.querySelector('.sg-quitar').addEventListener('click', () => { div.remove(); conectores(); cambio(); });
+    pintarOps(r.op, r.valor);
+    return div;
+  }
+
+  // Montos y cantidades enteras se muestran con puntos de miles (50.000).
+  function formatoMiles(cont, f) {
+    if (!f || f.t !== 'num' || f.u === '★' || f.u === '%') return;
+    const fmt = (x) => { const v = soloDigitos(x.value); if (/^\d+$/.test(v)) x.value = formatearNumero(v); };
+    cont.querySelectorAll('input.sg-v').forEach((x) => { fmt(x); x.addEventListener('blur', () => fmt(x)); });
+  }
+
+  function leerValor(div) {
+    const f = CAMPO[div.querySelector('.sg-campo').value];
+    if (!f) return '';
+    const a = div.querySelector('.sg-a'), b = div.querySelector('.sg-b');
+    if (a && b) return soloDigitos(a.value) + ',' + soloDigitos(b.value);
+    const v = div.querySelector('.sg-v');
+    if (!v) return '';
+    return f.t === 'num' ? soloDigitos(v.value) : v.value.trim();
+  }
+
+  function leerDefinicion() {
+    const reglas = [];
+    let incompleta = false;
+    $('ed-reglas').querySelectorAll('.sg-regla').forEach((div) => {
+      const campo = div.querySelector('.sg-campo').value;
+      const f = CAMPO[campo];
+      const op = f && f.t === 'bool' ? 'es' : div.querySelector('.sg-op').value;
+      const valor = leerValor(div);
+      const ok = f && op && (sinValor(op) || (op === 'entre' ? /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(valor) : (f.t === 'num' ? /^-?\d+(\.\d+)?$/.test(valor) : valor !== '')));
+      div.classList.toggle('incompleta', !ok);
+      if (!ok) { incompleta = true; return; }
+      reglas.push({ campo, op, valor: sinValor(op) ? '' : valor });
+    });
+    return { def: { modo: document.querySelector('input[name="modo"]:checked').value, reglas }, incompleta };
+  }
+
+  function conectores() {
+    const modo = document.querySelector('input[name="modo"]:checked').value === 'o' ? 'o' : 'y';
+    $('ed-reglas').querySelectorAll('.sg-regla').forEach((d, i) => {
+      d.querySelector('.sg-conector').textContent = i === 0 ? 'Donde' : modo;
+    });
+  }
+
+  function cambio() { sucio = true; conectores(); msgEd(''); $('ed-reglas').querySelectorAll('.sg-regla.incompleta').forEach((d) => d.classList.remove('incompleta')); programarPrevia(); }
+
+  // ---------------- Vista previa en vivo ----------------
+  function programarPrevia() { clearTimeout(previaTimer); previaTimer = setTimeout(previa, 350); }
+
+  async function previa() {
+    const { def, incompleta } = leerDefinicion();
+    const usaNulos = def.reglas.some((r) => CAMPO[r.campo] && CAMPO[r.campo].nul && !sinValor(r.op));
+    $('pv-nota').textContent = usaNulos ? 'Las condiciones sobre compras, precio u opiniones solo las cumplen quienes tienen ese dato. Un contacto que no ha opinado no entra en «estrellas: 4 o más».' : '';
+    if (!def.reglas.length) {
+      $('pv-num').textContent = '—'; $('pv-barra').style.width = '0';
+      $('pv-sub').textContent = incompleta ? 'Completa la condición para ver el tamaño del grupo.' : 'Agrega una condición para ver el tamaño del grupo.';
+      $('pv-datos').innerHTML = ''; $('pv-muestra').innerHTML = '<li class="em-tenue">—</li>';
+      return;
+    }
+    const seq = ++previaSeq;
+    $('ed-fondo').classList.add('calculando');
+    const { data, error } = await supabase.rpc('em_segmento_previa', { p_definicion: def });
+    if (seq !== previaSeq) return;
+    $('ed-fondo').classList.remove('calculando');
+    if (error) { $('pv-sub').textContent = mensajeError(error); return; }
+    const d = data || {};
+    $('pv-num').textContent = formatearNumero(d.suscritos);
+    const pct = d.total_suscritos ? Math.round(d.suscritos / d.total_suscritos * 100) : 0;
+    $('pv-barra').style.width = pct + '%';
+    $('pv-sub').textContent = pct + '% de tus ' + formatearNumero(d.total_suscritos) + ' suscritos' + (incompleta ? ' · hay una condición incompleta que aún no se cuenta' : '');
+    const inactivos = (d.coinciden || 0) - (d.suscritos || 0);
+    $('pv-datos').innerHTML =
+      '<li><span>Cumplen las condiciones</span><b>' + formatearNumero(d.coinciden) + '</b></li>' +
+      '<li><span>De ellos ya son clientes</span><b>' + formatearNumero(d.clientes) + '</b></li>' +
+      (inactivos > 0 ? '<li><span>No reciben (baja u otro estado)</span><b>' + formatearNumero(inactivos) + '</b></li>' : '');
+    const m = d.muestra || [];
+    $('pv-muestra').innerHTML = m.length ? m.map((c) => '<li><span class="em-ini">' + escaparHTML(((c.nombre || c.correo || '?').trim()[0] || '?').toUpperCase()) + '</span>' +
+      '<span class="sg-mu-txt"><b>' + escaparHTML(c.nombre || 'Sin nombre') + '</b><span>' + escaparHTML(c.correo) + '</span></span>' +
+      (c.estado === 'suscrito' ? '' : badgeEstado(c.estado)) + '</li>').join('') +
+      (d.coinciden > m.length ? '<li class="em-tenue sg-mas">y ' + formatearNumero(d.coinciden - m.length) + ' más</li>' : '')
+      : '<li class="em-tenue">Nadie cumple estas condiciones todavía.</li>';
+  }
+
+  // ---------------- Abrir / cerrar / guardar ----------------
+  function abrirEditor(seg, idea) {
+    editandoId = seg ? seg.id : null;
+    const base = seg ? { n: seg.nombre, d: seg.descripcion, r: (seg.definicion || {}).reglas || [], m: (seg.definicion || {}).modo || 'y' }
+      : idea ? { n: idea.n, d: idea.d, r: idea.r, m: 'y' } : { n: '', d: '', r: [{}], m: 'y' };
+    $('ed-titulo').textContent = seg ? 'Editar segmento' : 'Nuevo segmento';
+    $('ed-nombre').value = base.n || '';
+    $('ed-desc').value = base.d || '';
+    document.querySelector('input[name="modo"][value="' + (base.m === 'o' ? 'o' : 'y') + '"]').checked = true;
+    $('ed-reglas').innerHTML = '';
+    (base.r.length ? base.r : [{}]).forEach((r) => $('ed-reglas').appendChild(filaRegla(r)));
+    $('ed-ideas').innerHTML = seg ? '' : '<span class="sg-ideas-k">' + ICONOS.chispa + 'Empezar desde una idea</span>' +
+      IDEAS.map((x, i) => '<button type="button" class="sg-chip-idea" data-i="' + i + '">' + escaparHTML(x.n) + '</button>').join('');
+    $('ed-ideas').querySelectorAll('[data-i]').forEach((b) => b.addEventListener('click', () => {
+      const x = IDEAS[Number(b.dataset.i)];
+      if (!$('ed-nombre').value.trim() || !sucio || window.confirm('¿Reemplazar las condiciones actuales por la idea «' + x.n + '»?')) {
+        $('ed-nombre').value = x.n; $('ed-desc').value = x.d;
+        $('ed-reglas').innerHTML = ''; x.r.forEach((r) => $('ed-reglas').appendChild(filaRegla(r)));
+        cambio();
+      }
+    }));
+    msgEd('');
+    conectores();
+    sucio = false;
+    $('ed-fondo').hidden = false;
+    history.replaceState(null, '', seg ? '?id=' + encodeURIComponent(seg.id) : '?nuevo=1');
+    $('ed-nombre').focus();
+    previa();
+  }
+  function cerrarEditor(forzar) {
+    if (!forzar && sucio && !window.confirm('Tienes cambios sin guardar. ¿Descartarlos?')) return;
+    $('ed-fondo').hidden = true; editandoId = null; sucio = false;
+    history.replaceState(null, '', location.pathname);
+  }
+  function msgEd(t, cls) { const m = $('ed-msg'); m.hidden = !t; m.textContent = t || ''; m.className = 'em-msg' + (cls ? ' ' + cls : ''); }
+
+  $('ed-agregar').addEventListener('click', () => {
+    if ($('ed-reglas').querySelectorAll('.sg-regla').length >= 12) { msgEd('Máximo 12 condiciones por segmento.', 'err'); return; }
+    const d = filaRegla({}); $('ed-reglas').appendChild(d); conectores(); d.querySelector('.sg-campo').focus();
+  });
+  document.querySelectorAll('input[name="modo"]').forEach((x) => x.addEventListener('change', cambio));
+  ['ed-nombre', 'ed-desc'].forEach((id) => $(id).addEventListener('input', () => { sucio = true; }));
+  $('btn-nuevo').addEventListener('click', () => abrirEditor());
+  $('ed-cerrar').addEventListener('click', () => cerrarEditor());
+  $('ed-cancelar').addEventListener('click', () => cerrarEditor());
+  $('ed-fondo').addEventListener('click', (e) => { if (e.target === $('ed-fondo')) cerrarEditor(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('ed-fondo').hidden) cerrarEditor(); });
+
+  $('ed-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nombre = $('ed-nombre').value.trim();
+    const { def, incompleta } = leerDefinicion();
+    if (!nombre) { msgEd('Ponle un nombre al segmento.', 'err'); $('ed-nombre').focus(); return; }
+    if (incompleta) { msgEd('Hay una condición incompleta (marcada en rojo). Complétala o quítala.', 'err'); return; }
+    if (!def.reglas.length) { msgEd('Agrega al menos una condición.', 'err'); return; }
+    $('ed-guardar').disabled = true;
+    const { error } = await supabase.rpc('em_segmento_guardar', { p_id: editandoId, p_nombre: nombre, p_descripcion: $('ed-desc').value, p_definicion: def });
+    $('ed-guardar').disabled = false;
+    if (error) { msgEd(mensajeError(error), 'err'); return; }
+    cerrarEditor(true);
+    if ($('f-archivados').checked) $('f-archivados').checked = false;
+    await cargar();
+  });
+
+  // ---------------- Arranque ----------------
+  (async () => {
+    const acceso = await asegurarAccesoEM(document.body, '../index.html');
+    if (!acceso) return;
+    montarArea({
+      activa: 'segmentos',
+      titulo: 'Segmentos',
+      lead: 'Grupos de tu lista armados con datos reales: compras, precio, productos, opiniones, lugar y momento. Se recalculan solos cada vez que los usas.',
+      sesion: acceso.sesion
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });
+    $('em-main').hidden = false;
+    const op = await supabase.rpc('em_segmento_opciones');
+    if (!op.error && op.data) opciones = Object.assign(opciones, op.data);
+    if (!(await cargar())) return;
+    const p = new URLSearchParams(location.search);
+    if (p.get('nuevo')) abrirEditor();
+    else if (p.get('id')) { const s = segmentos.find((x) => x.id === p.get('id')); if (s) abrirEditor(s); }
+  })();
+</script>
+
+</body>
+</html>

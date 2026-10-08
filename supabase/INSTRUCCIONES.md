@@ -3341,3 +3341,42 @@ automático contacto↔cliente por trigger, resumen, ficha, aislamiento: un
 usuario solo de Ventas no ve la lista y uno solo de Email marketing sí, anon
 bloqueado). Interfaz probada en Chromium (PC 1280 y celular 390) con Supabase
 simulado: 52 comprobaciones de DOM, sin desbordes ni errores de JavaScript.
+
+# EM2 · Email marketing: perfiles por cliente y segmentos
+
+## EM2.1. Aplicar (SQL Editor, una sola vez)
+
+Correr `supabase/migrations/20261010000000_email_marketing_em2.sql`, después de
+`20261009000000_email_marketing_em1.sql`. No requiere Edge Functions.
+
+## EM2.2. Qué crea
+
+- `mk_perfiles_clientes(desde, hasta)`: un perfil por cliente **sin datos de
+  contacto** (para el Análisis de clúster de EM3). Permiso de Marketing.
+- `em_segmentos` + RPC de segmentos (`em_segmento_previa`, `_guardar`,
+  `_archivar`, `em_segmentos_lista`, `em_segmento_opciones`). Permiso de Email
+  marketing. Las reglas se validan contra una lista blanca en el servidor.
+
+## EM2.3. Evidencia
+
+1. Email marketing → **Segmentos** → «Nuevo segmento» → una condición
+   (p. ej. Ciudad es Tunja): la vista previa muestra al instante cuántos
+   suscritos la cumplen.
+2. Guardar → aparece la tarjeta con sus condiciones en palabras y su tamaño.
+3. Archivar y restaurar con «Ver archivados».
+
+```sql
+-- Perfil de prueba (con sesión de admin desde la app, o como postgres):
+select * from mk_perfiles_clientes() limit 5;
+```
+
+## EM2.4. Pruebas locales hechas
+
+55 migraciones + matriz 171/171 + 41 comprobaciones de EM2 (perfil completo
+calculado al peso con datos sembrados, el pedido anulado no cuenta, opiniones
+de prueba/ocultas excluidas, periodo, sin PII en el perfil, 6 tipos de
+condición, Y/O, rechazo de campos/operadores/valores inválidos, **intento de
+inyección SQL en el valor: tratado como texto**, guardar/duplicado/archivar,
+aislamiento por módulo y anon). Interfaz en Chromium (PC y celular): 44
+comprobaciones sin errores ni desbordes. Las pruebas de EM1, stock y correos
+siguen pasando.

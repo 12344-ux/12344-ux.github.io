@@ -29,6 +29,10 @@ ICONOS.capas = svg('<path d="m12.83 2.18 8.58 3.9a1 1 0 0 1 0 1.83l-8.58 3.9a2 2
 ICONOS.check = svg('<path d="M20 6 9 17l-5-5"/>');
 ICONOS.alerta = svg('<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/>');
 ICONOS.enlace = svg('<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>');
+ICONOS.filtro = svg('<path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z"/>');
+ICONOS.archivo = svg('<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/>');
+ICONOS.lapiz = svg('<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>');
+ICONOS.chispa = svg('<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>');
 ICONOS.panel = svg('<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>');
 
 // ------------------------------------------------------------
@@ -67,7 +71,7 @@ export async function asegurarAccesoEM(contenedor, volverHref) {
 const TABS = [
   { id: 'resumen', txt: 'Resumen', href: 'index.html', ico: 'panel' },
   { id: 'contactos', txt: 'Contactos', href: 'contactos.html', ico: 'usuarios' },
-  { id: 'segmentos', txt: 'Segmentos', ico: 'capas', pronto: true },
+  { id: 'segmentos', txt: 'Segmentos', href: 'segmentos.html', ico: 'capas' },
   { id: 'campanas', txt: 'Campañas', ico: 'enviar', pronto: true },
   { id: 'seguimiento', txt: 'Correos de seguimiento', href: 'seguimiento.html', ico: 'historial', menor: true }
 ];
@@ -188,7 +192,12 @@ export function mensajeError(err) {
     ['EM_CONTACTO_YA_EXISTE', 'Ese correo ya está en la lista.'],
     ['EM_CONTACTO_INACTIVO', 'Ese correo está en la lista pero inactivo (se dio de baja o tuvo un problema).'],
     ['EM_CONTACTO_NO_EXISTE', 'El contacto no existe.'],
-    ['EM_MOTIVO_REQUERIDO', 'Escribe el motivo de la baja.']
+    ['EM_MOTIVO_REQUERIDO', 'Escribe el motivo de la baja.'],
+    ['EM_REGLA_INVALIDA', 'Revisa las condiciones: alguna está incompleta o tiene un valor que no es válido.'],
+    ['EM_SEGMENTO_NOMBRE', 'Ponle un nombre al segmento.'],
+    ['EM_SEGMENTO_SIN_REGLAS', 'Agrega al menos una condición.'],
+    ['EM_SEGMENTO_DUPLICADO', 'Ya hay un segmento activo con ese nombre.'],
+    ['EM_SEGMENTO_NO_EXISTE', 'El segmento no existe.']
   ];
   for (const [k, t] of tabla) if (m.includes(k)) return t;
   return 'No se pudo completar: ' + m;
