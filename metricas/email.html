@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Métricas · Email</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../marca-areas/metricas.png?v=1">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=2">
+<meta name="theme-color" content="#101C33">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=2">
+<link rel="stylesheet" href="metricas.css?v=5">
+<!-- MAGANDHI · METRICAS · EMAIL (M2). RPC mt_email(desde, hasta): crecimiento de
+     la lista, campañas lado a lado y salud frente a los límites de Resend.
+     Mismos números que el área de Email (misma fuente), con guardia de Métricas. -->
+</head>
+<body class="mt-body">
+<script type="module" src="../auth-guard.js"></script>
+<main class="mt-wrap" id="mt-main" hidden>
+  <div class="mt-barra"><div id="em-chips"></div><span class="mt-rango" id="em-rango"></span></div>
+  <div class="mt-kpis" id="em-kpis"><div class="mt-kpi mt-esqueleto" style="height:120px"></div><div class="mt-kpi mt-esqueleto" style="height:120px"></div><div class="mt-kpi mt-esqueleto" style="height:120px"></div><div class="mt-kpi mt-esqueleto" style="height:120px"></div></div>
+  <section class="mt-card">
+    <div class="mt-card-cab"><div><h2 class="mt-card-tit">Crecimiento de la lista</h2><p class="mt-card-sub">Altas y bajas por día en el periodo</p></div></div>
+    <div id="em-serie"></div>
+    <div class="mt-ley" style="margin-top:10px"><span><i></i>Altas</span><span><i class="sec"></i>Bajas</span></div>
+  </section>
+  <section class="mt-card mt-mt">
+    <div class="mt-card-cab"><div><h2 class="mt-card-tit">Campañas del periodo</h2><p class="mt-card-sub">Cada campaña enviada, lado a lado</p></div></div>
+    <div id="em-campanas"></div>
+  </section>
+  <div class="mt-grid mt-g3 mt-mt">
+    <section class="mt-card"><div class="mt-card-cab"><div><h2 class="mt-card-tit">Estado de los contactos</h2><p class="mt-card-sub">Toda la lista</p></div></div><div id="em-estados"></div></section>
+    <section class="mt-card"><div class="mt-card-cab"><div><h2 class="mt-card-tit">Suscritos por tema</h2><p class="mt-card-sub">Qué quieren recibir</p></div></div><div id="em-temas"></div></section>
+    <section class="mt-card"><div class="mt-card-cab"><div><h2 class="mt-card-tit">Salud de la lista</h2><p class="mt-card-sub">Últimos 60 días · frente a los límites de Resend</p></div></div><div id="em-salud"></div></section>
+  </div>
+</main>
+
+<script type="module">
+  import { supabase, montarArea, ICONOS, esc, num, pct, delta, kpi, vacio, grafLinea, reparto, distribucion, chipsPeriodo, rangoDe, fechaCorta, fechaLarga, mensajeError, pintarSparks } from './metricas-core.js';
+  const $ = (id) => document.getElementById(id);
+  const p0 = new URLSearchParams(location.search).get('periodo');
+  let periodo = ['7', '30', '90', '365'].includes(p0) ? p0 : '30', datos = null;
+  const ESTADOS = { suscrito: 'Suscritos', pendiente_confirmacion: 'Sin confirmar', baja: 'Dados de baja', rebotado: 'Rebotados', queja: 'Quejas' };
+  const fFecha = (iso) => iso ? new Date(iso).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) : '—';
+
+  function medidor(titulo, valor, limite, unidad, pie) {
+    const v = Number(valor), hayDato = valor != null;
+    const alto = hayDato && v >= limite;
+    const w = hayDato ? Math.min(100, (v / (limite * 1.6)) * 100) : 0;
+    const umbral = (limite / (limite * 1.6)) * 100;
+    return '<div class="mt-medidor' + (alto ? ' alto' : '') + '"><div class="cab"><span>' + esc(titulo) + '</span><b>' + (hayDato ? String(v).replace('.', ',') + unidad : '—') + '</b></div>' +
+      '<div class="pista"><span style="width:' + w + '%"></span><span class="umbral" style="left:' + umbral + '%"></span></div>' +
+      '<div class="pie">' + esc(pie) + '</div></div>';
+  }
+
+  function pintar() {
+    const d = datos, L = d.lista;
+    $('em-rango').textContent = fechaCorta(d.desde) + ' – ' + fechaCorta(d.hasta) + ' · comparado con ' + fechaCorta(d.anterior.desde) + ' – ' + fechaCorta(d.anterior.hasta);
+    $('em-kpis').innerHTML =
+      kpi({ k: 'Suscritos', v: num(L.suscritos), pie: num(L.vinculados) + ' ya son clientes', destacado: true }) +
+      kpi({ k: 'Altas', v: num(L.altas), pie: delta(L.altas, L.altas_anterior) + ' <span>antes ' + num(L.altas_anterior) + '</span>', spark: d.serie.map((x) => x.altas) }) +
+      kpi({ k: 'Bajas', v: num(L.bajas), pie: delta(L.bajas, L.bajas_anterior, { invertido: true }) + ' <span>antes ' + num(L.bajas_anterior) + '</span>', spark: d.serie.map((x) => x.bajas) }) +
+      kpi({ k: 'Sin confirmar', v: num(L.pendientes), pie: 'esperan confirmar su correo' });
+    pintarSparks($('em-kpis'));
+
+    const hayMov = d.serie.some((x) => x.altas || x.bajas);
+    if (hayMov) {
+      grafLinea($('em-serie'), { aria: 'Altas y bajas por día', alto: 240, etiquetas: d.serie.map((x) => x.fecha), formato: num,
+        series: [{ nombre: 'Altas', datos: d.serie.map((x) => x.altas), area: true }, { nombre: 'Bajas', datos: d.serie.map((x) => x.bajas), clase: 'sec' }],
+        etiquetaTip: (i) => fechaLarga(d.serie[i].fecha) });
+    } else {
+      $('em-serie').innerHTML = vacio('Sin altas ni bajas en este periodo', 'Aquí verás el movimiento de la lista día a día: quién se suscribe y quién se da de baja.');
+    }
+
+    $('em-campanas').innerHTML = d.campanas.length ? (
+      '<div class="mt-tabla-caja"><table class="mt-tabla"><thead><tr><th>Campaña</th><th>Enviada</th><th class="d">Entregados</th><th class="d">Clics</th><th class="d">Pedidos</th></tr></thead><tbody>' +
+      d.campanas.map((c) => '<tr><td class="n" title="' + esc(c.asunto || c.nombre) + '"><span class="mt-ref" style="letter-spacing:0;font-weight:600">' + esc(c.nombre) + '</span>' + (c.asunto ? '<br><small style="color:var(--mt-gris)">' + esc(c.asunto) + '</small>' : '') + '</td>' +
+        '<td>' + fFecha(c.enviada_en) + '</td><td class="d">' + num(c.entregados) + '</td>' +
+        '<td class="d">' + num(c.clics) + (c.entregados ? ' <small style="color:var(--mt-gris)">' + pct(c.clics, c.entregados) + '%</small>' : '') + '</td>' +
+        '<td class="d"><b>' + num(c.pedidos) + '</b></td></tr>').join('') +
+      '</tbody></table></div>'
+    ) : vacio('Sin campañas en este periodo', 'Cuando envíes una campaña desde Email marketing, aquí la verás con entregados, clics y pedidos.');
+
+    const est = Object.entries(L.por_estado || {}).map(([k, v]) => ({ n: ESTADOS[k] || k, v })).filter((x) => x.v).sort((a, b) => b.v - a.v);
+    $('em-estados').innerHTML = est.length ? reparto(est) : vacio('Lista vacía', 'Aquí verás el reparto entre suscritos, sin confirmar y bajas.');
+    const temas = (L.por_tema || []).map((t) => ({ n: t.nombre, v: t.suscritos }));
+    $('em-temas').innerHTML = (temas.some((t) => t.v)) ? reparto(temas) : vacio('Sin suscritos aún', 'Novedades y Ofertas: lo que cada persona aceptó recibir.');
+
+    const s = d.salud;
+    $('em-salud').innerHTML =
+      '<div class="mt-filas" style="margin-bottom:16px"><div class="mt-fila"><span class="n">Enviados</span><span class="v">' + num(s.enviados) + '</span></div>' +
+      '<div class="mt-fila"><span class="n">Entregados</span><span class="v">' + num(s.entregados) + '</span></div></div>' +
+      medidor('Rebotes', s.tasa_rebote, s.limite_rebote, '%', 'Límite de Resend: ' + s.limite_rebote + '%. ' + num(s.rebotes) + ' rebotes.') +
+      '<div style="height:14px"></div>' +
+      medidor('Quejas de spam', s.tasa_queja, s.limite_queja, '%', 'Límite de Resend: ' + String(s.limite_queja).replace('.', ',') + '%. ' + num(s.quejas) + ' quejas.') +
+      (s.suprimidos_auto_30d ? '<p class="mt-pie">' + num(s.suprimidos_auto_30d) + ' correos suprimidos automáticamente en los últimos 30 días (rebotes, quejas y bajas).</p>' : '');
+  }
+
+  async function cargar() {
+    const r = rangoDe(periodo);
+    history.replaceState(null, '', '?periodo=' + periodo);
+    $('em-chips').innerHTML = chipsPeriodo(periodo);
+    $('em-chips').querySelectorAll('[data-periodo]').forEach((b) => b.addEventListener('click', () => { periodo = b.dataset.periodo; cargar(); }));
+    const { data, error } = await supabase.rpc('mt_email', { p_desde: r.desde, p_hasta: r.hasta });
+    if (error) { $('em-kpis').innerHTML = '<div class="mt-aviso" style="grid-column:1/-1">' + ICONOS.info + '<div><strong>No se pudo cargar</strong><p>' + esc(mensajeError(error)) + '</p></div></div>'; return; }
+    datos = data; pintar();
+  }
+
+  (async () => {
+    const ctx = await montarArea({ activa: 'email', titulo: 'Email', lead: 'Cómo crece la lista de correos, cómo rinde cada campaña y qué tan sana está la lista frente a los límites de Resend.' });
+    if (!ctx) return;
+    await cargar();
+  })();
+</script>
+</body>
+</html>

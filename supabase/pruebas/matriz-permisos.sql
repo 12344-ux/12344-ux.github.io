@@ -113,7 +113,9 @@ declare
     -- EM6 (panel). em_publico_* NO van: solo service_role.
     'em_config_captura','em_captura_estado',
     -- Metricas M1 (capa de datos). mt_publico_config / mt_registrar_eventos NO: solo service_role.
-    'tiene_acceso_metricas','tiene_acceso_datos_metricas','mt_config_analitica','mt_en_vivo','mt_ventas','mt_tienda'
+    'tiene_acceso_metricas','tiene_acceso_datos_metricas','mt_config_analitica','mt_en_vivo','mt_ventas','mt_tienda',
+    -- Metricas M2 (capa de datos). mt_email/mt_opiniones/mt_inventario con guardia de datos.
+    'mt_email','mt_opiniones','mt_inventario'
   ];
   v_extra text;
 begin

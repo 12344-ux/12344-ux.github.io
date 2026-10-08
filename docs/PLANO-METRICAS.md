@@ -1,6 +1,6 @@
 # PLANO · Métricas (sexta área del back-office)
 
-**Corte:** 8 de octubre de 2026 · **Estado:** M1 construido y probado (pendiente de aplicar/desplegar). Siguiente: M2.
+**Corte:** 8 de octubre de 2026 · **Estado:** M1 en producción. M2 (Email, Opiniones, Inventario) construido y probado localmente, **pendiente de aplicar** la migración `20261017000000_metricas_m2.sql` (runbook MT2 en `supabase/INSTRUCCIONES.md`). Siguiente después de M2: conexión con clúster/segmentos cuando exista la identificación de Wompi F2.
 
 ## 0. Qué es
 
@@ -53,9 +53,17 @@ La **capa de datos** (funciones `mt_*` en la base) es la pieza clave: Métricas 
 
 Sin Wompi F2 nadie se identifica en la web. Por eso la interacción **por cliente** (por ejemplo, «vio el producto X» como variable del clúster o condición de segmento) todavía no existe. El enchufe es que F2 guarde el `mg_vid` del comprador en el pedido.
 
-## 4. M2 · siguiente
+## 4. M2 · construido (pendiente de aplicar la migración)
 
-Pestañas **Email** (lista y campañas), **Opiniones** e **Inventario** (stock, rotación y días de inventario). Conexión de la capa con el clúster y los segmentos cuando exista la identificación de F2.
+Tres pestañas nuevas y tres funciones en la capa de datos (`20261017000000_metricas_m2.sql`):
+
+- **`mt_email(desde, hasta)`** → pestaña **Email**: crecimiento de la lista (altas/bajas por día y periodo, estados, temas, vinculados), campañas del periodo lado a lado (entregados, clics, pedidos **exactos + aproximados**, mismo criterio que el área de Email para que el número coincida) y salud de la lista frente a los límites de Resend (ventana fija de 60 días). Reproduce el cálculo con la guardia de Métricas (no llama las funciones del área de Email, que tienen otra guardia).
+- **`mt_opiniones(desde, hasta)`** → pestaña **Opiniones**: promedio real **siempre con su total N** (sin suavizado bayesiano, regla del dueño), distribución por estrellas, opiniones por día y por mes (12 meses), cobertura (% de pedidos entregados con opinión) y productos por promedio. Excluye `es_prueba` y `oculta`.
+- **`mt_inventario()`** → pestaña **Inventario**: foto del *ahora*. Existencias por producto (derivadas del libro), unidades vendidas por semana (12 semanas), días de inventario estimado (existencias ÷ venta diaria promedio de 30 días) y alertas de bajo stock. Sin selector de periodo porque el stock es del momento.
+
+Componente nuevo en `metricas-core.js`: `estrellas(valor)` (rellenas doradas / grises con una parcial por degradado, método aprobado) y `distribucion(filas)`. CSS en `metricas.css?v=5`.
+
+Pendiente de M2: conexión de la capa con el clúster y los segmentos cuando exista la identificación de Wompi F2 (el `mg_vid` del comprador guardado en el pedido). Mientras no exista, no se inventa la unión.
 
 ## 5. Relevo para la próxima sesión: M2 (8-oct-2026)
 

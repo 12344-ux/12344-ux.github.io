@@ -3746,3 +3746,47 @@ origen de campaña, producto visto, botón real «Comprar ahora», nada de URLs
 enviadas). Área Métricas con datos realistas (168 pedidos, ~5.300 eventos) en
 PC y celular: **66/66**, sin desbordes ni errores; EM5 66/66, EM5.1 30/30 y EM6
 18/18 siguen pasando.
+
+# MT2 · Métricas · pestañas Email, Opiniones e Inventario
+
+Diseño en `docs/PLANO-METRICAS.md` §4-§5. Suma tres funciones a la capa de
+datos compartida `mt_*` y tres pantallas al área. No hay Edge Functions nuevas.
+
+## MT2.1. Aplicar la migración (SQL Editor, una sola vez)
+
+Correr `supabase/migrations/20261017000000_metricas_m2.sql`, después de
+`20261016000000_metricas_m1.sql`. Crea `mt_email(desde, hasta)`,
+`mt_opiniones(desde, hasta)` y `mt_inventario()`, todas con guardia
+`tiene_acceso_datos_metricas()` (módulos metricas/marketing/ventas; admin
+siempre), `security definer` y zona horaria America/Bogota. Solo devuelven
+agregados sin datos personales.
+
+## MT2.2. Comprobar
+
+1. Panel → **Métricas** → aparecen las pestañas **Email**, **Opiniones** e
+   **Inventario**.
+2. **Email**: crecimiento de la lista (altas/bajas), campañas lado a lado y
+   salud frente a los límites de Resend. Los números coinciden con el área de
+   Email marketing (misma fuente, incluida la atribución exacta + aproximada).
+3. **Opiniones**: promedio real **siempre con su total** (sin suavizado), más
+   distribución, por mes, cobertura y productos. Excluye prueba y ocultas.
+4. **Inventario**: existencias por producto, rotación por semana, días de
+   inventario (estimado) y alertas de bajo stock.
+
+```sql
+-- Esperado: todas false (ninguna función M2 es ejecutable por anon)
+select has_function_privilege('anon','mt_email(date,date)','execute'),
+       has_function_privilege('anon','mt_opiniones(date,date)','execute'),
+       has_function_privilege('anon','mt_inventario()','execute');
+```
+
+## MT2.3. Pruebas locales hechas
+
+62 migraciones + matriz **170/170 (TODO PASA)** con las 3 funciones nuevas en la
+lista blanca. `supabase/pruebas/local/metricas-m2.sql` **26/26** (inventario:
+existencias/rotación/días/alertas; opiniones: promedio real 4.7 con prueba y
+oculta excluidas, distribución, cobertura, por mes; email: suscritos, altas/bajas,
+campaña con entregados/clics/pedidos exactos+aproximados, salud; permisos y que
+la capa no expone correos ni nombres). Área Métricas en Chromium con datos
+realistas, PC 1280 y celular 390: **108/108**, sin desbordes ni errores
+(incluye En vivo, Ventas y Tienda de M1, que siguen pasando).

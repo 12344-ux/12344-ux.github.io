@@ -53,6 +53,7 @@ export function mensajeError(e) {
   const m = (e && e.message) || String(e || '');
   if (/MT_SIN_ACCESO/.test(m)) return 'Tu usuario no tiene acceso a Métricas.';
   if (/MT_POLITICA_PENDIENTE/.test(m)) return 'Primero registra la política de tratamiento de datos (Email marketing → Resumen).';
+  if (/mt_(email|opiniones|inventario)/i.test(m)) return 'Falta aplicar la migración 20261017000000_metricas_m2.sql en Supabase.';
   if (/mt_(en_vivo|ventas|tienda|config_analitica)|PGRST202|function/i.test(m)) return 'Falta aplicar la migración 20261016000000_metricas_m1.sql en Supabase.';
   return 'No se pudo cargar: ' + m;
 }
@@ -76,6 +77,9 @@ export const ICONOS = {
   movil: svgI('<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>'),
   pc: svgI('<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>'),
   tablet: svgI('<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M11 18h2"/>'),
+  estrella: svgI('<path d="m12 3 2.6 5.3 5.9.9-4.2 4.1 1 5.8L12 17.9 6.7 19l1-5.8L3.5 9.2l5.9-.9z"/>'),
+  caja: svgI('<path d="M21 8V7a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 7v10a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 17Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/>'),
+  alerta: svgI('<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>'),
 };
 
 // ------------------------------------------------------------
@@ -91,6 +95,9 @@ const PESTANAS = [
   { id: 'vivo', txt: 'En vivo', href: 'index.html', ico: 'vivo' },
   { id: 'ventas', txt: 'Ventas', href: 'ventas.html', ico: 'ventas' },
   { id: 'tienda', txt: 'Tienda', href: 'tienda.html', ico: 'tienda' },
+  { id: 'email', txt: 'Email', href: 'email.html', ico: 'sobre' },
+  { id: 'opiniones', txt: 'Opiniones', href: 'opiniones.html', ico: 'estrella' },
+  { id: 'inventario', txt: 'Inventario', href: 'inventario.html', ico: 'caja' },
 ];
 
 export async function montarArea({ activa, titulo, lead, extraCabecera }) {
@@ -155,6 +162,39 @@ export function kpi({ k, v, pie, destacado, spark }) {
 }
 export function vacio(titulo, texto) {
   return '<div class="mt-vacio">' + ICONOS.vacio + '<b>' + esc(titulo) + '</b><span>' + esc(texto) + '</span></div>';
+}
+
+/** Estrellas doradas (rellenas) / grises (vacías) con una estrella PARCIAL por
+ *  degradado para el decimal exacto. Método aprobado por el dueño: fill directo,
+ *  nada de capas superpuestas recortadas. valor 0..5. */
+export function estrellas(valor, { tam = 18 } = {}) {
+  const v = Math.max(0, Math.min(5, Number(valor) || 0));
+  const gid = 'st' + Math.random().toString(36).slice(2, 8);
+  const forma = '<path d="m12 3 2.6 5.3 5.9.9-4.2 4.1 1 5.8L12 17.9 6.7 19l1-5.8L3.5 9.2l5.9-.9z"/>';
+  let s = '<span class="mt-estrellas" role="img" aria-label="' + v.toFixed(1).replace('.', ',') + ' de 5">';
+  for (let i = 1; i <= 5; i++) {
+    const frac = v >= i ? 1 : v > i - 1 ? v - (i - 1) : 0;
+    if (frac >= 1) {
+      s += '<svg viewBox="0 0 24 24" width="' + tam + '" height="' + tam + '" fill="#C28A3A">' + forma + '</svg>';
+    } else if (frac <= 0) {
+      s += '<svg viewBox="0 0 24 24" width="' + tam + '" height="' + tam + '" fill="#DBD4C8">' + forma + '</svg>';
+    } else {
+      const o = (frac * 100).toFixed(1) + '%';
+      s += '<svg viewBox="0 0 24 24" width="' + tam + '" height="' + tam + '"><defs><linearGradient id="' + gid + i + '">' +
+        '<stop offset="' + o + '" stop-color="#C28A3A"/><stop offset="' + o + '" stop-color="#DBD4C8"/></linearGradient></defs>' +
+        '<g fill="url(#' + gid + i + ')">' + forma + '</g></svg>';
+    }
+  }
+  return s + '</span>';
+}
+
+/** Distribución por estrellas (5→1) con barra proporcional. filas = [{estrellas, n}] */
+export function distribucion(filas) {
+  const tot = filas.reduce((a, x) => a + (Number(x.n) || 0), 0);
+  return '<div class="mt-distrib">' + filas.map((f) =>
+    '<div class="mt-distrib-fila"><span class="e">' + f.estrellas + '<svg viewBox="0 0 24 24" width="12" height="12" fill="#C28A3A"><path d="m12 3 2.6 5.3 5.9.9-4.2 4.1 1 5.8L12 17.9 6.7 19l1-5.8L3.5 9.2l5.9-.9z"/></svg></span>' +
+    '<span class="b"><span style="width:' + (tot ? Math.max(0, (100 * (Number(f.n) || 0)) / tot) : 0) + '%"></span></span>' +
+    '<span class="n">' + num(f.n) + '</span></div>').join('') + '</div>';
 }
 
 // ------------------------------------------------------------
