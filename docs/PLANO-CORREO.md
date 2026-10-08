@@ -29,8 +29,8 @@ cuando se pase de ahí o arranque el marketing masivo.
 
 - Un correo por etapa: recibido, preparando, en camino, entregado.
 - Envío **manual** desde el detalle del pedido; solo etapas ya alcanzadas.
-- Copy en `correo_plantillas`, editable desde `ventas/correos/` sin tocar código
-  ni redesplegar. Nace como **borrador** (copy de prueba).
+- Copy en `correo_plantillas`. El editor `ventas/correos/` se retiró en EM1
+  (decisión del dueño): los textos se cambian con un SQL que entrega Kiro. Nace como **borrador** (copy de prueba).
 - «Entregado» lleva el `codigo_resena` y UN botón a la ficha del producto. El
   código viaja en el fragmento `#resena=` (no llega a servidores ni al Referer),
   la tienda lo prellena y lo borra de la URL. El código no vence, así que el

@@ -124,7 +124,9 @@ body.mk-body{
 /* ============================================================
    ENCABEZADO EDITORIAL DE PANTALLA
    ============================================================ */
-.mk-screen-head{max-width:1080px;margin:0 auto;padding:26px 24px 6px}
+/* width:100%: el body es flex en columna y el margin auto encogia el bloque a
+   su contenido, dejando el titulo desalineado del contenido (x=328 vs x=100). */
+.mk-screen-head{max-width:1080px;margin:0 auto;padding:26px 24px 6px;width:100%}
 .mk-kicker{
   margin:0 0 6px;font-size:12px;font-weight:600;letter-spacing:.16em;
   text-transform:uppercase;color:var(--mk-acento);
@@ -362,4 +364,9 @@ body.mk-body{
 @media (max-width:640px){
   .mk-hero-meta{margin-left:0}
   .mk-controles{grid-template-columns:1fr 1fr}
+  /* En celular el rotulo del area no cabe junto al wordmark y desbordaba la
+     pagina (scroll horizontal). El area ya se lee en el boton volver y en el
+     kicker de la pantalla. */
+  .mk-header{padding:12px 16px}
+  .mk-word + .mk-sep,.mk-area{display:none}
 }
