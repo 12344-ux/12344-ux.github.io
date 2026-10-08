@@ -3473,3 +3473,120 @@ permisos y anon). Función `em-campana` contra un simulador de Supabase/Resend
 baja, enviar, programar, cancelar; marcador de baja, saludo personalizado, UTM,
 HTML escapado, ningún secreto en logs). Interfaz en Chromium PC y celular: 50
 comprobaciones; EM1–EM3 siguen pasando.
+
+# EM5 · Email marketing: resultados (webhook de Resend)
+
+Diseño en `docs/PLANO-EMAIL-MARKETING.md` §3.5, §6 y §11. Orden: (1) migración,
+(2) función, (3) webhook en Resend + secreto, (4) evidencia. **Hasta el paso 3
+no llega ningún resultado**: las pantallas lo dicen («falta conectar el webhook»).
+
+## EM5.1. Aplicar la migración (SQL Editor, una sola vez)
+
+Correr `supabase/migrations/20261013000000_email_marketing_em5.sql`, después de
+`20261012000000_email_marketing_em4.sql`.
+
+Crea `em_eventos` (un aviso de Resend por fila, sin repetidos), columnas de
+entrega/rebote en `correo_envios`, `pedidos.utm_campaign` (vacía hasta Wompi F2),
+el RPC de escritura `em_webhook_registrar` (**solo service_role**) y los RPC de
+lectura de resultados. Recrea `em_correos_seguimiento` con la columna «Entrega».
+
+## EM5.2. Desplegar la Edge Function `em-webhook`
+
+Dashboard → Edge Functions → **Deploy a new function** → nombre exacto
+`em-webhook` → pegar `supabase/functions/em-webhook/index.ts` → Deploy.
+
+**Verify JWT: APAGADO.** Resend no envía JWT; el candado es la firma Svix, que
+la función verifica antes de tocar nada (firma inválida o de hace más de 5 min →
+401). Usa la llave de servicio que Supabase inyecta sola
+(`SUPABASE_SERVICE_ROLE_KEY`, la misma que ya usa `crear-intencion-pago`); no
+hay que copiarla a ningún lado.
+
+URL de la función (la necesitas en el paso siguiente):
+`https://bxlzipwxyxdtffnuizbz.supabase.co/functions/v1/em-webhook`
+
+## EM5.3. Webhook en Resend + secreto (una sola vez)
+
+1. Resend → **Webhooks → Add webhook**.
+2. Endpoint URL: la de arriba.
+3. Eventos (marcar estos 11): `email.sent`, `email.delivered`,
+   `email.delivery_delayed`, `email.bounced`, `email.complained`,
+   `email.opened`, `email.clicked`, `email.failed`, `email.suppressed`,
+   `contact.updated`, `suppression.added`.
+   El plan gratis da **un** webhook: este mismo atiende campañas (`news`) y
+   correos del pedido (`updates`).
+4. Guardar → abrir el webhook → copiar el **Signing secret** (`whsec_…`).
+5. Supabase → Edge Functions → **Secrets** → nuevo secreto
+   `RESEND_WEBHOOK_SECRET` = ese valor. **Nunca en el chat, el repo ni un
+   archivo.** Sin él la función responde 503 y no procesa nada.
+
+## EM5.4. Evidencia (obligatoria; «Success» no basta)
+
+a) **La firma funciona.** Envíate una prueba de campaña (Campañas → «Enviarme
+   una prueba»). En Resend → Webhooks → tu endpoint, los mensajes deben salir en
+   verde (200). En Supabase → Edge Functions → `em-webhook` → **Logs** verás
+   líneas como `{"estado":"ignorado",…,"motivo":"prueba"}`: las pruebas se
+   ignoran a propósito, pero prueban que la firma pasó. Un 401 = el secreto no
+   coincide (repite EM5.3.4–5).
+
+b) **Resultados reales.** Envía una campaña al segmento que solo te contiene a
+   ti, ábrela y haz clic en el botón. En unos minutos, la campaña muestra el
+   embudo: 1 entregado, 1 clic, el enlace clicado y «Abrieron» marcado como
+   aproximado. En el Resumen aparece «Salud de la lista».
+
+c) **Correos del pedido.** Envía un aviso de un pedido de prueba a tu correo →
+   Email marketing → Correos de seguimiento → columna «Entrega» = Entregado.
+
+d) **Nada abierto al público:**
+```sql
+-- Esperado: false | false | true
+select has_function_privilege('anon', 'em_webhook_registrar(text,jsonb)', 'execute'),
+       has_function_privilege('authenticated', 'em_webhook_registrar(text,jsonb)', 'execute'),
+       has_function_privilege('service_role', 'em_webhook_registrar(text,jsonb)', 'execute');
+-- Esperado: 0 filas
+select table_name from information_schema.role_table_grants
+ where grantee = 'anon' and table_name in ('em_eventos', 'em_campana_resultados_archivo');
+```
+
+e) **Matriz de permisos** (`supabase/pruebas/matriz-permisos.sql`): debe decir
+   TODO PASA. Su lista blanca se puso al día en este tramo (no se había
+   actualizado desde Opiniones: en producción habría marcado 1 falla por eso,
+   no por una puerta abierta).
+
+## EM5.5. Qué hace solo (reglas acordadas el 8-oct-2026)
+
+- **Supresión automática con historial (actor = automático):** rebote
+  permanente → `rebotado`; queja → `queja`; «Dejar de recibir» en un correo →
+  `baja`; `email.suppressed` → `rebotado` («Suprimida por Resend»). Un rebote
+  **temporal** no suprime. Un rebote permanente de un **correo del pedido**
+  también saca a esa dirección de marketing. Los estados solo empeoran: un
+  aviso de Resend **nunca** vuelve a suscribir a nadie.
+- **Ventas atribuidas:** *exacta* = pedido web con el `utm_campaign` de la
+  campaña (cuando exista Wompi F2); *aproximada* = pedido no anulado de la misma
+  persona, registrado después de su clic y con fecha entre el día del clic y 7
+  días después. Si hizo clic en varias campañas, cuenta solo la del último clic.
+- **Bajas por campaña (aproximado):** a la última campaña que la persona
+  recibió antes de darse de baja (Resend no dice desde cuál).
+- **Privacidad:** de cada clic no se guarda IP ni navegador. Los eventos crudos
+  se guardan 13 meses; después quedan solo los totales por campaña.
+- **Si la función falla de verdad** (base caída) responde 500 y Resend
+  reintenta durante ~28 h; lo repetido no se cuenta dos veces (svix-id).
+  Si Resend apagara el webhook por fallos seguidos, te avisa por correo: se
+  reactiva en Resend → Webhooks.
+
+## EM5.6. Pruebas locales hechas
+
+58 migraciones en PostgreSQL 15 + matriz **170/170** (lista blanca al día) +
+`supabase/pruebas/local/em5-resultados.sql` **61/61** (idempotencia, rebote
+temporal vs permanente, queja, baja, supresión, estados que solo empeoran,
+correos del pedido, último clic, ventana de 7 días, anulados, exacta sin
+duplicar, bajas por campaña, embudo, enlaces sin UTM, salud, retención de 13
+meses con totales congelados, permisos: ni anon ni admin escriben eventos).
+Función `em-webhook` contra un PostgREST simulado que ejecuta el RPC real como
+service_role: **28/28** (firma válida, inválida, cuerpo alterado, otro secreto,
+id cambiado, vencida, futura, varias firmas, v2, sin headers, GET, JSON roto,
+413, prueba/ignorado, rebote de punta a punta, base caída → 500, sin secreto →
+503, llave de servicio en apikey y Authorization, **interoperable con la
+librería oficial `svix`**, logs sin correos ni secretos). Interfaz en Chromium
+PC 1280 y celular 390: **66/66** (embudo, ventas exactas/aproximadas, sin
+webhook, sin la migración aplicada, salud, entrega, ficha; sin desbordes ni
+errores de JS nuevos).
