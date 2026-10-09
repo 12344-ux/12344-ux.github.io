@@ -1,0 +1,91 @@
+# ============================================================
+# Impulse · Banco de pruebas en GitHub Actions
+# ------------------------------------------------------------
+# Corre el MISMO banco local (supabase/pruebas/local/herramientas) sobre un
+# PostgreSQL 15 real + Deno, con las Edge Functions reales y secretos falsos.
+# Nunca toca Supabase ni Wompi reales.
+# Reproduce las rutas del sandbox (/projects/sandbox/...) para usar los
+# scripts tal cual estan en el repo.
+# ============================================================
+name: Banco de pruebas
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore: [main]
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/banco-pruebas.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      REPO: /projects/sandbox/12344-ux.github.io
+      AQUI: /projects/sandbox/pruebas-em5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PostgreSQL 15 (misma version del banco local)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common >/dev/null
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y >/dev/null
+          sudo apt-get install -y -qq postgresql-15 >/dev/null
+          sudo systemctl stop postgresql || true
+          for b in initdb pg_ctl postgres; do sudo ln -sf /usr/lib/postgresql/15/bin/$b /usr/local/bin/$b; done
+          id pg >/dev/null 2>&1 || sudo useradd pg
+          sudo mkdir -p /var/lib/pgdata && sudo chown pg:pg /var/lib/pgdata && sudo chmod 700 /var/lib/pgdata
+          sudo -u pg initdb -D /var/lib/pgdata -U postgres --auth=trust -E UTF8 --locale=C.UTF-8 >/dev/null
+          psql --version
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Mismo arreglo de rutas que el sandbox
+        run: |
+          sudo mkdir -p /projects/sandbox "$AQUI/deno/bin"
+          sudo ln -sfn "$GITHUB_WORKSPACE" "$REPO"
+          H=supabase/pruebas/local/herramientas
+          sudo cp $H/*.sh $H/*.sql $H/*.ts $H/*.py "$AQUI/"
+          sudo chmod +x "$AQUI"/*.sh
+          sudo ln -sf "$(command -v deno)" "$AQUI/deno/bin/deno"
+          sudo ln -sf "$(command -v deno)" /usr/local/bin/deno
+          deno --version | head -1
+
+      - name: Migraciones + matriz de permisos + pruebas SQL por tramo
+        run: |
+          P=$REPO/supabase/pruebas/local
+          sudo bash "$AQUI/pg.sh" "$P/pagos-f2.sql" "$P/metricas-m1.sql" "$P/metricas-m2.sql" \
+            "$P/em5-resultados.sql" "$P/em5-1-respuesta-email.sql" "$P/em6-captura.sql" 2>&1 | tee -a /tmp/banco.log
+          sudo -u pg pg_ctl -D /var/lib/pgdata stop -m fast >/dev/null || true
+
+      - name: Puesta al dia forward sobre una base que reproduce produccion
+        run: |
+          sudo bash "$AQUI/correr-puesta-al-dia.sh" 2>&1 | tee -a /tmp/banco.log
+          sudo -u pg pg_ctl -D /var/lib/pgdata stop -m fast >/dev/null || true
+
+      - name: wompi-webhook con checksums reales
+        run: |
+          sudo bash "$AQUI/correr-wompi-webhook.sh" 2>&1 | tee -a /tmp/banco.log
+          sudo -u pg pg_ctl -D /var/lib/pgdata stop -m fast >/dev/null || true
+
+      - name: Ciclo completo tienda -> firma -> webhook -> pedido
+        run: |
+          sudo bash "$AQUI/correr-intencion-f2.sh" 2>&1 | tee -a /tmp/banco.log
+          sudo -u pg pg_ctl -D /var/lib/pgdata stop -m fast >/dev/null || true
+
+      - name: Veredicto
+        run: |
+          echo "== Resumenes"
+          grep -E "RESUMEN|TODO PASA|migraciones aplicadas|comprobaciones" /tmp/banco.log || true
+          if grep -E "FALLA|fallo pg.sh" /tmp/banco.log; then
+            echo "::error::Hay comprobaciones que FALLAN (ver arriba)"
+            exit 1
+          fi
+          echo "Todo pasa."
