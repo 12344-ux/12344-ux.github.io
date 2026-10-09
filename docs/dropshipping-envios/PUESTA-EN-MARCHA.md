@@ -24,42 +24,44 @@ El dominio usa Zoho Mail (verificado en el DNS el 9-oct-2026). No hay que contra
 ## 2. Cuenta de Dropi
 
 - [ ] **Titular: el mismo de Wompi.** El dinero de los clientes llega a ese titular y de ahí sale lo que se le paga a Dropi. Si coinciden, la contabilidad y los retiros cuadran.
-- [ ] **Registro directo:** dropi.co → «Regístrate» → Colombia, como **dropshipper**, con `operaciones@magandhi.com` y el celular de MAGANDHI. Sin enlaces de afiliado: inscriben la cuenta en la «comunidad» de quien los comparte.
-- [ ] Perfil y datos bancarios del titular completos.
-- [ ] En «Mis tiendas», crear la tienda «MAGANDHI» con el dominio `magandhi.com`. Si obliga a elegir Shopify o WooCommerce y no hay opción de tienda propia o API, no elegir nada todavía: se resuelve con soporte.
-- [ ] Si aparece un token, guardarlo en el gestor de contraseñas. No se pega en ningún chat.
+- [x] **Registro directo:** cuenta de Colombia creada como **dropshipper** con `operaciones@magandhi.com`.
+- [x] Identidad del titular validada por Dropi con documento y fotografías (9-oct-2026).
+- [ ] Perfil bancario y facturación electrónica completos con los datos fiscales correctos del titular.
+- [x] En «Mis Integraciones» se probó `magandhi.com`, tipo `WOOCOMERCE`, URL `https://magandhi.com`, porque no existe «tienda propia». **Diagnóstico posterior:** no es una conexión válida: Dropi espera `/wc-auth/v1/authorize` y MAGANDHI no es WordPress. Se conserva solo mientras soporte puede necesitar identificar la prueba; luego se retira.
+- [x] Token nuevo generado después de validar y guardado en el gestor de contraseñas y en Supabase Secrets. El inicial, que apareció en una captura, quedó sustituido.
 
 ## 3. Consulta a soporte de Dropi
 
-Canal: WhatsApp, desde dropi.co/contactanos (según Dropi, es la vía más rápida).
+**Estado 9-oct-2026:** el asistente de Dropi cerró el chat y confirmó que las solicitudes de API se tramitan exclusivamente por correo. Asignó un contacto humano y pidió tres cosas: motivo/proyecto, endpoints exactos y usuario o id de la cuenta. La dirección concreta permanece en la conversación privada; no se replica en este repositorio público.
 
-- [ ] Mensaje enviado. Fecha: ____
-- [ ] Respuesta anotada en §7.
+- [x] Consulta inicial enviada por el chat de Dropi. Fecha: 9-oct-2026.
+- [ ] Correo breve enviado al contacto asignado por Dropi, explicando que el proyecto está **en pre-lanzamiento**, que MAGANDHI no es WooCommerce y pidiendo el tipo/acceso correcto de solo lectura.
+- [x] Respuesta inicial anotada en §7.
 
-Mensaje para copiar:
+El correo técnico se limita al embudo que realmente necesita MAGANDHI:
 
-```
-Hola, equipo de Dropi. Soy [tu nombre], de MAGANDHI (magandhi.com), tienda online
-en Colombia. Ya abrimos la cuenta con operaciones@magandhi.com.
+- tienda propia en **pre-lanzamiento**, sin Shopify ni WooCommerce;
+- el dueño elige el producto en Dropi y pega su URL/id en MAGANDHI;
+- alcance inmediato **solo lectura por producto**, no copia masiva del catálogo;
+- confirmar/habilitar `GET /integrations/products/v2/{product_id}` para detalle inicial y `GET /integrations/products/{product_id}` para stock actualizado (o indicar sus reemplazos vigentes);
+- campos necesarios: id, variantes/`variation_id`, stock, precios, imágenes y proveedor;
+- límite de consultas y si existe webhook de cambios de stock.
 
-Nuestra tienda es desarrollo propio (no Shopify ni WooCommerce) y queremos
-enviarles los pedidos por API. Tenemos estas preguntas:
+Pedidos, guías y recaudo quedan fuera de esta primera solicitud. No se envían tokens ni contraseñas por correo.
 
-1. ¿Cómo se habilita el acceso a la API de producción para una tienda propia?
-   ¿Tienen documentación oficial?
-2. ¿Exigen IP fija? Nuestro servidor está en la nube (Supabase) y no tiene IP fija.
-3. ¿Hay un ambiente de pruebas para desarrollar sin crear pedidos reales?
-4. ¿Nos avisan (webhook) cuando cambia el estado de un pedido o se genera la guía?
-   Si no, ¿qué consulta usamos y cada cuánto podemos hacerla?
-5. Nuestros clientes pagan por adelantado. En un pedido sin recaudo, ¿cómo se
-   cobran el costo del proveedor y el flete? ¿Se descuentan de la wallet?
-   ¿Cómo se recarga? ¿Qué comisión cobra Dropi en esos pedidos?
-6. ¿Qué remitente aparece en la guía? ¿El paquete puede ir sin factura, precios
-   ni publicidad del proveedor?
-7. ¿Cómo funcionan las devoluciones y garantías en pedidos ya pagados?
+### Prueba alternativa autorizada · WooCommerce aislado
 
-¡Gracias!
-```
+Solo para medir, sin tocar `magandhi.com`:
+
+- [ ] Crear un sandbox WordPress público y temporal (primera opción: InstaWP gratuito, 48 h).
+- [ ] Instalar WooCommerce; país Colombia y moneda COP. Sin pagos, envíos, clientes ni pedidos.
+- [ ] Conectar Dropi por OAuth usando la URL temporal; token nuevo y revocable.
+- [ ] Importar exactamente un producto y verificar texto, imágenes, variantes, ids, precios y stock.
+- [ ] Repetir la sonda después de completar OAuth.
+- [ ] Verificar stock: el plugin Dropify **no sirve como prueba de actualización periódica** por sí solo; su código vigente retorna antes de ejecutar el trabajo programado.
+- [ ] Borrar integración y sandbox al terminar, salvo decisión expresa de conservarlo.
+
+Criterio: solo se evalúa un conector permanente si importación **y** stock actualizable quedan demostrados. Nunca se instala WordPress sobre el dominio principal.
 
 ## 4. Muestras
 
@@ -91,4 +93,4 @@ enviarles los pedidos por API. Tenemos estas preguntas:
 
 | Fecha | Quién respondió | Pregunta | Respuesta |
 |---|---|---|---|
-| | | | |
+| 9-oct-2026 | Asistente del chat de Dropi | Canal para habilitar la API | Las solicitudes de API se atienden solo por correo. Asignó contacto humano y pidió motivo/proyecto, endpoints exactos y usuario o id de la cuenta. |
