@@ -138,6 +138,34 @@ El token inicial quedó visible en una captura y fue sustituido por uno nuevo de
 
 Pruebas locales hechas, con Dropi simulado y también contra Dropi real con un token inválido: sin sesión 401, no admin 403, sin secreto, acceso negado con IP, conexión correcta con muestra; nunca toca `orders/` y el token no aparece en la respuesta.
 
+## 7. El hallazgo que cambia el diagnóstico (9-oct-2026)
+
+Con el plugin Dropify instalado en un WooCommerce de prueba y el token de la integración ya autenticada, **el catálogo de Dropi se listó completo**: miles de productos con su id, nombre, precio y tienda asociada.
+
+**Consecuencia:** la API de catálogo **no está cerrada** para esta cuenta. El plugin usa el mismo token y el mismo `POST products/index` al que Dropi nos responde `401` desde Supabase y desde un PC. El problema no es el permiso: es **cómo** llamamos, o desde dónde.
+
+Sospechas, por orden:
+
+1. **Cabeceras.** El plugin llama desde WordPress con su propio `User-Agent`; una integración de terceros documentada envía además `Origin` y `Referer` con el dominio de la tienda registrada.
+2. **IP o entorno.** Que el servidor del sandbox entre y Supabase no.
+
+`supabase/functions/dropi-cabeceras` es un diagnóstico **desechable** que lo resuelve en una corrida: repite la misma consulta de catálogo con cinco combinaciones de cabeceras y dice cuál devuelve 200. Nunca llama a `orders/`, no escribe nada, y el token no sale en la respuesta ni en los logs.
+
+```js
+const { supabase } = await import('/supabase-config.js');
+const r = await supabase.functions.invoke('dropi-cabeceras', { body: { tienda: 'https://LA-URL-REGISTRADA-EN-DROPI' } });
+console.log(JSON.stringify(r.data ?? r.error, null, 2));
+```
+
+| Resultado | Qué sigue |
+|---|---|
+| Una variante entra | Se corrigen esas cabeceras en `dropi-sonda`, se borra este diagnóstico y **el puente WooCommerce deja de ser necesario** |
+| Ninguna entra | El filtro es por IP o entorno: pedirle a soporte que autorice el acceso, o quedarse con el puente |
+
+Probado localmente (sin sesión 401, no admin 403, sin secreto, sin URL de tienda, todas 401 con la IP, variante ganadora identificada, solo `products/index`, nunca `orders`, token ausente) y contra Dropi real con un token inválido: las cinco variantes responden `401 · Access denied` sin que el entorno rechace ninguna cabecera.
+
+**Ojo con el stock, otra vez.** En la ventana de importar del plugin, la casilla «Guardar Stock» dice que si se desmarca «el stock no se actualizará». Eso habla del **momento de importar**, no de un refresco continuo. Sigue pendiente medirlo: importar un producto, anotar las unidades y volver a leerlas horas después.
+
 ## Fuentes
 
 - [Dropi · especificación OpenAPI publicada por su servidor](https://api.dropi.co/docs)
