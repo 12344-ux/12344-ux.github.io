@@ -10,8 +10,12 @@ if [ ! -f $D/PG_VERSION ]; then
   sudo mkdir -p $D && sudo chown pg:pg $D && sudo chmod 700 $D
   sudo -u pg initdb -D $D -U postgres --auth=trust >/dev/null
 fi
-sudo -u pg pg_ctl -D $D -l $D/pglog.log -o "-k $D -c listen_addresses=''" status >/dev/null 2>&1 || \
+sudo -u pg pg_ctl -D $D -l $D/pglog.log -o "-k $D -c listen_addresses=''" status >/dev/null 2>&1 || {
+  # Restos de un servidor que el sandbox mato entre llamadas: si quedan, el PID
+  # reutilizado hace creer a Postgres que el socket sigue ocupado.
+  sudo rm -f $D/postmaster.pid $D/.s.PGSQL.5432.lock
   sudo -u pg pg_ctl -D $D -l $D/pglog.log -o "-k $D -c listen_addresses=''" -w start >/dev/null
+}
 export PGHOST=$D PGUSER=postgres
 BD=impulse_pruebas
 psql -v ON_ERROR_STOP=1 -q -d postgres -c "drop database if exists $BD" -c "create database $BD" >/dev/null

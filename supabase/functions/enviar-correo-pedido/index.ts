@@ -10,6 +10,9 @@
 //       Envia la etapa al correo del PROPIO usuario, con datos de ejemplo.
 //   { modo: "vista",  etapa, borrador }
 //       Devuelve el HTML del correo para previsualizar. No envia nada.
+//   { modo: "automatico", pedido_id }            (F3 · solo servidor)
+//       Lo llama wompi-webhook con la LLAVE DE SERVICIO cuando un pago web crea
+//       un pedido: envia el «Recibido» de ese pedido web una sola vez.
 //
 // Etapas: recibido | preparando | en_camino | entregado.
 //
@@ -17,8 +20,11 @@
 // LINEA ROJA DE SEGURIDAD (orden permanente del dueno · NO negociable):
 //   - RESEND_API_KEY vive SOLO en Supabase Secrets. Nunca se devuelve ni se
 //     registra en logs.
-//   - Esta funcion NO usa service_role. Llama a los RPC con el JWT del usuario,
-//     asi que tiene_acceso_ventas() y auth.uid() se evaluan de verdad en la base.
+//   - Las PERSONAS nunca pasan por service_role: sus modos llaman a los RPC con
+//     el JWT del usuario, asi que tiene_acceso_ventas() y auth.uid() se evaluan
+//     de verdad en la base. El unico camino de servicio es el modo automatico
+//     (F3), que solo se abre con la llave de servicio y que la base limita al
+//     «Recibido» de pedidos web.
 //   - El destinatario sale de la BASE (clientes.correo / auth.users), nunca del
 //     navegador: no se puede usar para escribirle a cualquier direccion.
 //   - El codigo de reseña solo viaja dentro del correo de "entregado"; no se
@@ -95,6 +101,7 @@ function traducirError(mensaje: string): { status: number; texto: string } {
     ["CORREO_EN_CURSO", 409, "Ese correo se está enviando en este momento. Espera unos segundos."],
     ["CORREO_YA_ENVIADO", 409, "Ese correo ya se envió. Usa «Reenviar» si de verdad hace falta."],
     ["CORREO_ENVIO_NO_PENDIENTE", 409, "Ese envío ya estaba cerrado."],
+    ["CORREO_SOLO_WEB", 409, "El correo automático es solo para pedidos web."],
   ];
   for (const [clave, status, texto] of tabla) {
     if (m.includes(clave)) return { status, texto };
@@ -422,6 +429,127 @@ async function enviarResend(
 }
 
 // ----------------------------------------------------------------------------
+// F3 · MODO AUTOMATICO (servidor a servidor)
+// ----------------------------------------------------------------------------
+// Lo llama wompi-webhook cuando un pago web aprobado crea un pedido. No hay
+// persona detras, asi que no hay sesion: se autentica con la LLAVE DE SERVICIO
+// (ya vive en el entorno de las dos funciones; nunca viaja al navegador).
+// Alcance minimo, impuesto por la base (correo_auto_recibido_preparar):
+// solo el correo «Recibido», solo de pedidos WEB, al correo que esta en la base
+// y una sola vez por pedido. Las personas siguen usando los modos de siempre.
+// ----------------------------------------------------------------------------
+const enc = new TextEncoder();
+
+/** Comparacion en tiempo constante (no revela donde difieren). */
+function igualesTiempoConstante(a: string, b: string): boolean {
+  const x = enc.encode(a), y = enc.encode(b);
+  let d = x.length ^ y.length;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) d |= (x[i] ?? 0) ^ (y[i] ?? 0);
+  return d === 0;
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function modoAutomatico(
+  req: Request,
+  supabaseUrl: string,
+  llave: string,
+  cors: Record<string, string>,
+): Promise<Response> {
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return json({ error: "Body inválido; se esperaba JSON." }, 400, cors);
+  }
+  const pedidoId = String(body?.pedido_id ?? "");
+  if (body?.modo !== "automatico" || !UUID.test(pedidoId)) {
+    return json({ error: "Solicitud automática inválida." }, 400, cors);
+  }
+
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendKey) {
+    console.error("[enviar-correo-pedido] automatico: falta RESEND_API_KEY.");
+    return json({ error: "Correo sin configurar.", estado: "sin_configurar" }, 503, cors);
+  }
+
+  // Cliente de servicio: apikey Y Authorization = llave de servicio, para que
+  // PostgREST resuelva service_role (leccion de Wompi F1).
+  const sb = createClient(supabaseUrl, llave, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${llave}`, apikey: llave } },
+  });
+
+  const { data: prep, error: prepErr } = await sb.rpc("correo_auto_recibido_preparar", {
+    p_pedido_id: pedidoId,
+  });
+  if (prepErr || !prep) {
+    const m = prepErr?.message ?? "";
+    // Lo que ya esta resuelto no es un error: el correo salio o esta saliendo.
+    const tranquilos: Array<[string, string]> = [
+      ["CORREO_YA_ENVIADO", "ya_enviado"],
+      ["CORREO_EN_CURSO", "en_curso"],
+      ["CORREO_CLIENTE_SIN_CORREO", "sin_correo"],
+    ];
+    for (const [clave, estado] of tranquilos) {
+      if (m.includes(clave)) {
+        console.log(`[enviar-correo-pedido] automatico: ${estado}`);
+        return json({ ok: true, estado }, 200, cors);
+      }
+    }
+    console.error("[enviar-correo-pedido] automatico: no se pudo preparar:", JSON.stringify({
+      message: m || null,
+      code: (prepErr as { code?: string } | null)?.code ?? null,
+    }));
+    const t = traducirError(m);
+    return json({ error: t.texto, estado: "no_preparado" }, t.status, cors);
+  }
+
+  const p = prep as Record<string, unknown>;
+  const envioId = String(p.envio_id);
+  const datos: Datos = {
+    etapa: "recibido",
+    nombre: String(p.nombre ?? ""),
+    pedido: String(p.pedido ?? ""),
+    total: Number(p.total ?? 0),
+    items: Array.isArray(p.items) ? (p.items as Item[]) : [],
+    direccion: (p.direccion as string) || null,
+    codigo_resena: null,
+    plantilla: p.plantilla as Plantilla,
+    es_prueba: false,
+  };
+
+  const res = await enviarResend(resendKey, envioId, String(p.destinatario), datos);
+
+  const { error: cierreErr } = await sb.rpc("correo_auto_resultado", {
+    p_envio_id: envioId,
+    p_ok: res.ok,
+    p_proveedor_id: res.ok ? res.id : null,
+    p_error: res.ok ? null : res.error,
+  });
+  if (cierreErr) {
+    // El correo pudo salir; queda 'pendiente' y se cierra como huerfano a los
+    // 10 min. Se avisa para no reenviar a ciegas.
+    console.error("[enviar-correo-pedido] automatico: fallo al cerrar envio:", JSON.stringify({
+      envio_id: envioId,
+      message: cierreErr.message,
+    }));
+  }
+
+  console.log("[enviar-correo-pedido]", JSON.stringify({
+    modo: "automatico",
+    etapa: "recibido",
+    envio_id: envioId,
+    ok: res.ok,
+  }));
+
+  if (!res.ok) {
+    return json({ error: `No se pudo enviar: ${res.error}`, estado: "fallido" }, 502, cors);
+  }
+  return json({ ok: true, estado: "enviado", envio_id: envioId }, 200, cors);
+}
+
+// ----------------------------------------------------------------------------
 // Handler
 // ----------------------------------------------------------------------------
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -438,6 +566,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const authHeader = req.headers.get("authorization") ?? "";
   const jwt = authHeader.replace(/^Bearer\s+/i, "").trim();
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
+
+  // F3: el servidor (wompi-webhook) se identifica con la llave de servicio. Se
+  // elige el camino por la CREDENCIAL, no por lo que diga el cuerpo.
+  const llaveServicio = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  if (supabaseUrl && llaveServicio && jwt && igualesTiempoConstante(jwt, llaveServicio)) {
+    return await modoAutomatico(req, supabaseUrl, llaveServicio, cors);
+  }
+
   const apiKey = req.headers.get("apikey") ?? Deno.env.get("SUPABASE_ANON_KEY");
   if (!supabaseUrl || !apiKey) {
     return json({ error: "Configuración del servidor incompleta (Supabase)." }, 500, cors);

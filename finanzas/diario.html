@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../marca.css?v=2">
-<link rel="stylesheet" href="finanzas.css?v=5">
+<link rel="stylesheet" href="finanzas.css?v=6">
 
 <!--
   MAGANDHI · Area de Finanzas · Libro Diario.
@@ -25,6 +25,8 @@
   fisico). Cualquier asiento permite ver su historial de correcciones
   (asiento_bitacora). Los anulados NO cuentan para el Mayor ni los saldos
   (las vistas filtran estado='activo'). El candado real es RLS server-side.
+  F3: los asientos automaticos (venta web y su reverso) se marcan y NO
+  ofrecen Editar ni Anular: se corrigen anulando el pedido en Ventas.
 -->
 </head>
 <body class="fz-body">
@@ -107,8 +109,14 @@
   // aumenta este tope en PAGINA y vuelve a cargar (re-render completo).
   let mostrar = PAGINA;
 
+  // F3 · origen del asiento. Los automaticos (venta web y su reverso) los
+  // escribe el sistema y se corrigen anulando el pedido en Ventas: aqui no
+  // ofrecen Editar ni Anular (el servidor tambien lo rechaza).
+  const ORIGEN_TXT = { venta_web: 'Automático · venta web', reverso_venta_web: 'Automático · reverso' };
+
   function asientoHTML(a) {
     const anulado = a.estado === 'anulado';
+    const automatico = Boolean(a.origen && a.origen !== 'manual');
     const lineas = (a.asiento_lineas || []).slice().sort((x, y) => (x.orden || 0) - (y.orden || 0));
     let sd = 0, sh = 0;
     const filas = lineas.map((l) => {
@@ -124,15 +132,16 @@
       );
     }).join('');
 
-    // Acciones: Editar y Anular SOLO para activos; historial para todos.
+    // Acciones: Editar y Anular SOLO para activos MANUALES; historial para todos.
     // La UI nunca expone borrado fisico: solo editar (RPC) y anular (estado).
     const acciones =
       '<div class="fz-asiento-acciones">' +
-        (anulado ? '' :
+        (anulado || automatico ? '' :
           '<a class="fz-accion editar" href="editar-asiento.html?id=' + a.id + '">' + ICONOS.nuevo + ' Editar</a>' +
           '<button class="fz-accion anular" type="button" data-anular="' + a.id + '">' + ICONOS.equis + ' Anular</button>'
         ) +
         '<button class="fz-accion historial" type="button" data-hist="' + a.id + '">' + ICONOS.lista + ' Historial</button>' +
+        (automatico ? '<p class="fz-auto-nota">Lo registró el sistema. Si la venta no procede, se corrige anulando el pedido en Ventas.</p>' : '') +
       '</div>';
 
     return (
@@ -140,6 +149,7 @@
         '<div class="fz-asiento-top">' +
           '<span class="fz-asiento-fecha">' + formatearFecha(a.fecha) + '</span>' +
           '<span class="fz-asiento-desc">' + escaparHTML(a.descripcion || '') + '</span>' +
+          (automatico ? '<span class="fz-tag-auto">' + escaparHTML(ORIGEN_TXT[a.origen] || 'Automático') + '</span>' : '') +
           (anulado ? '<span class="fz-tag-anulado">Anulado</span>' : '') +
         '</div>' +
         '<table class="fz-tabla">' +
@@ -252,22 +262,34 @@
     );
   }
 
-  async function cargar() {
-    // Se piden SIEMPRE (mostrar + 1) filas: la fila extra es el "centinela"
-    // del patron N+1 que revela si hay mas de las que vamos a mostrar.
-    let consulta = supabase
-      .from('asientos')
-      .select('id, fecha, descripcion, estado, creado, asiento_lineas(cuenta_codigo, detalle, debe, haber, orden, puc_cuentas(nombre))')
-      .order('fecha', { ascending: false })
-      .order('creado', { ascending: false });
+  // F3: se pide el origen del asiento. Si la base todavia no tiene la columna
+  // (migracion 20261020 sin aplicar), se repite sin ella: el Diario no se cae.
+  const COLUMNAS = 'id, fecha, descripcion, estado, creado, asiento_lineas(cuenta_codigo, detalle, debe, haber, orden, puc_cuentas(nombre))';
+  let conOrigen = true;
 
+  async function cargar() {
     // Filtros de fecha OPCIONALES: solo se anaden si el input tiene valor.
     const desde = desdeEl.value;
     const hasta = hastaEl.value;
-    if (desde) consulta = consulta.gte('fecha', desde);
-    if (hasta) consulta = consulta.lte('fecha', hasta);
 
-    const { data, error } = await consulta.limit(mostrar + 1);
+    // Se piden SIEMPRE (mostrar + 1) filas: la fila extra es el "centinela"
+    // del patron N+1 que revela si hay mas de las que vamos a mostrar.
+    const consultar = (columnas) => {
+      let consulta = supabase
+        .from('asientos')
+        .select(columnas)
+        .order('fecha', { ascending: false })
+        .order('creado', { ascending: false });
+      if (desde) consulta = consulta.gte('fecha', desde);
+      if (hasta) consulta = consulta.lte('fecha', hasta);
+      return consulta.limit(mostrar + 1);
+    };
+
+    let { data, error } = await consultar(conOrigen ? 'origen, origen_ref, ' + COLUMNAS : COLUMNAS);
+    if (error && conOrigen && /origen/.test(error.message || '')) {
+      conOrigen = false;
+      ({ data, error } = await consultar(COLUMNAS));
+    }
 
     // Degradacion con gracia: ante error, el mensaje existente y NUNCA aviso.
     if (error) { cont.innerHTML = '<div class="fz-empty">No se pudo cargar el diario.</div>'; return; }
@@ -313,7 +335,7 @@
     montarHeader({
       titulo: 'Libro Diario',
       kicker: 'HISTORIAL CRONOLOGICO',
-      lead: 'Asientos en orden cronológico (más recientes primero). Filtra por fecha para acotar; si hay más de los mostrados, aparece un aviso y puedes cargar más. Los asientos anulados quedan marcados y dejan de contar para el Mayor y los saldos; nada se borra en silencio.',
+      lead: 'Asientos en orden cronológico (más recientes primero). Filtra por fecha para acotar; si hay más de los mostrados, aparece un aviso y puedes cargar más. Los asientos anulados quedan marcados y dejan de contar para el Mayor y los saldos; nada se borra en silencio. Las ventas web entran solas, marcadas como «Automático».',
       sesion: acceso.sesion
     });
     document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ICONOS[el.dataset.ico] || ''; });

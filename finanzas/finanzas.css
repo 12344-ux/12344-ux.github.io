@@ -806,3 +806,84 @@ body.fz-body{
      apilan en una sola columna en pantallas estrechas. */
   .fz-bg-bloques{grid-template-columns:1fr}
 }
+
+/* ============================================================
+   F3 · ASIENTOS AUTOMATICOS (venta web)
+   Marca en el Diario, aviso en Editar y bloque de pendientes en la portada.
+   El bloque de pendientes solo se pinta si hay alguno: un aviso que aparece
+   siempre deja de ser un aviso (mismo criterio que Ventas).
+   ============================================================ */
+.fz-tag-auto{
+  font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--fz-salvia);background:var(--fz-salvia-bg);
+  border-radius:999px;padding:3px 10px;white-space:nowrap;
+}
+.fz-auto-nota{margin:0;align-self:center;font-size:12.5px;color:var(--fz-gris)}
+.fz-auto-aviso{
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:13px;color:var(--fz-marino);
+  background:var(--fz-salvia-bg);border:1px solid rgba(91,138,111,.35);
+  border-radius:10px;padding:11px 14px;margin-bottom:16px;
+}
+.fz-auto-aviso svg{width:18px;height:18px;flex:none;margin-top:1px;color:var(--fz-salvia)}
+
+.fz-pendientes{
+  background:var(--fz-tarjeta);border:1px solid var(--fz-linea);
+  border-left:4px solid var(--fz-debe);border-radius:var(--fz-radio);
+  padding:18px 20px;margin-bottom:22px;
+  box-shadow:0 1px 2px rgba(16,28,51,.04), 0 6px 22px rgba(16,28,51,.05);
+}
+.fz-pend-cab{display:flex;align-items:flex-start;gap:12px}
+.fz-pend-cab svg{width:22px;height:22px;flex:none;color:var(--fz-debe);margin-top:2px}
+.fz-pend-tit{margin:0;font-size:15.5px;font-weight:600;color:var(--fz-debe)}
+.fz-pend-sub{margin:3px 0 0;font-size:13px;color:var(--fz-gris);max-width:80ch}
+.fz-pend-lista{list-style:none;margin:16px 0 0;padding:0;display:flex;flex-direction:column;gap:12px}
+.fz-pend-item{
+  border:1px solid var(--fz-linea);border-radius:12px;padding:14px 16px;
+  /* Columna de acciones de ANCHO FIJO: un mensaje largo nunca le quita el
+     espacio a los datos de la venta. */
+  display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:10px 16px;align-items:start;
+}
+.fz-pend-dato{min-width:0}
+.fz-pend-que{font-weight:600;color:var(--fz-marino);font-size:14.5px}
+.fz-pend-monto{font-variant-numeric:tabular-nums;font-weight:600;color:var(--fz-marino);white-space:nowrap}
+.fz-pend-motivo{
+  margin:8px 0 0;font-size:13px;color:var(--fz-carbon);
+  background:rgba(166,51,46,.07);border-radius:8px;padding:8px 10px;
+}
+.fz-pend-motivo.listo{background:var(--fz-salvia-bg);color:var(--fz-marino)}
+.fz-pend-ref{font-size:11.5px;color:var(--fz-gris);letter-spacing:.02em;margin:6px 0 0}
+.fz-pend-acc{display:flex;flex-direction:column;gap:8px;align-items:stretch;min-width:0}
+.fz-pend-btn{
+  font:600 13.5px 'Poppins',sans-serif;color:#fff;background:var(--fz-marino);
+  border:0;border-radius:9px;padding:9px 14px;cursor:pointer;
+}
+.fz-pend-btn:hover{background:var(--fz-haber)}
+.fz-pend-btn:disabled{opacity:.5;cursor:default}
+.fz-pend-msg{font-size:12.5px;margin:0}
+.fz-pend-msg.err{color:var(--fz-debe)}
+.fz-pend-msg.ok{color:var(--fz-salvia)}
+@media (max-width:720px){
+  .fz-pendientes{padding:14px 15px}
+  .fz-pend-item{grid-template-columns:1fr}
+  .fz-pend-acc{min-width:0}
+}
+
+/* F3 · las referencias de Wompi (MAG-xxxxxxxx-1791549152798-...) son una sola
+   «palabra» larga: en celular deben partirse para no desbordar la pantalla.
+   Los montos nunca se parten. */
+.fz-asiento .fz-tabla td{overflow-wrap:anywhere}
+.fz-asiento-desc{overflow-wrap:break-word}
+.fz-asiento .fz-tabla td.num{overflow-wrap:normal;white-space:nowrap}
+.fz-pend-ref,.fz-pend-motivo,.fz-pend-que,.fz-pend-msg{overflow-wrap:break-word}
+
+/* ------------------------------------------------------------
+   Encabezado en pantallas angostas (correccion de paso, 9-oct-2026)
+   En 390 px el rotulo «AREA DE FINANZAS» quedaba debajo de la lupa. Error
+   previo a F3; se corrige igual que en Ventas y Metricas: se oculta lo
+   decorativo (rotulo y su separador) y quedan volver, logo, marca y perfil.
+   ------------------------------------------------------------ */
+@media (max-width:720px){
+  .fz-area,.fz-header-left .fz-sep:last-of-type{display:none}
+  .fz-header-left{min-width:0}
+}

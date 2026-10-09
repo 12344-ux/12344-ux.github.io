@@ -1,6 +1,6 @@
 # MAGANDHI + Impulse · contexto operativo vigente
 
-**Corte:** 7 de octubre de 2026
+**Corte:** 9 de octubre de 2026
 **Producción interna:** `https://montaguth.institute`
 **Tienda pública:** `https://magandhi.com`
 
@@ -47,6 +47,7 @@ Este archivo es la entrada única para entender dónde está parado el proyecto.
 - Exportación PDF/CSV.
 - Montos `bigint` en pesos enteros.
 - Escritura normal únicamente mediante RPC.
+- **F3 (construido, por aplicar):** cada venta web real entra sola al Diario, contra la cuenta puente 138095 (Wompi por liquidar), y anular el pedido registra el contraasiento. Los asientos automáticos se marcan y no se editan desde Finanzas. Si a una venta le falta algo (el IVA o el costo), aparece en la portada con el motivo y el botón «Registrar asiento». La liquidación de Wompi sigue siendo manual. Ver `docs/PLANO-PAGOS.md` §10.
 
 Pendiente real: cierre anual cuando cambie el ejercicio fiscal y pulido de exportaciones basado en uso real.
 
@@ -124,7 +125,7 @@ Entrega del código: va en el correo de «Entregado», ya en producción. Opinio
 
 - Correos del pedido: un correo por etapa, enviado a mano desde el detalle en Seguimiento. El de «Entregado» lleva el código de reseña. Proveedor: Resend, subdominio `updates.magandhi.com`. Los textos viven en `correo_plantillas` y se cambian con un SQL que entrega Kiro (el editor `ventas/correos/` se retiró en EM1). Diseño en `docs/PLANO-CORREO.md`.
 
-Pendiente real: entrada automática desde Wompi F2 (y con ella, el primer correo del pedido automático). Los correos del pedido ya están en producción.
+- Entrada automática desde Wompi (F2, desplegada en sandbox): un pago aprobado crea el pedido `canal = web` una sola vez y baja el stock. Con F3 (por aplicar), el correo «Recibido» de un pedido web sale solo; las demás etapas siguen a mano desde Seguimiento.
 
 ## 3. Supabase: estado acumulativo
 
@@ -136,16 +137,9 @@ Pendiente real: entrada automática desde Wompi F2 (y con ella, el primer correo
 - Las vistas internas sensibles son `security_invoker`.
 - Tramo 0 fue verificado en producción: matriz de permisos completa, anon bloqueado en vistas/RPC internas y catálogo público disponible.
 
-### Migración nueva de puesta al día
+### Puesta al día
 
-`supabase/migrations/20261002000000_puesta_al_dia_seguridad_operativa.sql`:
-
-1. una campaña sin Inventario ligado se considera no comprable;
-2. publicar exige producto ligado/activo y precio positivo;
-3. retira policies latentes de escritura directa en Finanzas;
-4. añade DELETE acotado para la compensación de imágenes del bucket `campanas`.
-
-**Escribirla en el repo no la despliega.** Debe ejecutarse manualmente en SQL Editor y registrar evidencia.
+`20261002000000_puesta_al_dia_seguridad_operativa.sql` quedó **superada y no se aplica**: hoy haría retroceder la vista `catalogo_publico`. Su contenido vigente se reemitió forward en `20261018000000_puesta_al_dia_sin_vista.sql` (aplicada antes de F2). Detalle en `supabase/INSTRUCCIONES.md` §0.
 
 ## 4. Contrato tienda ↔ back-office
 
@@ -194,24 +188,17 @@ Una campaña puede existir como borrador sin Inventario, pero no debe publicarse
 
 Después de modificar la Edge Function, el archivo del repo debe redesplegarse manualmente. El repo no demuestra por sí solo qué versión está desplegada.
 
-### F2 — siguiente tramo, todavía no existe
+### F2 — desplegado en sandbox (8-oct-2026)
 
-Debe incorporar:
+Intención persistida antes de firmar, webhook `wompi-webhook` con firma real, idempotencia por transacción y estado, pedido web creado una sola vez con el candado de stock, y aviso rojo en Ventas para pagos aprobados que no se pudieron convertir. Medido el 9-oct: las tablas y funciones existen, y el webhook responde `401` a un aviso sin firma. Diseño en `docs/PLANO-PAGOS.md`.
 
-- intención persistida antes de firmar;
-- tabla de pagos/estado;
-- webhook autenticado;
-- idempotencia;
-- revalidación y serialización de stock;
-- creación automática de pedido una sola vez;
-- ruta de recuperación para eventos fallidos.
+### F3 — construido y probado, por aplicar
 
-**No activar producción ni aceptar dinero real antes de cerrar F2.**
+Asiento contable automático de la venta web real, contraasiento al anular y correo «Recibido» automático. Runbook «Pagos F3» en `supabase/INSTRUCCIONES.md`.
 
-### F3/F4
+### F4 — siguiente
 
-- F3: asiento contable automático desde pago aprobado.
-- F4: validación integral y cambio controlado de sandbox a producción.
+Corregir la URL de eventos de producción en Wompi (hoy apunta a otro proyecto), cargar los secretos y la llave pública de producción, y cambiar el interruptor. Se cierra con una compra real pequeña que verifica F2, F3 y F4 de una vez. `docs/PLANO-PAGOS.md` §11.
 
 ## 6. Seguridad vigente y deuda reconocida
 
@@ -241,14 +228,13 @@ Debe incorporar:
 
 ## 9. Próximo orden de trabajo
 
-1. **Métricas M2** (relevo en `docs/PLANO-METRICAS.md` §5; EM6 y M1 ya verificados en producción, apagados a propósito) y después **Wompi F2**. Las políticas existen como estructura provisional en magandhi.com/politicas/ (el dueño redacta el texto final antes de abrir).
-2. Aplicar y verificar la migración `20261002000000`.
-3. Redesplegar y verificar `crear-intencion-pago`.
-4. Construir Wompi F2 en sandbox.
-5. Implementar F3 y validar contabilidad.
-6. Ejecutar F4 antes de producción.
-7. Cerrar D3 antes de delegar accesos.
-8. Crear políticas públicas en la tienda.
+1. Aplicar F3 (migración `20261020000000`, IVA de las ventas y redespliegue de `wompi-webhook` y `enviar-correo-pedido`).
+2. Arreglos de la tienda antes de cobrar: H2, H3 y H5 (relevo del 9-oct).
+3. F4: URL de eventos de producción, secretos, llave pública e interruptor. Después, la compra real con conciliación completa.
+4. Cerrar D3 antes de delegar accesos.
+5. Textos definitivos de las políticas públicas (hoy son estructura provisional en magandhi.com/politicas/).
+
+La migración `20261002000000` está **superada**: no se aplica (ver `supabase/INSTRUCCIONES.md` §0).
 
 ## 10. Reglas de entrega
 

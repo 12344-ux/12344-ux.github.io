@@ -61,13 +61,18 @@ jobs:
       - name: Migraciones + matriz de permisos + pruebas SQL por tramo
         run: |
           P=$REPO/supabase/pruebas/local
-          sudo bash "$AQUI/pg.sh" "$P/pagos-f2.sql" "$P/metricas-m1.sql" "$P/metricas-m2.sql" \
+          sudo bash "$AQUI/pg.sh" "$P/pagos-f2.sql" "$P/f3-asiento-automatico.sql" "$P/metricas-m1.sql" "$P/metricas-m2.sql" \
             "$P/em5-resultados.sql" "$P/em5-1-respuesta-email.sql" "$P/em6-captura.sql" 2>&1 | tee -a /tmp/banco.log
           sudo -u pg pg_ctl -D /var/lib/pgdata stop -m fast >/dev/null || true
 
       - name: Puesta al dia forward sobre una base que reproduce produccion
         run: |
           sudo bash "$AQUI/correr-puesta-al-dia.sh" 2>&1 | tee -a /tmp/banco.log
+          sudo -u pg pg_ctl -D /var/lib/pgdata stop -m fast >/dev/null || true
+
+      - name: F3 sobre una base como produccion (con datos previos, dos veces)
+        run: |
+          sudo bash "$AQUI/correr-f3-sobre-produccion.sh" 2>&1 | tee -a /tmp/banco.log
           sudo -u pg pg_ctl -D /var/lib/pgdata stop -m fast >/dev/null || true
 
       - name: wompi-webhook con checksums reales
@@ -78,6 +83,11 @@ jobs:
       - name: Ciclo completo tienda -> firma -> webhook -> pedido
         run: |
           sudo bash "$AQUI/correr-intencion-f2.sh" 2>&1 | tee -a /tmp/banco.log
+          sudo -u pg pg_ctl -D /var/lib/pgdata stop -m fast >/dev/null || true
+
+      - name: Ciclo F3 en produccion simulada -> pedido + asiento + correo Recibido
+        run: |
+          sudo bash "$AQUI/correr-ciclo-f3.sh" 2>&1 | tee -a /tmp/banco.log
           sudo -u pg pg_ctl -D /var/lib/pgdata stop -m fast >/dev/null || true
 
       - name: Diagnostico de produccion (solo lectura) con y sin F2

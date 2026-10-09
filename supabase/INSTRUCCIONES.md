@@ -1,10 +1,11 @@
 # Supabase · runbook operativo MAGANDHI / Impulse
 
-> **Estado al 8-oct-2026:** en producción están aplicadas las migraciones hasta
-> `20261017000000` (Métricas M2), **excepto `20261002000000`, que quedó SUPERADA
-> y no debe aplicarse** (ver §0). `crear-intencion-pago` fue redesplegada.
-> La siguiente acción es aplicar `20261018000000_puesta_al_dia_sin_vista.sql`
-> y después construir Wompi F2.
+> **Estado al 9-oct-2026:** en producción está desplegada **Wompi F2** en sandbox
+> (`20261018000000` y `20261019000000` aplicadas el 8-oct; medido el 9-oct:
+> las tablas y funciones de F2 existen y `wompi-webhook` responde `401 Firma
+> ausente` a un aviso sin firma). **`20261002000000` quedó SUPERADA y no debe
+> aplicarse** (ver §0). La siguiente acción es **aplicar F3** (sección «Pagos F3»
+> al final de esta guía) y después F4 con la compra real.
 >
 > **Regla de migraciones:** los archivos ya aplicados son historia inmutable.
 > Nunca se reejecutan como arreglo o rollback sobre la base actual. Toda
@@ -3920,3 +3921,156 @@ Diagnóstico: Edge Functions → `wompi-webhook` → pestaña **Logs** (no
   **ciclo completo** tienda → firma → webhook → pedido deja el pedido
   `canal=web` con la atribución exacta y una sola salida de inventario.
 - Matriz de permisos **170/170 TODO PASA**.
+
+# Pagos F3 · asiento contable automático + correo «Recibido» automático
+
+Diseño en `docs/PLANO-PAGOS.md` §10. **Wompi sigue en sandbox hasta F4.** Un
+pago de prueba (sandbox) crea el pedido como siempre pero **no toca los libros**.
+Orden recomendado: PF3.1 → PF3.5. Ningún paso cobra dinero ni envía correos.
+
+## PF3.1. Aplicar la migración (SQL Editor, una sola vez)
+
+Correr completo `supabase/migrations/20261020000000_pagos_f3_asiento_automatico.sql`,
+después de `20261019000000`. Es idempotente. Hace esto:
+
+- Agrega al PUC **138095 OTROS (PASARELA WOMPI POR LIQUIDAR)** y deja **135518**
+  con su nombre oficial (*Impuesto de industria y comercio retenido*). Si 135518
+  ya tenía movimientos, no la renombra y muestra un aviso (`NOTICE`): no es un
+  error, revísalo con el contador.
+- Baja `contabilidad_config` a subcuentas: 111005, 413505, **530515**, 613505 y
+  143505, más la cuenta puente 138095 y el IVA generado 240805. Lo que ya habías
+  cambiado a mano se respeta. Desde ahora una cuenta de grupo o inexistente se
+  **rechaza al configurarla**.
+- Cada venta web real queda en el Libro Diario sola; anular el pedido registra
+  el contraasiento. Los asientos automáticos no se editan ni se anulan desde
+  Finanzas.
+
+## PF3.2. Definir el IVA de las ventas web (decisión tuya)
+
+El sistema no lo supone. Mientras esté vacío, la venta se crea pero su asiento
+queda pendiente con ese motivo en Finanzas.
+
+```sql
+-- 0 si MAGANDHI NO es responsable de IVA: el precio completo es ingreso (413505).
+update contabilidad_config set iva_ventas_pct = 0 where id = 1;
+-- 19 (o 5) si SÍ es responsable y el precio web incluye IVA:
+-- update contabilidad_config set iva_ventas_pct = 19 where id = 1;
+
+select iva_ventas_pct from contabilidad_config where id = 1;
+```
+
+Lo confirma el contador. Si eres responsable de IVA, avísale a Kiro: el IVA que
+Wompi cobra sobre su comisión es descontable y hace falta su cuenta.
+
+## PF3.3. Antes de la compra real: costo e inventario en libros
+
+1. **Costo del producto.** Sin `costo_unitario`, la venta entra pero el asiento
+   queda pendiente («Falta el costo unitario de…»). La fila 20 del diagnóstico
+   muestra `costo SIN COSTO` si falta. Se carga en Producción → Inventarios →
+   ficha del producto.
+2. **Inventario inicial.** Si la mercancía que ya tienes no está en los libros
+   (fila 23: «libros» menor que «bodega»), cada venta deja 143505 en negativo.
+   Registra en Nuevo asiento un asiento de apertura: Débito 143505 por el valor
+   de la mercancía, contra la cuenta de cómo se compró (aporte tuyo, banco o
+   proveedor). La contrapartida la decide el contador.
+
+## PF3.4. Redesplegar dos Edge Functions
+
+En las dos, reemplazar el contenido de la función existente y Deploy:
+
+| Función | Archivo | Verify JWT |
+|---|---|---|
+| `wompi-webhook` | `supabase/functions/wompi-webhook/index.ts` | **APAGADO**, como está |
+| `enviar-correo-pedido` | `supabase/functions/enviar-correo-pedido/index.ts` | **dejarlo como está** |
+
+No hay secretos nuevos: `RESEND_API_KEY` ya existe y `SUPABASE_SERVICE_ROLE_KEY`
+lo pone Supabase. Si redespliegas antes de aplicar la migración, nada se rompe:
+simplemente no sale el correo automático hasta que la apliques.
+
+Comprobación sin efectos (no escribe nada): un aviso sin firma debe seguir
+respondiendo `401 {"error":"Firma ausente."}`.
+
+```bash
+curl -s -X POST https://<tu-proyecto>.supabase.co/functions/v1/wompi-webhook -H 'Content-Type: application/json' -d '{}'
+```
+
+## PF3.5. Comprobar
+
+Pegar `supabase/pruebas/diagnostico-produccion.sql` en SQL Editor:
+
+| Fila | Esperado |
+|---|---|
+| 21 · Cuentas del asiento automático | todas `ok` |
+| 25 · Asiento automático instalado | `true` |
+| 26 · IVA de las ventas web | el que definiste (`0 %`, `19 %`) |
+| 27 · Cuenta puente e IVA generado | las dos `ok` |
+| 28 · Asientos automáticos por origen | `manual=…` (aún sin `venta_web`) |
+| 29 · Ventas web reales sin asiento | `0` |
+| 30 · Wompi por liquidar (138095) | `$0` |
+| 31 · Correos «Recibido» automáticos | `ninguno todavía` |
+
+En el panel: Finanzas no muestra ningún aviso (aún no hay ventas reales) y el
+Libro Diario se ve igual que antes.
+
+## PF3.6. Cuando Wompi consigne: asiento manual de liquidación
+
+Wompi deposita días después y ya descontado. En Finanzas → Nuevo asiento, con
+los valores **del reporte de liquidación de Wompi** (no calculados):
+
+| Cuenta | Debe | Haber |
+|---|---:|---:|
+| 111005 Bancos | lo que llegó al banco | |
+| 530515 Comisiones | comisión de Wompi + su IVA (si no eres responsable de IVA) | |
+| 135515 Retención en la fuente | lo retenido (solo pagos con tarjeta) | |
+| 135518 ICA retenido | lo retenido (solo pagos con tarjeta) | |
+| 138095 Wompi por liquidar | | el bruto de las ventas liquidadas |
+
+Según Wompi, en pagos con tarjeta practica retención en la fuente (1,5 %),
+reteICA (0,2 %) y reteIVA (15 %, solo si hay IVA); en los demás medios solo
+descuenta su comisión ([soporte de Wompi](https://soporte.wompi.co/hc/es-419/articles/360042471394--Qu%C3%A9-cobros-adicionales-se-generan-sobre-las-transacciones-aprobadas)).
+Cuando todas las ventas están liquidadas, **138095 queda en $0**: si no, falta
+una consignación.
+
+## PF3.7. La comprobación real llega con la primera compra (F4)
+
+Después de la compra real deben verse, sin tocar nada:
+
+1. Ventas → Seguimiento: el pedido `canal = web`, y en «Correos al cliente»,
+   **Recibido · Enviado**.
+2. Inventario: una unidad menos.
+3. Finanzas → Libro Diario: un asiento «Automático · venta web» con 138095 al
+   débito por el precio, 413505 al crédito, y 613505 / 143505 por el costo.
+4. El correo «Recibido» en la bandeja del comprador (texto: plantilla
+   `recibido` de `correo_plantillas`).
+5. Diagnóstico: fila 28 `venta_web=1`, fila 29 `0`, fila 30 el precio, fila 31
+   `enviado=1`.
+
+Logs: Edge Functions → `wompi-webhook` → **Logs**: `… -> procesado · asiento
+creado` y `correo Recibido: enviado`.
+
+Si algo no salió solo, nada se pierde:
+
+| El log dice | Qué pasó | Qué hacer |
+|---|---|---|
+| `asiento pendiente` | Falta el IVA o el costo | El motivo y el botón están en la portada de Finanzas |
+| `correo Recibido: HTTP 401` | `enviar-correo-pedido` no aceptó la llave de servicio | Enviar el «Recibido» a mano desde Seguimiento y avisarle a Kiro |
+| `correo Recibido: fallido` | Resend no lo entregó | Seguimiento lo muestra como «Falló»; reenviarlo desde ahí |
+
+## PF3.8. Pruebas locales hechas
+
+- `supabase/pruebas/local/f3-asiento-automatico.sql` **84/84**: cuentas y
+  validación al configurar, IVA sin definir (la venta entra, el asiento queda
+  pendiente), IVA 0 y 19 % al peso, costo faltante, sandbox sin asiento,
+  reintento de Wompi sin duplicar, índice único, protección de los
+  automáticos, contraasiento con neto en cero, anulación que nunca falla por
+  contabilidad, informes cuadrados al peso (Estado de resultados, Balance
+  general y de comprobación), fechas de Colombia, correo automático y permisos.
+- `herramientas/correr-ciclo-f3.sh` **29/29**: las Edge Functions reales en
+  producción simulada, de la tienda al asiento y al correo; con Resend caído,
+  reintentos, pago rechazado y la puerta del modo automático. Logs sin datos.
+- `herramientas/correr-f3-sobre-produccion.sh` **12/12** + matriz **170/170**:
+  F3 aplicada dos veces sobre una base como la de hoy, con datos previos.
+- `herramientas/correr-ui-f3.sh` **50/50** en PC y celular.
+- Sin regresión: F2 **40/40**, webhook **21/21**, intención **19/19**, ciclo F2
+  **12/12**, puesta al día **23/23**, diagnóstico **10/10**, M1, M2, EM5,
+  EM5.1 y EM6.

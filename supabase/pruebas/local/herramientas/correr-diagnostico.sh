@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # ============================================================
 # Impulse · prueba el DIAGNÓSTICO DE PRODUCCIÓN (supabase/pruebas/
-# diagnostico-produccion.sql) en dos bases locales, dentro de una transacción
+# diagnostico-produccion.sql) en tres bases locales, dentro de una transacción
 # READ ONLY (si intentara escribir algo, fallaría):
-#   1) "completa": todas las migraciones (F2 aplicada).
-#   2) "como_produccion": omite 20261002 (superada), 20261018 y 20261019, que
-#      es lo último que consta como aplicado en producción. Así se comprueba
-#      que el diagnóstico NO se cae cuando F2 todavía no existe.
+#   1) "completa": todas las migraciones (F2 y F3 aplicadas).
+#   2) "hoy": omite 20261002 (superada) y 20261020 (F3): producción al 9-oct,
+#      con F2 desplegada y F3 por aplicar.
+#   3) "antes_f2": omite además 20261018 y 20261019. Así se comprueba que el
+#      diagnóstico NO se cae cuando F2 o F3 todavía no existen.
 # Uso: bash supabase/pruebas/local/herramientas/correr-diagnostico.sh
 # ============================================================
 set -euo pipefail
@@ -62,19 +63,21 @@ select pw_registrar_intencion('REF-DIAG-0001', 'a9000000-0000-4000-8000-00000000
 SQL
 diagnosticar diag_completa
 
-armar diag_como_produccion 20261002000000 20261018000000 20261019000000
-diagnosticar diag_como_produccion
+armar diag_hoy 20261002000000 20261020000000
+diagnosticar diag_hoy
+
+armar diag_antes_f2 20261002000000 20261018000000 20261019000000 20261020000000
+diagnosticar diag_antes_f2
 
 # Comprobaciones minimas del resultado (no solo "que corra").
-grep -q "la tabla no existe (F2 sin aplicar)" $AQUI/diag-diag_como_produccion.txt \
-  && echo "pasa | sin F2: el diagnostico lo informa en vez de caerse" \
-  || echo "FALLA | sin F2: no informa la ausencia de las tablas"
-grep -q "1 en total · creada=1" $AQUI/diag-diag_completa.txt \
-  && echo "pasa | con F2: cuenta la intencion de pago sembrada" \
-  || echo "FALLA | con F2: no cuenta la intencion sembrada"
-grep -q "d-p1 → D-P1 · stock 4 · costo 12000" $AQUI/diag-diag_completa.txt \
-  && echo "pasa | lista la campana publicada con su producto, stock y costo" \
-  || echo "FALLA | no lista la campana con producto, stock y costo"
-grep -q "banco 1110 → NO IMPUTABLE" $AQUI/diag-diag_completa.txt \
-  && echo "pasa | detecta que contabilidad_config apunta a cuentas no imputables" \
-  || echo "FALLA | no detecta la configuracion contable no imputable"
+ok() { grep -q -- "$2" $AQUI/diag-$1.txt && echo "pasa | $3" || echo "FALLA | $3"; }
+ok diag_antes_f2 "la tabla no existe (F2 sin aplicar)" "sin F2: el diagnostico lo informa en vez de caerse"
+ok diag_antes_f2 "F3 sin aplicar" "sin F3: el diagnostico lo informa en vez de caerse"
+ok diag_completa "1 en total · creada=1" "con F2: cuenta la intencion de pago sembrada"
+ok diag_completa "d-p1 → D-P1 · stock 4 · costo 12000" "lista la campana publicada con su producto, stock y costo"
+ok diag_hoy "banco 1110 → NO IMPUTABLE" "produccion de hoy (sin F3): detecta las cuentas de grupo (H1)"
+ok diag_hoy "F3 sin aplicar" "produccion de hoy: dice que F3 falta"
+ok diag_completa "banco 111005 → ok" "con F3: las cuentas configuradas ya son subcuentas imputables"
+ok diag_completa "puente Wompi 138095 → ok · IVA generado 240805 → ok" "con F3: cuenta puente e IVA listos"
+ok diag_completa "SIN DEFINIR" "con F3: avisa que el dueno aun no define el IVA"
+ok diag_completa "Asiento automático instalado *| true" "con F3: el asiento automatico figura instalado"
