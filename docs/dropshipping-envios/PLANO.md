@@ -20,6 +20,27 @@
 
 **Ojo:** `productos.proveedor` ya existe, pero es texto libre. No sirve para la integración.
 
+### Decisiones del dueño (cerradas el 9-oct-2026)
+
+1. **Sin Shopify ni WooCommerce como intermediarios:** añaden costo, duplicación y puntos de fallo.
+2. MAGANDHI no replica todo el catálogo. El dueño elige un producto dentro de Dropi y pega su URL/id en **Campañas → Traer desde Dropi**.
+3. Una Edge Function lee solo ese producto y crea un borrador ligado a Inventario/Campañas; el dueño lo adapta, prueba y decide si lo publica.
+4. Dropi es la fuente de verdad del stock de los productos de proveedor. El inventario propio conserva su libro actual.
+5. Si el dato de Dropi está vencido o Dropi no responde, la tienda falla de forma segura: «Temporalmente no disponible», nunca inventa stock.
+
+Flujo mínimo:
+
+```text
+Dropi (el dueño elige y copia URL/id)
+  -> Campañas · Traer desde Dropi
+  -> borrador MAGANDHI
+  -> curaduría / muestra / contenido
+  -> publicación
+  -> refresco automático de stock de ESE producto
+```
+
+La URL actual de detalle de Dropi contiene `product-details/:id/:name`, por lo que no hace falta acceso al listado completo para identificar lo elegido.
+
 ## 2. Modelo de datos (propuesta)
 
 | Cambio | Para qué |
@@ -46,10 +67,13 @@
 - **Producto propio:** todo sigue igual (libro de movimientos y candado en `crear_pedido`).
 - **Producto de proveedor:**
   - no tiene movimientos de inventario;
-  - `agotado` sale del stock reportado por la sincronización;
+  - `agotado` sale del stock reportado por Dropi;
+  - solo se consulta cada producto que el dueño importó, no el catálogo completo;
+  - refresco programado corto (frecuencia según el límite que autorice Dropi) y verificación en vivo antes de abrir Wompi;
+  - si la última lectura supera el tiempo máximo permitido o Dropi falla, queda temporalmente no disponible;
   - `crear_pedido` registra el pedido sin bajar inventario, y `anular_pedido` no compensa nada;
   - si Dropi rechaza la orden por falta de stock, sale el aviso rojo en Ventas.
-- **Por decidir:** si `crear-intencion-pago` consulta el stock en vivo antes de abrir el pago, según los límites de la API.
+- **Límite inevitable:** verificar stock antes del pago reduce el riesgo, pero solo crear/reservar la orden en Dropi inmediatamente después del pago evita que otro vendedor consuma la última unidad entre ambos momentos.
 
 **Contabilidad:**
 
@@ -93,7 +117,7 @@
 |---|---|---|
 | **1 · Guía manual** | `despachos` y `despacho_eventos`; pegar la guía en Seguimiento; paso a `en_camino` con el correo automático | Nada |
 | **2 · Guías automáticas (propios)** | Peso y medidas; municipios DANE en la tienda; Edge Function para cotizar y crear la guía; avisos de estado firmados | Cotizaciones y elección de plataforma |
-| **3 · Catálogo de proveedor y sello** | `origen` y `producto_proveedor`; sonda y sincronización de solo lectura; `agotado` por stock reportado; `producto_pruebas` y candado del sello; tiempo de entrega en la ficha | Acceso a la API de Dropi |
+| **3 · Embudo de producto Dropi y sello** | Pegar URL/id en Campañas; leer solo `products/v2/{id}` / `products/{id}`; crear borrador; refrescar stock de los seleccionados; `agotado` y fallo seguro; `producto_pruebas` y candado del sello | Acceso **de solo lectura por producto** a la API de Dropi |
 | **4 · Pedidos a Dropi** | `crear_pedido` y `anular_pedido` sin inventario para proveedor; confirmación de un clic; creación con verificación por id; consulta programada de estado y guía; asiento con la cuenta del saldo | Fase 3 y contador |
 | **5 · Contraentrega** | `CON RECAUDO` y su conciliación | Solo si los números lo piden |
 
@@ -111,7 +135,7 @@ Cada fase sigue las reglas de `CONTEXTO-MAGANDHI.md` §10: migración forward nu
 
 | Riesgo | Cómo se contiene |
 |---|---|
-| La API de Dropi no tiene documentación y puede cambiar sin aviso | Sonda periódica de solo lectura; nunca crear sin verificar por id; aviso rojo ante cualquier fallo |
-| Stock del proveedor desactualizado | Sincronización frecuente; aviso rojo si Dropi rechaza; resolución a mano (reposición o devolución) |
+| API parcial o cambiante de Dropi | Pedir un alcance mínimo de solo lectura por id; guardar el contrato medido; sonda; aviso rojo ante cambios |
+| Stock del proveedor desactualizado | Refresco de los productos seleccionados + lectura en vivo antes de Wompi + vencimiento que falla cerrado; la reserva final llega con la API de pedidos |
 | Calidad del proveedor | Curaduría con muestra (`CURADURIA-Y-SELLO.md`) y opiniones verificadas |
 | Devoluciones y garantías | Acuerdo por proveedor antes de publicar su producto |

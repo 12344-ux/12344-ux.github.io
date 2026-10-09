@@ -38,16 +38,16 @@ El dominio usa Zoho Mail (verificado en el DNS el 9-oct-2026). No hay que contra
 - [ ] Correo breve enviado al contacto asignado por Dropi, explicando que el proyecto está **en pre-lanzamiento**, que MAGANDHI no es WooCommerce y pidiendo el tipo/acceso correcto de solo lectura.
 - [x] Respuesta inicial anotada en §7.
 
-El correo técnico debe pedir:
+El correo técnico se limita al embudo que realmente necesita MAGANDHI:
 
-- habilitación de lectura del catálogo para la cuenta ya validada;
-- confirmación de las rutas actuales para listar productos, detalle, categorías y bodegas;
-- campos de variantes, stock, precios, imágenes y proveedor;
-- creación de pedidos pagados (`SIN RECAUDO`) en borrador y consulta por id;
-- guía, rastreo y cambios de estado por webhook o consulta periódica;
-- ambiente de pruebas, límites e IP fija, si aplica.
+- tienda propia en **pre-lanzamiento**, sin Shopify ni WooCommerce;
+- el dueño elige el producto en Dropi y pega su URL/id en MAGANDHI;
+- alcance inmediato **solo lectura por producto**, no copia masiva del catálogo;
+- confirmar/habilitar `GET /integrations/products/v2/{product_id}` para detalle inicial y `GET /integrations/products/{product_id}` para stock actualizado (o indicar sus reemplazos vigentes);
+- campos necesarios: id, variantes/`variation_id`, stock, precios, imágenes y proveedor;
+- límite de consultas y si existe webhook de cambios de stock.
 
-No se envían tokens ni contraseñas por correo.
+Pedidos, guías y recaudo quedan fuera de esta primera solicitud. No se envían tokens ni contraseñas por correo.
 
 ## 4. Muestras
 
