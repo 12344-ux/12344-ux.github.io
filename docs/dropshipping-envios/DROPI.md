@@ -127,6 +127,8 @@ El token probado salió de Dropi → Mis Integraciones → tipo **WOOCOMERCE**, 
 | Validación de identidad | Completada con documento y fotografías; facturación electrónica aún pendiente |
 | Integración recreada después de validar, tipo `WOOCOMERCE`, URL `https://magandhi.com` | Token nuevo expedido |
 | Token nuevo desde Supabase y desde el PC | `401 · Access denied` / `401 · No autorizado` |
+| WooCommerce de prueba (sandbox temporal) + «Autenticar tienda» en Dropi | **Éxito:** Dropi confirmó la autenticación y generó por su cuenta una pareja Consumer Key / Secret en ese WooCommerce |
+| Token de esa integración ya autenticada, desde Supabase y desde el PC | `401` en ambos: autenticar la tienda **no** abre la API de catálogo |
 
 **Conclusión corregida tras revisar el flujo actual de Dropi:** no es Brave, CORS, Supabase, la IP, un error de copiado, el token anterior ni la validación de identidad. **Sí existe una ruptura real:** `magandhi.com` fue registrada como WooCommerce, pero no expone el OAuth de WooCommerce; `https://magandhi.com/wc-auth/v1/authorize` responde 404. Por tanto, no se puede considerar ese token una prueba limpia de que Dropi rechaza a MAGANDHI: la integración WooCommerce quedó incompleta por diseño.
 
@@ -137,6 +139,36 @@ El token inicial quedó visible en una captura y fue sustituido por uno nuevo de
 **Mientras tanto, sin API:** se publican a mano los pocos productos curados y cada pedido se crea a mano en el panel de Dropi como pagado (sin recaudo).
 
 Pruebas locales hechas, con Dropi simulado y también contra Dropi real con un token inválido: sin sesión 401, no admin 403, sin secreto, acceso negado con IP, conexión correcta con muestra; nunca toca `orders/` y el token no aparece en la respuesta.
+
+## 7. La otra mitad: leer desde WooCommerce (`woo-sonda`)
+
+Si Dropi solo permite **empujar** productos a un WooCommerce, el tramo que sigue no depende de su permiso: se lee con las llaves de la API REST de WooCommerce que genera el dueño en su propio WordPress.
+
+**Hallazgos del 9-oct-2026:**
+
+- El botón **«Click aquí para Autenticar Tienda»** no aparece al crear la integración: solo al **editarla**, en la pestaña «Dropi → Woocomerce». Con `magandhi.com` ese botón no habría servido, porque apunta a `/wc-auth/v1/authorize` y allí responde 404.
+- Al autenticar, Dropi crea **su propia** pareja Consumer Key / Secret. Conviven sin conflicto con las que genere el dueño: WooCommerce admite varias. Las de Dropi son para que Dropi escriba; las del dueño son las que usaría MAGANDHI para leer.
+- El panel de Dropi tiene rutas internas de lista de importación (`/importlist`, `/importlist/importstore/`), así que empujar productos a la tienda es una función real de su producto.
+- **No dar por hecho el stock en tiempo real.** Varias guías de terceros lo afirman, pero en el código vigente del plugin Dropify (4.7.3) la tarea programada de stock retorna antes de ejecutarse, aunque la casilla y el temporizador de cuatro horas existan. Es justo lo que hay que medir.
+
+**Qué hace `supabase/functions/woo-sonda`:**
+
+- una sola llamada `GET /wp-json/wc/v3/products?per_page=5&status=any`, con autenticación básica sobre HTTPS;
+- solo lectura: nunca crea, edita ni borra, no toca pedidos y no escribe en nuestra base;
+- solo admin con sesión; `WOO_URL`, `WOO_KEY` y `WOO_SECRET` viven en Secrets y nunca salen en la respuesta ni en los logs;
+- devuelve la conclusión, los nombres de campo reales, y por producto: precio, `manage_stock`, `stock_quantity`, `stock_status`, variantes, imágenes y las metas que marcan su origen en Dropi.
+
+**Cómo correrla:** desplegar `woo-sonda` (Verify JWT encendido), cargar los tres secretos, y desde la consola del panel con sesión de admin:
+
+```js
+const { supabase } = await import('/supabase-config.js');
+const r = await supabase.functions.invoke('woo-sonda', { body: {} });
+console.log(JSON.stringify(r.data ?? r.error, null, 2));
+```
+
+**Lo que decide el puente:** correrla dos veces separadas en el tiempo y comparar `stock_quantity`. Si el número sigue al de Dropi, el puente sirve para la promesa de §0 del plano. Si queda congelado, no sirve para eso y se vuelve al acceso directo.
+
+Pruebas locales de `woo-sonda`: sin sesión 401, no admin 403, faltan los tres secretos, rechazo de `http://`, llaves inválidas con mensaje claro, tienda vacía, producto con stock y marca de Dropi; solo `GET`, solo `products`, nunca `orders`, y el secreto no aparece en la respuesta.
 
 ## Fuentes
 
