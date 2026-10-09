@@ -157,14 +157,42 @@ const r = await supabase.functions.invoke('dropi-cabeceras', { body: { tienda: '
 console.log(JSON.stringify(r.data ?? r.error, null, 2));
 ```
 
-| Resultado | Qué sigue |
+### Resultado: era el `User-Agent`
+
+Corrida el 9-oct-2026 desde Supabase, con la URL de la tienda registrada:
+
+| Variante | Respuesta |
 |---|---|
-| Una variante entra | Se corrigen esas cabeceras en `dropi-sonda`, se borra este diagnóstico y **el puente WooCommerce deja de ser necesario** |
-| Ninguna entra | El filtro es por IP o entorno: pedirle a soporte que autorice el acceso, o quedarse con el puente |
+| 1 · solo el token, como veníamos llamando | `401 · Access denied` |
+| **2 · + `User-Agent`** | **`200`, `isSuccess: true`, 3 productos** |
+| 3 · + `Origin` y `Referer`, sin `User-Agent` | `401 · Access denied` |
+
+**Conclusión definitiva:** Dropi rechaza las peticiones que llegan sin `User-Agent`. No era el token, ni el permiso de la cuenta, ni la IP, ni la validación de identidad, ni la falta de WooCommerce. El plugin funcionaba porque WordPress envía el suyo.
+
+Consecuencias:
+
+- **El puente WooCommerce deja de ser necesario.** Se descarta: nada de WordPress, hosting mensual ni catálogo duplicado. El sandbox de prueba puede caducar.
+- `dropi-sonda` ahora manda un `User-Agent` honesto que identifica a MAGANDHI (`MAGANDHI-Impulse/1.0`), configurable con el secreto `DROPI_USER_AGENT` y leído en cada petición, para poder cambiarlo sin redesplegar. No se finge ser otro programa.
+- `dropi-cabeceras` ya cumplió su función: **se borra** cuando el frente avance.
 
 Probado localmente (sin sesión 401, no admin 403, sin secreto, sin URL de tienda, todas 401 con la IP, variante ganadora identificada, solo `products/index`, nunca `orders`, token ausente) y contra Dropi real con un token inválido: las cinco variantes responden `401 · Access denied` sin que el entorno rechace ninguna cabecera.
 
-**Ojo con el stock, otra vez.** En la ventana de importar del plugin, la casilla «Guardar Stock» dice que si se desmarca «el stock no se actualizará». Eso habla del **momento de importar**, no de un refresco continuo. Sigue pendiente medirlo: importar un producto, anotar las unidades y volver a leerlas horas después.
+### El embudo y el stock, ya sin intermediarios
+
+`dropi-sonda` acepta `{ producto_id }` y lee **solo ese producto** por las dos rutas que usa el plugin:
+
+- `GET products/v2/{id}` — la ficha completa: nombre, descripción, precios, imágenes, variantes y proveedor. Es lo que alimenta el borrador de Campañas.
+- `GET products/{id}` — las existencias. Es la consulta que se repetiría cada pocos minutos para que `agotado` siga a Dropi.
+
+```js
+const { supabase } = await import('/supabase-config.js');
+const r = await supabase.functions.invoke('dropi-sonda', { body: { producto_id: 1234 } });
+console.log(JSON.stringify(r.data ?? r.error, null, 2));
+```
+
+La respuesta sella la hora de lectura (`leido`). **La prueba del stock** es correrla dos veces separadas en el tiempo sobre el mismo producto y comparar las existencias: si siguen a Dropi, la promesa de §0 del plano se cumple leyendo directo, sin cron de WordPress ni puente.
+
+Pruebas locales de esta versión (13 en verde): `User-Agent` honesto por defecto y en cada llamada, configurable por secreto, ficha y existencias leídas por id, suma de stock por bodega, campos reales listados, id no numérico ignorado, token ausente de la respuesta, nunca toca `orders/`. Contra Dropi real con un token inválido: 401 en las cuatro rutas, con mensaje que apunta al `User-Agent`.
 
 ## Fuentes
 
