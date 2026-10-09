@@ -110,14 +110,21 @@ El token sale de Dropi → Mis Integraciones → tipo **WOOCOMERCE**, porque no 
 | `conectado: true` | Diseñar el arrastre de productos con `campos_disponibles` y la `muestra` |
 | `Access denied` con IP | Revisar que el secreto sea el token de la tienda. Si lo es, pedirle a soporte que autorice el acceso. Las IP de Supabase no son fijas: puede hacer falta el intermediario de §3 |
 
-**Resultado real, 9-oct-2026 (token de Mis Integraciones, tipo WOOCOMERCE):**
+**Resultado real, 9-oct-2026 (cuenta ya verificada):**
 
-| Desde | Respuesta |
+| Prueba | Respuesta |
 |---|---|
-| Supabase (IP de Amazon) | `401 · Access denied` en `categories/` y en `products/index` |
-| PC del dueño (IP de casa en Colombia) | `401 · No autorizado` en `categories/` |
+| Token inicial desde Supabase (IP de Amazon) | `401 · Access denied` en `categories/` y `products/index` |
+| Token inicial desde PC del dueño (IP residencial en Colombia) | `401 · No autorizado` en `categories/` |
+| `POST /integrations/login` con la cuenta | **Éxito:** Dropi aceptó usuario y contraseña y expidió JWT |
+| JWT anterior contra `GET /api/categories` | `401 · No autorizado` |
+| Validación de identidad | Completada con documento y fotografías; facturación electrónica aún pendiente |
+| Integración recreada después de validar, tipo `WOOCOMERCE`, URL `https://magandhi.com` | Token nuevo expedido |
+| Token nuevo desde Supabase y desde el PC | `401 · Access denied` / `401 · No autorizado` |
 
-**Conclusión:** no es solo un bloqueo por IP. Ese token, por sí solo, no abre la API de `integrations/` para esta cuenta. Hay que pedirle a soporte que habilite el acceso (`PUESTA-EN-MARCHA.md` §3). El token quedó visible en una captura: hay que generar uno nuevo antes de usarlo en serio.
+**Conclusión:** no es Brave, CORS, Supabase, la IP, un error de copiado, el token anterior ni la validación de identidad. La llamada llega a Dropi, pero la API de catálogo no está habilitada para esta cuenta/token. Instalar WooCommerce no activa el token: el plugin solo lo guarda localmente y llama estos mismos endpoints. El siguiente paso legítimo es pedir a soporte técnico que habilite la API y entregue su documentación (`PUESTA-EN-MARCHA.md` §3). La facturación electrónica se completa con los datos fiscales correctos antes del primer movimiento real, pero su propio aviso indica que no es un bloqueo: si falta, Dropi factura a nombre de quien validó la cuenta.
+
+El token inicial quedó visible en una captura y fue sustituido por uno nuevo después de validar la cuenta.
 
 **Mientras tanto, sin API:** se publican a mano los pocos productos curados y cada pedido se crea a mano en el panel de Dropi como pagado (sin recaudo).
 
@@ -125,6 +132,7 @@ Pruebas locales hechas, con Dropi simulado y también contra Dropi real con un t
 
 ## Fuentes
 
+- [Dropi · especificación OpenAPI publicada por su servidor](https://api.dropi.co/docs)
 - [Plugin «Dropify» para WooCommerce, código público](https://github.com/vjcvictor/wc-dropi-integration)
 - [Notas de integración propia con Dropi (AgenticSellBotCRM)](https://github.com/jhonsu01/AgenticSellBotCRM/blob/main/docs/07-fase5-dropi.md)
 - [Dropi · soluciones para marca propia](https://dropi.co/soluciones-para-marca-propia/) y [contacto](https://dropi.co/contactanos)
