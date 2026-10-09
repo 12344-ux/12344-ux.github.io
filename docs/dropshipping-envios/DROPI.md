@@ -4,9 +4,10 @@
 
 ## 1. Lo que se sabe
 
-Dropi no publica documentación de su API. Lo que sigue sale de código y notas públicas de terceros (ver Fuentes):
+Dropi publica una especificación OpenAPI **parcial** en `https://api.dropi.co/docs`: documenta el login de integraciones, `whoiam` y unas pocas lecturas, pero no el contrato completo de catálogo y pedidos. Lo demás sale de:
 
-- el plugin de WooCommerce «Dropify» v4.6.9 (feb-2025);
+- el plugin vigente de WooCommerce «Dropify» v4.7.3 (jul-2026);
+- el código actual de la pantalla «Mis Integraciones» de Dropi (9-oct-2026);
 - las notas de otro equipo que conectó un sistema propio (ago-2026).
 
 | Tema | Lo observado |
@@ -35,6 +36,11 @@ La respuesta trae `isSuccess` y `message`.
 3. **Dropi normaliza los datos:** ciudad y departamento en mayúsculas, teléfono sin «+». No hay que compararlos con lo enviado para saber si se guardó bien.
 4. **No se conoce un aviso de estado ni de guía.** En el plugin no hay código que traiga de vuelta la guía ni los estados.
 5. **Variantes:** sin `variation_id`, Dropi no sabe qué unidad despachar.
+6. **Hay dos flujos distintos bajo el nombre WooCommerce:**
+   - el plugin Dropify antiguo/vigente guarda localmente el token y llama a `api.dropi.co/integrations/`;
+   - la pantalla actual «Mis Integraciones» espera una tienda WooCommerce real: construye `{url}/wc-auth/v1/authorize`, pide alcance `read_write` y devuelve las credenciales a Dropi. En `https://magandhi.com` esa ruta responde 404 porque MAGANDHI no es WordPress.
+
+Por eso registrar el dominio principal como `WOOCOMERCE` fue una prueba útil, pero **no es una integración válida ni el diseño final**. Puede explicar que el token quede sin activar. No se instala WooCommerce sobre la tienda principal.
 
 ## 3. Lo que falta confirmar con Dropi
 
@@ -80,7 +86,7 @@ Reglas:
 
 Responde la pregunta grande con evidencia: **¿producción nos acepta?**
 
-El token sale de Dropi → Mis Integraciones → tipo **WOOCOMERCE**, porque no hay un tipo «tienda propia». El plugin de WooCommerce solo envía ese token por HTTP, igual que lo hace nuestra función.
+El token probado salió de Dropi → Mis Integraciones → tipo **WOOCOMERCE**, porque no había un tipo «tienda propia». Después se comprobó que el flujo actual de ese tipo exige una tienda WooCommerce real por OAuth. La sonda sigue siendo válida para medir el acceso del token, pero esa integración se considera **solo una prueba diagnóstica**, no la solución.
 
 **Qué hace `supabase/functions/dropi-sonda`:**
 
@@ -122,7 +128,9 @@ El token sale de Dropi → Mis Integraciones → tipo **WOOCOMERCE**, porque no 
 | Integración recreada después de validar, tipo `WOOCOMERCE`, URL `https://magandhi.com` | Token nuevo expedido |
 | Token nuevo desde Supabase y desde el PC | `401 · Access denied` / `401 · No autorizado` |
 
-**Conclusión:** no es Brave, CORS, Supabase, la IP, un error de copiado, el token anterior ni la validación de identidad. La llamada llega a Dropi, pero la API de catálogo no está habilitada para esta cuenta/token. Instalar WooCommerce no activa el token: el plugin solo lo guarda localmente y llama estos mismos endpoints. El siguiente paso legítimo es pedir a soporte técnico que habilite la API y entregue su documentación (`PUESTA-EN-MARCHA.md` §3). La facturación electrónica se completa con los datos fiscales correctos antes del primer movimiento real, pero su propio aviso indica que no es un bloqueo: si falta, Dropi factura a nombre de quien validó la cuenta.
+**Conclusión corregida tras revisar el flujo actual de Dropi:** no es Brave, CORS, Supabase, la IP, un error de copiado, el token anterior ni la validación de identidad. **Sí existe una ruptura real:** `magandhi.com` fue registrada como WooCommerce, pero no expone el OAuth de WooCommerce; `https://magandhi.com/wc-auth/v1/authorize` responde 404. Por tanto, no se puede considerar ese token una prueba limpia de que Dropi rechaza a MAGANDHI: la integración WooCommerce quedó incompleta por diseño.
+
+La solución final no es instalar WooCommerce sobre la tienda principal. Las vías legítimas son, en este orden: (1) pedir a Dropi el tipo/acceso para una tienda propia todavía en pre-lanzamiento; (2) empezar manualmente con los pocos productos curados; (3) si Dropi no admite integración propia, evaluar un WooCommerce real y aislado en un subdominio, únicamente como puente. No se automatiza el panel privado ni se eluden sus controles.
 
 El token inicial quedó visible en una captura y fue sustituido por uno nuevo después de validar la cuenta.
 

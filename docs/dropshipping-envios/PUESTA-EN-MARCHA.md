@@ -27,7 +27,7 @@ El dominio usa Zoho Mail (verificado en el DNS el 9-oct-2026). No hay que contra
 - [x] **Registro directo:** cuenta de Colombia creada como **dropshipper** con `operaciones@magandhi.com`.
 - [x] Identidad del titular validada por Dropi con documento y fotografías (9-oct-2026).
 - [ ] Perfil bancario y facturación electrónica completos con los datos fiscales correctos del titular.
-- [x] En «Mis Integraciones», tienda `magandhi.com`, tipo `WOOCOMERCE`, URL `https://magandhi.com`. Se eligió ese adaptador porque Dropi no ofrece «tienda propia».
+- [x] En «Mis Integraciones» se probó `magandhi.com`, tipo `WOOCOMERCE`, URL `https://magandhi.com`, porque no existe «tienda propia». **Diagnóstico posterior:** no es una conexión válida: Dropi espera `/wc-auth/v1/authorize` y MAGANDHI no es WordPress. Se conserva solo mientras soporte puede necesitar identificar la prueba; luego se retira.
 - [x] Token nuevo generado después de validar y guardado en el gestor de contraseñas y en Supabase Secrets. El inicial, que apareció en una captura, quedó sustituido.
 
 ## 3. Consulta a soporte de Dropi
@@ -35,7 +35,7 @@ El dominio usa Zoho Mail (verificado en el DNS el 9-oct-2026). No hay que contra
 **Estado 9-oct-2026:** el asistente de Dropi cerró el chat y confirmó que las solicitudes de API se tramitan exclusivamente por correo. Asignó un contacto humano y pidió tres cosas: motivo/proyecto, endpoints exactos y usuario o id de la cuenta. La dirección concreta permanece en la conversación privada; no se replica en este repositorio público.
 
 - [x] Consulta inicial enviada por el chat de Dropi. Fecha: 9-oct-2026.
-- [ ] Correo técnico enviado al contacto asignado por Dropi.
+- [ ] Correo breve enviado al contacto asignado por Dropi, explicando que el proyecto está **en pre-lanzamiento**, que MAGANDHI no es WooCommerce y pidiendo el tipo/acceso correcto de solo lectura.
 - [x] Respuesta inicial anotada en §7.
 
 El correo técnico debe pedir:
