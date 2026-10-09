@@ -4048,6 +4048,14 @@ Después de la compra real deben verse, sin tocar nada:
 Logs: Edge Functions → `wompi-webhook` → **Logs**: `… -> procesado · asiento
 creado` y `correo Recibido: enviado`.
 
+Si algo no salió solo, nada se pierde:
+
+| El log dice | Qué pasó | Qué hacer |
+|---|---|---|
+| `asiento pendiente` | Falta el IVA o el costo | El motivo y el botón están en la portada de Finanzas |
+| `correo Recibido: HTTP 401` | `enviar-correo-pedido` no aceptó la llave de servicio | Enviar el «Recibido» a mano desde Seguimiento y avisarle a Kiro |
+| `correo Recibido: fallido` | Resend no lo entregó | Seguimiento lo muestra como «Falló»; reenviarlo desde ahí |
+
 ## PF3.8. Pruebas locales hechas
 
 - `supabase/pruebas/local/f3-asiento-automatico.sql` **84/84**: cuentas y
