@@ -190,7 +190,35 @@ const r = await supabase.functions.invoke('dropi-sonda', { body: { producto_id: 
 console.log(JSON.stringify(r.data ?? r.error, null, 2));
 ```
 
+### Contrato medido el 9-oct-2026 (producto 101, lectura real)
+
+| Ruta | Resultado |
+|---|---|
+| `GET products/v2/{id}` | **200.** Ficha completa |
+| `GET products/{id}` | **400 · «No tiene permisos para ver este producto»** |
+
+Por tanto **el stock no sale de la ruta aparte: sale de la misma ficha**, en `warehouse_product` (existencias por bodega, que se suman) y `warehouses`. La sonda ya lo hace así y deja a la vista el 400 para no volver a apoyarse en esa ruta.
+
+Campos reales que devuelve `products/v2/{id}`:
+
+```
+active · categories · description · dropi_app_description · id · name · photos
+private_product_inventories · privated_product · sale_price · sku
+suggested_price · type · user · user_id · variations · warehouse_product · warehouses
+```
+
+Con eso basta para el borrador de Campañas: nombre, descripción, fotos, categoría, `sale_price` (el costo para nosotros), `suggested_price` (precio sugerido), variantes, proveedor y existencias. El `sku` llega genérico (`PRODUCTO`), así que la clave de enlace es el **id**, no el sku.
+
 La respuesta sella la hora de lectura (`leido`). **La prueba del stock** es correrla dos veces separadas en el tiempo sobre el mismo producto y comparar las existencias: si siguen a Dropi, la promesa de §0 del plano se cumple leyendo directo, sin cron de WordPress ni puente.
+
+### Las dos ataduras que faltan soltar
+
+El `User-Agent` que funciona lleva dentro la URL del sandbox, y el token es el de la integración amarrada a ese sandbox, que caduca. Hay que medir, en este orden:
+
+1. `DROPI_USER_AGENT` con `WordPress/6.8; https://magandhi.com` → ¿basta el prefijo `WordPress/`, o Dropi valida la URL?
+2. `DROPI_TOKEN` con el token de la integración de `magandhi.com` → ¿sirve sin tienda WooCommerce viva detrás?
+
+Si las dos pasan, el sandbox se borra y el frente queda limpio. Si alguna falla, se le pide a soporte que autorice nuestro propio `User-Agent` y una integración de tienda propia.
 
 Pruebas locales de esta versión (13 en verde): `User-Agent` honesto por defecto y en cada llamada, configurable por secreto, ficha y existencias leídas por id, suma de stock por bodega, campos reales listados, id no numérico ignorado, token ausente de la respuesta, nunca toca `orders/`. Contra Dropi real con un token inválido: 401 en las cuatro rutas, con mensaje que apunta al `User-Agent`.
 

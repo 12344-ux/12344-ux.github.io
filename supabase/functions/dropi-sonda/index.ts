@@ -108,13 +108,23 @@ function muestraProducto(p: unknown) {
   const cats = Array.isArray(p.categories) ? p.categories.map((c) => (esObj(c) ? corto(c.name, 60) : null)).filter(Boolean) : [];
   const fotos = Array.isArray(p.gallery) ? p.gallery.length : Array.isArray(p.photos) ? p.photos.length : null;
   const prov = esObj(p.user) ? p.user : null;
+  // MEDIDO el 9-oct-2026: `GET products/{id}` responde 400 «No tiene permisos
+  // para ver este producto», pero la ficha de `products/v2/{id}` YA trae las
+  // existencias en warehouse_product. De ahi sale el stock, no de la otra ruta.
+  const bodegas = Array.isArray(p.warehouse_product)
+    ? p.warehouse_product.map((w) => (esObj(w) ? { bodega_id: w.warehouse_id ?? w.id ?? null, stock: Number(w.stock) || 0 } : null)).filter(Boolean)
+    : [];
   return {
     id: p.id ?? null,
     nombre: corto(p.name, 120),
+    sku: corto(p.sku, 60),
     tipo: corto(p.type, 20),
+    activo: p.active ?? null,
+    privado: p.privated_product ?? null,
     precio_proveedor: p.sale_price ?? null,
     precio_sugerido: p.suggested_price ?? null,
     stock: typeof p.stock === "number" ? p.stock : sumarStock(p.warehouse_product),
+    bodegas,
     variaciones: variaciones.length,
     categorias: cats,
     fotos,
@@ -183,6 +193,8 @@ Deno.serve(async (req) => {
   // plugin: v2 para la ficha completa y la simple para refrescar existencias.
   // Esta es la prueba del STOCK sin WooCommerce de por medio.
   const detalle = productoId ? resumir(await llamarDropi("GET", `products/v2/${productoId}`, token)) : null;
+  // Se sigue consultando para dejar registro de que esta ruta NO esta
+  // permitida (400 «No tiene permisos»). El stock util sale de `detalle`.
   const stock = productoId ? resumir(await llamarDropi("GET", `products/${productoId}`, token)) : null;
 
   const entra = cat.isSuccess === true || prod.isSuccess === true;
@@ -197,9 +209,9 @@ Deno.serve(async (req) => {
   let conclusion: string;
   if (entra) {
     conclusion = productoId
-      ? (detalle?.isSuccess === true || stock?.isSuccess === true
-        ? `Conectados y el producto ${productoId} se leyó directo desde Dropi: con esto se arma el embudo a Campañas.`
-        : `Conectados al catálogo, pero el producto ${productoId} no se pudo leer. Revisa que el id exista en Dropi.`)
+      ? (detalle?.isSuccess === true
+        ? `Conectados y el producto ${productoId} se leyó directo desde Dropi: ficha y existencias salen de products/v2. Con esto se arma el embudo a Campañas.`
+        : `Conectados al catálogo, pero la ficha del producto ${productoId} no se pudo leer. Revisa que el id exista en Dropi.`)
       : "Conectados: Dropi aceptó el token desde Supabase. Vuelve a correrla con { producto_id: 1234 } para leer un producto concreto y su stock.";
   } else if (negado) {
     conclusion = ip
@@ -223,7 +235,8 @@ Deno.serve(async (req) => {
       ? {
           id_pedido: productoId,
           detalle: { http: detalle?.http ?? null, isSuccess: detalle?.isSuccess ?? null, mensaje: detalle?.mensaje ?? null },
-          stock: { http: stock?.http ?? null, isSuccess: stock?.isSuccess ?? null, mensaje: stock?.mensaje ?? null },
+          // Esperado: 400. Queda a la vista para no volver a apoyarse en ella.
+          ruta_stock_aparte: { http: stock?.http ?? null, isSuccess: stock?.isSuccess ?? null, mensaje: stock?.mensaje ?? null },
           campos_detalle: esObj(fichaDetalle) ? Object.keys(fichaDetalle).sort() : [],
           ficha: muestraProducto(fichaDetalle),
           // La misma ficha leida por la ruta de existencias: es la que se
