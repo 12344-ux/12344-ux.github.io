@@ -1,7 +1,7 @@
 # ANDAMIOS · próximos tramos MAGANDHI / Impulse
 
-**Corte:** 8 de octubre de 2026
-**Punto de retorno:** Email marketing **EM1–EM7 completo** y Métricas **M1 y M2** en producción. **Siguiente: aplicar `20261018000000_puesta_al_dia_sin_vista.sql` y construir Wompi F2.** La estructura interna está terminada; lo único que falta para cerrar la fase de construcción es la cadena de pagos (F2 → F3 → F4).
+**Corte:** 9 de octubre de 2026
+**Punto de retorno:** Wompi **F2 desplegado** en sandbox y **F3 construido y probado**, por aplicar. **Siguiente: aplicar F3 y después F4**, que se cierra con una compra real. La estructura interna está terminada; lo único que falta para cerrar la fase de construcción es esa cadena de pagos.
 
 Este archivo contiene solo trabajo pendiente y criterios de cierre. Las fases terminadas y decisiones vigentes están consolidadas en `CONTEXTO-MAGANDHI.md`; el historial anterior permanece en Git.
 
@@ -28,135 +28,40 @@ Este archivo contiene solo trabajo pendiente y criterios de cierre. Las fases te
 | Tramo 0 | ✅ Verificado | Matriz 170/170 y anon bloqueado en superficies internas |
 | Wompi F1 | ✅ Sandbox | Intención firmada y checkout cargando |
 | Puesta al día 2026-10-02 | ⛔ **SUPERADA, no aplicar** | Aplicarla hoy retrocedería la vista `catalogo_publico`; ver `INSTRUCCIONES.md` §0 |
-| Puesta al día forward `20261018000000` | ⏭️ **Siguiente** | Solo los 3 huecos medidos; no toca la vista. Probada 18/18 + matriz 170/170 |
-| Wompi F2 | ⏭️ Siguiente | Webhook, idempotencia, intención persistida y pedido |
-| Wompi F3 | ⏸️ Después de F2 | Asiento contable automático |
-| Wompi F4 | ⏸️ Después de F3 | Paso controlado a producción |
+| Puesta al día forward `20261018000000` | ✅ Aplicada (8-oct, antes de F2) | Confirmar con las filas 3 a 5 del diagnóstico |
+| Wompi F2 | ✅ Sandbox (8-oct) | Medido el 9-oct: tablas y funciones existen; `wompi-webhook` responde 401 sin firma. Falta la compra que lo compruebe (va en F4) |
+| Wompi F3 | 🔨 **Construido, por aplicar** | Migración `20261020000000` + 2 Edge Functions. Runbook «Pagos F3» |
+| Wompi F4 | ⏭️ Después de F3 | Bloqueador conocido: la URL de eventos de producción apunta a otro proyecto |
 | D3 permisos granulares | ⏸️ Antes de delegar | Separar capacidades antes del primer no-admin |
 
-## Tramo inmediato P0 — puesta al día forward
+## Tramo inmediato — aplicar F3
 
-### Qué aplicar
+Runbook «Pagos F3» de `supabase/INSTRUCCIONES.md` (PF3.1 a PF3.5):
 
-`supabase/migrations/20261018000000_puesta_al_dia_sin_vista.sql`, una sola vez en
-SQL Editor. **No** aplicar `20261002000000` (superada: retrocedería la vista).
+1. Migración `20261020000000_pagos_f3_asiento_automatico.sql`.
+2. Definir `iva_ventas_pct` (0, 5 o 19). Es decisión del dueño con su contador y no se supone.
+3. Que el producto a vender tenga `costo_unitario`, y la mercancía, su asiento de apertura.
+4. Redesplegar `wompi-webhook` (Verify JWT apagado) y `enviar-correo-pedido`.
+5. Diagnóstico: filas 21 y 25 a 31 como dice el runbook.
 
-Cierra los tres huecos que se midieron en producción el 8-oct-2026:
+## Tramo F2 — cerrado en sandbox
 
-1. `cm_publicar_campana` exige producto de Inventario ligado y activo + precio positivo.
-2. Se retiran las 5 puertas latentes de escritura directa en Finanzas.
-3. Marketing puede borrar imágenes huérfanas solo en el bucket `campanas`.
+Construido, probado y desplegado (diseño y criterios en `docs/PLANO-PAGOS.md`). El único criterio abierto es ver una compra real convertida en pedido, y se cumple con la compra de F4.
 
-La vista `catalogo_publico` **no se toca**: la versión del 3-oct ya trae la regla
-«campaña sin `product_id_ref` = no comprable».
+## Tramo F3 — asiento automático (construido, por aplicar)
 
-### Por qué importa para F2
+Hecho y probado en local y en Actions (diseño en `docs/PLANO-PAGOS.md` §10): el asiento de la venta web real va contra la cuenta puente 138095; anular registra el contraasiento; es idempotente ante reintentos; la venta nunca falla por contabilidad; sandbox no se contabiliza; los asientos automáticos están protegidos; y el correo «Recibido» es automático. Se cierra en producción con la compra de F4 (runbook PF3.7).
 
-F2 convierte un pago aprobado en pedido y baja stock. Una campaña publicada sin
-producto de Inventario ligado sería vender algo sin existencias detrás. El
-candado (1) es el que lo impide.
-
-### Evidencia obligatoria
-
-- La consulta de verificación de `INSTRUCCIONES.md` §0 devuelve `true, 0, true, true`.
-- Campaña sin Inventario ligado: no publicable. Con producto activo y precio: publicable.
-- Finanzas sigue guardando asientos por RPC.
-- El checkout de la tienda sigue abriendo (la intención de pago lee el catálogo).
-
-El tramo no queda ✅ por ver "Success"; se cierra con estas comprobaciones.
-
-### Lección registrada
-
-Producción se había desviado del registro de migraciones y el arnés local, que
-aplica **todas**, daba falsa confianza. Cuando haya desviación, simular el estado
-real con `supabase/pruebas/local/herramientas/correr-puesta-al-dia.sh`.
-
-## Tramo correo — entregar el código de reseña
-
-### Objetivo
-
-Que el código de reseña del pedido llegue al cliente en el **último correo de seguimiento**, cuando ya recibió el producto y puede probarlo. Es lo único que falta para que el sistema de opiniones reciba opiniones reales.
-
-### Lo que ya existe
-
-- `pedidos.codigo_resena` se genera solo al crear cualquier pedido, manual o web.
-- El código es visible en el back-office para compartirlo a mano mientras no haya correo.
-- Toda la validación server-side está desplegada y probada.
-
-### Lo que falta decidir y construir
-
-1. Proveedor de correo y verificación del dominio `magandhi.com`.
-2. En qué punto exacto del seguimiento se dispara, atado al estado `entregado`.
-3. Plantilla del correo con un solo botón o acción clara, siguiendo el patrón de correo transaccional para no caer en promociones.
-4. Idempotencia: el código se envía una sola vez por pedido y no se insiste con recordatorios.
-
-### Criterios de cierre
-
-- Un pedido marcado como entregado produce exactamente un correo con su código.
-- El código del correo permite dejar una opinión y queda quemado para ese producto.
-- Ningún secreto viaja al navegador ni a los registros.
-
-## Tramo F2 — pagos y webhook idempotente
-
-### Objetivo
-
-Un pago aprobado debe convertirse exactamente una vez en un pedido trazable, sin vender stock inexistente ni dejar dinero huérfano.
-
-### Diseño mínimo obligatorio
-
-1. Persistir una intención antes de devolver la firma:
-   - referencia única;
-   - campaña/producto;
-   - cantidad;
-   - monto firmado;
-   - estado inicial;
-   - timestamps.
-2. Crear endpoint webhook separado de la función pública de intención.
-3. Verificar autenticidad del evento Wompi server-side.
-4. Guardar transición de estado de forma idempotente.
-5. En `APPROVED`, dentro de una operación transaccional:
-   - bloquear intención/producto;
-   - releer precio y disponibilidad;
-   - impedir doble procesamiento;
-   - crear pedido/items;
-   - registrar salida de inventario;
-   - marcar intención procesada.
-6. Registrar errores recuperables sin perder el evento.
-7. Probar reintento y evento duplicado.
-
-### Fuera de alcance de F2
-
-- asiento contable automático (F3);
-- producción real (F4);
-- multimoneda;
-- carrito de múltiples productos;
-- reservas temporales complejas si cantidad sigue fija en 1.
-
-### Criterios de cierre
-
-- El mismo evento enviado dos veces produce un solo pedido.
-- Pago rechazado no crea pedido ni salida.
-- Pago aprobado sin stock queda en recuperación controlada y no se procesa en silencio.
-- La referencia permite identificar la intención sin inferencias.
-- Ningún secreto llega al navegador o logs.
-- El pedido aparece en Seguimiento y alimenta Portafolio/Ranking.
-
-## Tramo F3 — asiento automático
-
-- Configurar cuentas contables mediante `contabilidad_config`.
-- Crear asiento balanceado a partir de un pago aprobado/procesado.
-- Idempotencia compartida con la intención/pedido.
-- No duplicar ingreso, inventario o costo ante reintentos.
-- Verificar al peso con Diario, Mayor, Estado de resultados y Balance general.
+Siguiente dentro de Finanzas, cuando haga falta: asiento automático de **ventas manuales** (pedir la forma de pago al registrar) y de **compras de mercancía** (costo del lote y forma de pago en «Registrar entrada»).
 
 ## Tramo F4 — producción
 
-- Credenciales de producción únicamente en servidor/config protegida.
-- Webhook de producción validado.
-- URLs de retorno reales.
-- Prueba de monto pequeño con conciliación completa.
-- Plan de reversión sin force-push ni reescritura contable.
-- Solo después cambiar el entorno activo.
+1. **Wompi, modo producción:** la URL de eventos debe ser la de `wompi-webhook` de este proyecto. Hoy apunta a otro proyecto (encontrado el 8-oct).
+2. Secrets `WOMPI_EVENTS_PROD` y `WOMPI_INTEGRITY_PROD`, solo en Supabase.
+3. `pagos_config.llave_publica_prod`, y al final `entorno = 'prod'`.
+4. Recomendado antes de cobrar: tienda H2, H3 y H5 (relevo del 9-oct).
+5. Compra real pequeña (un shampoo para uso del dueño), que verifica F2, F3 y F4 de una vez (PF3.7), y conciliación con la liquidación de Wompi (PF3.6).
+6. Reversión: `entorno = 'sandbox'` deja de cobrar de inmediato; lo contable se corrige anulando el pedido, sin reescribir.
 
 ## D3 — antes del primer usuario no-admin
 
@@ -185,7 +90,7 @@ La separación debe cubrir panel, grants, RLS y RPC. Ocultar tarjetas no es segu
 - Nunca reejecutar una migración histórica como rollback.
 - SQL escrito no está desplegado hasta ejecutarlo en Supabase.
 - Edge Function escrita no está desplegada hasta redesplegarla.
-- No activar Wompi producción antes de F2.
+- No activar Wompi producción antes de aplicar F3 y corregir la URL de eventos de producción.
 - No crear el primer usuario reducido antes de D3.
 - Nunca exponer secretos o `service_role`.
 - Rama y PR nuevos por cambio; nunca push directo a `main`.

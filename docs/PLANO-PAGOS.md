@@ -1,6 +1,6 @@
 # PLANO · Pagos web (Wompi F2 → F4)
 
-**Corte:** 8 de octubre de 2026 · **Estado:** **F2 construido y probado** (pendiente de aplicar/desplegar: runbook F2 en `supabase/INSTRUCCIONES.md`). Wompi permanece en **sandbox** hasta F4.
+**Corte:** 9 de octubre de 2026 · **Estado:** **F2 desplegado** en sandbox (8-oct; medido el 9-oct). **F3 construido y probado**, pendiente de aplicar (runbook «Pagos F3» en `supabase/INSTRUCCIONES.md`). Wompi permanece en **sandbox** hasta F4, que se cierra con una compra real.
 
 Piezas de F2: migración `20261019000000`, Edge Function `wompi-webhook`, `crear-intencion-pago` modificada (persiste antes de firmar), aviso de pagos sin pedido en la portada de Ventas, y la tienda enviando comprador + procedencia.
 
@@ -82,7 +82,7 @@ Guarda el cuerpo completo, el checksum y el **resultado** de cada aviso, para po
 
 ## 6. Fuera del alcance de F2
 
-Asiento contable automático (F3), paso a producción (F4), carrito de varios productos, multimoneda y reservas temporales de stock. La cantidad sigue fija en 1.
+Asiento contable automático (F3, §10), paso a producción (F4, §11), carrito de varios productos, multimoneda y reservas temporales de stock. La cantidad sigue fija en 1.
 
 ## 7. Criterios de cierre (no basta ver «Success»)
 
@@ -108,3 +108,60 @@ Corrección de paso: el encabezado del área se desbordaba en 390 px (el rótulo
 
 - **`utm_campaign`**: el identificador de *nuestra* campaña, tomado de la URL que la persona abrió y recordado durante la visita (para que la compra se atribuya aunque ocurra dos páginas después). No identifica a nadie, así que viaja siempre: es lo que permite decir con honestidad «esta venta vino de este correo».
 - **`mg_vid`**: el identificador aleatorio del navegador. **Solo existe si la persona aceptó la analítica.** Si la rechazó, la compra no lleva identificador y no se crea uno para la ocasión.
+
+## 10. F3 · asiento contable automático (construido el 9-oct-2026)
+
+> Cada venta web pagada **de verdad** queda en los libros exactamente una vez, cuadrada al peso, sin que nadie la escriba. Si el pedido se anula, el contraasiento la deja en cero.
+
+### Decisiones del dueño (8 y 9-oct)
+
+1. **La plata no entra al banco el día de la venta.** Wompi consigna días después y ya sin su comisión. La venta va contra una cuenta puente, **138095 Otros (Wompi por liquidar)**, que se salda a mano cuando llega la consignación. Si no queda en cero, falta una consignación.
+2. **Comisión de Wompi → 530515 Comisiones**, en el asiento de liquidación. El evento de Wompi no la informa.
+3. Las cuentas configuradas eran de grupo (no imputables) y se bajaron a subcuenta. Se agregaron las que faltaban para el ciclo de venta.
+4. **La venta nunca falla por contabilidad.** Si el asiento no se puede crear, el pedido queda y la venta aparece en Finanzas con el motivo.
+5. **Validación al configurar**: una cuenta de grupo o inexistente se rechaza cuando se escribe.
+6. El correo **«Recibido»** de un pedido web sale solo. El texto sigue en `correo_plantillas`.
+
+### Decisiones de diseño
+
+7. **Un pago sandbox no se contabiliza.** Crea el pedido (F2), pero no movió dinero.
+8. **El IVA no se supone.** `iva_ventas_pct` nace vacío. `0` = no responsable (todo el precio es ingreso); `5` o `19` = precio con IVA incluido (base = total / (1 + t), redondeada al peso, y el IVA es la diferencia). Lo confirma el contador.
+9. **Un asiento automático no se edita ni se anula desde Finanzas.** Se corrige anulando el pedido. Así Ventas, Inventario y Finanzas nunca se contradicen.
+10. **Fecha de Colombia (H4).** El pedido web y su asiento usan la fecha de America/Bogota, no la de UTC.
+
+### Los dos asientos
+
+**Al aprobarse el pago** (automático, fecha del pedido):
+
+| Cuenta | Debe | Haber |
+|---|---:|---:|
+| 138095 Wompi por liquidar | precio | |
+| 413505 Venta de mercancías | | precio (o base sin IVA) |
+| 240805 IVA generado (solo si `iva_ventas_pct` > 0) | | IVA |
+| 613505 Costo de venta | cantidad × `costo_unitario` | |
+| 143505 Mercancías | | cantidad × `costo_unitario` |
+
+**Cuando Wompi consigna** (manual, runbook PF3.6): banco por el neto, 530515 por la comisión (y su IVA si no eres responsable de IVA), retenciones de los pagos con tarjeta (135515 y 135518), contra 138095 por el bruto.
+
+**Al anular el pedido:** las mismas cuentas con débito y crédito invertidos, con la fecha de la anulación. El asiento original no se toca.
+
+### Piezas
+
+- **Migración `20261020000000`.** Columnas `asientos.origen` (`manual`, `venta_web` o `reverso_venta_web`) y `origen_ref` (el pedido), más un índice único: un asiento de venta y un reverso por pedido. Los constructores internos se llaman `fz__asiento_venta_web` y `fz__reverso_venta_web`, y validan con la misma regla de oro de los manuales (`fz_validar_lineas`). También se reemitieron `pw_procesar_pago` (paso 8, el asiento), `anular_pedido` (el contraasiento) y `editar_asiento` / `anular_asiento` (protección).
+- **Finanzas.** Aviso de «ventas web sin asiento» en la portada, derivado de los datos y con el motivo actual, más el botón «Registrar asiento». En el Diario, la marca «Automático» sin Editar ni Anular.
+- **Correo «Recibido».** Con el pedido creado, `wompi-webhook` llama a `enviar-correo-pedido` en modo automático, autenticándose con la llave de servicio. La base limita esa puerta (`correo_auto_recibido_preparar`): solo «Recibido», solo pedidos web, al correo que está en la base y una sola vez. Si Resend falla, el envío queda «fallido» a la vista en Seguimiento, y el siguiente aviso de Wompi lo recupera. Nunca cambia la respuesta a Wompi.
+
+### Límites conocidos (a propósito)
+
+- El costo es el `costo_unitario` actual del producto: no hay costo por lote.
+- Ventas manuales y compras de mercancía siguen con asiento manual: es el tramo P6 (b) y (c).
+- Si se anula un pedido ya liquidado, 138095 queda con saldo crédito, que es la plata a devolver. Se cierra con el asiento de la devolución.
+
+## 11. F4 · paso a producción (pendiente)
+
+1. **Bloqueador encontrado el 8-oct.** En Wompi (modo producción), la URL de eventos apunta a otro proyecto de Supabase. Debe ser `https://<tu-proyecto>.supabase.co/functions/v1/wompi-webhook`; si no, los datos del pago irían a un proyecto ajeno.
+2. Secrets de producción: `WOMPI_EVENTS_PROD` y `WOMPI_INTEGRITY_PROD`.
+3. `pagos_config.llave_publica_prod` = `pub_prod_…`. Solo al final, `entorno = 'prod'`.
+4. Recomendado antes de cobrar: los arreglos de la tienda H2 (detalles de entrega), H3 (confirmación al volver de Wompi) y H5 (mensajes de error). Están en el relevo del 9-oct.
+5. **Compra real de monto pequeño** (decisión del dueño: un shampoo para uso propio). Verifica F2, F3 y F4 de una sola vez (runbook PF3.7) y después se concilia con la liquidación (PF3.6).
+6. **Reversión:** `update pagos_config set entorno = 'sandbox' where id = 1;` deja de cobrar de inmediato. Nada contable se reescribe: lo ya registrado se corrige anulando el pedido.
