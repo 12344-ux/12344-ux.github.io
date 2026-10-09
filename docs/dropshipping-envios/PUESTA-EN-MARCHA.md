@@ -27,7 +27,7 @@ El dominio usa Zoho Mail (verificado en el DNS el 9-oct-2026). No hay que contra
 - [x] **Registro directo:** cuenta de Colombia creada como **dropshipper** con `operaciones@magandhi.com`.
 - [x] Identidad del titular validada por Dropi con documento y fotografías (9-oct-2026).
 - [ ] Perfil bancario y facturación electrónica completos con los datos fiscales correctos del titular.
-- [x] En «Mis Integraciones» se probó `magandhi.com`, tipo `WOOCOMERCE`, URL `https://magandhi.com`, porque no existe «tienda propia». **Diagnóstico posterior:** no es una conexión válida: Dropi espera `/wc-auth/v1/authorize` y MAGANDHI no es WordPress. Se conserva solo mientras soporte puede necesitar identificar la prueba; luego se retira.
+- [x] En «Mis Integraciones», `magandhi.com` con tipo `WOOCOMERCE`, porque no existe «tienda propia». **Es la integración vigente y basta**, sin completar su OAuth: medido el 9-oct, su token lee el catálogo y la ficha de cualquier producto (`DROPI.md` §7).
 - [x] Token nuevo generado después de validar y guardado en el gestor de contraseñas y en Supabase Secrets. El inicial, que apareció en una captura, quedó sustituido.
 
 ## 3. Consulta a soporte de Dropi
@@ -35,19 +35,18 @@ El dominio usa Zoho Mail (verificado en el DNS el 9-oct-2026). No hay que contra
 **Estado 9-oct-2026:** el asistente de Dropi cerró el chat y confirmó que las solicitudes de API se tramitan exclusivamente por correo. Asignó un contacto humano y pidió tres cosas: motivo/proyecto, endpoints exactos y usuario o id de la cuenta. La dirección concreta permanece en la conversación privada; no se replica en este repositorio público.
 
 - [x] Consulta inicial enviada por el chat de Dropi. Fecha: 9-oct-2026.
-- [ ] Correo breve enviado al contacto asignado por Dropi, explicando que el proyecto está **en pre-lanzamiento**, que MAGANDHI no es WooCommerce y pidiendo el tipo/acceso correcto de solo lectura.
 - [x] Respuesta inicial anotada en §7.
+- [ ] Correo al contacto asignado. **Ya no es un bloqueo**: la lectura funciona. Ahora el correo sirve para quitar deuda, no para desbloquear.
 
-El correo técnico se limita al embudo que realmente necesita MAGANDHI:
+Qué pedir, con la lectura ya funcionando:
 
-- tienda propia en **pre-lanzamiento**, sin Shopify ni WooCommerce;
-- el dueño elige el producto en Dropi y pega su URL/id en MAGANDHI;
-- alcance inmediato **solo lectura por producto**, no copia masiva del catálogo;
-- confirmar/habilitar `GET /integrations/products/v2/{product_id}` para detalle inicial y `GET /integrations/products/{product_id}` para stock actualizado (o indicar sus reemplazos vigentes);
-- campos necesarios: id, variantes/`variation_id`, stock, precios, imágenes y proveedor;
-- límite de consultas y si existe webhook de cambios de stock.
+- **autorizar el `User-Agent` propio de MAGANDHI**, para no depender de enviar uno con prefijo `WordPress/` (`DROPI.md` §7);
+- el contrato oficial de `products/v2/{id}` y el **límite de consultas por minuto**, para fijar cada cuánto refrescar el stock;
+- si existe **webhook de cambios de stock**;
+- por qué `GET products/{id}` responde «No tiene permisos» y cuál es la ruta correcta de existencias, si hay otra;
+- contrato de pedidos: crear `SIN RECAUDO`, consultar por id, guía y estados.
 
-Pedidos, guías y recaudo quedan fuera de esta primera solicitud. No se envían tokens ni contraseñas por correo.
+No se envían tokens ni contraseñas por correo.
 
 ### Prueba alternativa autorizada · WooCommerce aislado
 

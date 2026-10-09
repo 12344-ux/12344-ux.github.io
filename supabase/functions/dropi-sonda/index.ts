@@ -3,11 +3,15 @@
 // ----------------------------------------------------------------------------
 // Pregunta una sola cosa: ¿la API de produccion de Dropi acepta nuestro token?
 //
-// SOLO LECTURA. Hace dos consultas a Dropi y devuelve lo que respondio:
-//   1) GET  categories/       -> ¿el token entra?
-//   2) POST products/index    -> busqueda del catalogo (es el listado que usa
-//                                el plugin oficial de WooCommerce; POST porque
-//                                lleva filtros, NO crea nada)
+// SOLO LECTURA. Consultas a Dropi; devuelve lo que respondio:
+//   1) GET  categories/            -> ¿el token entra?
+//   2) POST products/index         -> busqueda del catalogo (es el listado que
+//                                     usa el plugin oficial; POST porque lleva
+//                                     filtros, NO crea nada)
+//   3) GET  products/v2/{id}       -> ficha completa de UN producto elegido
+//   4) GET  products/{id}          -> existencias de ESE producto (la consulta
+//                                     que mantendria «agotado» al dia)
+// Las dos ultimas solo corren si se manda { producto_id }.
 // No llama a orders/*, no escribe en la base, no guarda nada.
 //
 // Quien puede llamarla: un usuario con sesion y rol 'admin' en perfiles.
@@ -19,6 +23,14 @@
 
 const BASE = (Deno.env.get("DROPI_API_BASE") ?? "https://api.dropi.co/integrations/").replace(/\/*$/, "/");
 const ESPERA_MS = 15000;
+
+// MEDIDO el 9-oct-2026 con dropi-cabeceras: Dropi responde 401 "Access denied"
+// a una peticion SIN User-Agent, y 200 a la MISMA peticion con uno. Era lo
+// unico que faltaba; no era el token, ni el permiso, ni la IP. Se envia un
+// User-Agent honesto que identifica a MAGANDHI (no se finge ser otro programa).
+// Si algun dia Dropi endurece la regla, se cambia con el secreto. Se lee en
+// cada peticion, no al arrancar, para que el cambio valga sin redesplegar.
+const ua = () => (Deno.env.get("DROPI_USER_AGENT") ?? "MAGANDHI-Impulse/1.0 (+https://magandhi.com)").trim();
 
 const ORIGENES = new Set(["https://montaguth.institute", "https://www.montaguth.institute", "https://12344-ux.github.io"]);
 function cors(origin: string | null) {
@@ -44,7 +56,12 @@ async function llamarDropi(metodo: "GET" | "POST", ruta: string, token: string, 
   try {
     const r = await fetch(BASE + ruta, {
       method: metodo,
-      headers: { "Content-Type": "application/json;charset=UTF-8", "dropi-integration-key": token },
+      headers: {
+        "Content-Type": "application/json;charset=UTF-8",
+        "dropi-integration-key": token,
+        Accept: "application/json",
+        "User-Agent": ua(),
+      },
       body: cuerpo ? JSON.stringify(cuerpo) : undefined,
       signal: ctrl.signal,
     });
@@ -64,6 +81,9 @@ async function llamarDropi(metodo: "GET" | "POST", ruta: string, token: string, 
 function resumir(r: Awaited<ReturnType<typeof llamarDropi>>) {
   const j = r.j ?? {};
   const objetos = Array.isArray(j.objects) ? j.objects : null;
+  // Al pedir UN producto por id, Dropi devuelve `objects` como objeto suelto,
+  // no como lista. Se guarda aparte para no perderlo.
+  const objeto = !Array.isArray(j.objects) && esObj(j.objects) ? j.objects : null;
   return {
     http: r.http,
     ms: r.ms,
@@ -74,6 +94,7 @@ function resumir(r: Awaited<ReturnType<typeof llamarDropi>>) {
     cantidad: objetos ? objetos.length : null,
     total: typeof j.count === "number" ? j.count : null,
     objetos,
+    objeto,
   };
 }
 
@@ -87,13 +108,23 @@ function muestraProducto(p: unknown) {
   const cats = Array.isArray(p.categories) ? p.categories.map((c) => (esObj(c) ? corto(c.name, 60) : null)).filter(Boolean) : [];
   const fotos = Array.isArray(p.gallery) ? p.gallery.length : Array.isArray(p.photos) ? p.photos.length : null;
   const prov = esObj(p.user) ? p.user : null;
+  // MEDIDO el 9-oct-2026: `GET products/{id}` responde 400 «No tiene permisos
+  // para ver este producto», pero la ficha de `products/v2/{id}` YA trae las
+  // existencias en warehouse_product. De ahi sale el stock, no de la otra ruta.
+  const bodegas = Array.isArray(p.warehouse_product)
+    ? p.warehouse_product.map((w) => (esObj(w) ? { bodega_id: w.warehouse_id ?? w.id ?? null, stock: Number(w.stock) || 0 } : null)).filter(Boolean)
+    : [];
   return {
     id: p.id ?? null,
     nombre: corto(p.name, 120),
+    sku: corto(p.sku, 60),
     tipo: corto(p.type, 20),
+    activo: p.active ?? null,
+    privado: p.privated_product ?? null,
     precio_proveedor: p.sale_price ?? null,
     precio_sugerido: p.suggested_price ?? null,
     stock: typeof p.stock === "number" ? p.stock : sumarStock(p.warehouse_product),
+    bodegas,
     variaciones: variaciones.length,
     categorias: cats,
     fotos,
@@ -137,6 +168,12 @@ Deno.serve(async (req) => {
   let body: Obj = {};
   try { body = await req.json(); } catch { /* sin cuerpo: busqueda vacia */ }
   const buscar = corto(body.buscar, 60) ?? "";
+  // Un id concreto: es el embudo real. El dueno elige el producto en Dropi y
+  // aqui se lee SOLO ese, no el catalogo entero.
+  const idCrudo = body.producto_id;
+  const productoId = typeof idCrudo === "number" || (typeof idCrudo === "string" && /^\d{1,12}$/.test(idCrudo))
+    ? String(idCrudo)
+    : null;
 
   // 3) Las dos consultas de solo lectura.
   const cat = resumir(await llamarDropi("GET", "categories/", token));
@@ -152,17 +189,34 @@ Deno.serve(async (req) => {
     get_stock: false,
   }));
 
+  // 3 bis) Si vino un id, se lee ese producto por las dos rutas que usa el
+  // plugin: v2 para la ficha completa y la simple para refrescar existencias.
+  // Esta es la prueba del STOCK sin WooCommerce de por medio.
+  const detalle = productoId ? resumir(await llamarDropi("GET", `products/v2/${productoId}`, token)) : null;
+  // Se sigue consultando para dejar registro de que esta ruta NO esta
+  // permitida (400 «No tiene permisos»). El stock util sale de `detalle`.
+  const stock = productoId ? resumir(await llamarDropi("GET", `products/${productoId}`, token)) : null;
+
   const entra = cat.isSuccess === true || prod.isSuccess === true;
   const negado = [cat, prod].some((r) => r.http === 401 || /access denied/i.test(r.mensaje ?? ""));
   const ip = cat.ip_vista_por_dropi ?? prod.ip_vista_por_dropi;
 
+  // Un objeto suelto (la ficha de un producto) o el primero si vino lista.
+  const unProducto = (r: typeof detalle) => (r ? (r.objeto ?? r.objetos?.[0] ?? null) : null);
+  const fichaDetalle = unProducto(detalle);
+  const fichaStock = unProducto(stock);
+
   let conclusion: string;
   if (entra) {
-    conclusion = "Conectados: Dropi aceptó el token desde Supabase.";
+    conclusion = productoId
+      ? (detalle?.isSuccess === true
+        ? `Conectados y el producto ${productoId} se leyó directo desde Dropi: ficha y existencias salen de products/v2. Con esto se arma el embudo a Campañas.`
+        : `Conectados al catálogo, pero la ficha del producto ${productoId} no se pudo leer. Revisa que el id exista en Dropi.`)
+      : "Conectados: Dropi aceptó el token desde Supabase. Vuelve a correrla con { producto_id: 1234 } para leer un producto concreto y su stock.";
   } else if (negado) {
     conclusion = ip
-      ? `Dropi negó el acceso. Llegamos desde la IP ${ip}. Puede ser el token o que Dropi exija autorizar la IP: llévale este resultado a soporte.`
-      : "Dropi negó el acceso (token no aceptado). Revisa que el secreto sea el token de la tienda.";
+      ? `Dropi negó el acceso. Llegamos desde la IP ${ip} con el User-Agent «${ua()}». Si antes funcionaba, prueba cambiando el secreto DROPI_USER_AGENT.`
+      : "Dropi negó el acceso (token no aceptado). Revisa que el secreto sea el token de la integración autenticada.";
   } else {
     conclusion = "Dropi respondió algo inesperado. Pásale este resultado a Kiro.";
   }
@@ -173,7 +227,24 @@ Deno.serve(async (req) => {
   return json({
     conectado: entra,
     conclusion,
+    user_agent_usado: ua(),
     busqueda: buscar || null,
+    // Lo que de verdad decide el frente: ¿se puede leer un producto y su stock
+    // directo de Dropi, cuando queramos?
+    producto: productoId
+      ? {
+          id_pedido: productoId,
+          detalle: { http: detalle?.http ?? null, isSuccess: detalle?.isSuccess ?? null, mensaje: detalle?.mensaje ?? null },
+          // Esperado: 400. Queda a la vista para no volver a apoyarse en ella.
+          ruta_stock_aparte: { http: stock?.http ?? null, isSuccess: stock?.isSuccess ?? null, mensaje: stock?.mensaje ?? null },
+          campos_detalle: esObj(fichaDetalle) ? Object.keys(fichaDetalle).sort() : [],
+          ficha: muestraProducto(fichaDetalle),
+          // La misma ficha leida por la ruta de existencias: es la que se
+          // consultaria cada pocos minutos para que «agotado» siga a Dropi.
+          existencias: muestraProducto(fichaStock),
+          leido: new Date().toISOString(),
+        }
+      : null,
     categorias: {
       http: cat.http, ms: cat.ms, isSuccess: cat.isSuccess, mensaje: cat.mensaje, ip_vista_por_dropi: cat.ip_vista_por_dropi,
       cantidad: cat.cantidad,

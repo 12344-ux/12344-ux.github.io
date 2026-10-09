@@ -45,11 +45,11 @@ El dueño puede cambiarlos:
 
 | Fase | Qué entrega | Estado |
 |---|---|---|
-| 0 | Cuentas, consulta a Dropi, muestras y cotizaciones (`PUESTA-EN-MARCHA.md`), y la sonda de solo lectura (`DROPI.md` §6) | **En curso** · la sonda dio 401 desde Supabase y desde una PC: el token no abre la API. Falta que soporte habilite el acceso |
+| 0 | Cuentas, consulta a Dropi, muestras y cotizaciones (`PUESTA-EN-MARCHA.md`), y la sonda de solo lectura (`DROPI.md` §6) | **Casi cerrada.** **Dropi ya le responde a MAGANDHI:** faltaba el `User-Agent` (§7). Quedan muestras, cotizaciones y contador |
 | 1 | Guía manual en Ventas y correo «En camino» automático con el rastreo | Diseñada, no depende de nadie |
 | 2 | Guías automáticas para productos propios | Espera las cotizaciones |
-| 3 | Catálogo de proveedor y sello ligado a una prueba registrada | Espera la respuesta de Dropi |
-| 4 | Pedidos de proveedor enviados a Dropi y seguimiento de la guía | Espera la respuesta de Dropi |
+| 3 | Embudo por producto y sello ligado a una prueba registrada | **Lista para construir.** La ficha y el stock de un producto se leen directo de Dropi por su id. Solo falta medir si el stock se refresca |
+| 4 | Pedidos de proveedor enviados a Dropi y seguimiento de la guía | Falta confirmar el contrato de `orders/` y el contador |
 | 5 | Contraentrega | Solo si los números lo piden |
 
 **Antes de vender productos de proveedor, la tienda necesita dos arreglos** (pendientes #3 y #4 de `CONTEXTO-MAGANDHI.md` §9):
