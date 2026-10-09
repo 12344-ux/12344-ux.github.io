@@ -1,19 +1,20 @@
 # Supabase · runbook operativo MAGANDHI / Impulse
 
-> **Estado al 9-oct-2026:** en producción está desplegada **Wompi F2** en sandbox
-> (`20261018000000` y `20261019000000` aplicadas el 8-oct; medido el 9-oct:
-> las tablas y funciones de F2 existen y `wompi-webhook` responde `401 Firma
-> ausente` a un aviso sin firma). **`20261002000000` quedó SUPERADA y no debe
-> aplicarse** (ver §0). La siguiente acción es **aplicar F3** (sección «Pagos F3»
-> al final de esta guía) y después F4 con la compra real.
+> **Estado al 9-oct-2026 (punto de unificación):** en producción están aplicadas
+> **todas** las migraciones hasta `20261020000000` (F3), salvo
+> **`20261002000000`, que quedó SUPERADA y no debe aplicarse** (ver §0). Las Edge
+> Functions del repo están desplegadas, y Wompi F1 a F4 quedó verificado con una
+> compra real (ver «Pagos F3» PF3.7). La próxima migración nueva será la
+> `20261021…`; el trabajo pendiente vive en `CONTEXTO-MAGANDHI.md` §9.
 >
 > **Regla de migraciones:** los archivos ya aplicados son historia inmutable.
 > Nunca se reejecutan como arreglo o rollback sobre la base actual. Toda
 > corrección se agrega en una migración forward nueva.
 >
 > Los capítulos antiguos de esta guía documentan cómo se construyó el sistema.
-> No prevalecen sobre el estado acumulativo descrito arriba, `CONTEXTO-MAGANDHI.md`
-> y `ANDAMIOS.md`.
+> No prevalecen sobre el estado acumulativo descrito arriba ni sobre
+> `CONTEXTO-MAGANDHI.md`. (Las menciones a `ANDAMIOS.md` en capítulos viejos son
+> historia: ese plan se retiró el 9-oct-2026.)
 
 El agente no tiene acceso al dashboard. SQL escrito en este repositorio no está
 desplegado hasta que el dueño lo ejecute en SQL Editor; una Edge Function tampoco

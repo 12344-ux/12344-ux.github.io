@@ -75,6 +75,6 @@ Aprobado por el dueño tras revisarlo con una vista de ejemplo que ya se cerró.
 
 ## 9. Pendientes
 
-1. **Entregar el código al cliente por correo**, en el último correo de seguimiento. Requiere montar el envío de correos de MAGANDHI. Hasta cerrarlo no entran opiniones reales; mientras tanto el código se comparte a mano desde el back-office. Detalle en `ANDAMIOS.md`.
+1. ~~Entregar el código al cliente por correo.~~ **Hecho:** viaja en el correo de «Entregado» (en producción), y el 9-oct entró la primera opinión real.
 2. Repaso de textos de la sección pública; el diseño ya está aprobado.
 3. Mostrar el `codigo_resena` del pedido dentro del detalle de Ventas, para copiarlo sin salir del tablero.

@@ -1,6 +1,6 @@
 # PLANO · Pagos web (Wompi F2 → F4)
 
-**Corte:** 9 de octubre de 2026 · **Estado:** **F2 desplegado** en sandbox (8-oct; medido el 9-oct). **F3 construido y probado**, pendiente de aplicar (runbook «Pagos F3» en `supabase/INSTRUCCIONES.md`). Wompi permanece en **sandbox** hasta F4, que se cierra con una compra real.
+**Corte:** 9 de octubre de 2026 · **Estado:** **F1 a F4 en producción**, verificados con una compra real el 9-oct (§11). Runbook en `supabase/INSTRUCCIONES.md` (F2 y «Pagos F3»).
 
 Piezas de F2: migración `20261019000000`, Edge Function `wompi-webhook`, `crear-intencion-pago` modificada (persiste antes de firmar), aviso de pagos sin pedido en la portada de Ventas, y la tienda enviando comprador + procedencia.
 
@@ -109,7 +109,7 @@ Corrección de paso: el encabezado del área se desbordaba en 390 px (el rótulo
 - **`utm_campaign`**: el identificador de *nuestra* campaña, tomado de la URL que la persona abrió y recordado durante la visita (para que la compra se atribuya aunque ocurra dos páginas después). No identifica a nadie, así que viaja siempre: es lo que permite decir con honestidad «esta venta vino de este correo».
 - **`mg_vid`**: el identificador aleatorio del navegador. **Solo existe si la persona aceptó la analítica.** Si la rechazó, la compra no lleva identificador y no se crea uno para la ocasión.
 
-## 10. F3 · asiento contable automático (construido el 9-oct-2026)
+## 10. F3 · asiento contable automático (en producción desde el 9-oct-2026)
 
 > Cada venta web pagada **de verdad** queda en los libros exactamente una vez, cuadrada al peso, sin que nadie la escriba. Si el pedido se anula, el contraasiento la deja en cero.
 
@@ -157,11 +157,20 @@ Corrección de paso: el encabezado del área se desbordaba en 390 px (el rótulo
 - Ventas manuales y compras de mercancía siguen con asiento manual: es el tramo P6 (b) y (c).
 - Si se anula un pedido ya liquidado, 138095 queda con saldo crédito, que es la plata a devolver. Se cierra con el asiento de la devolución.
 
-## 11. F4 · paso a producción (pendiente)
+## 11. F4 · paso a producción (cerrado el 9-oct-2026)
 
-1. **Bloqueador encontrado el 8-oct.** En Wompi (modo producción), la URL de eventos apunta a otro proyecto de Supabase. Debe ser `https://<tu-proyecto>.supabase.co/functions/v1/wompi-webhook`; si no, los datos del pago irían a un proyecto ajeno.
-2. Secrets de producción: `WOMPI_EVENTS_PROD` y `WOMPI_INTEGRITY_PROD`.
-3. `pagos_config.llave_publica_prod` = `pub_prod_…`. Solo al final, `entorno = 'prod'`.
-4. Recomendado antes de cobrar: los arreglos de la tienda H2 (detalles de entrega), H3 (confirmación al volver de Wompi) y H5 (mensajes de error). Están en el relevo del 9-oct.
-5. **Compra real de monto pequeño** (decisión del dueño: un shampoo para uso propio). Verifica F2, F3 y F4 de una sola vez (runbook PF3.7) y después se concilia con la liquidación (PF3.6).
-6. **Reversión:** `update pagos_config set entorno = 'sandbox' where id = 1;` deja de cobrar de inmediato. Nada contable se reescribe: lo ya registrado se corrige anulando el pedido.
+Lo que se hizo:
+- La URL de eventos de producción en Wompi apuntaba a otro proyecto de Supabase y se corrigió.
+- Se cargaron los secrets `WOMPI_EVENTS_PROD` y `WOMPI_INTEGRITY_PROD`.
+- Se pegó la llave pública de producción en `pagos_config` y se cambió `entorno = 'prod'`.
+
+**Compra real del dueño:** un shampoo de $69.900, pagado con Nequi. Resultado:
+- pedido web y stock −1;
+- asiento automático (138095 D 69.900 · 413505 H 69.900 · 613505 D / 143505 H 47.705);
+- correos de cada etapa y una opinión real.
+
+**Lo que abonó Wompi:** $66.862,71. Descontó $3.037,29, que son 2,65 % + $700 de comisión ($2.552,35) más el IVA del 19 % sobre esa comisión ($484,95). No hubo retenciones porque no fue con tarjeta.
+
+**Queda:** el asiento de liquidación cuando Wompi consigne (PF3.6). Los arreglos de la tienda (confirmación al volver, detalles de entrega, mensajes de error) están en `CONTEXTO-MAGANDHI.md` §9.
+
+**Reversión:** `update pagos_config set entorno = 'sandbox' where id = 1;` deja de cobrar de inmediato. Nada contable se reescribe: lo ya registrado se corrige anulando el pedido.
