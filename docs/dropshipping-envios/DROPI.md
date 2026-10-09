@@ -78,9 +78,39 @@ Reglas:
 
 ## 6. La primera prueba: sonda de solo lectura
 
-Cuando el token esté en Supabase (secreto `DROPI_TOKEN`), una Edge Function de solo lectura llamará `GET categories/` y `GET products/v2/`. Devolverá solo el código de respuesta y el número de resultados: no crea pedidos ni guarda datos.
-
 Responde la pregunta grande con evidencia: **¿producción nos acepta?**
+
+El token sale de Dropi → Mis Integraciones → tipo **WOOCOMERCE**, porque no hay un tipo «tienda propia». El plugin de WooCommerce solo envía ese token por HTTP, igual que lo hace nuestra función.
+
+**Qué hace `supabase/functions/dropi-sonda`:**
+
+- `GET categories/` y `POST products/index`, que es la búsqueda del catálogo que usa el plugin: lleva filtros, no crea nada;
+- nunca llama a `orders/`, no escribe en la base y no guarda nada;
+- solo la puede usar un admin con sesión, y el token nunca sale en la respuesta ni en los logs;
+- devuelve si entramos, la IP desde la que nos vio Dropi (cuando niega el acceso), los campos que trae un producto y una muestra de 5 productos.
+
+**Comportamiento medido el 9-oct-2026, con un token inválido:** Dropi responde `401 · Access denied` y devuelve la IP de origen. Con eso, si nos niegan, se sabe qué IP pedir que autoricen.
+
+**Cómo correrla:**
+
+1. Supabase → Edge Functions → **Deploy a new function** → nombre exacto `dropi-sonda` → pegar `supabase/functions/dropi-sonda/index.ts` → Deploy. **Verify JWT: encendido.**
+2. Abrir `https://montaguth.institute/panel.html` con la sesión de admin → F12 → Consola → pegar:
+
+   ```js
+   const { supabase } = await import('/supabase-config.js');
+   const r = await supabase.functions.invoke('dropi-sonda', { body: { buscar: '' } });
+   console.log(JSON.stringify(r.data ?? r.error, null, 2));
+   ```
+
+   En `buscar` se puede poner una palabra, por ejemplo `'shampoo'`.
+3. Leer `conclusion`. La respuesta no trae el token y se puede compartir con Kiro.
+
+| Resultado | Qué sigue |
+|---|---|
+| `conectado: true` | Diseñar el arrastre de productos con `campos_disponibles` y la `muestra` |
+| `Access denied` con IP | Revisar que el secreto sea el token de la tienda. Si lo es, pedirle a soporte que autorice el acceso. Las IP de Supabase no son fijas: puede hacer falta el intermediario de §3 |
+
+Pruebas locales hechas, con Dropi simulado y también contra Dropi real con un token inválido: sin sesión 401, no admin 403, sin secreto, acceso negado con IP, conexión correcta con muestra; nunca toca `orders/` y el token no aparece en la respuesta.
 
 ## Fuentes
 

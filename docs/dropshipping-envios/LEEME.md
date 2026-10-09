@@ -1,6 +1,6 @@
 # Dropshipping y envíos · frente nuevo de MAGANDHI
 
-**Corte:** 9 de octubre de 2026 · **Estado:** puesta en marcha (cuentas, consultas y muestras). Todavía no hay código.
+**Corte:** 9 de octubre de 2026 · **Estado:** puesta en marcha (cuentas, consultas y muestras). El único código es la sonda de solo lectura de Dropi.
 
 Esta carpeta documenta el frente que abrió el dueño el 9-oct-2026:
 
@@ -45,7 +45,7 @@ El dueño puede cambiarlos:
 
 | Fase | Qué entrega | Estado |
 |---|---|---|
-| 0 | Cuentas, consulta a Dropi, muestras y cotizaciones (`PUESTA-EN-MARCHA.md`) | **En curso** |
+| 0 | Cuentas, consulta a Dropi, muestras y cotizaciones (`PUESTA-EN-MARCHA.md`), y la sonda de solo lectura (`DROPI.md` §6) | **En curso** · cuenta, tienda y secreto `DROPI_TOKEN` listos; falta correr la sonda |
 | 1 | Guía manual en Ventas y correo «En camino» automático con el rastreo | Diseñada, no depende de nadie |
 | 2 | Guías automáticas para productos propios | Espera las cotizaciones |
 | 3 | Catálogo de proveedor y sello ligado a una prueba registrada | Espera la respuesta de Dropi |
