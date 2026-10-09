@@ -225,6 +225,7 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 - `docs/PLANO-EMAIL-MARKETING.md` y `docs/PLANO-METRICAS.md`: diseño vigente de esas áreas.
 - `docs/PLANO-INVENTARIO.md`, `docs/PLANO-VENTAS.md`, `docs/PLANO-OPINIONES.md` y `docs/PLANO-CORREO.md`: memoria histórica de diseño, no DDL operativo.
 - `docs/MAPA-CONEXIONES-TANDA2.md`: mapa técnico de las conexiones ya implementadas.
+- `docs/dropshipping-envios/`: frente nuevo del 9-oct-2026 (productos de proveedor con Dropi y guías para los productos propios). Se empieza por su `LEEME.md`.
 - `supabase/pruebas/diagnostico-produccion.sql`: diagnóstico de solo lectura para medir producción sin fiarse de los documentos.
 - `supabase/pruebas/local/herramientas/LEEME.md`: banco de pruebas local (también corre en GitHub Actions en cada rama).
 
@@ -254,6 +255,8 @@ No hay nada a medias. Lo que sigue, por orden sugerido:
 8. Finanzas, siguiente: asiento automático de las **ventas manuales** (pedir la forma de pago al registrar) y de las **compras de mercancía** (costo del lote y forma de pago en «Registrar entrada»).
 9. **D3** (permisos granulares por capacidad en panel, grants, RLS y RPC) antes del primer usuario que no sea admin.
 10. Menores: el canal web visible en la lista de Seguimiento (hoy solo en el detalle), el cierre anual de Finanzas cuando cambie el ejercicio, el pulido de exportaciones, favicons propios para Marketing, Producción y Ventas, y la elasticidad cuando haya necesidad validada.
+
+**Frente nuevo · dropshipping y envíos (9-oct-2026):** vender productos de proveedores de Dropi, que despacha el proveedor, y dar guía y rastreo a los pedidos propios. Hoy está en la fase 0 (cuentas, consulta a Dropi, muestras y cotizaciones), sin código. Los puntos 3 y 4 de la tienda pasan a ser requisito antes de vender productos de proveedor. Todo en `docs/dropshipping-envios/LEEME.md`.
 
 **Repositorios:** quedan abiertos PR viejos ya superados: panel #227 y #216; tienda #46, #21 y #15. Cerrarlos o no lo decide el dueño.
 
