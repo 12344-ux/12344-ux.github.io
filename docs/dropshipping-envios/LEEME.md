@@ -45,7 +45,7 @@ El dueño puede cambiarlos:
 
 | Fase | Qué entrega | Estado |
 |---|---|---|
-| 0 | Cuentas, consulta a Dropi, muestras y cotizaciones (`PUESTA-EN-MARCHA.md`), y la sonda de solo lectura (`DROPI.md` §6) | **En curso** · cuenta, tienda y secreto `DROPI_TOKEN` listos; falta correr la sonda |
+| 0 | Cuentas, consulta a Dropi, muestras y cotizaciones (`PUESTA-EN-MARCHA.md`), y la sonda de solo lectura (`DROPI.md` §6) | **En curso** · la sonda dio 401 desde Supabase y desde una PC: el token no abre la API. Falta que soporte habilite el acceso |
 | 1 | Guía manual en Ventas y correo «En camino» automático con el rastreo | Diseñada, no depende de nadie |
 | 2 | Guías automáticas para productos propios | Espera las cotizaciones |
 | 3 | Catálogo de proveedor y sello ligado a una prueba registrada | Espera la respuesta de Dropi |

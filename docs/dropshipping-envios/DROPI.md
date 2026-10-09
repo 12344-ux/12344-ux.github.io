@@ -110,6 +110,17 @@ El token sale de Dropi → Mis Integraciones → tipo **WOOCOMERCE**, porque no 
 | `conectado: true` | Diseñar el arrastre de productos con `campos_disponibles` y la `muestra` |
 | `Access denied` con IP | Revisar que el secreto sea el token de la tienda. Si lo es, pedirle a soporte que autorice el acceso. Las IP de Supabase no son fijas: puede hacer falta el intermediario de §3 |
 
+**Resultado real, 9-oct-2026 (token de Mis Integraciones, tipo WOOCOMERCE):**
+
+| Desde | Respuesta |
+|---|---|
+| Supabase (IP de Amazon) | `401 · Access denied` en `categories/` y en `products/index` |
+| PC del dueño (IP de casa en Colombia) | `401 · No autorizado` en `categories/` |
+
+**Conclusión:** no es solo un bloqueo por IP. Ese token, por sí solo, no abre la API de `integrations/` para esta cuenta. Hay que pedirle a soporte que habilite el acceso (`PUESTA-EN-MARCHA.md` §3). El token quedó visible en una captura: hay que generar uno nuevo antes de usarlo en serio.
+
+**Mientras tanto, sin API:** se publican a mano los pocos productos curados y cada pedido se crea a mano en el panel de Dropi como pagado (sin recaudo).
+
 Pruebas locales hechas, con Dropi simulado y también contra Dropi real con un token inválido: sin sesión 401, no admin 403, sin secreto, acceso negado con IP, conexión correcta con muestra; nunca toca `orders/` y el token no aparece en la respuesta.
 
 ## Fuentes
