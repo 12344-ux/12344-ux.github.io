@@ -53,13 +53,16 @@ Pedidos, guías y recaudo quedan fuera de esta primera solicitud. No se envían 
 
 Solo para medir, sin tocar `magandhi.com`:
 
-- [ ] Crear un sandbox WordPress público y temporal (primera opción: InstaWP gratuito, 48 h).
-- [ ] Instalar WooCommerce; país Colombia y moneda COP. Sin pagos, envíos, clientes ni pedidos.
-- [ ] Conectar Dropi por OAuth usando la URL temporal; token nuevo y revocable.
+- [x] Sandbox WordPress público y temporal. InstaWP pidió tarjeta, así que se usó **TasteWP** (gratuito, sin tarjeta). Caduca en pocos días.
+- [x] WooCommerce instalado, país Colombia y moneda COP. Sin pagos, envíos, clientes ni pedidos.
+- [x] Enlaces permanentes en «Nombre de la entrada» (requisito de la API REST de WooCommerce).
+- [x] Integración `prueba MAGANDHI` creada y **autenticada** con el botón de la pestaña «Dropi → Woocomerce». Dropi generó su propia pareja Consumer Key / Secret.
+- [x] Sonda de Dropi repetida con el token ya autenticado: sigue en `401` desde Supabase y desde el PC.
+- [ ] Instalar Dropify en el sandbox y pegar el token. **Esto decide el camino:** si carga la lista de productos de Dropi, el token sí lee el catálogo y podemos ir directo; si falla, solo sirve lo que Dropi empuja.
 - [ ] Importar exactamente un producto y verificar texto, imágenes, variantes, ids, precios y stock.
-- [ ] Repetir la sonda después de completar OAuth.
-- [ ] Verificar stock: el plugin Dropify **no sirve como prueba de actualización periódica** por sí solo; su código vigente retorna antes de ejecutar el trabajo programado.
-- [ ] Borrar integración y sandbox al terminar, salvo decisión expresa de conservarlo.
+- [ ] Correr `woo-sonda` (`DROPI.md` §7) y anotar `stock_quantity`.
+- [ ] Repetirla horas después y comparar: **si el stock no se mueve, el puente no sirve** para la promesa del plano.
+- [ ] Borrar integración y sandbox al terminar, salvo decisión expresa de conservarlo. Las llaves del sandbox quedaron expuestas en una captura: mueren con el sitio.
 
 Criterio: solo se evalúa un conector permanente si importación **y** stock actualizable quedan demostrados. Nunca se instala WordPress sobre el dominio principal.
 
