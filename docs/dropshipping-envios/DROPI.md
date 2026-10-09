@@ -1,6 +1,8 @@
 # Dropi · integración
 
-**Corte:** 9 de octubre de 2026 · **Estado:** investigación. **Dropi todavía no ha confirmado nada de esto.**
+**Corte:** 9 de octubre de 2026 · **Estado:** **la lectura funciona.** MAGANDHI lee el catálogo de Dropi y la ficha de cualquier producto por su id, directo desde Supabase, sin intermediarios. Los pedidos (`orders/`) siguen sin probar.
+
+> **Hito del 9-oct-2026.** Después de un día de 401, la causa era que Dropi **rechaza las peticiones cuyo `User-Agent` no reconoce**. No era el token, ni el permiso de la cuenta, ni la IP, ni la validación de identidad, ni la falta de WooCommerce. Con el `User-Agent` correcto, la cuenta de `magandhi.com` entra sola: **se descartan Shopify y WooCommerce como puentes** y el sandbox de prueba se puede borrar. Cómo se halló, en §7.
 
 ## 1. Lo que se sabe
 
@@ -44,12 +46,14 @@ Por eso registrar el dominio principal como `WOOCOMERCE` fue una prueba útil, p
 
 ## 3. Lo que falta confirmar con Dropi
 
-Las preguntas exactas están en `PUESTA-EN-MARCHA.md` §3:
+Ya resuelto por medición: el acceso de lectura funciona, no exigen IP fija y la IP de Supabase no estorba (§7).
 
-- acceso a producción para una tienda propia y documentación oficial;
-- **IP fija:** nuestras Edge Functions no tienen IP fija. Si Dropi la exige, hará falta un intermediario pequeño con IP fija que solo reenvíe a Dropi;
-- ambiente de pruebas;
-- avisos de estado y de guía, o cada cuánto se puede consultar;
+Sigue pendiente, y esto es lo que debe pedir el correo a soporte (`PUESTA-EN-MARCHA.md` §3):
+
+- **autorizar el `User-Agent` propio de MAGANDHI** y entregar el contrato oficial, para dejar de depender de parecer WordPress;
+- límite de consultas por minuto, para fijar cada cuánto se refresca el stock sin molestar;
+- si existe webhook de cambios de stock, o si toca consultar;
+- contrato de pedidos: crear `SIN RECAUDO`, consultar por id, guía y estados;
 - cobro en pedidos sin recaudo: saldo (wallet), recarga y comisión;
 - remitente en la guía y contenido del paquete (sin factura, precios ni publicidad del proveedor);
 - devoluciones y garantías en pedidos ya pagados.
@@ -149,13 +153,7 @@ Sospechas, por orden:
 1. **Cabeceras.** El plugin llama desde WordPress con su propio `User-Agent`; una integración de terceros documentada envía además `Origin` y `Referer` con el dominio de la tienda registrada.
 2. **IP o entorno.** Que el servidor del sandbox entre y Supabase no.
 
-`supabase/functions/dropi-cabeceras` es un diagnóstico **desechable** que lo resuelve en una corrida: repite la misma consulta de catálogo con cinco combinaciones de cabeceras y dice cuál devuelve 200. Nunca llama a `orders/`, no escribe nada, y el token no sale en la respuesta ni en los logs.
-
-```js
-const { supabase } = await import('/supabase-config.js');
-const r = await supabase.functions.invoke('dropi-cabeceras', { body: { tienda: 'https://LA-URL-REGISTRADA-EN-DROPI' } });
-console.log(JSON.stringify(r.data ?? r.error, null, 2));
-```
+Para resolverlo se usó un diagnóstico desechable, `dropi-cabeceras`: repetía la misma consulta de catálogo con cinco combinaciones de cabeceras y reportaba cuál devolvía 200. **Ya cumplió y se retiró del repositorio**; si hiciera falta otra vez, se reconstruye en minutos a partir de lo que sigue.
 
 ### Resultado: era el `User-Agent`
 
@@ -173,7 +171,7 @@ Consecuencias:
 
 - **El puente WooCommerce deja de ser necesario.** Se descarta: nada de WordPress, hosting mensual ni catálogo duplicado. El sandbox de prueba puede caducar.
 - `dropi-sonda` ahora manda un `User-Agent` honesto que identifica a MAGANDHI (`MAGANDHI-Impulse/1.0`), configurable con el secreto `DROPI_USER_AGENT` y leído en cada petición, para poder cambiarlo sin redesplegar. No se finge ser otro programa.
-- `dropi-cabeceras` ya cumplió su función: **se borra** cuando el frente avance.
+- `dropi-cabeceras` ya cumplió y **se retiró del repositorio**. Si quedó desplegada en Supabase, se borra desde el dashboard.
 
 Probado localmente (sin sesión 401, no admin 403, sin secreto, sin URL de tienda, todas 401 con la IP, variante ganadora identificada, solo `products/index`, nunca `orders`, token ausente) y contra Dropi real con un token inválido: las cinco variantes responden `401 · Access denied` sin que el entorno rechace ninguna cabecera.
 
@@ -211,14 +209,26 @@ Con eso basta para el borrador de Campañas: nombre, descripción, fotos, catego
 
 La respuesta sella la hora de lectura (`leido`). **La prueba del stock** es correrla dos veces separadas en el tiempo sobre el mismo producto y comparar las existencias: si siguen a Dropi, la promesa de §0 del plano se cumple leyendo directo, sin cron de WordPress ni puente.
 
-### Las dos ataduras que faltan soltar
+### Las dos ataduras, sueltas (9-oct-2026)
 
-El `User-Agent` que funciona lleva dentro la URL del sandbox, y el token es el de la integración amarrada a ese sandbox, que caduca. Hay que medir, en este orden:
+Quedaba comprobar si dependíamos del sandbox. Las dos pruebas pasaron:
 
-1. `DROPI_USER_AGENT` con `WordPress/6.8; https://magandhi.com` → ¿basta el prefijo `WordPress/`, o Dropi valida la URL?
-2. `DROPI_TOKEN` con el token de la integración de `magandhi.com` → ¿sirve sin tienda WooCommerce viva detrás?
+| Prueba | Resultado |
+|---|---|
+| `DROPI_USER_AGENT` = `WordPress/6.8; https://magandhi.com` | **Funciona.** Dropi no valida la URL que lleva dentro |
+| `DROPI_TOKEN` = token de la integración de `magandhi.com` | **Funciona.** No necesita una tienda WooCommerce viva detrás |
 
-Si las dos pasan, el sandbox se borra y el frente queda limpio. Si alguna falla, se le pide a soporte que autorice nuestro propio `User-Agent` y una integración de tienda propia.
+**Configuración vigente y suficiente:** la integración de `magandhi.com` en Dropi (registrada con tipo `WOOCOMERCE` porque no existe «tienda propia», y **sin** completar su OAuth), más dos secretos en Edge Functions: `DROPI_TOKEN` y `DROPI_USER_AGENT`.
+
+Se puede retirar: el sitio de TasteWP, la integración `prueba MAGANDHI`, sus llaves de WooCommerce (quedaron expuestas en una captura y mueren con el sandbox) y la función `dropi-cabeceras`, que ya cumplió.
+
+### Deuda reconocida: el `User-Agent`
+
+Depender de un `User-Agent` con el prefijo `WordPress/` es **frágil y no es un contrato**: Dropi puede endurecer la regla sin avisar y el frente se cae sin que nadie toque nada.
+
+Mitigación vigente: el valor vive en el secreto `DROPI_USER_AGENT` y se lee en cada petición, así que se cambia sin redesplegar, y la sonda lo nombra en su conclusión cuando Dropi niega el acceso.
+
+Mitigación definitiva, pendiente: pedirle a soporte que **autorice el `User-Agent` propio de MAGANDHI** y entregue el contrato oficial de la API. Mientras eso no exista, cualquier 401 nuevo se revisa primero por aquí.
 
 Pruebas locales de esta versión (13 en verde): `User-Agent` honesto por defecto y en cada llamada, configurable por secreto, ficha y existencias leídas por id, suma de stock por bodega, campos reales listados, id no numérico ignorado, token ausente de la respuesta, nunca toca `orders/`. Contra Dropi real con un token inválido: 401 en las cuatro rutas, con mensaje que apunta al `User-Agent`.
 

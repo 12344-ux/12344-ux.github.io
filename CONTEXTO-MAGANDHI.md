@@ -256,7 +256,7 @@ No hay nada a medias. Lo que sigue, por orden sugerido:
 9. **D3** (permisos granulares por capacidad en panel, grants, RLS y RPC) antes del primer usuario que no sea admin.
 10. Menores: el canal web visible en la lista de Seguimiento (hoy solo en el detalle), el cierre anual de Finanzas cuando cambie el ejercicio, el pulido de exportaciones, favicons propios para Marketing, Producción y Ventas, y la elasticidad cuando haya necesidad validada.
 
-**Frente nuevo · dropshipping y envíos (9-oct-2026):** vender productos de proveedores de Dropi, que despacha el proveedor, y dar guía y rastreo a los pedidos propios. Hoy está en la fase 0 (cuentas, consulta a Dropi, muestras y cotizaciones), sin código. Los puntos 3 y 4 de la tienda pasan a ser requisito antes de vender productos de proveedor. Todo en `docs/dropshipping-envios/LEEME.md`.
+**Frente nuevo · dropshipping y envíos (9-oct-2026):** vender productos de proveedores de Dropi, que despacha el proveedor, y dar guía y rastreo a los pedidos propios. **Hito del 9-oct: Dropi ya le responde a MAGANDHI.** La cuenta está verificada y, desde Supabase, se lee el catálogo y la ficha completa de cualquier producto por su id, con sus existencias por bodega. La causa de un día entero de 401 era que Dropi rechaza los `User-Agent` que no reconoce; se resolvió sin Shopify, sin WooCommerce y sin gastar un peso. Lo único que queda medido a medias es si el stock se refresca solo. Los pedidos (`orders/`) y el contrato oficial siguen sin confirmar, y los puntos 3 y 4 de la tienda son requisito antes de vender productos de proveedor. Todo en `docs/dropshipping-envios/LEEME.md`.
 
 **Repositorios:** quedan abiertos PR viejos ya superados: panel #227 y #216; tienda #46, #21 y #15. Cerrarlos o no lo decide el dueño.
 
