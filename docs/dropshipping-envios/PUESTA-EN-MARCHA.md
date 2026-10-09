@@ -24,42 +24,30 @@ El dominio usa Zoho Mail (verificado en el DNS el 9-oct-2026). No hay que contra
 ## 2. Cuenta de Dropi
 
 - [ ] **Titular: el mismo de Wompi.** El dinero de los clientes llega a ese titular y de ahí sale lo que se le paga a Dropi. Si coinciden, la contabilidad y los retiros cuadran.
-- [ ] **Registro directo:** dropi.co → «Regístrate» → Colombia, como **dropshipper**, con `operaciones@magandhi.com` y el celular de MAGANDHI. Sin enlaces de afiliado: inscriben la cuenta en la «comunidad» de quien los comparte.
-- [ ] Perfil y datos bancarios del titular completos.
-- [ ] En «Mis tiendas», crear la tienda «MAGANDHI» con el dominio `magandhi.com`. Si obliga a elegir Shopify o WooCommerce y no hay opción de tienda propia o API, no elegir nada todavía: se resuelve con soporte.
-- [ ] Si aparece un token, guardarlo en el gestor de contraseñas. No se pega en ningún chat.
+- [x] **Registro directo:** cuenta de Colombia creada como **dropshipper** con `operaciones@magandhi.com`.
+- [x] Identidad del titular validada por Dropi con documento y fotografías (9-oct-2026).
+- [ ] Perfil bancario y facturación electrónica completos con los datos fiscales correctos del titular.
+- [x] En «Mis Integraciones», tienda `magandhi.com`, tipo `WOOCOMERCE`, URL `https://magandhi.com`. Se eligió ese adaptador porque Dropi no ofrece «tienda propia».
+- [x] Token nuevo generado después de validar y guardado en el gestor de contraseñas y en Supabase Secrets. El inicial, que apareció en una captura, quedó sustituido.
 
 ## 3. Consulta a soporte de Dropi
 
-Canal: WhatsApp, desde dropi.co/contactanos (según Dropi, es la vía más rápida).
+**Estado 9-oct-2026:** el asistente de Dropi cerró el chat y confirmó que las solicitudes de API se tramitan exclusivamente por correo. Asignó un contacto humano y pidió tres cosas: motivo/proyecto, endpoints exactos y usuario o id de la cuenta. La dirección concreta permanece en la conversación privada; no se replica en este repositorio público.
 
-- [ ] Mensaje enviado. Fecha: ____
-- [ ] Respuesta anotada en §7.
+- [x] Consulta inicial enviada por el chat de Dropi. Fecha: 9-oct-2026.
+- [ ] Correo técnico enviado al contacto asignado por Dropi.
+- [x] Respuesta inicial anotada en §7.
 
-Mensaje para copiar:
+El correo técnico debe pedir:
 
-```
-Hola, equipo de Dropi. Soy [tu nombre], de MAGANDHI (magandhi.com), tienda online
-en Colombia. Ya abrimos la cuenta con operaciones@magandhi.com.
+- habilitación de lectura del catálogo para la cuenta ya validada;
+- confirmación de las rutas actuales para listar productos, detalle, categorías y bodegas;
+- campos de variantes, stock, precios, imágenes y proveedor;
+- creación de pedidos pagados (`SIN RECAUDO`) en borrador y consulta por id;
+- guía, rastreo y cambios de estado por webhook o consulta periódica;
+- ambiente de pruebas, límites e IP fija, si aplica.
 
-Nuestra tienda es desarrollo propio (no Shopify ni WooCommerce) y queremos
-enviarles los pedidos por API. Tenemos estas preguntas:
-
-1. ¿Cómo se habilita el acceso a la API de producción para una tienda propia?
-   ¿Tienen documentación oficial?
-2. ¿Exigen IP fija? Nuestro servidor está en la nube (Supabase) y no tiene IP fija.
-3. ¿Hay un ambiente de pruebas para desarrollar sin crear pedidos reales?
-4. ¿Nos avisan (webhook) cuando cambia el estado de un pedido o se genera la guía?
-   Si no, ¿qué consulta usamos y cada cuánto podemos hacerla?
-5. Nuestros clientes pagan por adelantado. En un pedido sin recaudo, ¿cómo se
-   cobran el costo del proveedor y el flete? ¿Se descuentan de la wallet?
-   ¿Cómo se recarga? ¿Qué comisión cobra Dropi en esos pedidos?
-6. ¿Qué remitente aparece en la guía? ¿El paquete puede ir sin factura, precios
-   ni publicidad del proveedor?
-7. ¿Cómo funcionan las devoluciones y garantías en pedidos ya pagados?
-
-¡Gracias!
-```
+No se envían tokens ni contraseñas por correo.
 
 ## 4. Muestras
 
@@ -91,4 +79,4 @@ enviarles los pedidos por API. Tenemos estas preguntas:
 
 | Fecha | Quién respondió | Pregunta | Respuesta |
 |---|---|---|---|
-| | | | |
+| 9-oct-2026 | Asistente del chat de Dropi | Canal para habilitar la API | Las solicitudes de API se atienden solo por correo. Asignó contacto humano y pidió motivo/proyecto, endpoints exactos y usuario o id de la cuenta. |
