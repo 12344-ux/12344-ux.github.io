@@ -130,7 +130,7 @@ El token probado salió de Dropi → Mis Integraciones → tipo **WOOCOMERCE**, 
 
 **Conclusión corregida tras revisar el flujo actual de Dropi:** no es Brave, CORS, Supabase, la IP, un error de copiado, el token anterior ni la validación de identidad. **Sí existe una ruptura real:** `magandhi.com` fue registrada como WooCommerce, pero no expone el OAuth de WooCommerce; `https://magandhi.com/wc-auth/v1/authorize` responde 404. Por tanto, no se puede considerar ese token una prueba limpia de que Dropi rechaza a MAGANDHI: la integración WooCommerce quedó incompleta por diseño.
 
-La solución final no es instalar WooCommerce sobre la tienda principal. El dueño descartó expresamente Shopify y WooCommerce como puentes por la fricción, el costo y la duplicación. Quedan dos vías legítimas: (1) acceso directo y mínimo de solo lectura por id para alimentar el embudo de Campañas; (2) operación manual mientras Dropi lo habilita. No se automatiza el panel privado ni se eluden sus controles.
+La solución final no es instalar WooCommerce sobre la tienda principal. Shopify queda descartado. WooCommerce se admite únicamente como **prueba aislada y desechable de un producto**: si completa OAuth, importa correctamente y ofrece stock actualizable, puede evaluarse como conector oculto; si falla cualquiera, se retira. La vía preferida sigue siendo acceso directo y mínimo de solo lectura por id. No se automatiza el panel privado ni se eluden sus controles.
 
 El token inicial quedó visible en una captura y fue sustituido por uno nuevo después de validar la cuenta.
 

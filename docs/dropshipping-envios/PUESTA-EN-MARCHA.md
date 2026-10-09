@@ -49,6 +49,20 @@ El correo técnico se limita al embudo que realmente necesita MAGANDHI:
 
 Pedidos, guías y recaudo quedan fuera de esta primera solicitud. No se envían tokens ni contraseñas por correo.
 
+### Prueba alternativa autorizada · WooCommerce aislado
+
+Solo para medir, sin tocar `magandhi.com`:
+
+- [ ] Crear un sandbox WordPress público y temporal (primera opción: InstaWP gratuito, 48 h).
+- [ ] Instalar WooCommerce; país Colombia y moneda COP. Sin pagos, envíos, clientes ni pedidos.
+- [ ] Conectar Dropi por OAuth usando la URL temporal; token nuevo y revocable.
+- [ ] Importar exactamente un producto y verificar texto, imágenes, variantes, ids, precios y stock.
+- [ ] Repetir la sonda después de completar OAuth.
+- [ ] Verificar stock: el plugin Dropify **no sirve como prueba de actualización periódica** por sí solo; su código vigente retorna antes de ejecutar el trabajo programado.
+- [ ] Borrar integración y sandbox al terminar, salvo decisión expresa de conservarlo.
+
+Criterio: solo se evalúa un conector permanente si importación **y** stock actualizable quedan demostrados. Nunca se instala WordPress sobre el dominio principal.
+
 ## 4. Muestras
 
 - [ ] Elegir 3 a 5 candidatos con los criterios de `CURADURIA-Y-SELLO.md` §2.

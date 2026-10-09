@@ -22,7 +22,7 @@
 
 ### Decisiones del dueño (cerradas el 9-oct-2026)
 
-1. **Sin Shopify ni WooCommerce como intermediarios:** añaden costo, duplicación y puntos de fallo.
+1. **Sin Shopify. WooCommerce solo como prueba aislada:** nunca sobre `magandhi.com`, nunca como tienda pública ni fuente de verdad. Se autoriza un sandbox/subdominio desechable con un solo producto para medir si completa OAuth, importa bien y entrega stock actualizable.
 2. MAGANDHI no replica todo el catálogo. El dueño elige un producto dentro de Dropi y pega su URL/id en **Campañas → Traer desde Dropi**.
 3. Una Edge Function lee solo ese producto y crea un borrador ligado a Inventario/Campañas; el dueño lo adapta, prueba y decide si lo publica.
 4. Dropi es la fuente de verdad del stock de los productos de proveedor. El inventario propio conserva su libro actual.
