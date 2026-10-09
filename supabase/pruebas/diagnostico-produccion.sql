@@ -3,7 +3,7 @@
 -- ------------------------------------------------------------
 -- Dice DÓNDE ESTAMOS DE VERDAD en la base, sin fiarse de la documentación.
 -- Solo SELECT: no crea, no cambia ni borra nada.
--- Funciona aunque F2 todavía no esté aplicada (lo informa en vez de fallar).
+-- Funciona aunque F2 o F3 todavía no estén aplicadas (lo informa en vez de fallar).
 --
 -- Uso: Supabase → SQL Editor → pegar COMPLETO → Run → copiar la tabla.
 -- ============================================================
@@ -11,6 +11,14 @@ with
 f2 as (
   select to_regclass('public.pagos_intencion') is not null as hay_intencion,
          to_regclass('public.pagos_eventos')  is not null as hay_eventos
+),
+f3 as (
+  select exists (select 1 from information_schema.columns
+                  where table_schema = 'public' and table_name = 'asientos' and column_name = 'origen') as hay_origen,
+         exists (select 1 from information_schema.columns
+                  where table_schema = 'public' and table_name = 'contabilidad_config'
+                    and column_name = 'iva_ventas_pct') as hay_iva,
+         to_regprocedure('public.fz__asiento_venta_web(uuid)') is not null as hay_constructor
 ),
 d(n, area, comprobacion, valor, esperado) as (
 
@@ -210,6 +218,69 @@ d(n, area, comprobacion, valor, esperado) as (
                             from asiento_lineas l join asientos a on a.id = l.asiento_id
                            where a.estado = 'activo' and l.cuenta_codigo like '1110%'), 0),
          'informativo'
+
+  -- ---------------- G · F3 en la base (20261020) ----------------
+  union all
+  select 25, 'G · F3 en la base (20261020)', 'Asiento automático instalado',
+         (select (f3.hay_origen and f3.hay_constructor)::text from f3),
+         'true'
+  union all
+  select 26, 'G · F3 en la base (20261020)', 'IVA de las ventas web (lo define el dueño)',
+         case when (select hay_iva from f3) then
+           coalesce((xpath('/row/v/text()', query_to_xml($q$
+              select iva_ventas_pct::text || ' %' as v from public.contabilidad_config where id = 1 $q$,
+              false, true, '')))[1]::text, 'SIN DEFINIR')
+         else 'F3 sin aplicar' end,
+         '0, 5 o 19 (SIN DEFINIR = las ventas web quedan sin asiento)'
+  union all
+  select 27, 'G · F3 en la base (20261020)', 'Cuenta puente e IVA generado',
+         case when (select hay_iva from f3) then
+           (xpath('/row/v/text()', query_to_xml($q$
+              select string_agg(r.rol || ' ' || r.cod || ' → ' ||
+                                case when pc.codigo is null then 'NO EXISTE'
+                                     when pc.imputable then 'ok' else 'NO IMPUTABLE' end, ' · ' order by r.ord) as v
+                from public.contabilidad_config c
+               cross join lateral (values (1, 'puente Wompi', c.cuenta_pasarela),
+                                          (2, 'IVA generado', c.cuenta_iva_generado)) as r(ord, rol, cod)
+                left join public.puc_cuentas pc on pc.codigo = r.cod
+               where c.id = 1 $q$, false, true, '')))[1]::text
+         else 'F3 sin aplicar' end,
+         'todas ok'
+  union all
+  select 28, 'G · F3 en la base (20261020)', 'Asientos automáticos por origen',
+         case when (select hay_origen from f3) then
+           coalesce((xpath('/row/v/text()', query_to_xml($q$
+              select string_agg(origen || '=' || n, ', ' order by origen) as v
+                from (select origen, count(*) as n from public.asientos group by origen) x $q$,
+              false, true, '')))[1]::text, 'sin asientos')
+         else 'F3 sin aplicar' end,
+         'informativo (venta_web > 0 después de una compra real)'
+  union all
+  select 29, 'G · F3 en la base (20261020)', 'Ventas web reales sin asiento',
+         case when (select hay_origen from f3) and (select hay_intencion from f2) then
+           (xpath('/row/v/text()', query_to_xml($q$
+              select count(*) as v from public.pedidos p
+                join public.pagos_intencion i on i.pedido_id = p.id and i.estado = 'procesada' and i.entorno = 'prod'
+               where p.canal = 'web' and not p.anulado
+                 and not exists (select 1 from public.asientos a
+                                  where a.origen = 'venta_web' and a.origen_ref = p.id) $q$,
+              false, true, '')))[1]::text
+         else '-' end,
+         '0 (si no, ver el aviso en Finanzas)'
+  union all
+  select 30, 'G · F3 en la base (20261020)', 'Wompi por liquidar (138095) en libros',
+         '$' || coalesce((select sum(l.debe - l.haber)
+                            from asiento_lineas l join asientos a on a.id = l.asiento_id
+                           where a.estado = 'activo' and l.cuenta_codigo = '138095'), 0),
+         'lo que Wompi aún debe consignar'
+  union all
+  select 31, 'G · F3 en la base (20261020)', 'Correos «Recibido» automáticos',
+         coalesce((select string_agg(estado || '=' || n, ', ' order by estado)
+                     from (select ce.estado, count(*) as n
+                             from correo_envios ce join pedidos p on p.id = ce.pedido_id
+                            where ce.etapa = 'recibido' and ce.creado_por is null and p.canal = 'web'
+                            group by ce.estado) x), 'ninguno todavía'),
+         'enviado > 0 después de una compra web'
 )
 select n as "#", area, comprobacion, valor, esperado
   from d

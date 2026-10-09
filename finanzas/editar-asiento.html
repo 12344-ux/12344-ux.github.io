@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../marca.css?v=2">
-<link rel="stylesheet" href="finanzas.css?v=5">
+<link rel="stylesheet" href="finanzas.css?v=6">
 
 <!--
   MAGANDHI · Area de Finanzas · Editar / anular asiento (modelo "punto medio").
@@ -37,6 +37,10 @@
     <div class="fz-anulado-aviso" id="fz-anulado-aviso" hidden>
       <span data-ico="info"></span>
       <span>Este asiento esta <strong>anulado</strong>. No se puede editar; queda solo como registro historico y no afecta el Libro Mayor ni los saldos.</span>
+    </div>
+    <div class="fz-auto-aviso" id="fz-auto-aviso" hidden>
+      <span data-ico="info"></span>
+      <span>Este asiento lo registró <strong>el sistema</strong> con una venta web. No se edita ni se anula aquí: así Finanzas, Ventas e Inventario nunca se contradicen. Si la venta no procede, anula el pedido en Ventas y el sistema registra el contraasiento.</span>
     </div>
 
     <div class="fz-field-row">
@@ -132,6 +136,7 @@
   const fechaEl = document.getElementById('fz-fecha');
   const descEl = document.getElementById('fz-desc');
   const anuladoAvisoEl = document.getElementById('fz-anulado-aviso');
+  const autoAvisoEl = document.getElementById('fz-auto-aviso');
   const histEl = document.getElementById('fz-hist');
   const timelineEl = document.getElementById('fz-timeline');
   const modalEl = document.getElementById('fz-modal-anular');
@@ -440,11 +445,11 @@
   //  CARGA DEL ASIENTO
   // ============================================================
   async function cargarAsiento() {
-    const { data, error } = await supabase
-      .from('asientos')
-      .select('id, fecha, descripcion, estado, asiento_lineas(cuenta_codigo, detalle, debe, haber, orden, puc_cuentas(nombre))')
-      .eq('id', asientoId)
-      .maybeSingle();
+    // F3: se lee el origen; si la base aun no tiene la columna, sin ella.
+    const COLUMNAS = 'id, fecha, descripcion, estado, asiento_lineas(cuenta_codigo, detalle, debe, haber, orden, puc_cuentas(nombre))';
+    const leer = (columnas) => supabase.from('asientos').select(columnas).eq('id', asientoId).maybeSingle();
+    let { data, error } = await leer('origen, ' + COLUMNAS);
+    if (error && /origen/.test(error.message || '')) ({ data, error } = await leer(COLUMNAS));
 
     if (error || !data) {
       cargandoEl.textContent = 'No se pudo cargar el asiento solicitado.';
@@ -473,9 +478,12 @@
       lineasEl.appendChild(nuevaLinea());
     }
 
-    // Modo anulado: solo lectura, sin editar ni anular otra vez.
-    if (esAnulado) {
-      anuladoAvisoEl.hidden = false;
+    // Modo solo lectura: anulado, o automatico (F3: lo escribio el sistema y se
+    // corrige anulando el pedido en Ventas).
+    const esAutomatico = Boolean(data.origen && data.origen !== 'manual');
+    autoAvisoEl.hidden = !esAutomatico || esAnulado;
+    if (esAnulado || esAutomatico) {
+      anuladoAvisoEl.hidden = !esAnulado;
       form.classList.add('fz-form-anulado');
       form.querySelectorAll('input, textarea').forEach((el) => { el.disabled = true; });
       document.getElementById('fz-add').disabled = true;

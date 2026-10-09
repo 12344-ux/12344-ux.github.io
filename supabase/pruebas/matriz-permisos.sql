@@ -118,7 +118,10 @@ declare
     'mt_email','mt_opiniones','mt_inventario',
     -- Pagos web F2: el panel lee y resuelve; pw_registrar_intencion y
     -- pw_procesar_pago NO van (solo service_role, las usa la Edge Function).
-    'tiene_acceso_pagos','pw_revisiones','pw_resolver_revision'
+    'tiene_acceso_pagos','pw_revisiones','pw_resolver_revision',
+    -- Pagos web F3: aviso de Finanzas y boton «Generar asiento». Los
+    -- constructores fz__* y correo_auto_* NO van (internos / solo service_role).
+    'fz_asientos_automaticos_pendientes','fz_generar_asiento_automatico'
   ];
   v_extra text;
 begin

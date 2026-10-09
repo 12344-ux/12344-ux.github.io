@@ -44,6 +44,11 @@
 // ENTORNOS: Wompi exige una URL de eventos distinta para Sandbox y Produccion.
 // El campo environment del evento ("test" | "prod") elige el secreto, de modo
 // que un evento de sandbox nunca se valida con el secreto de produccion.
+//
+// F3: la RPC tambien registra el ASIENTO CONTABLE de la venta real (o lo deja
+// pendiente en Finanzas, sin tumbar nunca la venta). Y, con el pedido creado,
+// esta funcion pide a enviar-correo-pedido el correo «Recibido» del cliente
+// (modo automatico). Ese correo jamas cambia la respuesta a Wompi.
 // ============================================================================
 
 const MAX_BYTES = 256 * 1024;
@@ -198,12 +203,61 @@ Deno.serve(async (req) => {
   }
 
   let resultado = "procesado";
+  let pedidoId: string | null = null;
+  let asiento: string | null = null;
   try {
     const d = JSON.parse(textoRpc);
-    resultado = String((Array.isArray(d) ? d[0] : d)?.resultado ?? "procesado");
+    const fila = (Array.isArray(d) ? d[0] : d) as Record<string, unknown> | null;
+    resultado = String(fila?.resultado ?? "procesado");
+    pedidoId = fila?.pedido_id ? String(fila.pedido_id) : null;
+    const a = fila?.asiento as Record<string, unknown> | undefined;
+    asiento = a?.resultado ? String(a.resultado) : null;
   } catch { /* la RPC respondio algo no-JSON: ya quedo registrado en la base */ }
 
   // Todo lo que YA resolvimos responde 200: Wompi no debe insistir.
-  console.log(`[wompi-webhook] ${transaccionId} ${estado} -> ${resultado}`);
+  // F3: el resultado del asiento contable (creado | omitido | pendiente) queda
+  // en el log; el motivo de un pendiente se ve en Finanzas, no aqui.
+  console.log(`[wompi-webhook] ${transaccionId} ${estado} -> ${resultado}` +
+    (asiento ? ` · asiento ${asiento}` : ""));
+
+  // --- F3 · correo «Recibido» automatico ------------------------------------
+  // Se dispara con pedido creado y TAMBIEN en un reintento: si la primera vez
+  // la funcion murio antes de enviarlo, el reintento de Wompi lo recupera. El
+  // servidor garantiza que sale UNA sola vez (CORREO_YA_ENVIADO). Nunca cambia
+  // la respuesta a Wompi.
+  if (pedidoId && ["procesado", "repetido", "ya_procesada"].includes(resultado)) {
+    const tarea = dispararCorreoRecibido(supabaseUrl, llaveServicio, pedidoId);
+    const runtime = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime;
+    if (runtime?.waitUntil) runtime.waitUntil(tarea); // responde ya; el correo sigue en segundo plano
+    else await tarea;                                 // fuera de Supabase (pruebas locales)
+  }
+
   return json({ ok: true, estado: resultado }, 200);
 });
+
+/**
+ * F3 · pide a enviar-correo-pedido (modo automatico, servidor a servidor) el
+ * correo «Recibido» del pedido web. Autentica con la llave de servicio, que ya
+ * vive en el entorno de las dos funciones. Solo registra el estado: nunca el
+ * correo del cliente ni la llave.
+ */
+async function dispararCorreoRecibido(supabaseUrl: string, llave: string, pedidoId: string) {
+  const url = Deno.env.get("CORREO_FUNCION_URL") ??
+    `${supabaseUrl}/functions/v1/enviar-correo-pedido`;
+  try {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": llave, "Authorization": `Bearer ${llave}` },
+      body: JSON.stringify({ modo: "automatico", pedido_id: pedidoId }),
+      signal: AbortSignal.timeout(20000),
+    });
+    let estadoCorreo = r.ok ? "enviado" : `HTTP ${r.status}`;
+    try {
+      const j = await r.json();
+      if (j && typeof j.estado === "string") estadoCorreo = j.estado;
+    } catch { /* sin cuerpo JSON (p. ej. la funcion aun no tiene el modo automatico) */ }
+    console.log(`[wompi-webhook] correo Recibido: ${estadoCorreo}`);
+  } catch (e) {
+    console.error(`[wompi-webhook] correo Recibido: sin respuesta de enviar-correo-pedido (${String(e).slice(0, 120)})`);
+  }
+}
