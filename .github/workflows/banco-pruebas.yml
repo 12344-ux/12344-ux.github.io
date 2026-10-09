@@ -80,6 +80,12 @@ jobs:
           sudo bash "$AQUI/correr-intencion-f2.sh" 2>&1 | tee -a /tmp/banco.log
           sudo -u pg pg_ctl -D /var/lib/pgdata stop -m fast >/dev/null || true
 
+      - name: Diagnostico de produccion (solo lectura) con y sin F2
+        run: |
+          sudo cp supabase/pruebas/local/herramientas/correr-diagnostico.sh "$AQUI/" && sudo chmod +x "$AQUI/correr-diagnostico.sh"
+          sudo bash "$AQUI/correr-diagnostico.sh" 2>&1 | tee -a /tmp/banco.log
+          sudo -u pg pg_ctl -D /var/lib/pgdata stop -m fast >/dev/null || true
+
       - name: Veredicto
         run: |
           echo "== Resumenes"
