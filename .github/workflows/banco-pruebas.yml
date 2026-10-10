@@ -62,7 +62,7 @@ jobs:
         run: |
           P=$REPO/supabase/pruebas/local
           sudo bash "$AQUI/pg.sh" "$P/pagos-f2.sql" "$P/f3-asiento-automatico.sql" "$P/pagos-estado-publico.sql" \
-            "$P/metricas-m1.sql" "$P/metricas-m2.sql" \
+            "$P/metricas-m1.sql" "$P/metricas-m2.sql" "$P/fechas-colombia.sql" \
             "$P/em5-resultados.sql" "$P/em5-1-respuesta-email.sql" "$P/em6-captura.sql" 2>&1 | tee -a /tmp/banco.log
           sudo -u pg pg_ctl -D /var/lib/pgdata stop -m fast >/dev/null || true
 
