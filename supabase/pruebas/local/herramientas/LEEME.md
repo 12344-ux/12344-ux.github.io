@@ -29,6 +29,8 @@ Copia todo a `/projects/sandbox/pruebas-em5/` (fuera del repo) e instala Postgre
 | `correr-ciclo-f3.sh` | F3 de punta a punta con las funciones reales y Wompi en **producción simulada**: tienda → `crear-intencion-pago` → `wompi-webhook` (firma real) → pedido + asiento al peso → `enviar-correo-pedido` (modo automático) → un solo «Recibido» en el Resend falso. Incluye Resend caído, reintentos, pago rechazado y la puerta del modo automático. |
 | `correr-f3-sobre-produccion.sh` | Aplica F3 **dos veces** sobre una base como producción al 9-oct (F2 sí, F3 no) con datos previos: asientos manuales, 135518 usada, un ajuste a mano en `contabilidad_config` y un pedido sandbox. Comprueba que no daña nada. |
 | `correr-ui-f3.sh [--capturas]` | Pantallas de F3 en Chromium (PC 1280 y celular 390): aviso de ventas sin asiento, «Registrar asiento», marca «Automático» en el Diario, Editar en solo lectura y el Diario sin F3 aplicada. |
+| `correr-dropi-sonda-d1.sh` | `dropi-sonda` real contra un doble de Dropi con la forma real de los datos (`urlS3`, `count: 0`, variantes con `attribute_values`). También corre en GitHub Actions. |
+| `correr-ui-dropshipping.sh [carpeta]` | Dropshipping en Chromium (PC 1280 y celular 390) con `dropi-sonda` **real** contra `doble-dropi-ui.ts`: búsqueda, fotos, paginación y carrito (`probar-ui-dropshipping-d1.py`), y «Llevar a Campañas» + editor en modo proveedor (`probar-ui-dropshipping-d2a.py`). Storage, bandeja y RPC se simulan en memoria con las reglas de la migración. Con una carpeta, guarda capturas. |
 
 ## Sin internet en el sandbox: GitHub Actions
 

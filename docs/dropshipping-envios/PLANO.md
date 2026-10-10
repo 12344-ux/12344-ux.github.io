@@ -1,6 +1,6 @@
 # PLANO · Dropshipping y envíos
 
-**Corte:** 10 de octubre de 2026 · **Estado:** diseño vigente con **D1 desplegado en producción** (más su ajuste de uso real: fotos, paginación y bandeja-carrito). D1 no vende ni llama `orders/`; el resto se ajusta con la respuesta de Dropi, las cotizaciones y el contador.
+**Corte:** 10 de octubre de 2026 · **Estado:** diseño vigente con **D1 y D2a desplegados en producción** (D1 con su ajuste de uso real; D2a «Llevar a Campañas»). Siguen D2b y D2c. D1 no vende ni llama `orders/`; el resto se ajusta con la respuesta de Dropi, las cotizaciones y el contador.
 
 ## 0. La promesa
 
@@ -137,7 +137,7 @@ D2 se parte para que cada PR desbloquee algo real sin abrir la venta antes de ti
 
 | Tramo | Entrega | Estado / decisiones pendientes |
 |---|---|---|
-| **D2a · Llevar a Campañas** | Relectura de la ficha, elección de variante y fotos, conversión a grande + `-sm` en el bucket propio, `ds_llevar_a_campanas` atómica e idempotente, editor en modo proveedor y candado del vínculo campaña ↔ ficha | **En PR** (migración `20261024000000`). No publica ni vende. Las fotos se traen desde el navegador porque el CDN de Dropi responde CORS `*` (medido); así se reutiliza el conversor del editor sin una Edge Function nueva |
+| **D2a · Llevar a Campañas** | Relectura de la ficha, elección de variante y fotos, conversión a grande + `-sm` en el bucket propio, `ds_llevar_a_campanas` atómica e idempotente, editor en modo proveedor y candado del vínculo campaña ↔ ficha | **Desplegado y probado por el dueño (10-oct-2026)**, migración `20261024000000`. No publica ni vende. Las fotos se traen desde el navegador porque el CDN de Dropi responde CORS `*` (medido); así se reutiliza el conversor del editor sin una Edge Function nueva |
 | **D2b · Sello con prueba** | `producto_pruebas` (quién, cuándo, notas, veredicto), registro desde el editor, y validación en `cm_crear/editar/publicar_campana`: sin prueba aprobada no hay sello. Aplica a propios y proveedor | Antes de activarlo, registrar la prueba de los productos que ya llevan el sello (hoy, el shampoo GRISI) |
 | **D2c · Stock vivo y venta de proveedor** | Refresco de stock desde el servidor, vencimiento que falla cerrado en `catalogo_publico`, estado «Temporalmente no disponible» en la tienda, verificación en vivo en `crear-intencion-pago`, `crear_pedido`/`anular_pedido` sin libro de Inventario para proveedor, asiento con las cuentas del saldo Dropi y aviso en Ventas para crear el pedido en Dropi a mano. Recién aquí se levanta `DS_PUBLICACION_PENDIENTE` | Decide el dueño: vigencia de la lectura y frecuencia de refresco; el contador: cuentas del costo proveedor y flete; copy de «Temporalmente no disponible» y política si el stock se pierde después del pago |
 

@@ -1,6 +1,6 @@
 # Dropshipping y envíos · frente nuevo de MAGANDHI
 
-**Corte:** 10 de octubre de 2026 · **Estado:** D1 (cimientos internos) **desplegado en producción**. La lectura real de Dropi funciona; D1 suma área propia, bandeja privada y separación firme entre proveedor e Inventario. No hay todavía importación, publicación, pedido ni despacho de proveedor. **Lo siguiente es D2.**
+**Corte:** 10 de octubre de 2026 · **Estado:** D1 (cimientos internos), su ajuste de uso real y **D2a · Llevar a Campañas** están **desplegados en producción** y probados por el dueño. Ya se puede convertir un candidato de Dropi en un borrador de Campañas con fotos propias; todavía no se publica, no se vende ni se despacha producto de proveedor. **Lo siguiente es D2b (sello con prueba) y luego D2c (stock vivo y venta).**
 
 > **¿Migrando a un chat nuevo?** Empieza por `RELEVO-2026-10-10.md`: resume qué quedó desplegado y el plan de D2.
 
@@ -48,10 +48,10 @@ El dueño puede cambiarlos:
 | Fase | Qué entrega | Estado |
 |---|---|---|
 | 0 | Cuentas, consulta a Dropi, muestras y cotizaciones (`PUESTA-EN-MARCHA.md`), y la sonda de solo lectura (`DROPI.md` §6) | **Casi cerrada.** **Dropi ya le responde a MAGANDHI:** faltaba el `User-Agent` (§7). Quedan muestras, cotizaciones y contador |
-| **D1 · Cimientos internos** | Área propia, bandeja privada, `origen=proveedor`, ficha externa, bloqueo de Inventario/Métricas y sonda paginable | **Desplegada en producción (10-oct-2026).** No publica, no crea productos/campañas, no descarga imágenes ni llama `orders/`. **Ajuste de uso real** (fotos directas de Dropi, 24 por página con Anterior/Siguiente, bandeja como carrito): sin migración, falta redesplegar `dropi-sonda` (runbook «Dropshipping D1 · ajuste de uso real») |
+| **D1 · Cimientos internos** | Área propia, bandeja privada, `origen=proveedor`, ficha externa, bloqueo de Inventario/Métricas y sonda paginable | **Desplegada en producción (10-oct-2026).** No publica, no crea productos/campañas, no descarga imágenes ni llama `orders/`. **Ajuste de uso real** (fotos directas de Dropi, 24 por página con Anterior/Siguiente, bandeja como carrito): **desplegado el 10-oct-2026** (runbook «Dropshipping D1 · ajuste de uso real») |
 | 1 | Guía manual en Ventas y correo «En camino» automático con el rastreo | Diseñada, no depende de nadie |
 | 2 | Guías automáticas para productos propios | Espera las cotizaciones |
-| 3 | Embudo por producto y sello ligado a una prueba registrada | **D2 en tres tramos** (`PLANO.md` §4): **D2a · Llevar a Campañas** en PR (importación atómica con fotos propias, sin publicar); D2b sello con prueba; D2c stock vivo, fallo cerrado y venta |
+| 3 | Embudo por producto y sello ligado a una prueba registrada | **D2 en tres tramos** (`PLANO.md` §4): **D2a · Llevar a Campañas desplegado y probado el 10-oct-2026** (importación atómica con fotos propias, sin publicar); D2b sello con prueba; D2c stock vivo, fallo cerrado y venta |
 | 4 | Pedidos de proveedor enviados a Dropi y seguimiento de la guía | Falta confirmar el contrato de `orders/`, la reserva `PENDIENTE CONFIRMACION`, su liberación/cancelación y el contador |
 | 5 | Contraentrega | Solo si los números lo piden |
 
