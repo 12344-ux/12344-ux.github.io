@@ -16,10 +16,11 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > - **Ajuste de uso real de D1** (PR #258, redespliegue de `dropi-sonda`, sin migración): fotos reales de Dropi, 24 resultados por página con paginación que funciona y bandeja como carrito.
 > - `20261024000000_dropshipping_d2a_llevar_a_campanas.sql` + redespliegue de `dropi-sonda` + PR #259 (**Dropshipping D2a**): «Llevar a Campañas» atómico con fotos propias; el editor abre el borrador en modo proveedor. **El dueño lo desplegó y probó el 10-oct-2026: todo en orden.**
 >
-> **El estado actual de producción llega hasta la migración `20261024000000`.**
-> **Dropshipping D2b** está implementado en esta rama con una casilla simple de
-> sello, pero sigue pendiente de despliegue; después viene **D2c** (stock vivo y
-> venta). Para retomar en un chat nuevo: `docs/dropshipping-envios/RELEVO-2026-10-10.md`.
+> **Avance · 10-oct-2026 (desplegado).** `20261025000000_dropshipping_d2b_sello_con_prueba.sql` (**Dropshipping D2b**, PR #261): el sello «Elegido por MAGANDHI» exige una casilla simple «Este producto fue probado por MAGANDHI» en la campaña (columna `campana_producto.probado_por_magandhi`), impuesta en `cm_crear/editar/publicar_campana` y por un trigger. **El dueño lo aplicó y verificó el 10-oct-2026: funciona.** Sin Edge Functions ni secretos nuevos. No hay tabla/RPC de pruebas, fechas, notas ni historial.
+>
+> **El estado actual de producción llega hasta la migración `20261025000000`.**
+> Lo siguiente es **Dropshipping D2c** (stock vivo y venta de proveedor). Para
+> retomar en un chat nuevo: `docs/dropshipping-envios/RELEVO-2026-10-10.md`.
 
 ## 1. Separación de superficies
 
@@ -266,6 +267,7 @@ No hay nada a medias. Lo que sigue, por orden sugerido:
 - `20261023000000` + redespliegue de `dropi-sonda` (Dropshipping D1, runbook §Dropshipping D1).
 - Ajuste de uso real de D1: solo redespliegue de `dropi-sonda` (runbook «Dropshipping D1 · ajuste de uso real»).
 - `20261024000000` + redespliegue de `dropi-sonda` (Dropshipping D2a, runbook «Dropshipping D2a»).
+- `20261025000000` (Dropshipping D2b, PR #261, runbook «Dropshipping D2b»): sello con casilla simple. Sin Edge Functions ni secretos.
 
 **Tienda:** ~~3, 4 y 5~~ **cerrados y desplegados (D0, 9–10-oct-2026).** La vuelta de Wompi ya muestra en qué quedó el pago y bloquea «Comprar ahora» mientras no haya veredicto, así que el cobro doble está cerrado; los detalles de entrega llegan al pedido; y los errores de pago dicen el motivo real. Pendiente de decisión aparte: guardar el documento del comprador para la factura requiere una columna nueva.
 
@@ -284,9 +286,10 @@ No hay nada a medias. Lo que sigue, por orden sugerido:
 
 **D2a · «Llevar a Campañas» (DESPLEGADO y probado por el dueño el 10-oct-2026, PR #259; migración `20261024000000` + redespliegue de `dropi-sonda`):** desde la bandeja se relee la ficha en Dropi, se elige variante y fotos, las fotos se convierten a grande + `-sm` en el bucket propio y `ds_llevar_a_campanas` crea en una transacción el producto `origen='proveedor'` (SKU `MAG-DROP-NNNN`, sin `costo_unitario`), su `producto_proveedor` (lectura de stock que nace vencida) y un borrador ligado; luego abre el editor en modo proveedor. Un gatillo impide re-ligar una campaña proveedor o ligar un producto proveedor a mano. Sigue sin publicar ni vender. D2 queda en tres tramos: D2a importación, D2b sello con casilla simple, D2c stock vivo y venta (`docs/dropshipping-envios/PLANO.md` §4). Runbook «Dropshipping D2a».
 
+**D2b · sello con casilla simple (DESPLEGADO el 10-oct-2026, PR #261; migración `20261025000000`):** el sello «Elegido por MAGANDHI» exige la casilla «Este producto fue probado por MAGANDHI» en la campaña (columna `campana_producto.probado_por_magandhi`), con producto ligado; impuesto en `cm_crear/editar/publicar_campana` y por un trigger. **No hay `producto_pruebas`, RPC de registro, formulario, fechas, notas, veredictos ni historial.** Una campaña histórica con sello y casilla falsa se advierte al editar para confirmarla o elegir «Ninguno»; no se inventan datos históricos. No levanta `DS_PUBLICACION_PENDIENTE`: proveedor sigue sin publicarse hasta D2c.
+
 **Lo que sigue de D2:**
-- **D2b · sello con casilla simple (implementado en esta rama; no desplegado):** la migración `20261025000000` agrega `campana_producto.probado_por_magandhi`; el editor muestra «Este producto fue probado por MAGANDHI» solo con producto ligado y solo entonces permite Elegido por MAGANDHI. `cm_crear/editar/publicar_campana` y un trigger lo imponen en servidor. **No hay `producto_pruebas`, RPC de registro, formulario, fechas, notas, veredictos ni historial.** Si una campaña histórica tiene sello y la casilla falsa, el editor advierte y permite confirmarla o elegir «Ninguno» al guardar; no se inventan ni se exigen datos históricos. D2b aplica a propios y proveedor, pero no levanta `DS_PUBLICACION_PENDIENTE`.
-- **D2c · stock vivo y venta de proveedor:** refresco de stock desde el servidor, fallo cerrado en `catalogo_publico`, «Temporalmente no disponible» en la tienda, verificación en vivo en `crear-intencion-pago`, `crear_pedido`/`anular_pedido` sin libro de Inventario para proveedor, asiento con las cuentas del saldo Dropi (contador) y aviso en Ventas para crear el pedido en Dropi a mano. Recién ahí se levanta `DS_PUBLICACION_PENDIENTE`.
+- **D2c · stock vivo y venta de proveedor (siguiente, no empezado):** refresco de stock desde el servidor, fallo cerrado en `catalogo_publico`, «Temporalmente no disponible» en la tienda, verificación en vivo en `crear-intencion-pago`, `crear_pedido`/`anular_pedido` sin libro de Inventario para proveedor, asiento con las cuentas del saldo Dropi (contador) y aviso en Ventas para crear el pedido en Dropi a mano. Recién ahí se levanta `DS_PUBLICACION_PENDIENTE`.
 
 Antes de un pedido proveedor **automático** faltan además municipio DANE/equivalencia Dropi y nombres/apellidos separados en el checkout. Lo que sigue sin tocarse: contrato oficial de `orders/`, si el stock de Dropi se refresca solo, y la reserva `PENDIENTE CONFIRMACION` con su liberación/cancelación e idempotencia (no se prueba con un POST improvisado). Todo en `docs/dropshipping-envios/LEEME.md`, `PLANO.md` y `.kiro/steering/dropshipping-magandhi.md`.
 
