@@ -1,6 +1,6 @@
 # Curaduría y sello «Elegido por MAGANDHI»
 
-**Corte:** 10 de octubre de 2026 · **Estado:** D2b está implementado en la rama de trabajo y pendiente de despliegue. La regla comercial rige, pero el contrato técnico vigente de D2b es una casilla simple por campaña.
+**Corte:** 10 de octubre de 2026 · **Estado:** D2b desplegado y verificado por el dueño (PR #261). La regla comercial rige y el contrato técnico vigente de D2b es una casilla simple por campaña.
 
 ## 1. La regla
 
@@ -38,7 +38,7 @@ Cada candidato se pide a una dirección propia como pedido pagado, igual que lo 
 
 Las fotos de la ficha se toman de la muestra real.
 
-## 4. Cómo queda en el sistema (D2b pendiente de despliegue)
+## 4. Cómo queda en el sistema (D2b desplegado · 10-oct-2026)
 
 - **Una sola casilla por campaña:** «Este producto fue probado por MAGANDHI», persistida en `campana_producto.probado_por_magandhi`.
 - **Solo con producto ligado y casilla marcada** se habilita `sello_elegido`. La UI guía; `cm_crear_campana`, `cm_editar_campana`, `cm_publicar_campana` y un trigger vuelven a imponerlo en servidor.

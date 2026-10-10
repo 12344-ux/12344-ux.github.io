@@ -105,8 +105,8 @@ frente de Dropshipping mientras no haya una decisión posterior explícita.
 
 ## 8. Sello «Elegido por MAGANDHI»
 
-- **D2b está implementado en la rama de trabajo, pero todavía no está desplegado.**
-  La migración `20261025000000` añade una confirmación simple por presentación
+- **D2b está desplegado y verificado por el dueño (10-oct-2026, PR #261).**
+  La migración `20261025000000` añadió una confirmación simple por presentación
   comercial: `campana_producto.probado_por_magandhi`.
 - En el editor de Campañas la única captura es la casilla **«Este producto fue
   probado por MAGANDHI»**. Requiere que la campaña tenga un producto ligado y

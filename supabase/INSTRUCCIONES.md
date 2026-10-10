@@ -1,11 +1,12 @@
 # Supabase · runbook operativo MAGANDHI / Impulse
 
-> **Estado al 9-oct-2026 (punto de unificación):** en producción están aplicadas
-> **todas** las migraciones hasta `20261020000000` (F3), salvo
+> **Estado al 10-oct-2026:** en producción están aplicadas **todas** las
+> migraciones hasta `20261025000000` (Dropshipping **D2b**), salvo
 > **`20261002000000`, que quedó SUPERADA y no debe aplicarse** (ver §0). Las Edge
 > Functions del repo están desplegadas, y Wompi F1 a F4 quedó verificado con una
-> compra real (ver «Pagos F3» PF3.7). La próxima migración nueva será la
-> `20261021…`; el trabajo pendiente vive en `CONTEXTO-MAGANDHI.md` §9.
+> compra real (ver «Pagos F3» PF3.7). Lo siguiente es **Dropshipping D2c** (stock
+> vivo y venta de proveedor); el trabajo pendiente vive en
+> `CONTEXTO-MAGANDHI.md` §9.
 >
 > **Regla de migraciones:** los archivos ya aplicados son historia inmutable.
 > Nunca se reejecutan como arreglo o rollback sobre la base actual. Toda
@@ -4593,3 +4594,94 @@ Esperado: `origen = proveedor`, `costo_unitario` vacío, `nace_vencida = true`,
   24/24, M1 40/40, M2 26/26, fechas 16/16, EM5 61/61, EM5.1 32/32, EM6 44/44,
   puesta al día 23/23, F3 sobre producción, webhook 21/21, ciclo F2 19/19 + 12/12,
   ciclo F3 29/29 y diagnóstico.
+
+---
+
+# Dropshipping D2b · sello «Elegido por MAGANDHI» con casilla
+
+**Corte:** 10 de octubre de 2026. Migración forward
+`20261025000000_dropshipping_d2b_sello_con_prueba.sql` + la pantalla de
+Campañas (se publica al fusionar el PR). **Desplegado y verificado por el dueño
+el 10-oct-2026 (PR #261):** la casilla habilita el sello y el guardado funciona.
+**Sin Edge Functions ni secretos nuevos.**
+
+## Qué hace
+
+Decisión del dueño: el sello no abre un expediente ni una bitácora de pruebas.
+En el editor de Campañas hay **una sola casilla**: «Este producto fue probado
+por MAGANDHI».
+
+- Agrega `campana_producto.probado_por_magandhi boolean not null default false`.
+- Solo con **producto ligado** y la **casilla marcada** se puede activar
+  `sello_elegido` (Elegido por MAGANDHI).
+- Recrea `cm_crear_campana` y `cm_editar_campana` con el parámetro nuevo
+  `p_producto_probado` (al final de la firma; se re-otorgan sus grants
+  nominales) y añade la validación a `cm_publicar_campana`.
+- Un trigger (`cm_campana_sello_exige_producto_probado`) impone la misma regla
+  ante cualquier escritura privilegiada: no hay sello sin casilla ni casilla
+  sin producto ligado. La UI solo guía; la base decide.
+
+**Lo que D2b NO hace:** no crea tabla de pruebas, RPC de registro, fechas,
+notas, veredictos ni historial; y **no** abre la publicación/venta de
+proveedor (D1/D2a siguen devolviendo `DS_PUBLICACION_PENDIENTE` hasta D2c).
+
+## D2b.1. Aplicar la migración (SQL Editor, una sola vez)
+
+Código: https://raw.githubusercontent.com/12344-ux/12344-ux.github.io/main/supabase/migrations/20261025000000_dropshipping_d2b_sello_con_prueba.sql
+
+Dónde: https://supabase.com/dashboard/project/bxlzipwxyxdtffnuizbz/sql/new
+
+Comprobación inmediata:
+
+```sql
+-- Esperado: una fila (la columna nueva, default false)
+select column_name, data_type, column_default
+  from information_schema.columns
+ where table_name = 'campana_producto' and column_name = 'probado_por_magandhi';
+-- Esperado: cm_campana_sello_exige_producto_probado
+select tgname from pg_trigger
+ where tgrelid = 'campana_producto'::regclass
+   and tgname = 'cm_campana_sello_exige_producto_probado';
+-- Esperado: anon=false, authenticated=true en las dos firmas nuevas (con p_producto_probado)
+select has_function_privilege('anon',
+  'cm_crear_campana(text,text,text,text,text,bigint,text,text,text,jsonb,jsonb,boolean,boolean,integer,boolean,integer,text[],uuid,text,integer,boolean)', 'execute') as crear_anon,
+       has_function_privilege('authenticated',
+  'cm_editar_campana(uuid,text,text,text,text,text,bigint,text,text,text,jsonb,jsonb,boolean,boolean,integer,boolean,integer,text[],uuid,text,integer,boolean)', 'execute') as editar_panel;
+```
+
+## D2b.2. Nada que redesplegar
+
+El panel se publica solo desde `main` (GitHub Pages). No hay Edge Functions ni
+secretos nuevos. **Orden importante:** aplica el SQL antes o junto con el merge
+del frontend; si el panel nuevo (que envía `p_producto_probado`) llega antes que
+la migración, Guardar/Crear campaña falla hasta aplicarla.
+
+## D2b.3. Comprobar desde el panel
+
+1. Marketing → Campañas → edita una campaña con producto ligado.
+2. Sin la casilla marcada, **«Elegido por MAGANDHI»** queda deshabilitado.
+3. Marca **«Este producto fue probado por MAGANDHI»**: se habilita el sello y el
+   guardado funciona.
+4. Un borrador de proveedor sigue sin poder publicarse (D2c).
+
+## D2b.4. Campañas ya selladas (p. ej. GRISI)
+
+La columna nace en `false`, así que una campaña histórica con sello conserva su
+estrella en la tienda (`catalogo_publico` mira `sello_elegido`, no la casilla) y
+**no se rompe al aplicar la migración** (el trigger solo corre en
+INSERT/UPDATE de esas columnas). La próxima vez que se edite, el editor avisa y
+pide marcar la casilla para conservar el sello o elegir «Ninguno». No se inventa
+evidencia histórica.
+
+## D2b.5. Pruebas hechas
+
+- Matriz de permisos **170/170** (la nueva columna y firmas no abren nada a
+  `anon`; `producto_pruebas`/`cm_registrar_producto_prueba` del diseño anterior
+  no existen).
+- `dropshipping-cimientos.sql` **29/29** y `dropshipping-d2a.sql` **30/30** sin
+  regresión.
+- Comprobación directa en base: sello sin casilla → `CM_SELLO_SIN_PRUEBA`;
+  casilla sin producto → `CM_PRUEBA_SIN_PRODUCTO`; sello con casilla → permitido;
+  intento de desmarcar la casilla con sello activo por DML privilegiado →
+  rechazado por el trigger.
+- Chromium Dropshipping **D1 54/54** y **D2a 60/60** (PC 1280 y celular 390).
