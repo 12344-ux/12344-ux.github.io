@@ -135,6 +135,11 @@ begin
         'tiene_acceso_dropshipping', 'ds_guardar_candidato', 'ds_actualizar_estado_candidato'
       ];
     end if;
+    -- D2a (20261024000000): una sola puerta nueva de panel. Su gatillo
+    -- ds__campana_vinculo_proveedor queda solo para service_role.
+    if to_regprocedure('public.ds_llevar_a_campanas(uuid,text,text,text,bigint,integer,timestamptz,jsonb)') is not null then
+      v_lista_blanca := v_lista_blanca || array['ds_llevar_a_campanas'];
+    end if;
 
     -- F2 solo existe desde 202610190. La matriz corre también una foto anterior
     -- a F2 para comprobar el diagnóstico, por eso la lista blanca es sensible

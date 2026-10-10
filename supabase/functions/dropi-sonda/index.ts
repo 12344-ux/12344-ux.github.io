@@ -153,22 +153,46 @@ function fotosPreview(p: Obj) {
   return vistas;
 }
 
+// Nombre legible de una variante. Forma real (plugin Dropify v4.7.3,
+// ProductsModel.php): `attribute_values: [{ attribute_name, value }]`, p. ej.
+// «Color: Negro · Talla: M». Si no viene, se cae a los nombres genéricos.
+function nombreVariacion(v: Obj): string | null {
+  const attrs = Array.isArray(v.attribute_values) ? v.attribute_values : [];
+  const partes = attrs.map((a) => {
+    if (!esObj(a)) return null;
+    const clave = corto(a.attribute_name ?? a.name, 40);
+    const valor = corto(a.value ?? a.option, 60);
+    return valor ? (clave ? `${clave}: ${valor}` : valor) : null;
+  }).filter(Boolean);
+  if (partes.length) return partes.join(" · ").slice(0, 160);
+  return corto(v.name ?? v.title ?? v.label ?? v.value ?? v.sku, 140);
+}
+
+// Stock de una variante: `stock` numérico o, si no, la suma por bodega de
+// `warehouse_product_variation` (misma regla que el plugin oficial).
+function stockVariacion(v: Obj): number | null {
+  if (typeof v.stock === "number") return v.stock;
+  if (Array.isArray(v.warehouse_product_variation)) return sumarStock(v.warehouse_product_variation);
+  return null;
+}
+
 function resumirVariaciones(p: Obj) {
   if (!Array.isArray(p.variations)) return [];
   return p.variations.slice(0, 30).map((v) => {
     if (!esObj(v)) return null;
+    const id = corto(v.id ?? v.variation_id ?? v.product_variation_id, 80);
     return {
-      // D1 los muestra solo como diagnóstico. No se usa este valor para pedir
-      // nada: D2 medirá el contrato exacto de variante antes de crear orders/.
-      id: corto(v.id ?? v.variation_id ?? v.product_variation_id, 80),
-      nombre: corto(v.name ?? v.title ?? v.label ?? v.value, 140),
+      // Solo LECTURA. D2a usa el id para llevar UNA variante a Campañas (una
+      // variante = una campaña). Nunca se usa para crear orders/.
+      id: id && /^[A-Za-z0-9_-]{1,80}$/.test(id) ? id : null,
+      nombre: nombreVariacion(v),
       sku: corto(v.sku, 80),
       precio_proveedor: v.sale_price ?? v.price ?? null,
       precio_sugerido: v.suggested_price ?? null,
-      stock: typeof v.stock === "number" ? v.stock : null,
+      stock: stockVariacion(v),
       fotos_remotas: fotosPreview(v),
     };
-  }).filter(Boolean);
+  }).filter((v) => v && v.id);
 }
 
 // Una llamada a Dropi con tiempo límite. Nunca lanza: devuelve qué pasó sin
@@ -263,7 +287,12 @@ function muestraProducto(p: unknown) {
     privado: p.privated_product ?? null,
     precio_proveedor: p.sale_price ?? null,
     precio_sugerido: p.suggested_price ?? null,
-    stock: typeof p.stock === "number" ? p.stock : sumarStock(p.warehouse_product),
+    // Producto con variantes (type VARIABLE): el stock real es la suma de sus
+    // variantes, como hace el plugin oficial; `warehouse_product` suele venir
+    // vacío y daría un falso «sin stock».
+    stock: String(p.type ?? "").toUpperCase() === "VARIABLE" && variaciones.length
+      ? variaciones.reduce((s: number, v) => s + (esObj(v) ? (stockVariacion(v) ?? 0) : 0), 0)
+      : typeof p.stock === "number" ? p.stock : sumarStock(p.warehouse_product),
     bodegas,
     variaciones: variaciones.length,
     detalle_variaciones: resumirVariaciones(p),

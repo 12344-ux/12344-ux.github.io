@@ -51,7 +51,7 @@ El dueño puede cambiarlos:
 | **D1 · Cimientos internos** | Área propia, bandeja privada, `origen=proveedor`, ficha externa, bloqueo de Inventario/Métricas y sonda paginable | **Desplegada en producción (10-oct-2026).** No publica, no crea productos/campañas, no descarga imágenes ni llama `orders/`. **Ajuste de uso real** (fotos directas de Dropi, 24 por página con Anterior/Siguiente, bandeja como carrito): sin migración, falta redesplegar `dropi-sonda` (runbook «Dropshipping D1 · ajuste de uso real») |
 | 1 | Guía manual en Ventas y correo «En camino» automático con el rastreo | Diseñada, no depende de nadie |
 | 2 | Guías automáticas para productos propios | Espera las cotizaciones |
-| 3 | Embudo por producto y sello ligado a una prueba registrada | **D1 deja el cimiento listo.** D2 construirá importación atómica, imágenes propias, prueba/sello, stock vigente y fallo cerrado |
+| 3 | Embudo por producto y sello ligado a una prueba registrada | **D2 en tres tramos** (`PLANO.md` §4): **D2a · Llevar a Campañas** en PR (importación atómica con fotos propias, sin publicar); D2b sello con prueba; D2c stock vivo, fallo cerrado y venta |
 | 4 | Pedidos de proveedor enviados a Dropi y seguimiento de la guía | Falta confirmar el contrato de `orders/`, la reserva `PENDIENTE CONFIRMACION`, su liberación/cancelación y el contador |
 | 5 | Contraentrega | Solo si los números lo piden |
 

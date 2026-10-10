@@ -131,6 +131,18 @@ La URL actual de detalle de Dropi contiene `product-details/:id/:name`, por lo q
 
 Cada fase sigue las reglas de `CONTEXTO-MAGANDHI.md` §10: migración forward nueva, pruebas en el banco y medir en producción antes de afirmar.
 
+### D2 en tres tramos (10-oct-2026)
+
+D2 se parte para que cada PR desbloquee algo real sin abrir la venta antes de tiempo:
+
+| Tramo | Entrega | Estado / decisiones pendientes |
+|---|---|---|
+| **D2a · Llevar a Campañas** | Relectura de la ficha, elección de variante y fotos, conversión a grande + `-sm` en el bucket propio, `ds_llevar_a_campanas` atómica e idempotente, editor en modo proveedor y candado del vínculo campaña ↔ ficha | **En PR** (migración `20261024000000`). No publica ni vende. Las fotos se traen desde el navegador porque el CDN de Dropi responde CORS `*` (medido); así se reutiliza el conversor del editor sin una Edge Function nueva |
+| **D2b · Sello con prueba** | `producto_pruebas` (quién, cuándo, notas, veredicto), registro desde el editor, y validación en `cm_crear/editar/publicar_campana`: sin prueba aprobada no hay sello. Aplica a propios y proveedor | Antes de activarlo, registrar la prueba de los productos que ya llevan el sello (hoy, el shampoo GRISI) |
+| **D2c · Stock vivo y venta de proveedor** | Refresco de stock desde el servidor, vencimiento que falla cerrado en `catalogo_publico`, estado «Temporalmente no disponible» en la tienda, verificación en vivo en `crear-intencion-pago`, `crear_pedido`/`anular_pedido` sin libro de Inventario para proveedor, asiento con las cuentas del saldo Dropi y aviso en Ventas para crear el pedido en Dropi a mano. Recién aquí se levanta `DS_PUBLICACION_PENDIENTE` | Decide el dueño: vigencia de la lectura y frecuencia de refresco; el contador: cuentas del costo proveedor y flete; copy de «Temporalmente no disponible» y política si el stock se pierde después del pago |
+
+El pedido automático a Dropi (`orders/`) sigue siendo D3/4. Municipio DANE y nombres/apellidos separados se necesitan antes de ese pedido automático; con el pedido manual de D2c el dueño transcribe los datos en Dropi.
+
 ## 5. Decisiones abiertas
 
 1. Plataforma de guías (cotizaciones).

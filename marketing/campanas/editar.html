@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
-<link rel="stylesheet" href="campanas.css?v=4">
+<link rel="stylesheet" href="campanas.css?v=d2a">
 
 <!--
   MAGANDHI · Area de Marketing · Sub-area CAMPANAS · EDITAR.
@@ -51,6 +51,19 @@
 
     <!-- Columna izquierda: las dos secciones + interruptores + publicar. -->
     <div class="cm-form">
+
+      <!-- D2a · PRODUCTO DE PROVEEDOR. Solo aparece si la campaña está ligada a
+           un producto origen=proveedor (llegó desde Dropshipping). El vínculo
+           lo protege la base (gatillo ds_campana_vinculo_proveedor): aquí solo
+           se explica y se bloquea el selector para que nadie lo intente. -->
+      <section class="cm-proveedor" id="cm-proveedor" hidden aria-live="polite">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 4 10 5-10 5-4-2v6l4 2 10-5v-6L7 4Z"/><path d="M3 12V7l4-2"/><path d="M7 14v6"/><path d="M17 9v6"/></svg>
+        <div>
+          <b id="cm-proveedor-tit">Producto de proveedor</b>
+          <span id="cm-proveedor-txt"></span>
+          <span class="cm-proveedor-datos" id="cm-proveedor-datos" hidden></span>
+        </div>
+      </section>
 
       <!-- ============ SECCION 1 · BANNER HOOK ============ -->
       <section class="cm-seccion">
@@ -825,6 +838,55 @@
     sel.appendChild(opt);
   }
 
+  // D2a · Si la campaña está ligada a un producto de PROVEEDOR (llegó desde
+  // Dropshipping), se explica en la cabecera, se bloquea el selector de
+  // producto (la base igual rechaza re-ligarlo) y se oculta el tope de
+  // escaparate, que solo tiene sentido con stock propio de Inventario.
+  // La ficha privada (Dropi #, variante, costo, última lectura) solo se lee si
+  // el perfil tiene Dropshipping; si no, el aviso sale sin esos datos.
+  let esProveedor = false;
+  async function modoProveedor(productoId) {
+    if (!productoId) return;
+    const { data: prod } = await supabase
+      .from('productos').select('id, sku, origen').eq('id', productoId).maybeSingle();
+    if (!prod || prod.origen !== 'proveedor') return;
+    esProveedor = true;
+
+    const sel = $('cm-producto');
+    sel.disabled = true;
+    const ayuda = sel.closest('.cm-campo')?.querySelector('.cm-campo-ayuda');
+    if (ayuda) ayuda.textContent = 'Ligado a su ficha de proveedor desde Dropshipping. No se cambia aquí: para otra variante, llévala desde Dropshipping.';
+    const tope = $('cm-tope').closest('.cm-campo');
+    if (tope) tope.hidden = true;
+    const distintivoAyuda = $('cm-distintivo-ayuda');
+    if (distintivoAyuda) distintivoAyuda.textContent = 'Solo puede mostrarse un distintivo. Para producto de proveedor, «Agotado» dependerá del stock vivo de Dropi.';
+
+    const recienCreado = new URLSearchParams(location.search).get('desde') === 'dropshipping';
+    $('cm-proveedor-tit').textContent = recienCreado ? 'Borrador creado desde Dropshipping' : 'Producto de proveedor';
+    $('cm-proveedor-txt').textContent =
+      (recienCreado ? 'Ya tiene sus fotos propias. ' : '') +
+      'Nombre, precio, textos y fotos son de MAGANDHI: la tienda nunca muestra al proveedor, su costo ni su id. ' +
+      'Publicar se habilita cuando llegue el stock vivo de Dropi (D2c).';
+
+    try {
+      const { data: ficha } = await supabase
+        .from('producto_proveedor')
+        .select('producto_externo_id, variacion_nombre, costo_reportado, stock_reportado, stock_leido_en')
+        .eq('product_id', productoId).maybeSingle();
+      if (ficha) {
+        const partes = ['Dropi #' + ficha.producto_externo_id];
+        if (ficha.variacion_nombre) partes.push(ficha.variacion_nombre);
+        if (ficha.costo_reportado != null) partes.push('Costo $' + formatearNumero(ficha.costo_reportado));
+        if (ficha.stock_reportado != null) partes.push(ficha.stock_reportado + ' reportadas al importar');
+        partes.push('SKU ' + (prod.sku || '—'));
+        const datos = $('cm-proveedor-datos');
+        datos.textContent = partes.join(' · ');
+        datos.hidden = false;
+      }
+    } catch (_) { /* sin módulo Dropshipping: el aviso basta */ }
+    $('cm-proveedor').hidden = false;
+  }
+
   async function precargar() {
     const { data, error } = await supabase
       .from('campana_producto')
@@ -1053,7 +1115,7 @@
     if (error) {
       await limpiarHuerfanos(keysSubidas);
       btn.disabled = false;
-      mostrarMsg('No se pudo guardar: ' + (error.message || 'error desconocido.'));
+      mostrarMsg('No se pudo guardar: ' + (String(error.message || '').replace(/^DS_[A-Z_]+:\s*/, '') || 'error desconocido.'));
       return;
     }
 
@@ -1104,7 +1166,7 @@
       });
       if (error) {
         btn.disabled = false;
-        pubMsg.textContent = 'No se pudo actualizar la publicación: ' + (error.message || 'error.');
+        pubMsg.textContent = 'No se pudo actualizar la publicación: ' + (String(error.message || '').replace(/^DS_[A-Z_]+:\s*/, '') || 'error.');
         pubMsg.className = 'cm-form-msg err';
         pubMsg.hidden = false;
         return;
@@ -1161,8 +1223,11 @@
       supabase.from('productos')
         // No se trae precio_venta: el precio al publico lo escribe Campanas a
         // mano; el costo vive en Inventario para el asiento contable de Wompi.
+        // D2a: solo productos PROPIOS. Uno de proveedor entra a Campañas
+        // únicamente desde Dropshipping (la base rechaza ligarlo a mano).
         .select('id, sku, nombre, activo')
         .eq('activo', true)
+        .eq('origen', 'propio')
         .order('nombre', { ascending: true })
     ]);
 
@@ -1202,6 +1267,7 @@
     // Precargar la campana (rellena campos + estado de publicado) y recuperar
     // las etiquetas seleccionadas para pintarlas ya marcadas.
     const seleccionadas = await precargar();
+    if (seleccionadas !== null) await modoProveedor($('cm-producto').value || null);
     pintarEtiquetas(tagRes.error ? [] : (tagRes.data || []), seleccionadas || []);
 
     cablearInterruptores();
