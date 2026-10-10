@@ -4187,3 +4187,95 @@ la función; el cobro doble queda cerrado desde el primer despliegue.
   de otro producto y la ventana de 6 h) y **35** de la dirección unida y los
   mensajes de error, con las regresiones de firma, monto y cantidad.
 - Sin regresión: F3 **84/84** y el resto del banco.
+
+# Analítica · los días se cuentan en Colombia, no en UTC
+
+**Corte:** 10 de octubre de 2026. Migración forward `20261022000000_analitica_fecha_colombia.sql`.
+Corrige un bug latente desde EM2.
+
+## El bug
+
+La base corre en UTC, así que `current_date` es la **fecha UTC**. A partir de las
+7 p. m. de Colombia (00:00 UTC) ya es «mañana» para la base, pero sigue siendo
+hoy aquí. Tres expresiones de la analítica comparaban ese `current_date` con
+fechas que **sí** estaban en hora de Colombia.
+
+Resultado: **todos los días, durante cinco horas, los días contados salían con
+uno de más.** Demostrado con aritmética directa (9-oct 20:00 en Colombia, con un
+clic de hace una hora):
+
+```
+ current_date (UTC) | hoy en Colombia | fecha del clic | CALCULADO | CORRECTO
+--------------------+-----------------+----------------+-----------+---------
+ 2026-10-10         | 2026-10-09      | 2026-10-09     |         1 |        0
+```
+
+A mediodía las dos formas coinciden, y por eso pasó inadvertido: el banco de
+pruebas sólo lo delataba si se corría de noche.
+
+No era cosmético. Estas tres variables alimentan las condiciones de **Segmentos**
+y las cinco variables de email del **análisis de clúster**. Una condición como
+«no ha hecho clic en N días» daba de más justo en la franja de la tarde-noche,
+que es cuando se revisa el panel.
+
+| Función | Variable |
+|---|---|
+| `em__perfil_base` (EM2) | `dias_desde_ultima_compra` |
+| `em__perfil_email` (EM5.1) | `dias_desde_ultimo_clic` |
+| `em__segmento_where` (EM5.1, lista blanca) | `dias_en_lista` |
+
+## Qué se aplica
+
+Pegar y ejecutar `supabase/migrations/20261022000000_analitica_fecha_colombia.sql`
+en el SQL Editor, una sola vez. **Sólo redefine esas tres funciones** y no toca
+tablas, permisos ni ninguna otra lógica: los tres cuerpos se copiaron literales
+de sus migraciones vigentes y se parchó únicamente la expresión de fecha (3
+líneas en total, una por función).
+
+No hay nada que redesplegar: ninguna Edge Function cambia.
+
+### Comprobación inmediata
+
+```sql
+-- Ninguna funcion debe mezclar las dos zonas. Esperado: ninguna.
+select coalesce(string_agg(p.proname, ', ' order by p.proname), 'ninguna') as mezclan
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname = 'public'
+   and p.prosrc like '%current_date%'
+   and p.prosrc like '%America/Bogota%';
+```
+
+Y si quieres verlo con los datos reales, corre esto **después de las 7 p. m.**,
+que es cuando antes fallaba:
+
+```sql
+select contacto_id, dias_desde_ultimo_clic from em__perfil_email();
+```
+
+## Deuda reconocida y NO tocada
+
+Siguen con `default current_date` del lado del servidor: `crear_pedido`,
+`inv_registrar_movimiento` y `em_registrar_contacto`, más los defaults de
+`pedidos.fecha_orden` y `movimientos_inventario.fecha`.
+
+**Hoy no son un bug activo:** las tres pantallas mandan la fecha explícita,
+calculada en el navegador con `hoyISO()` (hora local = Colombia). Son trampas
+latentes: si algún día algo llama esas RPC sin fecha a las 8 p. m., el registro
+quedaría con la fecha de mañana, y el 31 de diciembre saltaría de año. Cerrarlas
+exige redefinir RPC de núcleo y merece su propio PR medido.
+
+## Pruebas locales hechas
+
+- `supabase/pruebas/local/fechas-colombia.sql` **16/16**, ya en GitHub Actions.
+  Incluye un **guardián repo-wide**: ninguna función de `public` puede mencionar
+  `current_date` **y** `America/Bogota` a la vez. Sobre `main` sin el arreglo ese
+  archivo da **7 fallas** y nombra a `em__perfil_base` y `em__perfil_email`, así
+  que es un guardián de verdad y no una tautología. Trae también la aritmética
+  del bug con momentos fijos (no depende de la hora a la que se corra) y el caso
+  del 31 de diciembre, donde UTC ya cambió de año.
+- `em5-1-respuesta-email.sql` **32/32**, corrido a las **20:51 de Colombia**, que
+  es la hora exacta en la que antes fallaba 3/32.
+- Banco completo a esa misma hora: **67 migraciones**, matriz **170/170**, F2
+  40/40, F3 84/84, estado-pago 24/24, M1 40/40, M2 26/26, EM5 61/61, EM6 44/44.
+- Edge Functions sin regresión: puesta al día 23/23, webhook 21/21, intención
+  19/19, ciclo F2 12/12, ciclo F3 29/29, diagnóstico sin fallas.

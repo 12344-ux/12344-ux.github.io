@@ -93,6 +93,7 @@ Marketing → Email marketing. Diseño completo en `docs/PLANO-EMAIL-MARKETING.m
 - EM4: **Campañas** por bloques (título, texto, imagen, producto destacado, botón único, separador), vista previa PC/celular, prueba a tu correo, revisión final con N exacto, envío o programación vía Resend Broadcasts desde `news.magandhi.com`, cancelación. Envío real bloqueado hasta registrar la política publicada.
 - EM5 (en producción, webhook de Resend conectado y verificado): webhook firmado `em-webhook` (Svix, Verify JWT apagado, escribe solo como service_role), supresión automática con historial, resultados por campaña (embudo, enlaces, rebotes/spam/bajas, ventas exactas y aproximadas con último clic + 7 días), salud de la lista contra los límites de Resend, entrega de los correos del pedido. Eventos crudos 13 meses.
 - EM5.1: la respuesta a email alimenta el análisis. 5 variables en el clúster (campañas recibidas, % con clic, clics 90 días, días desde el último clic, compras atribuidas) y 9 condiciones en Segmentos (hizo/no hizo clic en una campaña, campañas seguidas sin clic…). Sin aperturas: son aproximadas.
+- **Corrección del 10-oct-2026 · los días se cuentan en Colombia.** La base corre en UTC, así que `current_date` es la fecha UTC: entre las 7 p. m. y la medianoche de Colombia, `dias_desde_ultimo_clic`, `dias_desde_ultima_compra` y `dias_en_lista` salían **con un día de más**, y eso alimenta Segmentos y el clúster. A mediodía las dos formas coinciden, y por eso pasó inadvertido. Migración forward `20261022000000`, que sólo redefine `em__perfil_base`, `em__perfil_email` y `em__segmento_where` cambiando 3 líneas. El guardián contra la clase entera de bug vive en `supabase/pruebas/local/fechas-colombia.sql` y corre en cada rama. Ver `supabase/INSTRUCCIONES.md`.
 - EM6 (en producción, **apagado a propósito**): formulario de novedades en magandhi.com con doble confirmación (`em-suscripcion`), apagado por defecto y encendible solo por admin con la política registrada. Política en versión `borrador-*` para probar: esos contactos nunca reciben campañas reales. Captura pública (EM6) y analítica (EM7) esperan la política.
 
 ### Métricas — M1 y M2 en producción (analítica apagada a propósito)
@@ -207,6 +208,7 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 - No confiar en ocultar botones como seguridad.
 - No reescribir ni borrar movimientos, pedidos, asientos o bitácoras.
 - D3 (permisos más granulares) sigue pendiente y debe cerrarse antes del primer usuario no-admin.
+- **Fechas: la base corre en UTC y la operación es de Colombia.** Toda resta de días o estampado de fecha debe ir en `America/Bogota`, con `fz__fecha_colombia()` en Finanzas o `(now() at time zone 'America/Bogota')::date` en el resto. Usar `current_date` a secas es el bug que se corrigió el 10-oct en la analítica de Email marketing. **Trampa latente reconocida:** `crear_pedido`, `inv_registrar_movimiento` y `em_registrar_contacto` conservan `default current_date` en el servidor, igual que los defaults de `pedidos.fecha_orden` y `movimientos_inventario.fecha`. Hoy no muerde porque las tres pantallas mandan la fecha explícita calculada en el navegador (`hoyISO()`, hora local = Colombia), pero una llamada sin fecha a las 8 p. m. quedaría fechada mañana, y el 31 de diciembre saltaría de año. Cerrarlo exige redefinir RPC de núcleo y merece su propio PR medido.
 - El acceso amplio actual se tolera únicamente mientras la operación tenga un solo administrador.
 - La documentación pública usa placeholders; datos personales/legales no se repiten en contexto o instrucciones.
 
@@ -244,6 +246,10 @@ No hay nada a medias. Lo que sigue, por orden sugerido:
 
    Wompi informa $66.862,71, pero los asientos van en pesos enteros: se usa el valor entero que figure en el extracto del banco (≈ 66.863 y 3.037).
 2. **Inventario inicial en libros:** si la mercancía no tiene asiento de apertura (fila 23 del diagnóstico), registrarlo. La contrapartida la define el contador según cómo se compró.
+
+**Por desplegar (ya revisado y medido, solo falta aplicarlo):**
+- Migración `20261021000000` + Edge Function `estado-pago` (D0, runbook §D0).
+- Migración `20261022000000`: los días de la analítica de Email marketing contados en Colombia. No redespliega ninguna Edge Function.
 
 **Tienda:** ~~3, 4 y 5~~ **cerrados (D0, 9-oct-2026).** La vuelta de Wompi ya muestra en qué quedó el pago y bloquea «Comprar ahora» mientras no haya veredicto, así que el cobro doble está cerrado; los detalles de entrega llegan al pedido; y los errores de pago dicen el motivo real. Falta **desplegar** la migración `20261021000000` y la Edge Function `estado-pago` (runbook `supabase/INSTRUCCIONES.md` §D0). Pendiente de decisión aparte: guardar el documento del comprador para la factura requiere una columna nueva.
 
