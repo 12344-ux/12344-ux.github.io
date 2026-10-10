@@ -1,12 +1,19 @@
 # MAGANDHI + Impulse · contexto operativo vigente
 
-**Corte:** 9 de octubre de 2026
+**Corte:** 10 de octubre de 2026
 **Producción interna:** `https://montaguth.institute`
 **Tienda pública:** `https://magandhi.com`
 
 Este archivo es la entrada única para entender dónde está parado el proyecto: la realidad operativa (§2 a §7) y el trabajo pendiente (§9). La historia completa permanece en Git.
 
-> **Punto de unificación · 9-oct-2026.** Se cerraron todos los frentes que estaban abiertos a la vez. Todas las migraciones hasta `20261020000000` (F3) están aplicadas en producción, salvo `20261002000000`, que quedó superada. La cadena de pagos Wompi F1 → F4 está en producción y **el dueño verificó el sistema completo con una compra real**: pago, pedido, stock, asiento contable automático, correos y opinión. Desde aquí se trabaja desde un solo lugar. `ANDAMIOS.md` y los relevos de sesión se retiraron porque ya cumplieron su función; siguen en el historial de Git.
+> **Punto de unificación · 9-oct-2026.** Se cerraron todos los frentes que estaban abiertos a la vez. Las migraciones hasta `20261020000000` (F3) estaban aplicadas en producción, salvo `20261002000000`, que quedó superada. La cadena de pagos Wompi F1 → F4 está en producción y **el dueño verificó el sistema completo con una compra real**: pago, pedido, stock, asiento contable automático, correos y opinión. Desde aquí se trabaja desde un solo lugar. `ANDAMIOS.md` y los relevos de sesión se retiraron porque ya cumplieron su función; siguen en el historial de Git.
+
+> **Avance · 10-oct-2026 (desplegado).** Se aplicaron en producción tres migraciones nuevas y dos despliegues de Edge Function, todos verificados en el banco de pruebas antes de subir:
+> - `20261021000000_pagos_estado_publico.sql` + Edge Function `estado-pago` (**D0**): la vuelta de Wompi ya dice en qué quedó el pago y bloquea «Comprar ahora» hasta que haya veredicto, así que se cerró el riesgo de cobro doble. Además, los detalles de entrega llegan al pedido y los errores de pago dicen el motivo real (cambios en el repo `magandhi`, PR #90).
+> - `20261022000000_analitica_fecha_colombia.sql`: los días de la analítica de Email marketing se cuentan en hora de Colombia, no en UTC (corregía un desfase de un día entre las 7 p. m. y medianoche).
+> - `20261023000000_dropshipping_cimientos.sql` + redespliegue de `dropi-sonda` (**Dropshipping D1**): séptima área interna, bandeja privada de candidatos, `productos.origen`, ficha `producto_proveedor`, candados que mantienen al proveedor fuera del libro de Inventario y de Métricas, y bloqueo de publicación de proveedor hasta D2.
+>
+> **El estado actual de producción llega hasta la migración `20261023000000`.** Lo siguiente es **Dropshipping D2** (ver §9).
 
 ## 1. Separación de superficies
 
@@ -247,11 +254,12 @@ No hay nada a medias. Lo que sigue, por orden sugerido:
    Wompi informa $66.862,71, pero los asientos van en pesos enteros: se usa el valor entero que figure en el extracto del banco (≈ 66.863 y 3.037).
 2. **Inventario inicial en libros:** si la mercancía no tiene asiento de apertura (fila 23 del diagnóstico), registrarlo. La contrapartida la define el contador según cómo se compró.
 
-**Por desplegar (ya revisado y medido, solo falta aplicarlo):**
-- Migración `20261021000000` + Edge Function `estado-pago` (D0, runbook §D0).
-- Migración `20261022000000`: los días de la analítica de Email marketing contados en Colombia. No redespliega ninguna Edge Function.
+**Desplegado el 10-oct-2026 (ya en producción):**
+- `20261021000000` + Edge Function `estado-pago` (D0, runbook §D0).
+- `20261022000000`: los días de la analítica de Email marketing contados en Colombia.
+- `20261023000000` + redespliegue de `dropi-sonda` (Dropshipping D1, runbook §Dropshipping D1).
 
-**Tienda:** ~~3, 4 y 5~~ **cerrados (D0, 9-oct-2026).** La vuelta de Wompi ya muestra en qué quedó el pago y bloquea «Comprar ahora» mientras no haya veredicto, así que el cobro doble está cerrado; los detalles de entrega llegan al pedido; y los errores de pago dicen el motivo real. Falta **desplegar** la migración `20261021000000` y la Edge Function `estado-pago` (runbook `supabase/INSTRUCCIONES.md` §D0). Pendiente de decisión aparte: guardar el documento del comprador para la factura requiere una columna nueva.
+**Tienda:** ~~3, 4 y 5~~ **cerrados y desplegados (D0, 9–10-oct-2026).** La vuelta de Wompi ya muestra en qué quedó el pago y bloquea «Comprar ahora» mientras no haya veredicto, así que el cobro doble está cerrado; los detalles de entrega llegan al pedido; y los errores de pago dicen el motivo real. Pendiente de decisión aparte: guardar el documento del comprador para la factura requiere una columna nueva.
 
 **Producto y operación:**
 6. Copys definitivos de los correos del pedido (`correo_plantillas`, hoy en borrador; se cambian por SQL) y de las políticas públicas (estructura provisional en magandhi.com/politicas/).
@@ -262,9 +270,9 @@ No hay nada a medias. Lo que sigue, por orden sugerido:
 
 **Frente nuevo · dropshipping y envíos (9–10-oct-2026):** vender productos de proveedores de Dropi, que despacha el proveedor, y dar guía y rastreo a los pedidos propios. **Hito del 9-oct: Dropi ya le responde a MAGANDHI.** La cuenta está verificada y, desde Supabase, se lee catálogo, búsqueda y ficha completa por id, con existencias por bodega. La causa de un día entero de 401 era que Dropi rechaza los `User-Agent` que no reconoce; se resolvió sin Shopify, WooCommerce ni gasto mensual.
 
-**D1 · cimientos internos (implementado en repositorio, pendiente de desplegar):** séptima área Dropshipping; consulta/paginación de solo lectura; bandeja privada de candidatos; `productos.origen`; ficha `producto_proveedor`; trigger que bloquea proveedor en el libro de Inventario incluso por encima de RLS; proveedor fuera de `stock_actual` y de Métricas de Inventario; y bloqueo de publicación/catálogo público hasta D2. Las fotos son solo preview remoto y `Llevar a Campañas` sigue deshabilitado. **D1 no crea producto, campaña, imagen local, pedido, reserva, guía ni llamada `orders/`.**
+**D1 · cimientos internos (DESPLEGADO el 10-oct-2026):** séptima área Dropshipping; consulta/paginación de solo lectura; bandeja privada de candidatos; `productos.origen`; ficha `producto_proveedor`; trigger que bloquea proveedor en el libro de Inventario incluso por encima de RLS; proveedor fuera de `stock_actual` y de Métricas de Inventario; y bloqueo de publicación/catálogo público hasta D2. Las fotos son solo preview remoto y `Llevar a Campañas` sigue deshabilitado. **D1 no crea producto, campaña, imagen local, pedido, reserva, guía ni llamada `orders/`.**
 
-Quedan por medir: si el stock se refresca solo y el contrato oficial de `orders/`. La reserva `PENDIENTE CONFIRMACION`, su liberación/cancelación y la idempotencia siguen sin confirmar: no se prueba con un POST improvisado. Antes de un pedido proveedor faltan municipio DANE/equivalencia Dropi y nombres/apellidos separados; detalles de entrega y la vuelta segura de Wompi ya están hechos. Todo en `docs/dropshipping-envios/LEEME.md`.
+**Lo que sigue es D2 (próximo tramo, aún no empezado):** al pulsar «Llevar a Campañas», crear de forma atómica el producto interno (`origen='proveedor'`) + su `producto_proveedor` + un borrador de campaña ligado, descargar solo las fotos elegidas y convertirlas a grande/`-sm` en el bucket `campanas`, abrir el editor actual de Campañas, hacer cumplir server-side la prueba del sello, y resolver stock vivo con fallo cerrado antes de permitir publicar. Antes de un pedido proveedor real faltan además municipio DANE/equivalencia Dropi y nombres/apellidos separados en el checkout. Lo que sigue sin tocarse: contrato oficial de `orders/`, si el stock de Dropi se refresca solo, y la reserva `PENDIENTE CONFIRMACION` con su liberación/cancelación e idempotencia (no se prueba con un POST improvisado). Todo en `docs/dropshipping-envios/LEEME.md`, `PLANO.md` y `.kiro/steering/dropshipping-magandhi.md`.
 
 **Repositorios:** quedan abiertos PR viejos ya superados: panel #227 y #216; tienda #46, #21 y #15. Cerrarlos o no lo decide el dueño.
 

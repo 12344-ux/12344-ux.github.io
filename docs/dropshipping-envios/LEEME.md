@@ -1,6 +1,8 @@
 # Dropshipping y envíos · frente nuevo de MAGANDHI
 
-**Corte:** 10 de octubre de 2026 · **Estado:** D1 (cimientos internos) implementado en el repositorio y pendiente de desplegar. La lectura real de Dropi funciona; D1 suma área propia, bandeja privada y separación firme entre proveedor e Inventario. No hay todavía importación, publicación, pedido ni despacho de proveedor.
+**Corte:** 10 de octubre de 2026 · **Estado:** D1 (cimientos internos) **desplegado en producción**. La lectura real de Dropi funciona; D1 suma área propia, bandeja privada y separación firme entre proveedor e Inventario. No hay todavía importación, publicación, pedido ni despacho de proveedor. **Lo siguiente es D2.**
+
+> **¿Migrando a un chat nuevo?** Empieza por `RELEVO-2026-10-10.md`: resume qué quedó desplegado y el plan de D2.
 
 Esta carpeta documenta el frente que abrió el dueño el 9-oct-2026:
 
@@ -46,7 +48,7 @@ El dueño puede cambiarlos:
 | Fase | Qué entrega | Estado |
 |---|---|---|
 | 0 | Cuentas, consulta a Dropi, muestras y cotizaciones (`PUESTA-EN-MARCHA.md`), y la sonda de solo lectura (`DROPI.md` §6) | **Casi cerrada.** **Dropi ya le responde a MAGANDHI:** faltaba el `User-Agent` (§7). Quedan muestras, cotizaciones y contador |
-| **D1 · Cimientos internos** | Área propia, bandeja privada, `origen=proveedor`, ficha externa, bloqueo de Inventario/Métricas y sonda paginable | **Implementada en repositorio, pendiente de desplegar.** No publica, no crea productos/campañas, no descarga imágenes ni llama `orders/` |
+| **D1 · Cimientos internos** | Área propia, bandeja privada, `origen=proveedor`, ficha externa, bloqueo de Inventario/Métricas y sonda paginable | **Desplegada en producción (10-oct-2026).** No publica, no crea productos/campañas, no descarga imágenes ni llama `orders/` |
 | 1 | Guía manual en Ventas y correo «En camino» automático con el rastreo | Diseñada, no depende de nadie |
 | 2 | Guías automáticas para productos propios | Espera las cotizaciones |
 | 3 | Embudo por producto y sello ligado a una prueba registrada | **D1 deja el cimiento listo.** D2 construirá importación atómica, imágenes propias, prueba/sello, stock vigente y fallo cerrado |
