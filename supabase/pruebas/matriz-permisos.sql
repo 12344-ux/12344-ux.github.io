@@ -270,7 +270,7 @@ begin
           -- Ventas (datos personales de terceros): SOLO Ventas.
           when v_obj[i] in ('clientes','pedidos','pedido_items','pedido_bitacora','portafolio_metricas')
             then case when v_pers[j] = 'ventas' then 'TODO' else 'NADA' end
-          -- Campanas: SOLO Marketing.
+          -- Campañas: SOLO Marketing.
           when v_obj[i] like 'campana_%'
             then case when v_pers[j] = 'marketing' then 'TODO' else 'NADA' end
           else 'SIN EXPECTATIVA'

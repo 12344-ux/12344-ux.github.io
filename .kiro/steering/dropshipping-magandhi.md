@@ -105,13 +105,26 @@ frente de Dropshipping mientras no haya una decisión posterior explícita.
 
 ## 8. Sello «Elegido por MAGANDHI»
 
-- El sello solo se habilita si el producto fue **probado por el equipo**.
-- El editor de Campañas mostrará la pregunta/regla correspondiente; si no hay
-  prueba aprobada, no permite seleccionar estrella/sello.
-- La UI es solo guía: la validación vive también server-side y al publicar, para
-  que no se pueda saltar por API o por una pantalla antigua.
-- La prueba deja trazabilidad mínima (producto, resultado, fecha y notas). La
-  regla aplica igual a productos propios y de proveedor.
+- **D2b está implementado en la rama de trabajo, pero todavía no está desplegado.**
+  La migración `20261025000000` añade una confirmación simple por presentación
+  comercial: `campana_producto.probado_por_magandhi`.
+- En el editor de Campañas la única captura es la casilla **«Este producto fue
+  probado por MAGANDHI»**. Requiere que la campaña tenga un producto ligado y
+  solo habilita **«Elegido por MAGANDHI»**; no representa una aprobación
+  científica ni un registro de muestras.
+- D2b no crea `producto_pruebas`, RPC de registro, fechas, notas, veredictos ni
+  historial. Si más adelante se necesita auditar muestras, se diseña otro tramo
+  con su propio contrato, sin inventar datos pasados.
+- La UI solo guía. La base impone la misma relación al crear, editar, publicar
+  y mediante un trigger, de modo que una API o pantalla antigua no pueda usar
+  el sello sin la casilla y sin producto ligado.
+- Si una campaña histórica tiene sello pero la nueva casilla está en falso, el
+  editor la muestra con advertencia: el operador marca la casilla para
+  conservarlo o elige «Ninguno» al guardar. No se presume ni se completa una
+  prueba histórica.
+- D2b aplica igual a productos propios y de proveedor, pero **no** habilita
+  publicar ni vender proveedor: D1/D2a conservan `DS_PUBLICACION_PENDIENTE`
+  hasta D2c.
 
 ## 9. Pruebas de Dropi antes de automatizar
 

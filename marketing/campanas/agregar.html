@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
-<link rel="stylesheet" href="campanas.css?v=d2a">
+<link rel="stylesheet" href="campanas.css?v=d2b-casilla">
 
 <!--
   MAGANDHI · Area de Marketing · Sub-area CAMPANAS · AGREGAR (alta).
@@ -203,8 +203,18 @@
           <span class="cm-seccion-num">3</span>
           <div>
             <h2 class="cm-seccion-tit">Distintivo de la tarjeta</h2>
-            <p class="cm-seccion-sub">Elige una sola señal para acompañar el producto en el escaparate. El bloque queda preparado para incorporar nuevos distintivos en el futuro.</p>
+            <p class="cm-seccion-sub">Elige una sola señal para acompañar el producto en el escaparate. Para usar «Elegido por MAGANDHI», liga un producto y confirma esta decisión simple.</p>
           </div>
+        </div>
+        <div class="cm-producto-probado">
+          <label class="cm-producto-probado-control" for="cm-producto-probado">
+            <input id="cm-producto-probado" type="checkbox" disabled aria-describedby="cm-producto-probado-ayuda">
+            <span>
+              <b>Este producto fue probado por MAGANDHI</b>
+              <small>Esta confirmación solo habilita el sello; no publica ni habilita la venta de productos de proveedor.</small>
+            </span>
+          </label>
+          <span class="cm-campo-ayuda" id="cm-producto-probado-ayuda">La casilla requiere un producto de Inventario ligado a esta campaña.</span>
         </div>
         <fieldset class="cm-distintivos" aria-describedby="cm-distintivo-ayuda">
           <legend class="cm-sr-only">Distintivo de la tarjeta</legend>
@@ -330,6 +340,49 @@
 
   let categorias = [];   // [{codigo,nombre,orden}]
   let productos = [];    // [{id,sku,nombre,activo}] de Inventario
+
+  // ------------------------------------------------------------
+  // D2b · CONFIRMACIÓN SIMPLE DEL PRODUCTO
+  // ------------------------------------------------------------
+  // La casilla pertenece a esta presentación comercial. La UI solo orienta:
+  // cm_crear_campana, cm_editar_campana, cm_publicar_campana y el gatillo SQL
+  // vuelven a imponer la misma regla.
+  function mensajeErrorCuraduria(error) {
+    const bruto = String(error?.message || error || '').trim();
+    if (bruto.startsWith('CM_PRUEBA_SIN_PRODUCTO')) {
+      return 'Liga un producto antes de marcarlo como probado por MAGANDHI.';
+    }
+    if (bruto.startsWith('CM_SELLO_SIN_PRUEBA')) {
+      return 'Marca «Este producto fue probado por MAGANDHI» antes de usar Elegido por MAGANDHI.';
+    }
+    if (bruto.startsWith('DS_PUBLICACION_PENDIENTE')) {
+      return 'Este producto de proveedor sigue en borrador hasta D2c, cuando haya stock vivo y checkout seguro.';
+    }
+    return bruto.replace(/^CM_[A-Z_]+:\s*/, '') || 'No se pudo completar la operación.';
+  }
+
+  function actualizarControlProductoProbado({ preservarSelloHistorico = false } = {}) {
+    const producto = $('cm-producto');
+    const control = $('cm-producto-probado');
+    const elegido = document.querySelector('input[name="cm-distintivo"][value="elegido"]');
+    const ninguno = document.querySelector('input[name="cm-distintivo"][value="ninguno"]');
+    const avisoHistorico = $('cm-sello-historico-aviso');
+    if (!producto || !control || !elegido) return;
+
+    const tieneProducto = Boolean(producto.value);
+    control.disabled = !tieneProducto;
+    if (!tieneProducto) control.checked = false;
+
+    const puedeElegir = tieneProducto && control.checked;
+    if (!puedeElegir && elegido.checked && !preservarSelloHistorico && ninguno) {
+      ninguno.checked = true;
+    }
+    elegido.disabled = !puedeElegir;
+    if (avisoHistorico) {
+      avisoHistorico.hidden = !(elegido.checked && !control.checked);
+    }
+    refrescarPreview();
+  }
 
   // Blob optimizado del banner pendiente de subir (o null).
   let bannerPend = null; // { blob, ext, tipo, url }
@@ -680,6 +733,7 @@
     const avisoSub = $('cm-aviso-sub');
     document.querySelectorAll('input[name="cm-distintivo"]').forEach((radio) => {
       radio.addEventListener('change', () => {
+        actualizarControlProductoProbado();
         const esUltimas = tipoDistintivo() === 'ultimas';
         avisoSub.hidden = !esUltimas;
         if (esUltimas) $('cm-aviso-cantidad').focus();
@@ -727,7 +781,14 @@
         const campoNombre = $('cm-nombre');
         if (!campoNombre.value.trim() && prod.nombre) campoNombre.value = prod.nombre;
       }
+      const controlProductoProbado = $('cm-producto-probado');
+      controlProductoProbado.checked = false;
+      actualizarControlProductoProbado();
       refrescarPreview();
+    });
+
+    $('cm-producto-probado').addEventListener('change', () => {
+      actualizarControlProductoProbado();
     });
   }
 
@@ -781,6 +842,21 @@
         $('cm-aviso-cantidad').focus();
         return;
       }
+    }
+
+    const productId = $('cm-producto').value || null;
+    const productoProbado = $('cm-producto-probado').checked;
+    if (productoProbado && !productId) {
+      mostrarMsg('Liga un producto antes de marcarlo como probado por MAGANDHI.');
+      $('cm-producto').focus();
+      return;
+    }
+    if (selloElegido && !productoProbado) {
+      mostrarMsg(productId
+        ? 'Marca «Este producto fue probado por MAGANDHI» antes de usar Elegido por MAGANDHI.'
+        : 'Liga un producto y marca «Este producto fue probado por MAGANDHI» antes de usar el sello.');
+      (productId ? $('cm-producto-probado') : $('cm-producto')).focus();
+      return;
     }
 
     // Tope de escaparate: entero >= 0 (o vacio = null, ofrecer todo el stock).
@@ -872,13 +948,15 @@
       p_aviso_urgencia_activo: avisoActivo,
       p_aviso_urgencia_cantidad: avisoCant,
       p_etiquetas: recolectarEtiquetas(),
-      // Producto de Inventario ligado (uuid) o null si aun no se liga.
-      p_product_id_ref: $('cm-producto').value || null,
+      // Producto de Inventario ligado (uuid) o null si aún no se liga.
+      p_product_id_ref: productId,
       // Direccion web legible (slug). El servidor la re-normaliza; vacio -> null.
       p_slug: slugificar($('cm-slug').value) || null,
       // Tope de escaparate (opcion A): maximo de unidades a ofrecer en la web.
-      // null = ofrecer todo el stock. Ultimo parametro de la firma SQL.
-      p_tope_escaparate: tope
+      // null = ofrecer todo el stock.
+      p_tope_escaparate: tope,
+      // D2b: confirmación simple que habilita el sello, nunca la publicación.
+      p_producto_probado: productoProbado
     });
 
     // FALLO REAL: la campana NO se creo. Nadie referencia las imagenes que
@@ -888,7 +966,7 @@
     if (error) {
       await limpiarHuerfanos(keysSubidas);
       btn.disabled = false;
-      mostrarMsg('No se pudo guardar: ' + (error.message || 'error desconocido.'));
+      mostrarMsg('No se pudo guardar: ' + mensajeErrorCuraduria(error));
       return;
     }
 
@@ -1014,6 +1092,7 @@
     agregarFilaFicha();
 
     cablearInterruptores();
+    actualizarControlProductoProbado();
     refrescarPreview();
 
     $('cm-form').addEventListener('submit', guardar);

@@ -706,3 +706,31 @@
   .cm-barra-acciones{width:100%}
   .cm-barra-acciones a{flex:1;justify-content:center}
 }
+
+
+/* ============================================================
+   D2b · CONFIRMACIÓN SIMPLE PARA EL SELLO
+   ------------------------------------------------------------
+   La casilla pertenece a la campaña. No abre formularios ni conserva
+   evidencia/historial: solo condiciona la opción Elegido por MAGANDHI.
+   ============================================================ */
+.cm-producto-probado{
+  display:flex;flex-direction:column;gap:8px;margin:0 0 14px;padding:14px 16px;
+  border:1px solid var(--mk-linea);border-radius:12px;background:rgba(16,28,51,.025);
+}
+.cm-producto-probado-control{
+  display:flex;align-items:flex-start;gap:11px;cursor:pointer;color:var(--mk-marino);
+}
+.cm-producto-probado-control input{
+  width:18px;height:18px;flex:none;margin:2px 0 0;accent-color:var(--mk-marino);cursor:inherit;
+}
+.cm-producto-probado-control > span{display:flex;flex-direction:column;gap:3px;line-height:1.4}
+.cm-producto-probado-control b{font-size:13px;font-weight:600}
+.cm-producto-probado-control small{font-size:11.5px;color:var(--mk-gris)}
+.cm-producto-probado-control:has(input:disabled){cursor:not-allowed;opacity:.62}
+.cm-producto-probado-control input:focus-visible{outline:3px solid rgba(143,163,196,.6);outline-offset:3px}
+.cm-sello-historico-aviso{
+  margin:0 0 14px;padding:12px 14px;border:1px solid rgba(191,124,0,.28);border-radius:11px;
+  color:#8A5A00;background:rgba(191,124,0,.10);font-size:12.5px;line-height:1.45;
+}
+.cm-sello-historico-aviso[hidden]{display:none}

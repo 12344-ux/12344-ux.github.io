@@ -1,6 +1,6 @@
 # PLANO · Dropshipping y envíos
 
-**Corte:** 10 de octubre de 2026 · **Estado:** diseño vigente con **D1 y D2a desplegados en producción** (D1 con su ajuste de uso real; D2a «Llevar a Campañas»). Siguen D2b y D2c. D1 no vende ni llama `orders/`; el resto se ajusta con la respuesta de Dropi, las cotizaciones y el contador.
+**Corte:** 10 de octubre de 2026 · **Estado:** diseño vigente con **D1 y D2a desplegados en producción** (D1 con su ajuste de uso real; D2a «Llevar a Campañas»). **D2b está implementado en la rama de trabajo y pendiente de despliegue**; D2c sigue pendiente. D1 no vende ni llama `orders/`; el resto se ajusta con la respuesta de Dropi, las cotizaciones y el contador.
 
 ## 0. La promesa
 
@@ -30,7 +30,7 @@
 6. El precio comercial se define a mano. El proveedor solo informa costo interno, nunca precio público.
 7. Dropi es la fuente de verdad del stock proveedor. Si la lectura vence o falla, la tienda falla cerrada como «Temporalmente no disponible».
 8. Después de Wompi, el diseño objetivo es reserva automática `PENDIENTE CONFIRMACION` y botón humano **«Confirmar despacho con proveedor»** para liberarla. No se implementa hasta medir reserva, transición, cancelación e idempotencia en la cuenta MAGANDHI.
-9. El sello MAGANDHI solo se habilita si existe una prueba aprobada del equipo; la UI pregunta, pero el servidor decide.
+9. El sello MAGANDHI se habilita solo si la campaña tiene un producto ligado y la casilla simple `probado_por_magandhi` está marcada; la UI guía y el servidor decide. D2b no almacena prueba, fecha, notas, veredicto ni historial.
 10. Cliente, pedido, correos, opiniones y métricas de relación siguen siendo MAGANDHI. La política/copy ante stock perdido después del pago queda pendiente de decisión legal/comercial.
 
 Flujo mínimo:
@@ -56,7 +56,7 @@ La URL actual de detalle de Dropi contiene `product-details/:id/:name`, por lo q
 | `productos.peso_g`, `largo_cm`, `ancho_cm`, `alto_cm` | Cotizar guías | Pendiente de fase de guías |
 | `despachos` | Un envío por fila: pedido, tipo, plataforma, id externo, guía, rastreo, estado, flete y fechas | Pendiente |
 | `despacho_eventos` | Libro append-only de cambios de estado e idempotencia | Pendiente |
-| `producto_pruebas` | La prueba del sello: quién, cuándo, notas y veredicto | Pendiente D2 |
+| `campana_producto.probado_por_magandhi` | Confirmación simple por presentación comercial; solo habilita el sello y exige un producto ligado | **Implementado en rama D2b, pendiente de despliegue.** No es una bitácora ni requiere datos históricos |
 | `campana_producto.tiempo_entrega` | La ficha muestra el tiempo de entrega, nunca el origen | Pendiente D2 |
 
 **Estados del despacho:** `creado`, `recogido`, `en_transito`, `novedad`, `entregado`, `devuelto`, `cancelado`.
@@ -125,7 +125,7 @@ La URL actual de detalle de Dropi contiene `product-details/:id/:name`, por lo q
 | **D1 · Cimientos internos** | Área propia, búsqueda/paginación read-only, bandeja, origen/ficha proveedor, candados de Inventario/Métricas, bloqueo de publicación | **Desplegada (10-oct-2026).** 68 migraciones y pruebas. No toca `orders/`. Ajuste de uso real: fotos directas de Dropi, 24 por página, bandeja como carrito |
 | **1 · Guía manual** | `despachos` y `despacho_eventos`; pegar la guía en Seguimiento; paso a `en_camino` con el correo automático | Diseñada, no depende de nadie |
 | **2 · Guías automáticas (propios)** | Peso y medidas; municipios DANE en la tienda; Edge Function para cotizar y crear la guía; avisos de estado firmados | Cotizaciones y elección de plataforma |
-| **D2 / 3 · Embudo de producto Dropi y sello** | Variante exacta, importación atómica a producto + `producto_proveedor` + borrador, imágenes propias, prueba/sello server-side, municipios, stock vigente/fallo cerrado y verificación antes de Wompi | Medir frecuencia/contrato de lectura y decidir datos de destinatario |
+| **D2 / 3 · Embudo de producto Dropi y sello** | Variante exacta, importación atómica a producto + `producto_proveedor` + borrador, imágenes propias, casilla/sello server-side, municipios, stock vigente/fallo cerrado y verificación antes de Wompi | Medir frecuencia/contrato de lectura y decidir datos de destinatario |
 | **D3 / 4 · Pedidos a Dropi** | Reserva `PENDIENTE CONFIRMACION`, detalle de Ventas, confirmación humana, verificación por id, guía/estado y asiento del saldo | Contrato medido de `orders/`, reserva/liberación/cancelación y contador |
 | **5 · Contraentrega** | `CON RECAUDO` y su conciliación | Solo si los números lo piden |
 
@@ -138,7 +138,7 @@ D2 se parte para que cada PR desbloquee algo real sin abrir la venta antes de ti
 | Tramo | Entrega | Estado / decisiones pendientes |
 |---|---|---|
 | **D2a · Llevar a Campañas** | Relectura de la ficha, elección de variante y fotos, conversión a grande + `-sm` en el bucket propio, `ds_llevar_a_campanas` atómica e idempotente, editor en modo proveedor y candado del vínculo campaña ↔ ficha | **Desplegado y probado por el dueño (10-oct-2026)**, migración `20261024000000`. No publica ni vende. Las fotos se traen desde el navegador porque el CDN de Dropi responde CORS `*` (medido); así se reutiliza el conversor del editor sin una Edge Function nueva |
-| **D2b · Sello con prueba** | `producto_pruebas` (quién, cuándo, notas, veredicto), registro desde el editor, y validación en `cm_crear/editar/publicar_campana`: sin prueba aprobada no hay sello. Aplica a propios y proveedor | Antes de activarlo, registrar la prueba de los productos que ya llevan el sello (hoy, el shampoo GRISI) |
+| **D2b · Sello con casilla simple** | `campana_producto.probado_por_magandhi`, casilla «Este producto fue probado por MAGANDHI» y validación en `cm_crear/editar/publicar_campana` más trigger: sin producto ligado y casilla no hay sello. Sin tabla/RPC de pruebas, formularios, fechas, notas, veredictos ni historial. Aplica a propios y proveedor | **Implementado en esta rama; no desplegado.** Campañas históricas con sello y casilla falsa se advierten al editar para que se confirme o se elija «Ninguno», sin inventar ni exigir datos históricos. No habilita publicación/venta de proveedor antes de D2c |
 | **D2c · Stock vivo y venta de proveedor** | Refresco de stock desde el servidor, vencimiento que falla cerrado en `catalogo_publico`, estado «Temporalmente no disponible» en la tienda, verificación en vivo en `crear-intencion-pago`, `crear_pedido`/`anular_pedido` sin libro de Inventario para proveedor, asiento con las cuentas del saldo Dropi y aviso en Ventas para crear el pedido en Dropi a mano. Recién aquí se levanta `DS_PUBLICACION_PENDIENTE` | Decide el dueño: vigencia de la lectura y frecuencia de refresco; el contador: cuentas del costo proveedor y flete; copy de «Temporalmente no disponible» y política si el stock se pierde después del pago |
 
 El pedido automático a Dropi (`orders/`) sigue siendo D3/4. Municipio DANE y nombres/apellidos separados se necesitan antes de ese pedido automático; con el pedido manual de D2c el dueño transcribe los datos en Dropi.

@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
-<link rel="stylesheet" href="campanas.css?v=d2a">
+<link rel="stylesheet" href="campanas.css?v=d2b-casilla">
 
 <!--
   MAGANDHI · Area de Marketing · Sub-area CAMPANAS · EDITAR.
@@ -213,9 +213,20 @@
           <span class="cm-seccion-num">3</span>
           <div>
             <h2 class="cm-seccion-tit">Distintivo de la tarjeta</h2>
-            <p class="cm-seccion-sub">Elige una sola señal para acompañar el producto en el escaparate. El bloque queda preparado para incorporar nuevos distintivos en el futuro.</p>
+            <p class="cm-seccion-sub">Elige una sola señal para acompañar el producto en el escaparate. Para usar «Elegido por MAGANDHI», liga un producto y confirma esta decisión simple.</p>
           </div>
         </div>
+        <div class="cm-producto-probado">
+          <label class="cm-producto-probado-control" for="cm-producto-probado">
+            <input id="cm-producto-probado" type="checkbox" disabled aria-describedby="cm-producto-probado-ayuda">
+            <span>
+              <b>Este producto fue probado por MAGANDHI</b>
+              <small>Esta confirmación solo habilita el sello; no publica ni habilita la venta de productos de proveedor.</small>
+            </span>
+          </label>
+          <span class="cm-campo-ayuda" id="cm-producto-probado-ayuda">La casilla requiere un producto ligado a esta campaña.</span>
+        </div>
+        <p class="cm-sello-historico-aviso" id="cm-sello-historico-aviso" role="alert" hidden>Esta campaña histórica conserva «Elegido por MAGANDHI», pero aún no tiene esta confirmación guardada. Para conservar el sello al guardar, liga un producto si hace falta y marca la casilla; si no, elige «Ninguno».</p>
         <fieldset class="cm-distintivos" aria-describedby="cm-distintivo-ayuda">
           <legend class="cm-sr-only">Distintivo de la tarjeta</legend>
 
@@ -359,6 +370,49 @@
   let productos = [];        // [{id,sku,nombre,activo}] de Inventario
   let campanaId = null;      // uuid de la campana en edicion (?id=...)
   let publicadoActual = false;
+
+  // ------------------------------------------------------------
+  // D2b · CONFIRMACIÓN SIMPLE DEL PRODUCTO
+  // ------------------------------------------------------------
+  // La casilla pertenece a esta presentación comercial. La UI solo orienta:
+  // cm_crear_campana, cm_editar_campana, cm_publicar_campana y el gatillo SQL
+  // vuelven a imponer la misma regla.
+  function mensajeErrorCuraduria(error) {
+    const bruto = String(error?.message || error || '').trim();
+    if (bruto.startsWith('CM_PRUEBA_SIN_PRODUCTO')) {
+      return 'Liga un producto antes de marcarlo como probado por MAGANDHI.';
+    }
+    if (bruto.startsWith('CM_SELLO_SIN_PRUEBA')) {
+      return 'Marca «Este producto fue probado por MAGANDHI» antes de usar Elegido por MAGANDHI.';
+    }
+    if (bruto.startsWith('DS_PUBLICACION_PENDIENTE')) {
+      return 'Este producto de proveedor sigue en borrador hasta D2c, cuando haya stock vivo y checkout seguro.';
+    }
+    return bruto.replace(/^CM_[A-Z_]+:\s*/, '') || 'No se pudo completar la operación.';
+  }
+
+  function actualizarControlProductoProbado({ preservarSelloHistorico = false } = {}) {
+    const producto = $('cm-producto');
+    const control = $('cm-producto-probado');
+    const elegido = document.querySelector('input[name="cm-distintivo"][value="elegido"]');
+    const ninguno = document.querySelector('input[name="cm-distintivo"][value="ninguno"]');
+    const avisoHistorico = $('cm-sello-historico-aviso');
+    if (!producto || !control || !elegido) return;
+
+    const tieneProducto = Boolean(producto.value);
+    control.disabled = !tieneProducto;
+    if (!tieneProducto) control.checked = false;
+
+    const puedeElegir = tieneProducto && control.checked;
+    if (!puedeElegir && elegido.checked && !preservarSelloHistorico && ninguno) {
+      ninguno.checked = true;
+    }
+    elegido.disabled = !puedeElegir;
+    if (avisoHistorico) {
+      avisoHistorico.hidden = !(elegido.checked && !control.checked);
+    }
+    refrescarPreview();
+  }
 
   // Estado de imagenes en memoria (igual que agregar.html).
   //   bannerPend: blob nuevo pendiente de subir { blob, ext, tipo, url } o null.
@@ -717,6 +771,7 @@
     const avisoSub = $('cm-aviso-sub');
     document.querySelectorAll('input[name="cm-distintivo"]').forEach((radio) => {
       radio.addEventListener('change', () => {
+        actualizarControlProductoProbado();
         const esUltimas = tipoDistintivo() === 'ultimas';
         avisoSub.hidden = !esUltimas;
         if (esUltimas) $('cm-aviso-cantidad').focus();
@@ -763,7 +818,14 @@
         const campoNombre = $('cm-nombre');
         if (!campoNombre.value.trim() && prod.nombre) campoNombre.value = prod.nombre;
       }
+      const controlProductoProbado = $('cm-producto-probado');
+      controlProductoProbado.checked = false;
+      actualizarControlProductoProbado();
       refrescarPreview();
+    });
+
+    $('cm-producto-probado').addEventListener('change', () => {
+      actualizarControlProductoProbado();
     });
   }
 
@@ -892,7 +954,7 @@
       .from('campana_producto')
       .select('id, nombre, slug, categoria_codigo, detalle_presentacion, imagen_banner_path, ' +
               'caracteristica_adicional, precio_venta, hook_largo, por_que_magandhi, sobre_este_producto, ' +
-              'ficha_tecnica, imagenes, sello_elegido, tope_escaparate, ' +
+              'ficha_tecnica, imagenes, sello_elegido, probado_por_magandhi, tope_escaparate, ' +
               'aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, product_id_ref, ' +
               'campana_producto_etiqueta ( etiqueta_codigo )')
       .eq('id', campanaId)
@@ -924,6 +986,7 @@
     // solo lo cambia si elige otro producto o "Sin producto de inventario".
     await asegurarOpcionProductoLigado(data.product_id_ref || null);
     $('cm-producto').value = data.product_id_ref || '';
+    $('cm-producto-probado').checked = !!data.probado_por_magandhi;
     $('cm-nombre').value = data.nombre || '';
     // Slug precargado: si la campana ya tiene uno, se marca "tocado" para que la
     // autosugerencia desde el nombre NO lo pise. El operador puede editarlo.
@@ -950,13 +1013,14 @@
     const imgs = Array.isArray(data.imagenes) ? data.imagenes.filter((p) => typeof p === 'string') : [];
     inicializarGaleria(imgs);
 
-    // Distintivo único. Si un registro histórico trae ambos estados, la
-    // disponibilidad tiene prioridad visual; al guardar queda normalizado a
-    // una sola opción y la base impedirá futuras combinaciones dobles.
+    // Distintivo único. Una campaña histórica con sello y sin la nueva
+    // confirmación conserva el sello visible: debe poder confirmarse o quitarse
+    // conscientemente, nunca normalizarse de forma silenciosa al cargar.
     const conflictoDistintivo = !!data.sello_elegido && !!data.aviso_urgencia_activo;
-    const tipoActual = data.aviso_urgencia_activo
-      ? 'ultimas'
-      : (data.sello_elegido ? 'elegido' : 'ninguno');
+    const selloHistoricoSinConfirmacion = !!data.sello_elegido && !data.probado_por_magandhi;
+    const tipoActual = selloHistoricoSinConfirmacion
+      ? 'elegido'
+      : (data.aviso_urgencia_activo ? 'ultimas' : (data.sello_elegido ? 'elegido' : 'ninguno'));
     const radioActual = document.querySelector('input[name="cm-distintivo"][value="' + tipoActual + '"]');
     if (radioActual) radioActual.checked = true;
 
@@ -964,7 +1028,9 @@
     $('cm-aviso-cantidad').value = (data.aviso_urgencia_cantidad === null || data.aviso_urgencia_cantidad === undefined)
       ? '' : String(data.aviso_urgencia_cantidad);
     if (conflictoDistintivo) {
-      mostrarMsg('Esta campaña conservaba dos distintivos históricos. Se muestra “Últimas unidades” para que elijas una sola opción y guardes la normalización.', 'aviso');
+      mostrarMsg(selloHistoricoSinConfirmacion
+        ? 'Esta campaña histórica conserva sello y aviso de urgencia. Se muestra el sello para que confirmes la casilla o elijas «Ninguno» al guardar.'
+        : 'Esta campaña conservaba dos distintivos históricos. Se muestra «Últimas unidades» para que elijas una sola opción y guardes la normalización.', 'aviso');
     }
 
     // Estado de publicacion.
@@ -1012,6 +1078,21 @@
         $('cm-aviso-cantidad').focus();
         return;
       }
+    }
+
+    const productId = $('cm-producto').value || null;
+    const productoProbado = $('cm-producto-probado').checked;
+    if (productoProbado && !productId) {
+      mostrarMsg('Liga un producto antes de marcarlo como probado por MAGANDHI.');
+      $('cm-producto').focus();
+      return;
+    }
+    if (selloElegido && !productoProbado) {
+      mostrarMsg(productId
+        ? 'Marca «Este producto fue probado por MAGANDHI» antes de usar Elegido por MAGANDHI.'
+        : 'Liga un producto y marca «Este producto fue probado por MAGANDHI» antes de usar el sello.');
+      (productId ? $('cm-producto-probado') : $('cm-producto')).focus();
+      return;
     }
 
     // Tope de escaparate: entero >= 0 (o vacio = null, ofrecer todo el stock).
@@ -1100,13 +1181,15 @@
       p_aviso_urgencia_activo: avisoActivo,
       p_aviso_urgencia_cantidad: avisoCant,
       p_etiquetas: recolectarEtiquetas(),
-      // Producto de Inventario ligado (uuid) o null si aun no se liga.
-      p_product_id_ref: $('cm-producto').value || null,
+      // Producto de Inventario ligado (uuid) o null si aún no se liga.
+      p_product_id_ref: productId,
       // Direccion web legible (slug). El servidor la re-normaliza; vacio -> null.
       p_slug: slugificar($('cm-slug').value) || null,
       // Tope de escaparate (opcion A): maximo de unidades a ofrecer en la web.
-      // null = ofrecer todo el stock. Ultimo parametro de la firma SQL.
-      p_tope_escaparate: tope
+      // null = ofrecer todo el stock.
+      p_tope_escaparate: tope,
+      // D2b: confirmación simple que habilita el sello, nunca la publicación.
+      p_producto_probado: productoProbado
     });
 
     // FALLO REAL: la edicion NO se guardo. Las imagenes NUEVAS que acabamos de
@@ -1115,7 +1198,7 @@
     if (error) {
       await limpiarHuerfanos(keysSubidas);
       btn.disabled = false;
-      mostrarMsg('No se pudo guardar: ' + (String(error.message || '').replace(/^DS_[A-Z_]+:\s*/, '') || 'error desconocido.'));
+      mostrarMsg('No se pudo guardar: ' + mensajeErrorCuraduria(error));
       return;
     }
 
@@ -1166,7 +1249,11 @@
       });
       if (error) {
         btn.disabled = false;
-        pubMsg.textContent = 'No se pudo actualizar la publicación: ' + (String(error.message || '').replace(/^DS_[A-Z_]+:\s*/, '') || 'error.');
+        const bruto = String(error?.message || error || '').trim();
+        const detalle = bruto.startsWith('CM_SELLO_SIN_PRUEBA') && $('cm-producto-probado').checked
+          ? 'Guarda primero la campaña con «Este producto fue probado por MAGANDHI» marcada antes de publicarla.'
+          : mensajeErrorCuraduria(error);
+        pubMsg.textContent = 'No se pudo actualizar la publicación: ' + detalle;
         pubMsg.className = 'cm-form-msg err';
         pubMsg.hidden = false;
         return;
@@ -1271,6 +1358,7 @@
     pintarEtiquetas(tagRes.error ? [] : (tagRes.data || []), seleccionadas || []);
 
     cablearInterruptores();
+    actualizarControlProductoProbado({ preservarSelloHistorico: true });
     cablearPublicar();
     reflejarEstadoPublicado();
     $('cm-pub-btn').disabled = !campanaId || seleccionadas === null;
