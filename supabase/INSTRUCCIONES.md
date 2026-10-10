@@ -4459,3 +4459,137 @@ snapshot sin duplicar).
   flechas de foto, tres páginas con Anterior/Siguiente, abrir por id muestra
   solo esa ficha, agregar → carrito, panel con fotos, descartar/restaurar,
   Escape devuelve el foco, sin desborde ni errores de consola.
+
+---
+
+# Dropshipping D2a · «Llevar a Campañas»
+
+**Corte:** 10 de octubre de 2026. Migración forward
+`20261024000000_dropshipping_d2a_llevar_a_campanas.sql` + redespliegue de
+`dropi-sonda` + la pantalla (se publica al fusionar el PR).
+
+## Qué hace
+
+Desde la bandeja de Dropshipping, **«Llevar a Campañas»**:
+
+1. relee la ficha del producto en Dropi por id (nada se crea con el snapshot
+   viejo de la bandeja);
+2. deja elegir la **variante** (una variante = una campaña) y las **fotos**;
+3. trae cada foto elegida desde el CDN de Dropi, la convierte con el mismo
+   código del editor de Campañas (grande 1600 + liviana `-sm` 800) y la sube
+   al bucket propio `campanas`;
+4. con `ds_llevar_a_campanas` crea, en **una sola transacción**, el producto
+   interno `origen='proveedor'` (SKU `MAG-DROP-NNNN`), su ficha
+   `producto_proveedor` y un **borrador** de campaña ligado, y marca el
+   candidato como llevado. Si falla, el panel borra las fotos recién subidas:
+   no queda nada a medias. Repetir el clic no duplica (idempotente por
+   producto + variante Dropi);
+5. abre el editor de Campañas con el borrador.
+
+Candados nuevos en la base:
+
+- una campaña de proveedor **no se re-liga** a otro producto ni se des-liga;
+- un producto de proveedor **solo** entra a Campañas por la importación (ni el
+  editor, ni `cm_crear_campana`, ni un insert privilegiado);
+- un candidato ya llevado no se descarta desde la bandeja.
+
+**Lo que D2a NO hace:** no publica (sigue `DS_PUBLICACION_PENDIENTE` y
+`catalogo_publico` lo oculta), no toca Inventario, no consulta stock en el
+checkout, no llama `orders/`. El costo del proveedor queda en
+`producto_proveedor.costo_reportado` y **no** en `productos.costo_unitario`
+(que alimenta el asiento de inventario propio 143505). La lectura de stock se
+guarda **vencida** a propósito: una lectura de curaduría no es una promesa de
+venta. Todo eso es D2c.
+
+## D2a.1. Antes de aplicar (SQL Editor, solo lectura)
+
+La importación comprueba que cada foto exista en el bucket `campanas`. Para
+eso la función necesita ver `storage.objects`:
+
+```sql
+-- Esperado: true (el rol del SQL Editor salta RLS) y un número > 0
+select rolbypassrls as ve_todo from pg_roles where rolname = current_user;
+select count(*) as fotos_en_campanas from storage.objects where bucket_id = 'campanas';
+```
+
+Si la primera sale `false`, **no apliques** y comparte el resultado: la
+importación fallaría cerrada con `DS_IMAGEN_NO_SUBIDA` en cada intento.
+
+## D2a.2. Aplicar la migración (SQL Editor, una sola vez)
+
+Código: https://raw.githubusercontent.com/12344-ux/12344-ux.github.io/main/supabase/migrations/20261024000000_dropshipping_d2a_llevar_a_campanas.sql
+
+Dónde: https://supabase.com/dashboard/project/bxlzipwxyxdtffnuizbz/sql/new
+
+Comprobación inmediata:
+
+```sql
+-- Esperado: ds_campana_vinculo_proveedor
+select tgname from pg_trigger
+ where tgrelid = 'campana_producto'::regclass and tgname = 'ds_campana_vinculo_proveedor';
+-- Esperado: false | true
+select has_function_privilege('anon', 'ds_llevar_a_campanas(uuid,text,text,text,bigint,integer,timestamptz,jsonb)', 'execute') as anon,
+       has_function_privilege('authenticated', 'ds_llevar_a_campanas(uuid,text,text,text,bigint,integer,timestamptz,jsonb)', 'execute') as panel;
+```
+
+## D2a.3. Redesplegar `dropi-sonda`
+
+Código: https://raw.githubusercontent.com/12344-ux/12344-ux.github.io/main/supabase/functions/dropi-sonda/index.ts
+
+Dónde: https://supabase.com/dashboard/project/bxlzipwxyxdtffnuizbz/functions/dropi-sonda → pestaña **Code** → reemplazar → **Deploy**. Verify JWT **encendido**; secretos sin cambios.
+
+Cambio: las variantes ahora salen con su nombre real (`attribute_values`:
+«Color: Negro · Talla: M») y su stock por bodega
+(`warehouse_product_variation`); un producto `VARIABLE` suma el stock de sus
+variantes en vez de mostrar un falso 0. Sigue siendo solo lectura.
+
+## D2a.4. Comprobar desde el panel
+
+1. Dropshipping → carrito → un candidato → **Llevar a Campañas**.
+2. Debe releer la ficha y mostrar variantes (si tiene) y fotos elegibles.
+3. **Crear borrador en Campañas** → se abre el editor con el aviso «Borrador
+   creado desde Dropshipping», el selector de producto bloqueado y las fotos
+   ya propias.
+4. En el editor, **Publicar** debe responder que espera el stock vivo (D2c).
+5. De vuelta en la bandeja, el candidato muestra «Abrir en Campañas».
+
+```sql
+-- Lo que dejó la importación (sin datos de clientes)
+select p.sku, p.nombre, p.origen, p.costo_unitario, pp.producto_externo_id, pp.variacion_nombre,
+       pp.costo_reportado, pp.stock_reportado, pp.stock_vence_en = pp.stock_leido_en as nace_vencida,
+       cp.publicado, jsonb_array_length(cp.imagenes) as fotos
+  from producto_proveedor pp
+  join productos p on p.id = pp.product_id
+  left join campana_producto cp on cp.product_id_ref = p.id
+ order by pp.importado_en desc;
+```
+
+Esperado: `origen = proveedor`, `costo_unitario` vacío, `nace_vencida = true`,
+`publicado = false`.
+
+## D2a.5. Pruebas hechas
+
+- `supabase/pruebas/local/dropshipping-d2a.sql` **30/30**: los dos módulos son
+  obligatorios, anon no ejecuta, solo keys propias que existen en el bucket
+  (ni URL de Dropi, ni `-sm`, ni carpetas, ni otro bucket), un intento fallido
+  no deja nada, producto/ficha/borrador correctos, lectura nace vencida,
+  idempotencia, otra variante = otro producto, descartado no se lleva, llevado
+  no se descarta, el vínculo no se tuerce (editor, `cm_crear_campana`, insert
+  privilegiado), las campañas propias siguen igual, no publica, no aparece en
+  `catalogo_publico` y cero movimientos de Inventario.
+- `dropshipping-cimientos.sql` **29/29** (su fixture ahora simula la vía de
+  importación) y matriz de permisos **170/170** con la nueva puerta en la lista
+  blanca.
+- `probar-dropi-sonda-d1.ts` **40/40**: variantes con `attribute_values`,
+  stock por bodega de variante, suma de producto `VARIABLE`, foto de variante y
+  descarte de ids no válidos.
+- Chromium **60/60** (PC 1280 y celular 390) con la función real contra un
+  doble de Dropi: relectura, variantes, fotos, nombre de trabajo, conversión y
+  subida grande + `-sm`, RPC con datos de la relectura, apertura del editor en
+  modo proveedor, enlace de vuelta en la bandeja, «Llevar otra variante»,
+  compensación de fotos si la RPC falla, foto rota que no frena y nada se sale
+  de la pantalla.
+- Banco completo en verde: 69 migraciones, F2 40/40, F3 84/84, estado-pago
+  24/24, M1 40/40, M2 26/26, fechas 16/16, EM5 61/61, EM5.1 32/32, EM6 44/44,
+  puesta al día 23/23, F3 sobre producción, webhook 21/21, ciclo F2 19/19 + 12/12,
+  ciclo F3 29/29 y diagnóstico.

@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../marca.css?v=2">
-<link rel="stylesheet" href="dropshipping.css?v=2">
+<link rel="stylesheet" href="dropshipping.css?v=3">
 <!--
   MAGANDHI · Dropshipping · D1 (+ ajuste de uso real, 10-oct-2026)
   --------------------------------------------------------------------------
@@ -38,7 +38,7 @@
 <main class="ds-wrap" id="ds-main" hidden>
   <section class="ds-nota" aria-label="Alcance de esta fase">
     <span data-ico="info" aria-hidden="true"></span>
-    <div><strong>D1 · Consulta y curaduría, nada más.</strong> Aquí lees candidatos desde Dropi y los agregas a una bandeja privada. Las fotos se ven directo desde Dropi: no se descargan ni se guardan. No se crea un producto MAGANDHI, no se publica una campaña y no se reserva ni envía ningún pedido al proveedor.</div>
+    <div><strong>Consulta, curaduría y borradores.</strong> Lee candidatos desde Dropi y agrégalos a la bandeja; las fotos se ven directo desde Dropi sin guardarse. Desde la bandeja, <b>Llevar a Campañas</b> crea un borrador con fotos propias para curarlo en el editor. Nada se publica, se vende ni se pide al proveedor desde aquí todavía.</div>
   </section>
 
   <section class="ds-consulta" aria-labelledby="ds-consulta-tit">
@@ -90,7 +90,30 @@
       <button type="button" data-filtro="descartado" aria-pressed="false">Descartados <b id="ds-n-descartado">0</b></button>
     </div>
     <div class="ds-cajon-lista" id="ds-bandeja" aria-live="polite"><div class="ds-vacio">Cargando bandeja privada…</div></div>
-    <footer class="ds-cajon-pie"><span data-ico="reloj" aria-hidden="true"></span><span><b>Llevar a Campañas</b> se habilita en D2: ahí se descargan solo las fotos que elijas y se abre el editor de Campañas.</span></footer>
+    <footer class="ds-cajon-pie"><span data-ico="info" aria-hidden="true"></span><span><b>Llevar a Campañas</b> relee la ficha en Dropi, trae solo las fotos que elijas convertidas a formato MAGANDHI y abre el editor con un borrador. Nada se publica solo.</span></footer>
+  </div>
+</dialog>
+
+<!-- D2a · LLEVAR A CAMPAÑAS: relee la ficha, elige variante y fotos, crea el
+     borrador atómico y abre el editor de Campañas. -->
+<dialog class="ds-modal" id="ds-importar" aria-labelledby="ds-imp-tit">
+  <div class="ds-modal-in">
+    <header class="ds-modal-head">
+      <div>
+        <p class="ds-modal-kicker">Llevar a Campañas</p>
+        <h2 id="ds-imp-tit">Preparar borrador</h2>
+        <p id="ds-imp-sub"></p>
+      </div>
+      <button class="ds-cajon-x" id="ds-imp-cerrar" type="button" aria-label="Cerrar"><span data-ico="equis" aria-hidden="true"></span></button>
+    </header>
+    <div class="ds-modal-cuerpo" id="ds-imp-cuerpo"></div>
+    <footer class="ds-modal-pie">
+      <p class="ds-modal-msg" id="ds-imp-msg" aria-live="polite"></p>
+      <div class="ds-modal-acciones">
+        <button class="ds-btn ds-btn--sec" id="ds-imp-cancelar" type="button">Cancelar</button>
+        <button class="ds-btn" id="ds-imp-crear" type="button" disabled>Crear borrador en Campañas</button>
+      </div>
+    </footer>
   </div>
 </dialog>
 
@@ -99,6 +122,9 @@
     asegurarAcceso, montarHeader, ICONOS, supabase,
     escaparHTML, formatearCOP, formatearMomento
   } from './dropshipping-core.js';
+  // D2a: el MISMO conversor de fotos del editor de Campañas (grande 1600 +
+  // liviana 800, WebP con respaldo JPEG). Un solo pipeline de imágenes.
+  import { optimizarDosTamanos, BUCKET_CAMPANAS } from '../marketing/marketing-core.js';
 
   const main = document.getElementById('ds-main');
   const buscarEl = document.getElementById('ds-buscar');
@@ -119,6 +145,8 @@
   let ultimaConsulta = { buscar: '', productoId: '', inicio: 0 };
   let itemsActuales = [];   // resultados en pantalla: [{ producto, leido }]
   let candidatos = [];      // filas de la bandeja privada
+  // D2a: candidato_id -> [{ product_id, variacion_externa_id, variacion_nombre, campana_id, publicado }]
+  let importados = new Map();
   let bandejaCargada = false;
   let filtroBandeja = 'bandeja';
   let esAdmin = false;
@@ -384,6 +412,27 @@
     document.getElementById('ds-n-descartado').textContent = String(descartados);
   }
 
+  // D2a: lo que ya se llevó a Campañas, con su enlace directo al editor.
+  function enlacesCampanas(c) {
+    const lista = importados.get(c.id) || [];
+    if (!lista.length) return '';
+    return '<div class="ds-item-campanas">' + lista.map((x) => x.campana_id
+      ? '<a class="ds-enlace" href="../marketing/campanas/editar.html?id=' + encodeURIComponent(x.campana_id) + '">' +
+          ico('check') + '<span>Abrir en Campañas' + (x.variacion_nombre ? ' · ' + texto(x.variacion_nombre) : '') + '</span>' +
+          '<em>' + (x.publicado ? 'Publicado' : 'Borrador') + '</em></a>'
+      : '').join('') + '</div>';
+  }
+
+  function botonLlevar(c) {
+    const llevado = c.estado === 'llevado_a_campanas';
+    const lista = importados.get(c.id) || [];
+    // Ya llevado y sin variantes: no hay nada más que llevar.
+    if (llevado && lista.length && lista.every((x) => !x.variacion_externa_id)) return '';
+    const titulo = esAdmin ? '' : ' title="Llevar a Campañas lee Dropi: reservado a administración hasta D3"';
+    return '<button class="ds-btn' + (llevado ? ' ds-btn--sec' : '') + '" type="button" data-llevar' + (esAdmin ? '' : ' disabled') + titulo + '>' +
+      (llevado ? 'Llevar otra variante' : 'Llevar a Campañas') + '</button>';
+  }
+
   function itemBandeja(c) {
     const descartado = c.estado === 'descartado';
     const llevado = c.estado === 'llevado_a_campanas';
@@ -397,9 +446,10 @@
           (c.variacion_externa_id ? '<span class="ds-tag">Variante ' + texto(c.variacion_externa_id) + '</span>' : '') + '</div>' +
         '<div class="ds-item-datos"><span>Costo <b>' + monto(c.precio_proveedor) + '</b></span><span>Sugerido <b>' + monto(c.precio_sugerido) + '</b></span></div>' +
         '<div class="ds-item-lectura">Lectura de stock: ' + texto(c.stock_leido_en ? formatearMomento(c.stock_leido_en) : null) + '</div>' +
+        enlacesCampanas(c) +
         '<div class="ds-item-acciones">' +
           (llevado ? '' : '<button class="ds-btn ds-btn--sec' + (descartado ? '' : ' ds-btn--danger') + '" type="button" data-estado="' + (descartado ? 'bandeja' : 'descartado') + '">' + (descartado ? 'Restaurar' : 'Descartar') + '</button>') +
-          (descartado ? '' : '<button class="ds-btn" type="button" disabled title="Se habilita en D2">Llevar a Campañas</button>') +
+          (descartado ? '' : botonLlevar(c)) +
         '</div>' +
         '<p class="ds-card-msg" aria-live="polite"></p>' +
       '</div></article>';
@@ -433,12 +483,41 @@
     }
     candidatos = data || [];
     bandejaCargada = true;
+    await cargarImportados();
     pintarContadores();
     pintarBandeja();
     refrescarBotonesResultados();
   }
 
+  // D2a: fichas proveedor y campañas que ya salieron de cada candidato.
+  async function cargarImportados() {
+    importados = new Map();
+    const ids = candidatos.filter((c) => c.estado === 'llevado_a_campanas').map((c) => c.id);
+    if (!ids.length) return;
+    const { data: fichas, error } = await supabase
+      .from('producto_proveedor')
+      .select('product_id, candidato_id, variacion_externa_id, variacion_nombre')
+      .in('candidato_id', ids);
+    if (error || !fichas || !fichas.length) return;
+    const { data: camps } = await supabase
+      .from('campana_producto')
+      .select('id, product_id_ref, publicado')
+      .in('product_id_ref', fichas.map((f) => f.product_id));
+    for (const f of fichas) {
+      const cp = (camps || []).find((x) => x.product_id_ref === f.product_id);
+      const lista = importados.get(f.candidato_id) || [];
+      lista.push({ ...f, campana_id: cp ? cp.id : null, publicado: !!(cp && cp.publicado) });
+      importados.set(f.candidato_id, lista);
+    }
+  }
+
   bandejaEl.addEventListener('click', async (e) => {
+    const llevar = e.target.closest('[data-llevar]');
+    if (llevar && !llevar.disabled) {
+      const id = llevar.closest('[data-candidato]')?.dataset.candidato;
+      if (id) abrirImportar(id);
+      return;
+    }
     const boton = e.target.closest('[data-estado]');
     if (!boton || boton.disabled) return;
     const item = boton.closest('[data-candidato]');
@@ -473,6 +552,258 @@
   cajon.addEventListener('close', () => {
     document.body.classList.remove('ds-sin-scroll');
     carrito.setAttribute('aria-expanded', 'false');
+    carrito.focus();
+  });
+
+  // ── D2a · LLEVAR A CAMPAÑAS ────────────────────────────────────────────
+  // 1) Relee la ficha en Dropi por id (dropi-sonda, servidor): nada se crea
+  //    con el snapshot viejo de la bandeja.
+  // 2) El dueño elige variante (una variante = una campaña) y fotos.
+  // 3) Cada foto se trae directo del CDN de Dropi (medido: responde CORS *),
+  //    se convierte con el MISMO pipeline del editor y se sube al bucket
+  //    propio `campanas` como grande + '-sm'.
+  // 4) ds_llevar_a_campanas crea producto + ficha + borrador en UNA
+  //    transacción. Si falla, se borran las fotos recién subidas: no queda
+  //    nada a medias. Luego se abre el editor de Campañas.
+  const imp = document.getElementById('ds-importar');
+  const impCuerpo = document.getElementById('ds-imp-cuerpo');
+  const impMsg = document.getElementById('ds-imp-msg');
+  const impCrear = document.getElementById('ds-imp-crear');
+  const impCancelar = document.getElementById('ds-imp-cancelar');
+  const FOTOS_PRESELECCION = 8;
+  const FOTOS_MAX = 12;
+  let impEstado = null;
+
+  const entero = (v) => { const n = Number(v); return v != null && v !== '' && Number.isFinite(n) && n >= 0 ? Math.round(n) : null; };
+  const claveAleatoria = () => Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  // «Color: Negro · Talla: M» -> «Negro · M» para el nombre de trabajo.
+  const valoresVariante = (n) => String(n || '').split(' · ').map((p) => p.includes(': ') ? p.split(': ').slice(1).join(': ') : p).join(' · ');
+
+  function impAviso(textoMsg, clase = '') {
+    impMsg.className = 'ds-modal-msg' + (clase ? ' ' + clase : '');
+    impMsg.textContent = textoMsg;
+  }
+  const variantesDe = (ficha) => Array.isArray(ficha?.detalle_variaciones) ? ficha.detalle_variaciones.filter((v) => v && v.id) : [];
+  const yaImportada = (varId) => (importados.get(impEstado.candidato.id) || []).find((x) => (x.variacion_externa_id || '') === (varId || ''));
+  function fotosDisponibles() {
+    const lista = [...urlsValidas(impEstado.variante?.fotos_remotas), ...urlsValidas(impEstado.ficha?.fotos_remotas)];
+    return [...new Set(lista)].slice(0, FOTOS_MAX);
+  }
+  const enlaceEditor = (campanaId) => '../marketing/campanas/editar.html?id=' + encodeURIComponent(campanaId) + '&desde=dropshipping';
+
+  async function abrirImportar(candidatoId) {
+    const c = candidatos.find((x) => x.id === candidatoId);
+    if (!c) return;
+    if (cajon.open) cajon.close();
+    impEstado = { candidato: c, ficha: null, leido: null, variante: null, elegidas: new Set(), fotosIniciadas: false,
+      nombre: '', nombreTocado: false, trabajando: false, destino: null };
+    document.getElementById('ds-imp-tit').textContent = c.nombre_externo || 'Preparar borrador';
+    document.getElementById('ds-imp-sub').textContent = 'Dropi #' + c.producto_externo_id + ' · se relee la ficha actual antes de crear nada';
+    impCuerpo.innerHTML = '<div class="ds-vacio">Leyendo la ficha actual en Dropi…</div>';
+    impAviso('');
+    impCrear.textContent = 'Crear borrador en Campañas';
+    impCrear.disabled = true;
+    impCancelar.disabled = false;
+    imp.showModal();
+    document.body.classList.add('ds-sin-scroll');
+
+    const { data, error } = await supabase.functions.invoke('dropi-sonda', { body: { producto_id: c.producto_externo_id, tamano: 1 } });
+    if (!imp.open || impEstado?.candidato.id !== c.id) return;
+    const ficha = data?.producto?.ficha;
+    if (error || !ficha) {
+      const det = error ? await cuerpoError(error) : (data?.conclusion || '');
+      impCuerpo.innerHTML = '<div class="ds-vacio"><strong>No se pudo leer la ficha en Dropi</strong>' +
+        escaparHTML(det || 'Vuelve a intentarlo en un momento.') + ' No se creó nada.</div>';
+      return;
+    }
+    impEstado.ficha = ficha;
+    impEstado.leido = data.producto.leido || new Date().toISOString();
+    pintarImportar();
+  }
+
+  function pintarImportar() {
+    const { ficha } = impEstado;
+    const variantes = variantesDe(ficha);
+    if (variantes.length && !impEstado.variante) impEstado.variante = variantes.find((v) => !yaImportada(v.id)) || null;
+    const v = impEstado.variante;
+    const fotos = fotosDisponibles();
+    if (!impEstado.fotosIniciadas) { impEstado.elegidas = new Set(fotos.slice(0, FOTOS_PRESELECCION)); impEstado.fotosIniciadas = true; }
+    impEstado.elegidas = new Set([...impEstado.elegidas].filter((u) => fotos.includes(u)));
+    if (!impEstado.nombreTocado) {
+      impEstado.nombre = ((ficha.nombre || impEstado.candidato.nombre_externo || '') + (v?.nombre ? ' · ' + valoresVariante(v.nombre) : '')).slice(0, 160);
+    }
+    const yaSinVariante = !variantes.length ? yaImportada('') : null;
+    const costo = entero(v ? (v.precio_proveedor ?? ficha.precio_proveedor) : ficha.precio_proveedor);
+    const sugerido = entero(v ? (v.precio_sugerido ?? ficha.precio_sugerido) : ficha.precio_sugerido);
+    const stock = v ? entero(v.stock) : entero(ficha.stock);
+
+    const pasoVariante = !variantes.length
+      ? (yaSinVariante
+          ? '<p class="ds-imp-nota ds-imp-nota--ok">' + ico('check') + '<span>Este producto ya está en Campañas. <a href="' + enlaceEditor(yaSinVariante.campana_id) + '">Abrir el borrador</a></span></p>'
+          : '<p class="ds-imp-nota">Producto sin variantes en Dropi: se crea una sola campaña.</p>')
+      : '<div class="ds-imp-variantes" role="radiogroup" aria-label="Variante">' + variantes.map((x) => {
+          const hecha = yaImportada(x.id);
+          return '<label class="ds-imp-var' + (hecha ? ' ds-imp-var--hecha' : '') + '">' +
+            '<input type="radio" name="ds-imp-var" value="' + escaparHTML(x.id) + '"' + (v && v.id === x.id ? ' checked' : '') + (hecha ? ' disabled' : '') + '>' +
+            '<span><b>' + texto(x.nombre, 'Variante ' + escaparHTML(x.id)) + '</b>' +
+            '<small>' + tagStock(x.stock) + (x.precio_proveedor != null ? ' Costo ' + monto(entero(x.precio_proveedor)) : '') + '</small></span>' +
+            (hecha && hecha.campana_id ? '<a class="ds-imp-var-link" href="' + enlaceEditor(hecha.campana_id) + '">Ya en Campañas</a>' : '') +
+          '</label>';
+        }).join('') + '</div><p class="ds-imp-nota">Cada variante es una campaña distinta en la tienda.</p>';
+
+    const pasoFotos = fotos.length
+      ? '<div class="ds-imp-fotos">' + fotos.map((u, i) =>
+          '<label class="ds-imp-foto"><input type="checkbox" value="' + escaparHTML(u) + '"' + (impEstado.elegidas.has(u) ? ' checked' : '') + ' aria-label="Foto ' + (i + 1) + '">' +
+          '<span class="ds-foto"><img src="' + escaparHTML(u) + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">' +
+          '<span class="ds-foto-ph" aria-hidden="true">' + ico('caja') + '</span></span>' +
+          '<span class="ds-imp-check" aria-hidden="true">' + ico('check') + '</span></label>').join('') + '</div>'
+      : '<p class="ds-imp-nota">Dropi no trae fotos para este producto: podrás subir las tuyas en el editor.</p>';
+
+    impCuerpo.innerHTML =
+      '<section class="ds-imp-paso"><h3><span>1</span>Variante</h3>' + pasoVariante + '</section>' +
+      '<section class="ds-imp-paso"><h3><span>2</span>Fotos que traerás a MAGANDHI' +
+        (fotos.length ? '<em id="ds-imp-cuenta">' + impEstado.elegidas.size + ' de ' + fotos.length + '</em>' : '') + '</h3>' +
+        '<p class="ds-imp-nota">Se convierten a formato MAGANDHI (grande y liviana) y quedan en Campañas. En el editor las reordenas, cambias o sumas las tuyas.</p>' +
+        pasoFotos + '</section>' +
+      '<section class="ds-imp-paso"><h3><span>3</span>Nombre de trabajo</h3>' +
+        '<input class="ds-imp-input" id="ds-imp-nombre" type="text" maxlength="160" value="' + escaparHTML(impEstado.nombre) + '">' +
+        '<p class="ds-imp-nota">Lo afinas en el editor. La tienda nunca menciona al proveedor.</p></section>' +
+      '<div class="ds-imp-resumen"><div><span>Costo reportado</span><b>' + monto(costo) + '</b></div>' +
+        '<div><span>Sugerido Dropi</span><b>' + monto(sugerido) + '</b></div>' +
+        '<div><span>Stock leído</span><b>' + (stock == null ? '—' : stock) + '</b></div></div>' +
+      '<p class="ds-imp-nota">' + ico('info') + '<span>El borrador nace <b>sin precio y sin publicar</b>. La lectura de stock se guarda vencida: publicar se habilita cuando llegue el stock vivo (D2c).</span></p>';
+    vigilarFotos(impCuerpo);
+
+    const listo = !impEstado.trabajando && (variantes.length ? !!(v && !yaImportada(v.id)) : !yaSinVariante);
+    impCrear.disabled = !listo;
+  }
+
+  impCuerpo.addEventListener('change', (e) => {
+    if (!impEstado || impEstado.trabajando) return;
+    if (e.target.name === 'ds-imp-var') {
+      impEstado.variante = variantesDe(impEstado.ficha).find((x) => x.id === e.target.value) || null;
+      pintarImportar();
+    } else if (e.target.type === 'checkbox') {
+      if (e.target.checked && impEstado.elegidas.size >= FOTOS_MAX) { e.target.checked = false; return; }
+      if (e.target.checked) impEstado.elegidas.add(e.target.value); else impEstado.elegidas.delete(e.target.value);
+      const cuenta = document.getElementById('ds-imp-cuenta');
+      if (cuenta) cuenta.textContent = impEstado.elegidas.size + ' de ' + fotosDisponibles().length;
+    }
+  });
+  impCuerpo.addEventListener('input', (e) => {
+    if (e.target.id === 'ds-imp-nombre' && impEstado) { impEstado.nombre = e.target.value; impEstado.nombreTocado = true; }
+  });
+
+  // El CDN de Dropi responde `Access-Control-Allow-Origin: *` (medido el
+  // 10-oct). Si una copia en caché llegara sin ese encabezado, se reintenta una
+  // vez forzando una copia fresca. Solo se aceptan imágenes reales y livianas.
+  async function traerFoto(url) {
+    const opciones = { mode: 'cors', credentials: 'omit', referrerPolicy: 'no-referrer' };
+    let r;
+    try { r = await fetch(url, opciones); }
+    catch (_) { r = await fetch(url + (url.includes('?') ? '&' : '?') + 'mg=' + Date.now(), { ...opciones, cache: 'no-store' }); }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const tipo = (r.headers.get('content-type') || '').toLowerCase();
+    if (!/^image\/(jpeg|jpg|png|webp|gif|avif)/.test(tipo)) throw new Error('no es una imagen');
+    const blob = await r.blob();
+    if (blob.size > 15 * 1024 * 1024) throw new Error('imagen demasiado pesada');
+    return blob;
+  }
+
+  async function crearBorrador() {
+    if (!impEstado || impEstado.trabajando || !impEstado.ficha) return;
+    if (impEstado.destino) { location.assign(impEstado.destino); return; }
+    const { candidato, ficha } = impEstado;
+    const v = impEstado.variante;
+    const nombre = String(impEstado.nombre || '').trim().slice(0, 160);
+    if (!nombre) { impAviso('Escribe un nombre de trabajo.', 'err'); return; }
+
+    impEstado.trabajando = true;
+    impCrear.disabled = true;
+    impCancelar.disabled = true;
+    impCuerpo.querySelectorAll('input').forEach((i) => { i.disabled = true; });
+
+    const urls = fotosDisponibles().filter((u) => impEstado.elegidas.has(u));
+    const subidas = [];
+    const imagenes = [];
+    let fallidas = 0;
+    for (let i = 0; i < urls.length; i++) {
+      impAviso('Trayendo foto ' + (i + 1) + ' de ' + urls.length + ' y convirtiéndola a formato MAGANDHI…');
+      try {
+        const blob = await traerFoto(urls[i]);
+        const { grande, liviana } = await optimizarDosTamanos(blob);
+        const base = claveAleatoria();
+        const keyGrande = base + '.' + grande.ext;
+        const up = await supabase.storage.from(BUCKET_CAMPANAS).upload(keyGrande, grande.blob, { contentType: grande.tipo, upsert: false });
+        if (up.error) throw up.error;
+        subidas.push(keyGrande);
+        imagenes.push(keyGrande);
+        // La liviana es opcional, como en el editor: si falla, la tienda usa la grande.
+        const keyLiviana = base + '-sm.' + liviana.ext;
+        const upSm = await supabase.storage.from(BUCKET_CAMPANAS).upload(keyLiviana, liviana.blob, { contentType: liviana.tipo, upsert: false });
+        if (!upSm.error) subidas.push(keyLiviana);
+      } catch (_) {
+        fallidas += 1;
+      }
+    }
+
+    impAviso('Creando el borrador en Campañas…');
+    const { data, error } = await supabase.rpc('ds_llevar_a_campanas', {
+      p_candidato_id: candidato.id,
+      p_variacion_externa_id: v ? String(v.id) : '',
+      p_variacion_nombre: v?.nombre || null,
+      p_nombre: nombre,
+      p_costo_reportado: entero(v ? (v.precio_proveedor ?? ficha.precio_proveedor) : ficha.precio_proveedor),
+      p_stock_reportado: v ? entero(v.stock) : entero(ficha.stock),
+      p_stock_leido_en: impEstado.leido,
+      p_imagenes: imagenes,
+    });
+
+    // Compensación: si no se creó nada nuevo, las fotos recién subidas sobran.
+    if ((error || data?.ya_existia) && subidas.length) {
+      try { await supabase.storage.from(BUCKET_CAMPANAS).remove(subidas); } catch (_) { /* huérfanas inofensivas */ }
+    }
+    impEstado.trabajando = false;
+    impCancelar.disabled = false;
+
+    if (error) {
+      pintarImportar();
+      impAviso('No se pudo crear el borrador: ' + (sinCodigo(error.message) || 'revisa tu acceso.') + ' No quedó nada a medias.', 'err');
+      return;
+    }
+    await cargarBandeja();
+    if (!data?.campana_id) {
+      impAviso('El producto quedó creado, pero no encontramos su campaña. Revisa Campañas.', 'err');
+      return;
+    }
+    impEstado.destino = enlaceEditor(data.campana_id);
+    if (data.ya_existia) {
+      impCuerpo.innerHTML = '<p class="ds-imp-nota ds-imp-nota--ok">' + ico('check') + '<span>Esta variante ya estaba en Campañas: no se duplicó nada.</span></p>';
+      impAviso('');
+      impCrear.textContent = 'Abrir el borrador';
+      impCrear.disabled = false;
+      return;
+    }
+    if (fallidas) {
+      impCuerpo.innerHTML = '<p class="ds-imp-nota ds-imp-nota--ok">' + ico('check') + '<span>Borrador creado con ' + imagenes.length + ' foto' + (imagenes.length === 1 ? '' : 's') + '.</span></p>' +
+        '<p class="ds-imp-nota ds-imp-nota--warn">' + ico('alerta') + '<span>' + fallidas + ' foto' + (fallidas === 1 ? '' : 's') + ' no se pudo traer desde Dropi. Súbela' + (fallidas === 1 ? '' : 's') + ' en el editor si la' + (fallidas === 1 ? '' : 's') + ' necesitas.</span></p>';
+      impAviso('');
+      impCrear.textContent = 'Abrir el editor';
+      impCrear.disabled = false;
+      return;
+    }
+    impAviso('Borrador creado. Abriendo el editor de Campañas…', 'ok');
+    location.assign(impEstado.destino);
+  }
+
+  impCrear.addEventListener('click', crearBorrador);
+  impCancelar.addEventListener('click', () => imp.close());
+  document.getElementById('ds-imp-cerrar').addEventListener('click', () => { if (!impEstado?.trabajando) imp.close(); });
+  imp.addEventListener('cancel', (e) => { if (impEstado?.trabajando) e.preventDefault(); }); // Escape no corta una subida
+  imp.addEventListener('click', (e) => { if (e.target === imp && !impEstado?.trabajando) imp.close(); });
+  imp.addEventListener('close', () => {
+    document.body.classList.remove('ds-sin-scroll');
+    impEstado = null;
     carrito.focus();
   });
 
@@ -521,7 +852,7 @@
     montarHeader({
       titulo: 'Dropshipping',
       kicker: 'DROPSHIPPING · CURADURÍA Y PROVEEDOR',
-      lead: 'Una mesa interna para elegir productos de proveedor sin convertir MAGANDHI en un catálogo ajeno. D1 consulta, mide y organiza; no publica, no vende ni envía pedidos.',
+      lead: 'Una mesa interna para elegir productos de proveedor sin convertir MAGANDHI en un catálogo ajeno: consulta, cura y lleva a Campañas como borrador. No publica, no vende ni envía pedidos.',
       sesion: acceso.sesion,
       areaLabel: 'DROPSHIPPING',
       volverHref: '../panel.html',

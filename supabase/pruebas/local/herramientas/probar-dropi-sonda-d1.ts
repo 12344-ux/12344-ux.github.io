@@ -102,6 +102,31 @@ const servidor = Deno.serve({ port: PORT, onListen() {} }, async (req) => {
         },
       });
     }
+    // Producto VARIABLE con la forma real de variante (D2a): nombre en
+    // `attribute_values`, stock por bodega en `warehouse_product_variation`.
+    if (ruta === "/integrations/products/v2/202") {
+      return Response.json({
+        isSuccess: true,
+        objects: {
+          id: 202, name: "Bafle con variantes", type: "VARIABLE", sale_price: 40000, suggested_price: 80000,
+          photos: [{ urlS3: "colombia/products/202/a.jpg" }],
+          warehouse_product: [],
+          variations: [
+            { id: 7001, sku: "B-N", sale_price: 41000, suggested_price: 82000,
+              attribute_values: [{ attribute_name: "Color", value: "Negro" }],
+              warehouse_product_variation: [{ warehouse_id: 1, stock: 4 }, { warehouse_id: 2, stock: 6 }],
+              gallery: [{ urlS3: "colombia/products/202/negro.jpg" }] },
+            { id: 7002, sku: "B-R", sale_price: 41000, stock: 0,
+              attribute_values: [{ attribute_name: "Color", value: "Rojo" }, { attribute_name: "Talla", value: "M" }] },
+            { id: "no valido!", sku: "X", stock: 9 },
+          ],
+          user: { id: 77 },
+        },
+      });
+    }
+    if (ruta === "/integrations/products/202") {
+      return Response.json({ isSuccess: false, message: "No tiene permisos" }, { status: 400 });
+    }
     if (ruta === "/integrations/products/101") {
       return Response.json({ isSuccess: false, message: "No tiene permisos para ver este producto" }, { status: 400 });
     }
@@ -251,6 +276,21 @@ async function llamar(body: unknown, jwt = ADMIN, metodo = "POST") {
   chk(j.producto.ficha.fotos_remotas.length === 1 && j.producto.ficha.fotos_remotas[0] === "https://d39ru7awumhhs2.cloudfront.net/colombia/products/101/ficha.jpg", "la ficha por id también trae su foto real `photos[].urlS3`");
   chk(j.producto.ruta_stock_aparte.http === 400, "ruta simple queda como diagnóstico 400, no fuente de stock");
   chk(rutasDropi.includes("GET /integrations/products/v2/101") && rutasDropi.includes("GET /integrations/products/101"), "consulta ambas rutas documentadas por id");
+}
+
+// D2a: variantes con la forma real de Dropi.
+{
+  const r = await llamar({ producto_id: 202 });
+  const f = (await r.json()).producto.ficha;
+  const negro = f.detalle_variaciones.find((v: Record<string, unknown>) => v.id === "7001");
+  const rojo = f.detalle_variaciones.find((v: Record<string, unknown>) => v.id === "7002");
+  chk(negro?.nombre === "Color: Negro" && rojo?.nombre === "Color: Rojo · Talla: M", "nombre de variante sale de attribute_values (Color: Negro · Talla: M)");
+  chk(negro?.stock === 10 && rojo?.stock === 0, "stock de variante suma warehouse_product_variation o usa stock");
+  // 10 (negro) + 0 (rojo) + 9 (la de id raro): el total del producto es lo que
+  // Dropi reporta en TODAS sus variantes, aunque una no sea importable.
+  chk(f.stock === 19, "producto VARIABLE suma el stock de sus variantes (no un falso 0 de warehouse_product vacío)");
+  chk(negro?.fotos_remotas?.[0] === "https://d39ru7awumhhs2.cloudfront.net/colombia/products/202/negro.jpg", "la variante trae su propia foto");
+  chk(f.detalle_variaciones.length === 2, "una variante con id no válido se descarta en vez de llegar a la importación");
 }
 
 // La línea roja: ni una sola ruta de pedido, mutación o proveedor aparece.

@@ -215,8 +215,13 @@ select pg_temp.chk(
 -- ------------------------------------------------------------------
 -- 5. Publicacion: proveedor no sale a tienda hasta D2
 -- ------------------------------------------------------------------
+-- Desde D2a un producto proveedor solo entra a Campañas por la importación
+-- (gatillo ds_campana_vinculo_proveedor). El fixture simula esa vía abriendo
+-- la misma compuerta local de transacción; sin D2a instalada no tiene efecto.
+select set_config('impulse.ds_importando', 'on', true);
 insert into campana_producto (id, nombre, slug, precio_venta, product_id_ref, publicado, activo) values
   ('d2300000-0000-4000-8000-000000000021', 'Campaña proveedor D1', 'd1-proveedor', 30000, 'd2300000-0000-4000-8000-000000000002', false, true);
+select set_config('impulse.ds_importando', 'off', true);
 select pg_temp.chk(
   pg_temp.err_como('7e590000-0000-4000-8000-000000000003',
     $$select cm_publicar_campana('d2300000-0000-4000-8000-000000000021', true)$$)

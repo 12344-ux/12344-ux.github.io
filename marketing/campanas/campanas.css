@@ -257,6 +257,9 @@
 .cm-campos{display:grid;gap:16px}
 .cm-campos.dos{grid-template-columns:1fr 1fr}
 .cm-campo{display:flex;flex-direction:column;gap:6px;min-width:0}
+/* El atributo hidden debe ganarle al display:flex de autor (D2a lo usa para
+   ocultar el tope de escaparate en productos de proveedor). */
+.cm-campo[hidden]{display:none}
 .cm-campo > label,.cm-campo-lbl{
   font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
   color:var(--mk-gris);
@@ -472,6 +475,21 @@
 /* Advertencia honesta: la campana SI se guardo, pero alguna imagen no subio.
    No es un error (ambar sobrio), para no mostrar "exito y error" a la vez. */
 .cm-form-msg.aviso{color:#8A5A00;background:rgba(191,124,0,.10)}
+
+/* D2a · Producto de proveedor (llegó desde Dropshipping). Azul operativo, sin
+   color nuevo: la diferencia es el contrato, no la paleta. */
+.cm-proveedor{
+  display:flex;align-items:flex-start;gap:12px;
+  font-size:13px;line-height:1.5;color:var(--mk-gris);
+  background:#fff;border:1px solid var(--mk-linea);border-left:4px solid var(--mk-marino);
+  border-radius:12px;padding:14px 16px;margin:0 0 18px;
+}
+.cm-proveedor[hidden]{display:none}
+.cm-proveedor svg{width:20px;height:20px;flex:none;color:var(--mk-marino);margin-top:1px}
+.cm-proveedor b{display:block;color:var(--mk-marino);font-weight:600;font-size:14px;margin-bottom:2px}
+.cm-proveedor-datos{display:block;margin-top:6px;font-size:12px;color:var(--mk-marino);font-variant-numeric:tabular-nums}
+.cm-proveedor-datos[hidden]{display:none}
+.mk-select:disabled{opacity:.75;cursor:not-allowed;background:rgba(16,28,51,.04)}
 
 /* Aviso sobrio: despublicar/inactivar NO borra (la ficha sigue viva). */
 .cm-aviso-vida{
