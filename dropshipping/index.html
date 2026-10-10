@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAGANDHI · Dropshipping</title>
+<meta name="description" content="Área interna de curaduría de productos de proveedor para MAGANDHI.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../favicon.png">
+<link rel="apple-touch-icon" href="../icono-app-180.png?v=2">
+<meta name="theme-color" content="#101C33">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../marca.css?v=2">
+<link rel="stylesheet" href="dropshipping.css?v=1">
+<!--
+  MAGANDHI · Dropshipping · D1
+  --------------------------------------------------------------------------
+  Esta pantalla solo CONSULTA el catálogo de Dropi y organiza candidatos.
+  No crea productos internos, no descarga imágenes, no publica campañas,
+  no abre Wompi y no llama orders/. La seguridad real está en RLS + RPCs +
+  Edge Function; esta interfaz solo expresa el contrato honestamente.
+-->
+</head>
+<body class="ds-body">
+<script type="module" src="../auth-guard.js"></script>
+
+<main class="ds-wrap" id="ds-main" hidden>
+  <section class="ds-nota" aria-label="Alcance de esta fase">
+    <span data-ico="info" aria-hidden="true"></span>
+    <div><strong>D1 · Consulta y curaduría, nada más.</strong> Aquí puedes leer candidatos desde Dropi y guardarlos en una bandeja privada. No se crea un producto MAGANDHI, no se descarga una imagen, no se publica una campaña y no se reserva ni envía ningún pedido al proveedor.</div>
+  </section>
+
+  <section class="ds-consulta" aria-labelledby="ds-consulta-tit">
+    <div class="ds-campo">
+      <label id="ds-consulta-tit" for="ds-buscar">Buscar en Dropi</label>
+      <input id="ds-buscar" type="search" maxlength="60" autocomplete="off" placeholder="Ej. shampoo, sérum, barba">
+      <small>Consulta remota de solo lectura. No copia el catálogo completo.</small>
+    </div>
+    <div class="ds-campo">
+      <label for="ds-producto-id">O abrir por id</label>
+      <input id="ds-producto-id" type="text" inputmode="numeric" maxlength="12" autocomplete="off" placeholder="Ej. 101">
+      <small>Lee ficha y bodegas de un candidato puntual.</small>
+    </div>
+    <button class="ds-btn" id="ds-consultar" type="button"><span data-ico="lupa"></span>Consultar</button>
+  </section>
+
+  <div id="ds-estado-consulta" aria-live="polite"></div>
+
+  <section class="ds-seccion" aria-labelledby="ds-resultados-tit">
+    <div class="ds-seccion-head">
+      <div>
+        <h2 id="ds-resultados-tit">Resultados de consulta</h2>
+        <p>La vista previa sigue siendo de Dropi. Solo “Guardar en bandeja” deja un snapshot interno bajo curaduría.</p>
+      </div>
+      <span class="ds-meta" id="ds-meta-resultados">Aún no has hecho una consulta.</span>
+    </div>
+    <div id="ds-resultados" class="ds-vacio"><strong>Sin resultados todavía</strong>Busca por palabra o abre la ficha de un producto por su id de Dropi.</div>
+  </section>
+
+  <section class="ds-seccion" aria-labelledby="ds-bandeja-tit">
+    <div class="ds-seccion-head">
+      <div>
+        <h2 id="ds-bandeja-tit">Bandeja de curaduría</h2>
+        <p>Candidatos que MAGANDHI eligió evaluar. No son productos, campañas ni inventario.</p>
+      </div>
+      <span class="ds-meta" id="ds-meta-bandeja">Cargando…</span>
+    </div>
+    <div id="ds-bandeja" class="ds-vacio">Cargando bandeja privada…</div>
+  </section>
+</main>
+
+<script type="module">
+  import {
+    asegurarAcceso, montarHeader, ICONOS, supabase,
+    escaparHTML, formatearCOP, formatearMomento
+  } from './dropshipping-core.js';
+
+  const main = document.getElementById('ds-main');
+  const buscarEl = document.getElementById('ds-buscar');
+  const productoIdEl = document.getElementById('ds-producto-id');
+  const btnConsultar = document.getElementById('ds-consultar');
+  const estadoConsulta = document.getElementById('ds-estado-consulta');
+  const resultadosEl = document.getElementById('ds-resultados');
+  const metaResultados = document.getElementById('ds-meta-resultados');
+  const bandejaEl = document.getElementById('ds-bandeja');
+  const metaBandeja = document.getElementById('ds-meta-bandeja');
+
+  const TAMANO = 6; // límite bajo: D1 mide, no replica catálogo.
+  let ultimaConsulta = { buscar: '', productoId: '', inicio: 0 };
+  let resultadoActual = null;
+  let esAdmin = false;
+
+  const ico = (nombre) => ICONOS[nombre] || '';
+  const texto = (v, fallback = '—') => {
+    const s = v == null ? '' : String(v).trim();
+    return s ? escaparHTML(s) : fallback;
+  };
+  const monto = (v) => v == null || v === '' ? '—' : '$' + formatearCOP(v);
+  const foto = (urls, alt) => {
+    const u = Array.isArray(urls) ? urls[0] : '';
+    return u
+      ? '<img src="' + escaparHTML(u) + '" alt="Vista previa remota de ' + escaparHTML(alt || 'producto') + '" loading="lazy" referrerpolicy="no-referrer">'
+      : ico('caja');
+  };
+
+  // Una URL de proveedor puede vencer, cambiar o bloquear el hotlink. En D1 no
+  // la descargamos todavía, así que la UI debe degradar con dignidad: caja de
+  // placeholder, nunca icono roto/alt crudo. D2 reemplaza las seleccionadas por
+  // archivos propios en Storage antes de llegar a Campañas.
+  function protegerFotosRemotas(raiz) {
+    raiz.querySelectorAll('.ds-foto img').forEach((img) => {
+      const fallback = () => {
+        const cont = img.closest('.ds-foto');
+        if (cont) cont.innerHTML = ico('caja');
+      };
+      img.addEventListener('error', fallback, { once: true });
+      if (img.complete && img.naturalWidth === 0) fallback();
+    });
+  };
+
+  function aviso(clase, titulo, cuerpo) {
+    estadoConsulta.innerHTML =
+      '<section class="ds-aviso ' + clase + '">' + ico(clase === 'ds-aviso--err' ? 'alerta' : clase === 'ds-aviso--ok' ? 'check' : 'info') +
+      '<div><strong>' + escaparHTML(titulo) + '</strong><br>' + escaparHTML(cuerpo) + '</div></section>';
+  }
+
+  async function cuerpoError(error) {
+    if (!error) return '';
+    try {
+      const j = error.context && typeof error.context.json === 'function'
+        ? await error.context.json() : null;
+      return j && j.error ? String(j.error) : String(error.message || '');
+    } catch (_) {
+      return String(error.message || '');
+    }
+  }
+
+  function tarjetaResultado(p, leido) {
+    if (!p || !p.id) return '';
+    const stock = Number(p.stock);
+    const stockConocido = Number.isFinite(stock);
+    const chipStock = stockConocido
+      ? '<span class="ds-tag ' + (stock > 0 ? 'ds-tag--stock' : 'ds-tag--sin-stock') + '">' +
+          (stock > 0 ? stock + ' reportadas' : 'Sin stock reportado') + '</span>'
+      : '<span class="ds-tag">Stock no informado</span>';
+    const categorias = Array.isArray(p.categorias) ? p.categorias.slice(0, 2) : [];
+    const tags = categorias.map((x) => '<span class="ds-tag">' + texto(x) + '</span>').join('') +
+      chipStock +
+      (Number(p.variaciones) > 0 ? '<span class="ds-tag">' + Number(p.variaciones) + ' variante' + (Number(p.variaciones) === 1 ? '' : 's') + '</span>' : '');
+    const puntos = Array.isArray(p.fotos_remotas) && p.fotos_remotas.length > 1
+      ? '<span class="ds-fotos-puntos" title="' + p.fotos_remotas.length + ' fotos remotas">' +
+          p.fotos_remotas.slice(0, 5).map(() => '<i></i>').join('') + '</span>' : '';
+    return '<article class="ds-card" data-producto="' + escaparHTML(String(p.id)) + '">' +
+      '<div class="ds-foto">' + foto(p.fotos_remotas, p.nombre) + '</div>' +
+      '<div class="ds-card-body">' +
+        '<div class="ds-card-k"><span>Dropi</span><code>#' + texto(p.id) + '</code></div>' +
+        '<h3>' + texto(p.nombre, 'Producto sin nombre') + '</h3>' +
+        '<div class="ds-tags">' + tags + '</div>' +
+        '<div class="ds-datos">' +
+          '<div class="ds-dato"><span>Costo reportado</span><span>' + monto(p.precio_proveedor) + '</span></div>' +
+          '<div class="ds-dato"><span>Sugerido</span><span>' + monto(p.precio_sugerido) + '</span></div>' +
+          '<div class="ds-dato"><span>Proveedor interno</span><span>' + texto(p.proveedor_id) + '</span></div>' +
+          '<div class="ds-dato"><span>Lectura</span><span>' + texto(leido ? formatearMomento(leido) : null) + '</span></div>' +
+        '</div>' + puntos +
+        (Number(p.variaciones) > 0
+          ? '<p class="ds-card-msg">D1 no elige variante todavía: una variante será una campaña distinta en D2.</p>'
+          : '<p class="ds-card-msg">Sin variante reportada; sigue siendo candidato, no producto MAGANDHI.</p>') +
+        '<div class="ds-card-acciones"><button class="ds-btn ds-guardar" type="button">Guardar en bandeja</button></div>' +
+        '<p class="ds-card-msg" aria-live="polite"></p>' +
+      '</div></article>';
+  }
+
+  function listaProductos(data) {
+    const items = [];
+    const ficha = data?.producto?.ficha;
+    if (ficha?.id != null) items.push({ producto: ficha, leido: data.producto.leido || null });
+    const muestra = Array.isArray(data?.productos?.muestra) ? data.productos.muestra : [];
+    for (const p of muestra) {
+      if (p?.id != null && !items.some((x) => String(x.producto.id) === String(p.id))) {
+        items.push({ producto: p, leido: new Date().toISOString() });
+      }
+    }
+    return items;
+  }
+
+  function renderResultados(data) {
+    resultadoActual = data;
+    const items = listaProductos(data);
+    const q = data?.consulta || {};
+    const total = data?.productos?.total;
+    metaResultados.textContent = items.length
+      ? (total != null ? total + ' coincidencias reportadas · mostrando ' + items.length : items.length + ' resultado' + (items.length === 1 ? '' : 's'))
+      : 'Sin coincidencias';
+
+    if (!items.length) {
+      resultadosEl.className = 'ds-vacio';
+      resultadosEl.innerHTML = '<strong>No encontramos candidatos en esta lectura</strong>Prueba otra palabra o revisa el id del producto en Dropi.';
+      return;
+    }
+
+    const anterior = q.anterior_inicio;
+    const siguiente = q.siguiente_inicio;
+    resultadosEl.className = '';
+    resultadosEl.innerHTML =
+      '<div class="ds-result-head"><span><b>Lectura remota.</b> Guardar un resultado no descarga imágenes ni lo publica.</span>' +
+      '<div class="ds-paginacion">' +
+        '<button class="ds-btn ds-btn--sec" type="button" data-pagina="' + (anterior == null ? '' : anterior) + '" ' + (anterior == null ? 'disabled' : '') + '>Anterior</button>' +
+        '<button class="ds-btn ds-btn--sec" type="button" data-pagina="' + (siguiente == null ? '' : siguiente) + '" ' + (siguiente == null ? 'disabled' : '') + '>Siguiente</button>' +
+      '</div></div>' +
+      '<div class="ds-grid">' + items.map((x) => tarjetaResultado(x.producto, x.leido)).join('') + '</div>';
+    protegerFotosRemotas(resultadosEl);
+
+    resultadosEl.querySelectorAll('.ds-guardar').forEach((boton) => {
+      boton.addEventListener('click', async () => {
+        const card = boton.closest('[data-producto]');
+        const id = card?.dataset.producto;
+        const encontrado = items.find((x) => String(x.producto.id) === String(id));
+        if (!encontrado) return;
+        await guardarCandidato(boton, encontrado.producto, encontrado.leido);
+      });
+    });
+    resultadosEl.querySelectorAll('[data-pagina]').forEach((boton) => {
+      boton.addEventListener('click', () => {
+        const inicio = Number(boton.dataset.pagina);
+        if (Number.isInteger(inicio) && inicio >= 0) consultar({ ...ultimaConsulta, inicio });
+      });
+    });
+  }
+
+  async function guardarCandidato(boton, p, leido) {
+    const card = boton.closest('.ds-card');
+    const msg = card?.querySelector('.ds-card-msg:last-child');
+    boton.disabled = true;
+    if (msg) { msg.className = 'ds-card-msg'; msg.textContent = 'Guardando snapshot privado…'; }
+    const { error } = await supabase.rpc('ds_guardar_candidato', {
+      p_producto_externo_id: String(p.id),
+      p_variacion_externa_id: '', // D1 aún no selecciona variante exacta.
+      p_proveedor_externo_id: p.proveedor_id == null ? null : String(p.proveedor_id),
+      p_nombre_externo: p.nombre || 'Producto sin nombre',
+      p_categoria_externa: Array.isArray(p.categorias) ? (p.categorias[0] || null) : null,
+      p_precio_proveedor: p.precio_proveedor == null ? null : Number(p.precio_proveedor),
+      p_precio_sugerido: p.precio_sugerido == null ? null : Number(p.precio_sugerido),
+      p_stock_reportado: Number.isFinite(Number(p.stock)) ? Number(p.stock) : null,
+      p_stock_leido_en: leido || new Date().toISOString(),
+      p_fotos_remotas: Array.isArray(p.fotos_remotas) ? p.fotos_remotas : [],
+    });
+    if (error) {
+      boton.disabled = false;
+      if (msg) { msg.className = 'ds-card-msg err'; msg.textContent = 'No se pudo guardar: ' + (error.message || 'revisa tu acceso.'); }
+      return;
+    }
+    boton.textContent = 'En bandeja';
+    if (msg) { msg.className = 'ds-card-msg ok'; msg.textContent = 'Guardado. Sigue siendo candidato; no se creó campaña ni producto.'; }
+    await cargarBandeja();
+  }
+
+  async function cargarBandeja() {
+    bandejaEl.className = 'ds-vacio';
+    bandejaEl.textContent = 'Cargando bandeja privada…';
+    const { data, error } = await supabase
+      .from('dropshipping_candidatos')
+      .select('id,producto_externo_id,variacion_externa_id,proveedor_externo_id,nombre_externo,categoria_externa,precio_proveedor,precio_sugerido,stock_reportado,stock_leido_en,fotos_remotas,estado,actualizado')
+      .order('actualizado', { ascending: false })
+      .limit(60);
+    if (error) {
+      metaBandeja.textContent = 'No disponible';
+      bandejaEl.innerHTML = '<strong>No se pudo leer la bandeja</strong>La tabla está protegida. Revisa que la migración D1 esté aplicada y que tu perfil tenga el módulo Dropshipping.';
+      return;
+    }
+    const filas = data || [];
+    metaBandeja.textContent = filas.length + ' candidato' + (filas.length === 1 ? '' : 's');
+    if (!filas.length) {
+      bandejaEl.innerHTML = '<strong>La bandeja está vacía</strong>Consulta Dropi y guarda solo lo que MAGANDHI quiera evaluar. No llega nada automáticamente desde el catálogo.';
+      return;
+    }
+    bandejaEl.className = 'ds-grid';
+    bandejaEl.innerHTML = filas.map((c) => {
+      const descartado = c.estado === 'descartado';
+      const stock = Number(c.stock_reportado);
+      const stockTag = Number.isFinite(stock)
+        ? '<span class="ds-tag ' + (stock > 0 ? 'ds-tag--stock' : 'ds-tag--sin-stock') + '">' + (stock > 0 ? stock + ' reportadas' : 'Sin stock reportado') + '</span>'
+        : '<span class="ds-tag">Stock sin lectura</span>';
+      return '<article class="ds-card ds-bandeja-card ' + (descartado ? 'ds-descartado' : '') + '" data-candidato="' + escaparHTML(c.id) + '">' +
+        '<div class="ds-foto">' + foto(c.fotos_remotas, c.nombre_externo) + '</div>' +
+        '<div class="ds-card-body">' +
+          '<div class="ds-card-k"><span>' + (descartado ? 'Descartado' : 'En curaduría') + '</span><code>#' + texto(c.producto_externo_id) + '</code></div>' +
+          '<h3>' + texto(c.nombre_externo) + '</h3>' +
+          '<div class="ds-tags">' + (c.categoria_externa ? '<span class="ds-tag">' + texto(c.categoria_externa) + '</span>' : '') + stockTag + (c.variacion_externa_id ? '<span class="ds-tag">Variante ' + texto(c.variacion_externa_id) + '</span>' : '') + '</div>' +
+          '<div class="ds-datos">' +
+            '<div class="ds-dato"><span>Costo reportado</span><span>' + monto(c.precio_proveedor) + '</span></div>' +
+            '<div class="ds-dato"><span>Sugerido</span><span>' + monto(c.precio_sugerido) + '</span></div>' +
+            '<div class="ds-dato"><span>Última lectura</span><span>' + texto(c.stock_leido_en ? formatearMomento(c.stock_leido_en) : null) + '</span></div>' +
+            '<div class="ds-dato"><span>Actualizado</span><span>' + texto(formatearMomento(c.actualizado)) + '</span></div>' +
+          '</div>' +
+          '<span class="ds-proximo">' + ico('reloj') + 'Llevar a Campañas se habilita en D2, después de seleccionar variante e importar imágenes.</span>' +
+          '<div class="ds-card-acciones">' +
+            '<button class="ds-btn ds-btn--sec ' + (descartado ? '' : 'ds-btn--danger') + '" type="button" data-estado="' + (descartado ? 'bandeja' : 'descartado') + '">' + (descartado ? 'Restaurar' : 'Descartar') + '</button>' +
+            '<button class="ds-btn" type="button" disabled title="Disponible en D2">Llevar a Campañas</button>' +
+          '</div><p class="ds-card-msg" aria-live="polite"></p>' +
+        '</div></article>';
+    }).join('');
+    protegerFotosRemotas(bandejaEl);
+    bandejaEl.querySelectorAll('[data-estado]').forEach((boton) => {
+      boton.addEventListener('click', () => cambiarEstadoCandidato(boton, boton.dataset.estado));
+    });
+  }
+
+  async function cambiarEstadoCandidato(boton, estado) {
+    const card = boton.closest('[data-candidato]');
+    const msg = card?.querySelector('.ds-card-msg');
+    if (!card || !estado) return;
+    boton.disabled = true;
+    if (msg) { msg.className = 'ds-card-msg'; msg.textContent = estado === 'descartado' ? 'Descartando…' : 'Restaurando…'; }
+    const { error } = await supabase.rpc('ds_actualizar_estado_candidato', {
+      p_id: card.dataset.candidato,
+      p_estado: estado,
+    });
+    if (error) {
+      boton.disabled = false;
+      if (msg) { msg.className = 'ds-card-msg err'; msg.textContent = 'No se pudo actualizar: ' + (error.message || 'revisa tu acceso.'); }
+      return;
+    }
+    await cargarBandeja();
+  }
+
+  async function consultar(opciones = {}) {
+    if (!esAdmin) {
+      aviso('ds-aviso--warn', 'Consulta externa reservada para administración', 'D1 mantiene la lectura de Dropi solo para administradores mientras D3 define permisos por capacidad. Puedes revisar la bandeja privada si tu módulo lo permite.');
+      return;
+    }
+    const buscar = String(opciones.buscar ?? buscarEl.value ?? '').trim().slice(0, 60);
+    const productoId = String(opciones.productoId ?? productoIdEl.value ?? '').trim();
+    const inicio = Number.isInteger(opciones.inicio) ? opciones.inicio : 0;
+    ultimaConsulta = { buscar, productoId, inicio };
+    btnConsultar.disabled = true;
+    btnConsultar.textContent = 'Consultando…';
+    resultadosEl.className = 'ds-vacio';
+    resultadosEl.textContent = 'Consultando Dropi sin escribir ni reservar nada…';
+    metaResultados.textContent = 'Lectura en curso';
+    estadoConsulta.innerHTML = '';
+
+    const body = { buscar, inicio, tamano: TAMANO };
+    if (/^\d{1,12}$/.test(productoId)) body.producto_id = productoId;
+    const { data, error } = await supabase.functions.invoke('dropi-sonda', { body });
+    btnConsultar.disabled = false;
+    btnConsultar.innerHTML = ico('lupa') + 'Consultar';
+    if (error) {
+      const detalle = await cuerpoError(error);
+      aviso('ds-aviso--err', 'No se pudo consultar Dropi', detalle || 'La función no respondió. No se creó ni modificó nada.');
+      resultadosEl.className = 'ds-vacio';
+      resultadosEl.innerHTML = '<strong>Sin lectura disponible</strong>Revisa la conexión o vuelve a intentarlo; esta pantalla no usa un catálogo cacheado como sustituto.';
+      metaResultados.textContent = 'Sin lectura';
+      return;
+    }
+    if (!data?.conectado) {
+      aviso('ds-aviso--warn', 'Dropi no confirmó la conexión', data?.conclusion || 'No se creó ni modificó nada.');
+    } else {
+      aviso('ds-aviso--ok', 'Lectura recibida desde Dropi', data.conclusion || 'Consulta solo de lectura.');
+    }
+    renderResultados(data || {});
+  }
+
+  (async () => {
+    const acceso = await asegurarAcceso(main, '../panel.html');
+    if (!acceso) return;
+    esAdmin = acceso.perfil?.rol === 'admin';
+    montarHeader({
+      titulo: 'Dropshipping',
+      kicker: 'DROPSHIPPING · CURADURÍA Y PROVEEDOR',
+      lead: 'Una mesa interna para elegir productos de proveedor sin convertir MAGANDHI en un catálogo ajeno. D1 consulta, mide y organiza; no publica, no vende ni envía pedidos.',
+      sesion: acceso.sesion,
+      areaLabel: 'DROPSHIPPING',
+      volverHref: '../panel.html',
+      volverTexto: 'Panel'
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ico(el.dataset.ico); });
+    main.hidden = false;
+    if (!esAdmin) {
+      btnConsultar.disabled = true;
+      btnConsultar.title = 'D1 reserva la consulta externa para administración.';
+    }
+    btnConsultar.addEventListener('click', () => consultar());
+    buscarEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') consultar(); });
+    productoIdEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') consultar(); });
+    await cargarBandeja();
+  })();
+</script>
+</body>
+</html>

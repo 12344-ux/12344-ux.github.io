@@ -115,19 +115,43 @@ declare
     -- Metricas M1 (capa de datos). mt_publico_config / mt_registrar_eventos NO: solo service_role.
     'tiene_acceso_metricas','tiene_acceso_datos_metricas','mt_config_analitica','mt_en_vivo','mt_ventas','mt_tienda',
     -- Metricas M2 (capa de datos). mt_email/mt_opiniones/mt_inventario con guardia de datos.
-    'mt_email','mt_opiniones','mt_inventario',
-    -- Pagos web F2: el panel lee y resuelve; pw_registrar_intencion y
-    -- pw_procesar_pago NO van (solo service_role, las usa la Edge Function).
-    'tiene_acceso_pagos','pw_revisiones','pw_resolver_revision',
-    -- Pagos web F3: aviso de Finanzas y boton «Generar asiento». Los
-    -- constructores fz__* y correo_auto_* NO van (internos / solo service_role).
-    'fz_asientos_automaticos_pendientes','fz_generar_asiento_automatico'
+    'mt_email','mt_opiniones','mt_inventario'
+    -- Pagos web F2: las puertas del panel se agregan de manera condicional
+    -- abajo: la matriz también corre fotos históricas anteriores a F2.
+    -- Pagos web F3: los avisos contables se agregan condicionalmente abajo.
   ];
   v_extra text;
 begin
   v_uid := array[null, c_sin, c_fin, c_inv, c_mkt, c_ven, c_adm, null]::uuid[];
 
   begin  -- ===== bloque que SIEMPRE se deshace =====
+
+    -- D1 puede no existir a propósito cuando los scripts reproducen una foto
+    -- histórica anterior al 10-oct. Si la tabla existe, la lista blanca exige
+    -- sus tres puertas; si no existe, exigirlas sería pedir funciones futuras
+    -- en una base del pasado y convertiría el simulador en falso rojo.
+    if to_regclass('public.dropshipping_candidatos') is not null then
+      v_lista_blanca := v_lista_blanca || array[
+        'tiene_acceso_dropshipping', 'ds_guardar_candidato', 'ds_actualizar_estado_candidato'
+      ];
+    end if;
+
+    -- F2 solo existe desde 202610190. La matriz corre también una foto anterior
+    -- a F2 para comprobar el diagnóstico, por eso la lista blanca es sensible
+    -- al esquema realmente instalado, no a la versión más nueva del repo.
+    if to_regclass('public.pagos_intencion') is not null then
+      v_lista_blanca := v_lista_blanca || array[
+        'tiene_acceso_pagos', 'pw_revisiones', 'pw_resolver_revision'
+      ];
+    end if;
+
+    -- F3 solo existe desde 202610200. Sus constructores internos siguen fuera
+    -- de la lista; estas dos son las únicas puertas de panel.
+    if to_regprocedure('public.fz_asientos_automaticos_pendientes()') is not null then
+      v_lista_blanca := v_lista_blanca || array[
+        'fz_asientos_automaticos_pendientes', 'fz_generar_asiento_automatico'
+      ];
+    end if;
 
     -- ---------- Personas de prueba ----------
     insert into auth.users (id, email) values

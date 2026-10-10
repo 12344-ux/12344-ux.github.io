@@ -4279,3 +4279,116 @@ exige redefinir RPC de núcleo y merece su propio PR medido.
   40/40, F3 84/84, estado-pago 24/24, M1 40/40, M2 26/26, EM5 61/61, EM6 44/44.
 - Edge Functions sin regresión: puesta al día 23/23, webhook 21/21, intención
   19/19, ciclo F2 12/12, ciclo F3 29/29, diagnóstico sin fallas.
+
+# Dropshipping D1 · cimientos internos y bandeja de curaduría
+
+**Corte:** 10 de octubre de 2026. Migración forward
+`20261023000000_dropshipping_cimientos.sql` + redespliegue de
+`dropi-sonda`.
+
+## El alcance exacto
+
+D1 deja en pie la estructura segura para el frente de proveedor:
+
+- séptima área interna **Dropshipping**;
+- `productos.origen = propio | proveedor`;
+- `producto_proveedor`, ficha privada 1:1 preparada para D2;
+- bandeja privada `dropshipping_candidatos`;
+- catálogo Dropi paginable y fichas por id, estrictamente de solo lectura;
+- fotos remotas solo como preview interno HTTPS;
+- bloqueo físico de movimientos de Inventario para producto proveedor;
+- exclusión de proveedor de `stock_actual` y de Métricas de Inventario;
+- bloqueo de publicación y de `catalogo_publico` hasta que exista stock vivo y
+  checkout seguro en D2.
+
+**D1 no crea producto, campaña, imagen propia, pedido, reserva, guía ni llamada
+`orders/`.** Tampoco abre Wompi ni comparte datos de un cliente con Dropi.
+
+## D1.1. Aplicar la migración (SQL Editor, una sola vez)
+
+Pegar y ejecutar:
+
+```text
+supabase/migrations/20261023000000_dropshipping_cimientos.sql
+```
+
+No necesita secretos nuevos. Es una migración forward: no reescribe ni
+reaplica historia.
+
+Comprobación inmediata:
+
+```sql
+-- Esperado: propio | 0 | 0
+select
+  (select count(*) from productos where origen = 'propio') as productos_propios,
+  (select count(*) from producto_proveedor) as fichas_proveedor,
+  (select count(*) from dropshipping_candidatos) as candidatos;
+
+-- Esperado: ninguna. Una función que mezcle ambas cosas volvería a abrir
+-- inventario propio a proveedor por accidente.
+select tgname
+  from pg_trigger
+ where tgrelid = 'movimientos_inventario'::regclass
+   and tgname = 'ds_bloquear_movimiento_proveedor';
+```
+
+La segunda consulta debe devolver `ds_bloquear_movimiento_proveedor`.
+
+## D1.2. Redesplegar `dropi-sonda`
+
+Supabase → Edge Functions → `dropi-sonda` → reemplazar el código por
+`supabase/functions/dropi-sonda/index.ts` → Deploy.
+
+**Verify JWT: encendido.** No cambian los secretos:
+
+- `DROPI_TOKEN` sigue solo en Edge Functions → Secrets;
+- `DROPI_USER_AGENT` sigue leyéndose en cada llamada;
+- `DROPI_API_BASE` sigue opcional y por defecto apunta a producción.
+
+La función conserva su línea roja: no llama `orders/`, no escribe en la base y
+no descarga imágenes. D1 agrega solo:
+
+```js
+{ buscar: 'serum', inicio: 0, tamano: 6 }  // catálogo, máximo 25 por lectura
+{ producto_id: 101 }                        // ficha + bodegas de un candidato
+```
+
+## D1.3. Comprobar desde el panel
+
+1. Abrir `https://montaguth.institute/panel.html` con sesión de admin.
+2. Debe aparecer la nueva tarjeta **Dropshipping**.
+3. Buscar una palabra o abrir un id de Dropi.
+4. Comprobar que el aviso diga **«Lectura recibida desde Dropi»**.
+5. Pulsar **«Guardar en bandeja»** sobre un candidato.
+6. Confirmar que aparece abajo como «En curaduría» y que **«Llevar a Campañas»
+   sigue deshabilitado**, con explicación D2.
+
+No hace falta ni se debe probar un pedido de proveedor en D1.
+
+## D1.4. Qué significan las fotos
+
+Las fotos de la bandeja siguen siendo URLs remotas de preview. Si Dropi deja de
+servir una, la interfaz muestra una caja sobria: nunca un icono roto. No se
+consume espacio del bucket todavía.
+
+Al llegar D2, el sistema volverá a consultar Dropi por id y solo descargará las
+imágenes elegidas, convirtiéndolas al formato grande + `-sm` propio antes de
+abrir el editor de Campañas. Nunca se usarán URLs remotas en la tienda pública.
+
+## D1.5. Pruebas hechas
+
+- `supabase/pruebas/local/dropshipping-cimientos.sql` **29/29**: origen,
+  inmutabilidad, ficha externa, RLS, candidate RPC, URLs HTTPS, descarte sin
+  borrado, upsert sin duplicar, bloqueo del libro incluso por encima de RLS,
+  `stock_actual`, Métricas de Inventario, publicación y catálogo público.
+- `herramientas/probar-dropi-sonda-d1.ts` **23/23**, ya en GitHub Actions:
+  CORS, JWT/admin, body `null`, paginación acotada, previews HTTPS sin
+  credenciales, variante solo diagnóstica, token ausente de la respuesta,
+  stock desde `warehouse_product`, y prueba explícita de que nunca aparece
+  `orders/` ni una mutación de catálogo.
+- Navegador Chromium **19/19**, PC 1280 y celular 390: tarjeta de área,
+  bandeja vacía, consulta, snapshot, descarte/restauración, paginación, botón
+  D2 deshabilitado, caída digna de foto remota y sin desbordamiento móvil.
+- Banco SQL completo: **68 migraciones**, matriz **170/170**, D1 29/29, F2
+  40/40, F3 84/84, estado-pago 24/24, M1 40/40, M2 26/26, fechas 16/16,
+  EM5 61/61, EM5.1 32/32 y EM6 44/44.
