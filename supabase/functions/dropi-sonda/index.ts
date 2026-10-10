@@ -21,9 +21,19 @@
 //   { buscar?: string, producto_id?: number|string, inicio?: number,
 //     tamano?: number }
 //   - buscar: hasta 60 caracteres.
-//   - inicio: offset 0..500 (default 0).
-//   - tamano: 1..25 (default 5). Limites intencionales: el panel nunca replica
-//     el catálogo completo ni satura a Dropi.
+//   - inicio: offset 0..1200 (default 0).
+//   - tamano: 1..48 (default 5). Límites intencionales: cada página es un clic
+//     humano; el panel no recorre ni replica el catálogo completo.
+//
+// Ajuste de uso real D1 (10-oct-2026, reporte del dueño):
+//   · Fotos: Dropi NO manda URLs absolutas. Cada foto es un objeto con `urlS3`
+//     (ruta relativa a su CDN) o, en registros viejos, `url` (relativa a
+//     api.dropi.co). Lo confirma el plugin Dropify v4.7.3 (Product_List.php y
+//     ProductsModel.php). Antes se esperaba una URL https completa y por eso
+//     ninguna tarjeta mostraba foto.
+//   · Paginación: el `count` de products/index no es confiable (en la cuenta
+//     real llegó 0 con resultados; el plugin tampoco lo usa y fija 9999). Se
+//     pide UN producto de más: si llega, hay página siguiente.
 //
 // Quien puede llamarla: usuario con sesión y rol admin en perfiles.
 // Verify JWT: ENCENDIDO.
@@ -35,6 +45,18 @@
 
 const BASE = (Deno.env.get("DROPI_API_BASE") ?? "https://api.dropi.co/integrations/").replace(/\/*$/, "/");
 const ESPERA_MS = 15000;
+
+// Ventana de paginación. Se pide `tamano + 1` a Dropi para saber si hay más.
+const TAMANO_MAX = 48;
+const INICIO_MAX = 1200;
+
+// Dónde viven las fotos de Dropi Colombia, según el plugin oficial:
+//   foto.urlS3 -> CDN de S3 (lo normal)
+//   foto.url   -> ruta relativa al API (registros viejos)
+// Solo se arman URLs sobre ESTOS dos orígenes: una ruta relativa nunca puede
+// terminar apuntando a otro host.
+const CDN_FOTOS = "https://d39ru7awumhhs2.cloudfront.net/";
+const BASE_FOTOS_ANTIGUAS = "https://api.dropi.co/";
 
 // MEDIDO el 9-oct-2026 con dropi-cabeceras: Dropi responde 401 "Access denied"
 // sin User-Agent y 200 a la misma petición con uno. Se lee POR PETICIÓN para
@@ -86,20 +108,42 @@ function urlPreview(v: unknown): string | null {
   }
 }
 
-function fotoDe(v: unknown): string | null {
-  if (typeof v === "string") return urlPreview(v);
-  if (!esObj(v)) return null;
-  // Los nombres son tolerantes a las formas observadas de APIs de catálogo.
-  // Si Dropi cambia el objeto, se omite la foto; nunca se adivina una URL.
-  return urlPreview(v.url) ?? urlPreview(v.src) ?? urlPreview(v.image) ??
-    urlPreview(v.image_url) ?? urlPreview(v.path) ?? null;
+// Ruta relativa de Dropi -> URL completa SOLO sobre el origen indicado. Si la
+// ruta trae otro host (`//otro.com/x`, `https://otro.com/x`), se descarta: el
+// resultado tiene que quedar en el mismo origen de la base.
+function urlEnOrigen(ruta: unknown, base: string): string | null {
+  if (typeof ruta !== "string") return null;
+  const s = ruta.trim();
+  if (!s || s.length > 400) return null;
+  try {
+    const u = new URL(s, base);
+    if (u.origin !== new URL(base).origin) return null;
+    return urlPreview(u.href);
+  } catch {
+    return null;
+  }
 }
 
+// `url` puede llegar absoluta (https) o relativa al API, según la antigüedad
+// del registro. Absoluta -> se valida tal cual; relativa -> api.dropi.co.
+function urlAbsolutaORelativa(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  return /^[a-z][a-z0-9+.-]*:/i.test(v.trim()) ? urlPreview(v.trim()) : urlEnOrigen(v, BASE_FOTOS_ANTIGUAS);
+}
+
+function fotoDe(v: unknown): string | null {
+  if (typeof v === "string") return urlAbsolutaORelativa(v);
+  if (!esObj(v)) return null;
+  // Forma real de Dropi primero (urlS3 en su CDN, url relativa al API); los
+  // demás nombres quedan como tolerancia. Nunca se adivina una URL.
+  return urlEnOrigen(v.urlS3, CDN_FOTOS) ?? urlAbsolutaORelativa(v.url) ??
+    urlPreview(v.src) ?? urlPreview(v.image) ?? urlPreview(v.image_url) ?? null;
+}
+
+// El listado (products/index) trae `gallery`; la ficha (products/v2) trae
+// `photos`. Se leen ambas, sin duplicar, porque una puede venir vacía.
 function fotosPreview(p: Obj) {
-  const fuente = Array.isArray(p.gallery) ? p.gallery
-    : Array.isArray(p.photos) ? p.photos
-    : Array.isArray(p.images) ? p.images
-    : [];
+  const fuente = [p.gallery, p.photos, p.images].flatMap((x) => Array.isArray(x) ? x : []);
   const vistas: string[] = [];
   for (const x of fuente) {
     const u = fotoDe(x);
@@ -275,8 +319,8 @@ Deno.serve(async (req) => {
   try { leido = await req.json(); } catch { /* sin cuerpo: búsqueda vacía */ }
   const body: Obj = esObj(leido) ? leido : {};
   const buscar = corto(body.buscar, 60) ?? "";
-  const inicio = enteroAcotado(body.inicio, 0, 500, 0);
-  const tamano = enteroAcotado(body.tamano, 1, 25, 5);
+  const inicio = enteroAcotado(body.inicio, 0, INICIO_MAX, 0);
+  const tamano = enteroAcotado(body.tamano, 1, TAMANO_MAX, 5);
 
   // Un id concreto: el embudo real. Se lee SOLO ese producto; no se recorre el
   // catálogo completo. Una variante sigue siendo diagnóstico en D1.
@@ -290,7 +334,8 @@ Deno.serve(async (req) => {
   const cat = resumir(await llamarDropi("GET", "categories/", token));
   const prod = resumir(await llamarDropi("POST", "products/index", token, {
     startData: inicio,
-    pageSize: tamano,
+    // Uno de más: si Dropi lo devuelve, hay página siguiente. No se muestra.
+    pageSize: tamano + 1,
     order_type: "desc",
     order_by: "id",
     keywords: buscar,
@@ -334,6 +379,15 @@ Deno.serve(async (req) => {
   }
 
   const primero = prod.objetos?.[0];
+  const pagina = (prod.objetos ?? []).slice(0, tamano);
+  const hayMas = (prod.objetos?.length ?? 0) > tamano;
+  const siguiente = inicio + tamano;
+  // El `count` de Dropi solo se cree si cuadra con lo que se ve: llegó 0 con
+  // resultados en la cuenta real. Si no cuadra, no se informa un total.
+  const totalCreible = prod.total !== null && prod.total > 0 &&
+      prod.total >= inicio + pagina.length && (hayMas ? prod.total > siguiente : true)
+    ? prod.total
+    : null;
   console.log("[dropi-sonda]", JSON.stringify({
     categorias: cat.http,
     productos: prod.http,
@@ -351,7 +405,11 @@ Deno.serve(async (req) => {
     consulta: {
       inicio,
       tamano,
-      siguiente_inicio: prod.total !== null && inicio + tamano < prod.total ? inicio + tamano : null,
+      hay_mas: hayMas,
+      siguiente_inicio: hayMas && siguiente <= INICIO_MAX ? siguiente : null,
+      // Hay más resultados, pero la ventana de páginas terminó: conviene
+      // afinar la palabra en vez de seguir pasando páginas.
+      limite_alcanzado: hayMas && siguiente > INICIO_MAX,
       anterior_inicio: inicio > 0 ? Math.max(0, inicio - tamano) : null,
     },
     // Lo que decide el frente: ¿podemos leer la ficha/stock de un candidato
@@ -381,10 +439,12 @@ Deno.serve(async (req) => {
       isSuccess: prod.isSuccess,
       mensaje: prod.mensaje,
       ip_vista_por_dropi: prod.ip_vista_por_dropi,
-      cantidad: prod.cantidad,
-      total: prod.total,
+      cantidad: pagina.length,
+      total: totalCreible,
+      // Lo que Dropi mandó en `count`, sin interpretar: diagnóstico.
+      total_reportado_por_dropi: prod.total,
       campos_disponibles: esObj(primero) ? Object.keys(primero).sort() : [],
-      muestra: (prod.objetos ?? []).slice(0, tamano).map(muestraProducto),
+      muestra: pagina.map(muestraProducto),
     },
   }, 200, c);
 });

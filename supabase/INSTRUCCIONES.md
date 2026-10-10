@@ -4392,3 +4392,70 @@ abrir el editor de Campañas. Nunca se usarán URLs remotas en la tienda públic
 - Banco SQL completo: **68 migraciones**, matriz **170/170**, D1 29/29, F2
   40/40, F3 84/84, estado-pago 24/24, M1 40/40, M2 26/26, fechas 16/16,
   EM5 61/61, EM5.1 32/32 y EM6 44/44.
+
+---
+
+# Dropshipping D1 · ajuste de uso real (fotos, 24 por página, bandeja-carrito)
+
+**Corte:** 10 de octubre de 2026. **Sin migración.** Solo redespliegue de
+`dropi-sonda` + la pantalla `dropshipping/` (GitHub Pages la publica al fusionar).
+
+## Qué corrige (reporte del dueño en uso real)
+
+| Síntoma | Causa medida | Arreglo |
+|---|---|---|
+| Ninguna tarjeta mostraba foto | Dropi no manda URLs completas: cada foto es `{ urlS3 }` relativo a su CDN (o `{ url }` relativo a `api.dropi.co` en registros viejos). La función esperaba `https://…` y las descartaba todas. Lo confirma el plugin Dropify v4.7.3 | Se arma la URL **solo** sobre `https://d39ru7awumhhs2.cloudfront.net/` o `https://api.dropi.co/`; una ruta que intente saltar a otro host se descarta. Se leen `gallery` (listado) y `photos` (ficha) |
+| «0 coincidencias reportadas · mostrando 6» y Anterior/Siguiente muertos | El `count` de `products/index` llega 0 con resultados (el plugin tampoco lo usa: fija 9999). La paginación dependía de ese total | Se pide **uno de más** a Dropi: si llega, hay página siguiente. El total solo se muestra si cuadra con lo visto |
+| Solo 6 resultados | Límite de prudencia de D1 (`TAMANO = 6`) | **24 por página** (seis filas de cuatro). Ventana de hasta `inicio` 1200; al tocarla, la pantalla pide afinar la palabra |
+| La bandeja abajo crecería sin fin | Diseño | La bandeja es un **carrito flotante** en la esquina que abre un panel lateral con «En curaduría» y «Descartados» |
+
+Las fotos se pintan **directo desde el CDN de Dropi** con `<img loading="lazy">`:
+el navegador solo pide las visibles y no queda nada guardado. No se descarga ni
+se sube nada al bucket; eso sigue siendo D2, solo con las fotos elegidas.
+
+## Redesplegar `dropi-sonda`
+
+Supabase → Edge Functions → `dropi-sonda` → reemplazar el código por
+`supabase/functions/dropi-sonda/index.ts` → Deploy. **Verify JWT: encendido.**
+Secretos sin cambios (`DROPI_TOKEN`, `DROPI_USER_AGENT`).
+
+La línea roja no cambia: no llama `orders/`, no escribe en la base y no
+descarga imágenes. El cuerpo admite ahora `tamano` hasta 48 e `inicio` hasta 1200.
+
+## Comprobar desde el panel
+
+1. Con la función redesplegada **y** el PR fusionado, abrir Dropshipping y
+   buscar `bafle`.
+2. Esperado: 24 tarjetas **con foto**, el contador «Mostrando 1–24 · hay más» y
+   **Siguiente** habilitado. Siguiente → «Mostrando 25–48»; Anterior vuelve.
+3. Pasar el cursor por una foto: las flechas recorren las fotos del producto.
+4. «Agregar a la bandeja» → el botón pasa a «En la bandeja» y el carrito de la
+   esquina suma 1. Al abrir el carrito aparece el candidato con su foto,
+   «Descartar» y «Llevar a Campañas» todavía apagado (D2).
+
+Si las fotos siguen sin aparecer con la función nueva, en la consola del panel:
+
+```js
+const { supabase } = await import('/supabase-config.js');
+const r = await supabase.functions.invoke('dropi-sonda', { body: { buscar: 'bafle', tamano: 1 } });
+console.log(r.data?.productos?.campos_disponibles, r.data?.productos?.muestra?.[0]?.fotos_remotas);
+```
+
+y compartir la salida (no trae secretos).
+
+Los candidatos guardados **antes** de este ajuste quedaron sin fotos en su
+snapshot: basta con volver a agregarlos desde una búsqueda (el RPC refresca el
+snapshot sin duplicar).
+
+## Pruebas hechas
+
+- `herramientas/probar-dropi-sonda-d1.ts` **35/35** (antes 23). El doble de
+  Dropi ahora reproduce la forma real: `gallery[].urlS3` relativo, `count: 0`,
+  rutas que intentan saltar de host y última página corta. La versión anterior
+  del doble mandaba URLs completas y un `count` correcto: por eso pasaba y en
+  producción no había fotos ni «Siguiente».
+- Chromium **54/54**, PC 1280 y celular 390, con la función **real** contra un
+  doble de Dropi: 24 tarjetas, 23 fotos desde el CDN y una rota con caja digna,
+  flechas de foto, tres páginas con Anterior/Siguiente, abrir por id muestra
+  solo esa ficha, agregar → carrito, panel con fotos, descartar/restaurar,
+  Escape devuelve el foco, sin desborde ni errores de consola.

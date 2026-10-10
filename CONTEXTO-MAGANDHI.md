@@ -194,7 +194,7 @@ Diseño completo en `docs/PLANO-PAGOS.md` y runbook en `supabase/INSTRUCCIONES.m
 | F2 | La intención se guarda antes de firmar. `wompi-webhook` verifica la firma real y el pago aprobado crea el pedido web **una sola vez**, con el candado de stock. Un pago aprobado que no se pudo convertir sale como aviso rojo en Ventas |
 | F3 | Asiento contable automático de la venta real contra 138095 y contraasiento al anular. Correo «Recibido» automático. Los pagos de prueba (sandbox) no tocan los libros |
 | F4 | URL de eventos de producción corregida, secretos y llave pública de producción cargados, interruptor `pagos_config.entorno` |
-| D0 | **La vuelta de Wompi ya dice en qué quedó el pago** y bloquea «Comprar ahora» mientras no haya veredicto, así que nadie paga dos veces. RPC `pw_estado_publico` + Edge Function `estado-pago`: la autorización es la posesión de la referencia (como el código de reseña) y la respuesta trae solo el estado, el nombre y el slug. **No abre nada para `anon`.** Pendiente de desplegar |
+| D0 | **La vuelta de Wompi ya dice en qué quedó el pago** y bloquea «Comprar ahora» mientras no haya veredicto, así que nadie paga dos veces. RPC `pw_estado_publico` + Edge Function `estado-pago`: la autorización es la posesión de la referencia (como el código de reseña) y la respuesta trae solo el estado, el nombre y el slug. **No abre nada para `anon`.** Desplegado el 10-oct-2026 |
 
 **Verificado el 9-oct-2026 con una compra real** (el shampoo, $69.900, pagado con Nequi):
 - el pedido web y una unidad menos en Inventario;
@@ -272,9 +272,11 @@ No hay nada a medias. Lo que sigue, por orden sugerido:
 
 **D1 · cimientos internos (DESPLEGADO el 10-oct-2026):** séptima área Dropshipping; consulta/paginación de solo lectura; bandeja privada de candidatos; `productos.origen`; ficha `producto_proveedor`; trigger que bloquea proveedor en el libro de Inventario incluso por encima de RLS; proveedor fuera de `stock_actual` y de Métricas de Inventario; y bloqueo de publicación/catálogo público hasta D2. Las fotos son solo preview remoto y `Llevar a Campañas` sigue deshabilitado. **D1 no crea producto, campaña, imagen local, pedido, reserva, guía ni llamada `orders/`.**
 
+**Ajuste de uso real de D1 (10-oct-2026, en PR; sin migración, falta redesplegar `dropi-sonda`):** el primer uso real mostró cero fotos, solo 6 resultados y «0 coincidencias» con Anterior/Siguiente muertos. Causas medidas: Dropi manda las fotos como `{ urlS3 }` relativas a su CDN (no URLs completas) y su `count` llega 0. Ahora las fotos se ven directo desde el CDN de Dropi (sin descargarse ni guardarse), hay 24 por página con paginación que pide uno de más para saber si sigue, abrir por id muestra solo esa ficha, y la bandeja es un carrito flotante con panel lateral. Runbook «Dropshipping D1 · ajuste de uso real»; contrato en `docs/dropshipping-envios/DROPI.md` §8 bis.
+
 **Lo que sigue es D2 (próximo tramo, aún no empezado):** al pulsar «Llevar a Campañas», crear de forma atómica el producto interno (`origen='proveedor'`) + su `producto_proveedor` + un borrador de campaña ligado, descargar solo las fotos elegidas y convertirlas a grande/`-sm` en el bucket `campanas`, abrir el editor actual de Campañas, hacer cumplir server-side la prueba del sello, y resolver stock vivo con fallo cerrado antes de permitir publicar. Antes de un pedido proveedor real faltan además municipio DANE/equivalencia Dropi y nombres/apellidos separados en el checkout. Lo que sigue sin tocarse: contrato oficial de `orders/`, si el stock de Dropi se refresca solo, y la reserva `PENDIENTE CONFIRMACION` con su liberación/cancelación e idempotencia (no se prueba con un POST improvisado). Todo en `docs/dropshipping-envios/LEEME.md`, `PLANO.md` y `.kiro/steering/dropshipping-magandhi.md`.
 
-**Repositorios:** quedan abiertos PR viejos ya superados: panel #227 y #216; tienda #46, #21 y #15. Cerrarlos o no lo decide el dueño.
+**Repositorios:** quedan abiertos PR viejos ya superados: panel #252, #227 y #216; tienda #46, #21 y #15. Cerrarlos o no lo decide el dueño.
 
 ## 10. Reglas de entrega
 

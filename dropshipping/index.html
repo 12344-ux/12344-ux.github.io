@@ -13,14 +13,23 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../marca.css?v=2">
-<link rel="stylesheet" href="dropshipping.css?v=1">
+<link rel="stylesheet" href="dropshipping.css?v=2">
 <!--
-  MAGANDHI · Dropshipping · D1
+  MAGANDHI · Dropshipping · D1 (+ ajuste de uso real, 10-oct-2026)
   --------------------------------------------------------------------------
   Esta pantalla solo CONSULTA el catálogo de Dropi y organiza candidatos.
   No crea productos internos, no descarga imágenes, no publica campañas,
   no abre Wompi y no llama orders/. La seguridad real está en RLS + RPCs +
   Edge Function; esta interfaz solo expresa el contrato honestamente.
+
+  Ajuste de uso real (reporte del dueño, 10-oct-2026):
+  · Las fotos se pintan DIRECTO desde el CDN de Dropi (<img> remota, lazy).
+    El navegador las muestra y las olvida: no se descargan a Storage, no se
+    guardan ni se publican. Eso sigue siendo D2, solo con las elegidas.
+  · 24 resultados por página y Anterior/Siguiente que sí funcionan (la
+    función pide uno de más a Dropi para saber si hay otra página).
+  · La bandeja deja de empujar la página: es un «carrito» flotante en la
+    esquina que abre un panel lateral.
 -->
 </head>
 <body class="ds-body">
@@ -29,14 +38,14 @@
 <main class="ds-wrap" id="ds-main" hidden>
   <section class="ds-nota" aria-label="Alcance de esta fase">
     <span data-ico="info" aria-hidden="true"></span>
-    <div><strong>D1 · Consulta y curaduría, nada más.</strong> Aquí puedes leer candidatos desde Dropi y guardarlos en una bandeja privada. No se crea un producto MAGANDHI, no se descarga una imagen, no se publica una campaña y no se reserva ni envía ningún pedido al proveedor.</div>
+    <div><strong>D1 · Consulta y curaduría, nada más.</strong> Aquí lees candidatos desde Dropi y los agregas a una bandeja privada. Las fotos se ven directo desde Dropi: no se descargan ni se guardan. No se crea un producto MAGANDHI, no se publica una campaña y no se reserva ni envía ningún pedido al proveedor.</div>
   </section>
 
   <section class="ds-consulta" aria-labelledby="ds-consulta-tit">
     <div class="ds-campo">
       <label id="ds-consulta-tit" for="ds-buscar">Buscar en Dropi</label>
       <input id="ds-buscar" type="search" maxlength="60" autocomplete="off" placeholder="Ej. shampoo, sérum, barba">
-      <small>Consulta remota de solo lectura. No copia el catálogo completo.</small>
+      <small>Consulta remota de solo lectura. No copia el catálogo.</small>
     </div>
     <div class="ds-campo">
       <label for="ds-producto-id">O abrir por id</label>
@@ -48,28 +57,42 @@
 
   <div id="ds-estado-consulta" aria-live="polite"></div>
 
-  <section class="ds-seccion" aria-labelledby="ds-resultados-tit">
+  <section class="ds-seccion" id="ds-seccion-resultados" aria-labelledby="ds-resultados-tit">
     <div class="ds-seccion-head">
       <div>
         <h2 id="ds-resultados-tit">Resultados de consulta</h2>
-        <p>La vista previa sigue siendo de Dropi. Solo “Guardar en bandeja” deja un snapshot interno bajo curaduría.</p>
+        <p>Vista remota de Dropi. Solo «Agregar a la bandeja» deja un snapshot interno bajo curaduría.</p>
       </div>
-      <span class="ds-meta" id="ds-meta-resultados">Aún no has hecho una consulta.</span>
+      <span class="ds-meta" id="ds-meta-resultados" aria-live="polite">Aún no has hecho una consulta.</span>
     </div>
     <div id="ds-resultados" class="ds-vacio"><strong>Sin resultados todavía</strong>Busca por palabra o abre la ficha de un producto por su id de Dropi.</div>
   </section>
+</main>
 
-  <section class="ds-seccion" aria-labelledby="ds-bandeja-tit">
-    <div class="ds-seccion-head">
+<!-- BANDEJA COMO CARRITO: botón flotante en la esquina + panel lateral. -->
+<button class="ds-carrito" id="ds-carrito" type="button" hidden aria-haspopup="dialog" aria-controls="ds-cajon">
+  <span data-ico="bandeja" aria-hidden="true"></span>
+  <span class="ds-carrito-txt">Bandeja</span>
+  <span class="ds-carrito-n" id="ds-carrito-n" data-cero>0</span>
+</button>
+
+<dialog class="ds-cajon" id="ds-cajon" aria-labelledby="ds-cajon-tit">
+  <div class="ds-cajon-in">
+    <header class="ds-cajon-head">
       <div>
-        <h2 id="ds-bandeja-tit">Bandeja de curaduría</h2>
+        <h2 id="ds-cajon-tit">Bandeja de curaduría</h2>
         <p>Candidatos que MAGANDHI eligió evaluar. No son productos, campañas ni inventario.</p>
       </div>
-      <span class="ds-meta" id="ds-meta-bandeja">Cargando…</span>
+      <button class="ds-cajon-x" id="ds-cajon-cerrar" type="button" aria-label="Cerrar bandeja"><span data-ico="equis" aria-hidden="true"></span></button>
+    </header>
+    <div class="ds-cajon-filtros" role="group" aria-label="Filtrar bandeja">
+      <button type="button" data-filtro="bandeja" aria-pressed="true">En curaduría <b id="ds-n-bandeja">0</b></button>
+      <button type="button" data-filtro="descartado" aria-pressed="false">Descartados <b id="ds-n-descartado">0</b></button>
     </div>
-    <div id="ds-bandeja" class="ds-vacio">Cargando bandeja privada…</div>
-  </section>
-</main>
+    <div class="ds-cajon-lista" id="ds-bandeja" aria-live="polite"><div class="ds-vacio">Cargando bandeja privada…</div></div>
+    <footer class="ds-cajon-pie"><span data-ico="reloj" aria-hidden="true"></span><span><b>Llevar a Campañas</b> se habilita en D2: ahí se descargan solo las fotos que elijas y se abre el editor de Campañas.</span></footer>
+  </div>
+</dialog>
 
 <script type="module">
   import {
@@ -82,14 +105,22 @@
   const productoIdEl = document.getElementById('ds-producto-id');
   const btnConsultar = document.getElementById('ds-consultar');
   const estadoConsulta = document.getElementById('ds-estado-consulta');
+  const seccionResultados = document.getElementById('ds-seccion-resultados');
   const resultadosEl = document.getElementById('ds-resultados');
   const metaResultados = document.getElementById('ds-meta-resultados');
+  const carrito = document.getElementById('ds-carrito');
+  const carritoN = document.getElementById('ds-carrito-n');
+  const cajon = document.getElementById('ds-cajon');
   const bandejaEl = document.getElementById('ds-bandeja');
-  const metaBandeja = document.getElementById('ds-meta-bandeja');
 
-  const TAMANO = 6; // límite bajo: D1 mide, no replica catálogo.
+  // 24 = seis filas de cuatro en PC. Cada página es un clic humano; la
+  // función acota la ventana (no recorre ni replica el catálogo).
+  const TAMANO = 24;
   let ultimaConsulta = { buscar: '', productoId: '', inicio: 0 };
-  let resultadoActual = null;
+  let itemsActuales = [];   // resultados en pantalla: [{ producto, leido }]
+  let candidatos = [];      // filas de la bandeja privada
+  let bandejaCargada = false;
+  let filtroBandeja = 'bandeja';
   let esAdmin = false;
 
   const ico = (nombre) => ICONOS[nombre] || '';
@@ -98,28 +129,66 @@
     return s ? escaparHTML(s) : fallback;
   };
   const monto = (v) => v == null || v === '' ? '—' : '$' + formatearCOP(v);
-  const foto = (urls, alt) => {
-    const u = Array.isArray(urls) ? urls[0] : '';
-    return u
-      ? '<img src="' + escaparHTML(u) + '" alt="Vista previa remota de ' + escaparHTML(alt || 'producto') + '" loading="lazy" referrerpolicy="no-referrer">'
-      : ico('caja');
-  };
+  const sinCodigo = (m) => String(m || '').replace(/^DS_[A-Z_]+:\s*/, '');
+  const reduceMovimiento = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // Una URL de proveedor puede vencer, cambiar o bloquear el hotlink. En D1 no
-  // la descargamos todavía, así que la UI debe degradar con dignidad: caja de
-  // placeholder, nunca icono roto/alt crudo. D2 reemplaza las seleccionadas por
-  // archivos propios en Storage antes de llegar a Campañas.
-  function protegerFotosRemotas(raiz) {
+  // ── FOTOS REMOTAS ──────────────────────────────────────────────────────
+  // <img> directa al CDN de Dropi con loading="lazy": el navegador solo pide
+  // las que están a la vista y no queda nada guardado de nuestro lado. Si una
+  // URL vence o el proveedor bloquea el enlace, se ve una caja sobria, nunca
+  // un icono roto.
+  function urlsValidas(urls) {
+    return Array.isArray(urls) ? urls.filter((u) => typeof u === 'string' && /^https:\/\//.test(u)).slice(0, 12) : [];
+  }
+
+  function galeria(urls, alt, { navegable = true } = {}) {
+    const lista = urlsValidas(urls);
+    if (!lista.length) {
+      return '<div class="ds-foto ds-foto--vacia">' + ico('caja') + '<span>Sin foto en Dropi</span></div>';
+    }
+    const nav = navegable && lista.length > 1
+      ? '<button class="ds-foto-nav ds-foto-nav--prev" type="button" data-paso="-1" aria-label="Foto anterior">' + ico('flecha') + '</button>' +
+        '<button class="ds-foto-nav ds-foto-nav--next" type="button" data-paso="1" aria-label="Foto siguiente">' + ico('flecha') + '</button>'
+      : '';
+    const contador = lista.length > 1
+      ? '<span class="ds-foto-n">' + (navegable ? '1/' : '') + lista.length + (navegable ? '' : ' fotos') + '</span>'
+      : '';
+    return '<div class="ds-foto" data-fotos="' + escaparHTML(JSON.stringify(lista)) + '" data-i="0">' +
+      '<img src="' + escaparHTML(lista[0]) + '" alt="' + escaparHTML(alt || 'Producto') + ' · foto remota de Dropi" loading="lazy" decoding="async" referrerpolicy="no-referrer">' +
+      '<span class="ds-foto-ph" aria-hidden="true">' + ico('caja') + '<span>Foto no disponible</span></span>' +
+      nav + contador + '</div>';
+  }
+
+  function vigilarFotos(raiz) {
     raiz.querySelectorAll('.ds-foto img').forEach((img) => {
-      const fallback = () => {
-        const cont = img.closest('.ds-foto');
-        if (cont) cont.innerHTML = ico('caja');
-      };
-      img.addEventListener('error', fallback, { once: true });
-      if (img.complete && img.naturalWidth === 0) fallback();
+      if (img.dataset.vigilada) return;
+      img.dataset.vigilada = '1';
+      const rota = () => img.closest('.ds-foto')?.classList.add('ds-foto--rota');
+      const sana = () => img.closest('.ds-foto')?.classList.remove('ds-foto--rota');
+      img.addEventListener('error', rota);
+      img.addEventListener('load', sana);
+      if (img.complete && img.naturalWidth === 0 && img.getAttribute('src')) rota();
     });
-  };
+  }
 
+  // Flechas de la foto: una sola escucha para todas las tarjetas.
+  document.addEventListener('click', (e) => {
+    const boton = e.target.closest('.ds-foto-nav');
+    if (!boton) return;
+    const cont = boton.closest('.ds-foto');
+    let lista = [];
+    try { lista = JSON.parse(cont.dataset.fotos || '[]'); } catch (_) { lista = []; }
+    if (lista.length < 2) return;
+    const i = (Number(cont.dataset.i || 0) + Number(boton.dataset.paso) + lista.length) % lista.length;
+    cont.dataset.i = String(i);
+    cont.classList.remove('ds-foto--rota');
+    const img = cont.querySelector('img');
+    if (img) img.src = lista[i];
+    const n = cont.querySelector('.ds-foto-n');
+    if (n) n.textContent = (i + 1) + '/' + lista.length;
+  });
+
+  // ── AVISOS ─────────────────────────────────────────────────────────────
   function aviso(clase, titulo, cuerpo) {
     estadoConsulta.innerHTML =
       '<section class="ds-aviso ' + clase + '">' + ico(clase === 'ds-aviso--err' ? 'alerta' : clase === 'ds-aviso--ok' ? 'check' : 'info') +
@@ -137,103 +206,143 @@
     }
   }
 
-  function tarjetaResultado(p, leido) {
-    if (!p || !p.id) return '';
-    const stock = Number(p.stock);
-    const stockConocido = Number.isFinite(stock);
-    const chipStock = stockConocido
-      ? '<span class="ds-tag ' + (stock > 0 ? 'ds-tag--stock' : 'ds-tag--sin-stock') + '">' +
-          (stock > 0 ? stock + ' reportadas' : 'Sin stock reportado') + '</span>'
-      : '<span class="ds-tag">Stock no informado</span>';
+  // ── RESULTADOS ─────────────────────────────────────────────────────────
+  const candidatoDe = (id) => candidatos.find((c) =>
+    String(c.producto_externo_id) === String(id) && (c.variacion_externa_id || '') === '');
+
+  function tagStock(valor, sinLectura = 'Stock no informado') {
+    const n = Number(valor);
+    if (valor == null || valor === '' || !Number.isFinite(n)) return '<span class="ds-tag">' + sinLectura + '</span>';
+    return '<span class="ds-tag ' + (n > 0 ? 'ds-tag--stock' : 'ds-tag--sin-stock') + '">' +
+      (n > 0 ? n + ' reportadas' : 'Sin stock reportado') + '</span>';
+  }
+
+  function botonGuardar(id) {
+    const c = bandejaCargada ? candidatoDe(id) : null;
+    if (!c) return '<button class="ds-btn ds-guardar" type="button">' + ico('bandeja') + 'Agregar a la bandeja</button>';
+    if (c.estado === 'descartado') return '<button class="ds-btn ds-btn--sec ds-guardar" type="button">Volver a la bandeja</button>';
+    if (c.estado === 'llevado_a_campanas') return '<button class="ds-btn ds-btn--hecho" type="button" disabled>Ya en Campañas</button>';
+    return '<button class="ds-btn ds-btn--hecho" type="button" disabled>' + ico('check') + 'En la bandeja</button>';
+  }
+
+  function tarjetaResultado(p) {
+    if (!p || p.id == null) return '';
     const categorias = Array.isArray(p.categorias) ? p.categorias.slice(0, 2) : [];
+    const variantes = Number(p.variaciones) || 0;
     const tags = categorias.map((x) => '<span class="ds-tag">' + texto(x) + '</span>').join('') +
-      chipStock +
-      (Number(p.variaciones) > 0 ? '<span class="ds-tag">' + Number(p.variaciones) + ' variante' + (Number(p.variaciones) === 1 ? '' : 's') + '</span>' : '');
-    const puntos = Array.isArray(p.fotos_remotas) && p.fotos_remotas.length > 1
-      ? '<span class="ds-fotos-puntos" title="' + p.fotos_remotas.length + ' fotos remotas">' +
-          p.fotos_remotas.slice(0, 5).map(() => '<i></i>').join('') + '</span>' : '';
+      tagStock(p.stock) +
+      (variantes > 0 ? '<span class="ds-tag">' + variantes + ' variante' + (variantes === 1 ? '' : 's') + '</span>' : '');
     return '<article class="ds-card" data-producto="' + escaparHTML(String(p.id)) + '">' +
-      '<div class="ds-foto">' + foto(p.fotos_remotas, p.nombre) + '</div>' +
+      galeria(p.fotos_remotas, p.nombre) +
       '<div class="ds-card-body">' +
-        '<div class="ds-card-k"><span>Dropi</span><code>#' + texto(p.id) + '</code></div>' +
+        '<div class="ds-card-k"><span>Proveedor ' + texto(p.proveedor_id) + '</span><code>#' + texto(p.id) + '</code></div>' +
         '<h3>' + texto(p.nombre, 'Producto sin nombre') + '</h3>' +
         '<div class="ds-tags">' + tags + '</div>' +
         '<div class="ds-datos">' +
           '<div class="ds-dato"><span>Costo reportado</span><span>' + monto(p.precio_proveedor) + '</span></div>' +
           '<div class="ds-dato"><span>Sugerido</span><span>' + monto(p.precio_sugerido) + '</span></div>' +
-          '<div class="ds-dato"><span>Proveedor interno</span><span>' + texto(p.proveedor_id) + '</span></div>' +
-          '<div class="ds-dato"><span>Lectura</span><span>' + texto(leido ? formatearMomento(leido) : null) + '</span></div>' +
-        '</div>' + puntos +
-        (Number(p.variaciones) > 0
-          ? '<p class="ds-card-msg">D1 no elige variante todavía: una variante será una campaña distinta en D2.</p>'
-          : '<p class="ds-card-msg">Sin variante reportada; sigue siendo candidato, no producto MAGANDHI.</p>') +
-        '<div class="ds-card-acciones"><button class="ds-btn ds-guardar" type="button">Guardar en bandeja</button></div>' +
+        '</div>' +
+        (variantes > 0 ? '<p class="ds-card-nota">Cada variante será una campaña distinta en D2.</p>' : '') +
+        '<div class="ds-card-acciones">' + botonGuardar(p.id) + '</div>' +
         '<p class="ds-card-msg" aria-live="polite"></p>' +
       '</div></article>';
   }
 
-  function listaProductos(data) {
+  // Abrir por id sin palabra = solo esa ficha (sin el resto del catálogo).
+  function listaProductos(data, lecturaEn) {
     const items = [];
     const ficha = data?.producto?.ficha;
-    if (ficha?.id != null) items.push({ producto: ficha, leido: data.producto.leido || null });
-    const muestra = Array.isArray(data?.productos?.muestra) ? data.productos.muestra : [];
+    if (ficha?.id != null) items.push({ producto: ficha, leido: data.producto.leido || lecturaEn, esFicha: true });
+    const soloFicha = !!ultimaConsulta.productoId && !ultimaConsulta.buscar;
+    const muestra = soloFicha ? [] : (Array.isArray(data?.productos?.muestra) ? data.productos.muestra : []);
     for (const p of muestra) {
       if (p?.id != null && !items.some((x) => String(x.producto.id) === String(p.id))) {
-        items.push({ producto: p, leido: new Date().toISOString() });
+        items.push({ producto: p, leido: lecturaEn });
       }
     }
     return items;
   }
 
+  function barraPaginas(q, extra = '') {
+    const anterior = q.anterior_inicio;
+    const siguiente = q.siguiente_inicio;
+    if (anterior == null && siguiente == null) return '';
+    const pagina = Math.floor((Number(q.inicio) || 0) / (Number(q.tamano) || TAMANO)) + 1;
+    return '<nav class="ds-paginacion ' + extra + '" aria-label="Páginas de resultados">' +
+      '<button class="ds-btn ds-btn--sec" type="button" data-pagina="' + (anterior ?? '') + '"' + (anterior == null ? ' disabled' : '') + '>' + ico('flecha') + 'Anterior</button>' +
+      '<span>Página ' + pagina + '</span>' +
+      '<button class="ds-btn ds-btn--sec ds-btn--sig" type="button" data-pagina="' + (siguiente ?? '') + '"' + (siguiente == null ? ' disabled' : '') + '>Siguiente' + ico('flecha') + '</button>' +
+    '</nav>';
+  }
+
   function renderResultados(data) {
-    resultadoActual = data;
-    const items = listaProductos(data);
+    const lecturaEn = new Date().toISOString();
+    const items = listaProductos(data, lecturaEn);
+    itemsActuales = items;
     const q = data?.consulta || {};
+    const paginados = items.filter((x) => !x.esFicha).length;
+    const desde = (Number(q.inicio) || 0) + 1;
+    const hasta = (Number(q.inicio) || 0) + paginados;
     const total = data?.productos?.total;
-    metaResultados.textContent = items.length
-      ? (total != null ? total + ' coincidencias reportadas · mostrando ' + items.length : items.length + ' resultado' + (items.length === 1 ? '' : 's'))
-      : 'Sin coincidencias';
 
     if (!items.length) {
+      metaResultados.textContent = 'Sin coincidencias';
       resultadosEl.className = 'ds-vacio';
-      resultadosEl.innerHTML = '<strong>No encontramos candidatos en esta lectura</strong>Prueba otra palabra o revisa el id del producto en Dropi.';
+      resultadosEl.innerHTML = q.inicio > 0
+        ? '<strong>No hay más resultados</strong>Vuelve a la página anterior o prueba otra palabra.'
+        : '<strong>No encontramos candidatos en esta lectura</strong>Prueba otra palabra o revisa el id del producto en Dropi.';
       return;
     }
 
-    const anterior = q.anterior_inicio;
-    const siguiente = q.siguiente_inicio;
+    metaResultados.textContent = !paginados
+      ? 'Ficha por id · lectura ' + formatearMomento(lecturaEn)
+      : (total != null ? total + ' coincidencias · ' : '') + 'Mostrando ' + desde + '–' + hasta +
+        (total == null && q.hay_mas ? ' · hay más' : '');
+
+    const limite = q.limite_alcanzado
+      ? '<p class="ds-limite">' + ico('info') + 'Hay más resultados, pero llegaste al final de la ventana de búsqueda. Afina la palabra para ver otros.</p>'
+      : '';
     resultadosEl.className = '';
     resultadosEl.innerHTML =
-      '<div class="ds-result-head"><span><b>Lectura remota.</b> Guardar un resultado no descarga imágenes ni lo publica.</span>' +
-      '<div class="ds-paginacion">' +
-        '<button class="ds-btn ds-btn--sec" type="button" data-pagina="' + (anterior == null ? '' : anterior) + '" ' + (anterior == null ? 'disabled' : '') + '>Anterior</button>' +
-        '<button class="ds-btn ds-btn--sec" type="button" data-pagina="' + (siguiente == null ? '' : siguiente) + '" ' + (siguiente == null ? 'disabled' : '') + '>Siguiente</button>' +
-      '</div></div>' +
-      '<div class="ds-grid">' + items.map((x) => tarjetaResultado(x.producto, x.leido)).join('') + '</div>';
-    protegerFotosRemotas(resultadosEl);
+      '<div class="ds-result-head"><span><b>Lectura remota</b> · ' + escaparHTML(formatearMomento(lecturaEn)) + '. Las fotos vienen de Dropi y no se guardan.</span>' +
+        barraPaginas(q) + '</div>' +
+      '<div class="ds-grid">' + items.map((x) => tarjetaResultado(x.producto)).join('') + '</div>' +
+      limite + barraPaginas(q, 'ds-paginacion--pie');
+    vigilarFotos(resultadosEl);
+  }
 
-    resultadosEl.querySelectorAll('.ds-guardar').forEach((boton) => {
-      boton.addEventListener('click', async () => {
-        const card = boton.closest('[data-producto]');
-        const id = card?.dataset.producto;
-        const encontrado = items.find((x) => String(x.producto.id) === String(id));
-        if (!encontrado) return;
-        await guardarCandidato(boton, encontrado.producto, encontrado.leido);
-      });
-    });
-    resultadosEl.querySelectorAll('[data-pagina]').forEach((boton) => {
-      boton.addEventListener('click', () => {
-        const inicio = Number(boton.dataset.pagina);
-        if (Number.isInteger(inicio) && inicio >= 0) consultar({ ...ultimaConsulta, inicio });
-      });
+  // Actualiza solo los botones (al cambiar la bandeja) sin repintar fotos.
+  function refrescarBotonesResultados() {
+    resultadosEl.querySelectorAll('.ds-card[data-producto]').forEach((card) => {
+      const acciones = card.querySelector('.ds-card-acciones');
+      if (acciones) acciones.innerHTML = botonGuardar(card.dataset.producto);
     });
   }
 
+  resultadosEl.addEventListener('click', async (e) => {
+    const pagina = e.target.closest('[data-pagina]');
+    if (pagina && !pagina.disabled) {
+      const inicio = Number(pagina.dataset.pagina);
+      if (Number.isInteger(inicio) && inicio >= 0) {
+        // Al paginar se sigue la búsqueda por palabra; la ficha por id ya se vio.
+        seccionResultados.scrollIntoView({ behavior: reduceMovimiento() ? 'auto' : 'smooth', block: 'start' });
+        consultar({ buscar: ultimaConsulta.buscar, productoId: '', inicio });
+      }
+      return;
+    }
+    const guardar = e.target.closest('.ds-guardar');
+    if (guardar && !guardar.disabled) {
+      const id = guardar.closest('[data-producto]')?.dataset.producto;
+      const encontrado = itemsActuales.find((x) => String(x.producto.id) === String(id));
+      if (encontrado) await guardarCandidato(guardar, encontrado.producto, encontrado.leido);
+    }
+  });
+
   async function guardarCandidato(boton, p, leido) {
     const card = boton.closest('.ds-card');
-    const msg = card?.querySelector('.ds-card-msg:last-child');
+    const msg = card?.querySelector('.ds-card-msg');
     boton.disabled = true;
-    if (msg) { msg.className = 'ds-card-msg'; msg.textContent = 'Guardando snapshot privado…'; }
+    if (msg) { msg.className = 'ds-card-msg'; msg.textContent = 'Agregando a la bandeja…'; }
     const { error } = await supabase.rpc('ds_guardar_candidato', {
       p_producto_externo_id: String(p.id),
       p_variacion_externa_id: '', // D1 aún no selecciona variante exacta.
@@ -242,89 +351,132 @@
       p_categoria_externa: Array.isArray(p.categorias) ? (p.categorias[0] || null) : null,
       p_precio_proveedor: p.precio_proveedor == null ? null : Number(p.precio_proveedor),
       p_precio_sugerido: p.precio_sugerido == null ? null : Number(p.precio_sugerido),
-      p_stock_reportado: Number.isFinite(Number(p.stock)) ? Number(p.stock) : null,
+      p_stock_reportado: Number.isFinite(Number(p.stock)) && p.stock != null ? Number(p.stock) : null,
       p_stock_leido_en: leido || new Date().toISOString(),
-      p_fotos_remotas: Array.isArray(p.fotos_remotas) ? p.fotos_remotas : [],
+      p_fotos_remotas: urlsValidas(p.fotos_remotas),
     });
     if (error) {
       boton.disabled = false;
-      if (msg) { msg.className = 'ds-card-msg err'; msg.textContent = 'No se pudo guardar: ' + (error.message || 'revisa tu acceso.'); }
+      if (msg) { msg.className = 'ds-card-msg err'; msg.textContent = 'No se pudo agregar: ' + (sinCodigo(error.message) || 'revisa tu acceso.'); }
       return;
     }
-    boton.textContent = 'En bandeja';
-    if (msg) { msg.className = 'ds-card-msg ok'; msg.textContent = 'Guardado. Sigue siendo candidato; no se creó campaña ni producto.'; }
     await cargarBandeja();
+    const nuevoMsg = resultadosEl.querySelector('.ds-card[data-producto="' + CSS.escape(String(p.id)) + '"] .ds-card-msg');
+    if (nuevoMsg) { nuevoMsg.className = 'ds-card-msg ok'; nuevoMsg.textContent = 'Agregado. Sigue siendo candidato: no se creó campaña ni producto.'; }
+    pulsarCarrito();
+  }
+
+  // ── BANDEJA (carrito) ──────────────────────────────────────────────────
+  function pulsarCarrito() {
+    if (reduceMovimiento()) return;
+    carrito.classList.remove('ds-pulso');
+    void carrito.offsetWidth; // reinicia la animación
+    carrito.classList.add('ds-pulso');
+  }
+
+  function pintarContadores() {
+    const enCuraduria = candidatos.filter((c) => c.estado !== 'descartado').length;
+    const descartados = candidatos.filter((c) => c.estado === 'descartado').length;
+    carritoN.textContent = String(enCuraduria);
+    carritoN.toggleAttribute('data-cero', enCuraduria === 0);
+    carrito.setAttribute('aria-label', 'Abrir bandeja de curaduría: ' + enCuraduria + ' candidato' + (enCuraduria === 1 ? '' : 's') + ' en curaduría');
+    document.getElementById('ds-n-bandeja').textContent = String(enCuraduria);
+    document.getElementById('ds-n-descartado').textContent = String(descartados);
+  }
+
+  function itemBandeja(c) {
+    const descartado = c.estado === 'descartado';
+    const llevado = c.estado === 'llevado_a_campanas';
+    return '<article class="ds-item' + (descartado ? ' ds-descartado' : '') + '" data-candidato="' + escaparHTML(c.id) + '">' +
+      '<div class="ds-item-foto">' + galeria(c.fotos_remotas, c.nombre_externo, { navegable: false }) + '</div>' +
+      '<div class="ds-item-body">' +
+        '<div class="ds-card-k"><span>' + (descartado ? 'Descartado' : llevado ? 'En Campañas' : 'En curaduría') + '</span><code>#' + texto(c.producto_externo_id) + '</code></div>' +
+        '<h3>' + texto(c.nombre_externo) + '</h3>' +
+        '<div class="ds-tags">' + (c.categoria_externa ? '<span class="ds-tag">' + texto(c.categoria_externa) + '</span>' : '') +
+          tagStock(c.stock_reportado, 'Stock sin lectura') +
+          (c.variacion_externa_id ? '<span class="ds-tag">Variante ' + texto(c.variacion_externa_id) + '</span>' : '') + '</div>' +
+        '<div class="ds-item-datos"><span>Costo <b>' + monto(c.precio_proveedor) + '</b></span><span>Sugerido <b>' + monto(c.precio_sugerido) + '</b></span></div>' +
+        '<div class="ds-item-lectura">Lectura de stock: ' + texto(c.stock_leido_en ? formatearMomento(c.stock_leido_en) : null) + '</div>' +
+        '<div class="ds-item-acciones">' +
+          (llevado ? '' : '<button class="ds-btn ds-btn--sec' + (descartado ? '' : ' ds-btn--danger') + '" type="button" data-estado="' + (descartado ? 'bandeja' : 'descartado') + '">' + (descartado ? 'Restaurar' : 'Descartar') + '</button>') +
+          (descartado ? '' : '<button class="ds-btn" type="button" disabled title="Se habilita en D2">Llevar a Campañas</button>') +
+        '</div>' +
+        '<p class="ds-card-msg" aria-live="polite"></p>' +
+      '</div></article>';
+  }
+
+  function pintarBandeja() {
+    document.querySelectorAll('.ds-cajon-filtros [data-filtro]').forEach((b) => {
+      b.setAttribute('aria-pressed', String(b.dataset.filtro === filtroBandeja));
+    });
+    const filas = candidatos.filter((c) => filtroBandeja === 'descartado' ? c.estado === 'descartado' : c.estado !== 'descartado');
+    if (!filas.length) {
+      bandejaEl.innerHTML = filtroBandeja === 'descartado'
+        ? '<div class="ds-vacio"><strong>No hay descartados</strong>Lo que descartes queda aquí con su rastro y se puede restaurar.</div>'
+        : '<div class="ds-vacio"><strong>La bandeja está vacía</strong>Busca en Dropi y pulsa «Agregar a la bandeja» en lo que MAGANDHI quiera evaluar.</div>';
+      return;
+    }
+    bandejaEl.innerHTML = filas.map(itemBandeja).join('');
+    vigilarFotos(bandejaEl);
   }
 
   async function cargarBandeja() {
-    bandejaEl.className = 'ds-vacio';
-    bandejaEl.textContent = 'Cargando bandeja privada…';
     const { data, error } = await supabase
       .from('dropshipping_candidatos')
       .select('id,producto_externo_id,variacion_externa_id,proveedor_externo_id,nombre_externo,categoria_externa,precio_proveedor,precio_sugerido,stock_reportado,stock_leido_en,fotos_remotas,estado,actualizado')
       .order('actualizado', { ascending: false })
-      .limit(60);
+      .limit(200);
     if (error) {
-      metaBandeja.textContent = 'No disponible';
-      bandejaEl.innerHTML = '<strong>No se pudo leer la bandeja</strong>La tabla está protegida. Revisa que la migración D1 esté aplicada y que tu perfil tenga el módulo Dropshipping.';
+      bandejaEl.innerHTML = '<div class="ds-vacio"><strong>No se pudo leer la bandeja</strong>La tabla está protegida. Revisa que la migración D1 esté aplicada y que tu perfil tenga el módulo Dropshipping.</div>';
+      carritoN.textContent = '!';
       return;
     }
-    const filas = data || [];
-    metaBandeja.textContent = filas.length + ' candidato' + (filas.length === 1 ? '' : 's');
-    if (!filas.length) {
-      bandejaEl.innerHTML = '<strong>La bandeja está vacía</strong>Consulta Dropi y guarda solo lo que MAGANDHI quiera evaluar. No llega nada automáticamente desde el catálogo.';
-      return;
-    }
-    bandejaEl.className = 'ds-grid';
-    bandejaEl.innerHTML = filas.map((c) => {
-      const descartado = c.estado === 'descartado';
-      const stock = Number(c.stock_reportado);
-      const stockTag = Number.isFinite(stock)
-        ? '<span class="ds-tag ' + (stock > 0 ? 'ds-tag--stock' : 'ds-tag--sin-stock') + '">' + (stock > 0 ? stock + ' reportadas' : 'Sin stock reportado') + '</span>'
-        : '<span class="ds-tag">Stock sin lectura</span>';
-      return '<article class="ds-card ds-bandeja-card ' + (descartado ? 'ds-descartado' : '') + '" data-candidato="' + escaparHTML(c.id) + '">' +
-        '<div class="ds-foto">' + foto(c.fotos_remotas, c.nombre_externo) + '</div>' +
-        '<div class="ds-card-body">' +
-          '<div class="ds-card-k"><span>' + (descartado ? 'Descartado' : 'En curaduría') + '</span><code>#' + texto(c.producto_externo_id) + '</code></div>' +
-          '<h3>' + texto(c.nombre_externo) + '</h3>' +
-          '<div class="ds-tags">' + (c.categoria_externa ? '<span class="ds-tag">' + texto(c.categoria_externa) + '</span>' : '') + stockTag + (c.variacion_externa_id ? '<span class="ds-tag">Variante ' + texto(c.variacion_externa_id) + '</span>' : '') + '</div>' +
-          '<div class="ds-datos">' +
-            '<div class="ds-dato"><span>Costo reportado</span><span>' + monto(c.precio_proveedor) + '</span></div>' +
-            '<div class="ds-dato"><span>Sugerido</span><span>' + monto(c.precio_sugerido) + '</span></div>' +
-            '<div class="ds-dato"><span>Última lectura</span><span>' + texto(c.stock_leido_en ? formatearMomento(c.stock_leido_en) : null) + '</span></div>' +
-            '<div class="ds-dato"><span>Actualizado</span><span>' + texto(formatearMomento(c.actualizado)) + '</span></div>' +
-          '</div>' +
-          '<span class="ds-proximo">' + ico('reloj') + 'Llevar a Campañas se habilita en D2, después de seleccionar variante e importar imágenes.</span>' +
-          '<div class="ds-card-acciones">' +
-            '<button class="ds-btn ds-btn--sec ' + (descartado ? '' : 'ds-btn--danger') + '" type="button" data-estado="' + (descartado ? 'bandeja' : 'descartado') + '">' + (descartado ? 'Restaurar' : 'Descartar') + '</button>' +
-            '<button class="ds-btn" type="button" disabled title="Disponible en D2">Llevar a Campañas</button>' +
-          '</div><p class="ds-card-msg" aria-live="polite"></p>' +
-        '</div></article>';
-    }).join('');
-    protegerFotosRemotas(bandejaEl);
-    bandejaEl.querySelectorAll('[data-estado]').forEach((boton) => {
-      boton.addEventListener('click', () => cambiarEstadoCandidato(boton, boton.dataset.estado));
-    });
+    candidatos = data || [];
+    bandejaCargada = true;
+    pintarContadores();
+    pintarBandeja();
+    refrescarBotonesResultados();
   }
 
-  async function cambiarEstadoCandidato(boton, estado) {
-    const card = boton.closest('[data-candidato]');
-    const msg = card?.querySelector('.ds-card-msg');
-    if (!card || !estado) return;
+  bandejaEl.addEventListener('click', async (e) => {
+    const boton = e.target.closest('[data-estado]');
+    if (!boton || boton.disabled) return;
+    const item = boton.closest('[data-candidato]');
+    const msg = item?.querySelector('.ds-card-msg');
+    const estado = boton.dataset.estado;
+    if (!item || !estado) return;
     boton.disabled = true;
     if (msg) { msg.className = 'ds-card-msg'; msg.textContent = estado === 'descartado' ? 'Descartando…' : 'Restaurando…'; }
-    const { error } = await supabase.rpc('ds_actualizar_estado_candidato', {
-      p_id: card.dataset.candidato,
-      p_estado: estado,
-    });
+    const { error } = await supabase.rpc('ds_actualizar_estado_candidato', { p_id: item.dataset.candidato, p_estado: estado });
     if (error) {
       boton.disabled = false;
-      if (msg) { msg.className = 'ds-card-msg err'; msg.textContent = 'No se pudo actualizar: ' + (error.message || 'revisa tu acceso.'); }
+      if (msg) { msg.className = 'ds-card-msg err'; msg.textContent = 'No se pudo actualizar: ' + (sinCodigo(error.message) || 'revisa tu acceso.'); }
       return;
     }
     await cargarBandeja();
-  }
+  });
 
+  document.querySelectorAll('.ds-cajon-filtros [data-filtro]').forEach((b) => {
+    b.addEventListener('click', () => { filtroBandeja = b.dataset.filtro; pintarBandeja(); });
+  });
+
+  // <dialog> nativo: atrapa el foco, cierra con Escape y devuelve el foco.
+  function abrirCajon() {
+    pintarBandeja();
+    cajon.showModal();
+    document.body.classList.add('ds-sin-scroll');
+    carrito.setAttribute('aria-expanded', 'true');
+  }
+  carrito.addEventListener('click', abrirCajon);
+  document.getElementById('ds-cajon-cerrar').addEventListener('click', () => cajon.close());
+  cajon.addEventListener('click', (e) => { if (e.target === cajon) cajon.close(); }); // clic en el fondo
+  cajon.addEventListener('close', () => {
+    document.body.classList.remove('ds-sin-scroll');
+    carrito.setAttribute('aria-expanded', 'false');
+    carrito.focus();
+  });
+
+  // ── CONSULTA ───────────────────────────────────────────────────────────
   async function consultar(opciones = {}) {
     if (!esAdmin) {
       aviso('ds-aviso--warn', 'Consulta externa reservada para administración', 'D1 mantiene la lectura de Dropi solo para administradores mientras D3 define permisos por capacidad. Puedes revisar la bandeja privada si tu módulo lo permite.');
@@ -333,7 +485,7 @@
     const buscar = String(opciones.buscar ?? buscarEl.value ?? '').trim().slice(0, 60);
     const productoId = String(opciones.productoId ?? productoIdEl.value ?? '').trim();
     const inicio = Number.isInteger(opciones.inicio) ? opciones.inicio : 0;
-    ultimaConsulta = { buscar, productoId, inicio };
+    ultimaConsulta = { buscar, productoId: /^\d{1,12}$/.test(productoId) ? productoId : '', inicio };
     btnConsultar.disabled = true;
     btnConsultar.textContent = 'Consultando…';
     resultadosEl.className = 'ds-vacio';
@@ -342,7 +494,7 @@
     estadoConsulta.innerHTML = '';
 
     const body = { buscar, inicio, tamano: TAMANO };
-    if (/^\d{1,12}$/.test(productoId)) body.producto_id = productoId;
+    if (ultimaConsulta.productoId) body.producto_id = ultimaConsulta.productoId;
     const { data, error } = await supabase.functions.invoke('dropi-sonda', { body });
     btnConsultar.disabled = false;
     btnConsultar.innerHTML = ico('lupa') + 'Consultar';
@@ -377,6 +529,8 @@
     });
     document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ico(el.dataset.ico); });
     main.hidden = false;
+    carrito.hidden = false;
+    carrito.setAttribute('aria-expanded', 'false');
     if (!esAdmin) {
       btnConsultar.disabled = true;
       btnConsultar.title = 'D1 reserva la consulta externa para administración.';
