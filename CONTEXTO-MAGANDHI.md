@@ -186,6 +186,7 @@ Diseño completo en `docs/PLANO-PAGOS.md` y runbook en `supabase/INSTRUCCIONES.m
 | F2 | La intención se guarda antes de firmar. `wompi-webhook` verifica la firma real y el pago aprobado crea el pedido web **una sola vez**, con el candado de stock. Un pago aprobado que no se pudo convertir sale como aviso rojo en Ventas |
 | F3 | Asiento contable automático de la venta real contra 138095 y contraasiento al anular. Correo «Recibido» automático. Los pagos de prueba (sandbox) no tocan los libros |
 | F4 | URL de eventos de producción corregida, secretos y llave pública de producción cargados, interruptor `pagos_config.entorno` |
+| D0 | **La vuelta de Wompi ya dice en qué quedó el pago** y bloquea «Comprar ahora» mientras no haya veredicto, así que nadie paga dos veces. RPC `pw_estado_publico` + Edge Function `estado-pago`: la autorización es la posesión de la referencia (como el código de reseña) y la respuesta trae solo el estado, el nombre y el slug. **No abre nada para `anon`.** Pendiente de desplegar |
 
 **Verificado el 9-oct-2026 con una compra real** (el shampoo, $69.900, pagado con Nequi):
 - el pedido web y una unidad menos en Inventario;
@@ -244,10 +245,7 @@ No hay nada a medias. Lo que sigue, por orden sugerido:
    Wompi informa $66.862,71, pero los asientos van en pesos enteros: se usa el valor entero que figure en el extracto del banco (≈ 66.863 y 3.037).
 2. **Inventario inicial en libros:** si la mercancía no tiene asiento de apertura (fila 23 del diagnóstico), registrarlo. La contrapartida la define el contador según cómo se compró.
 
-**Tienda (pequeños, antes del lanzamiento):**
-3. **Confirmación al volver de Wompi.** Hoy la ficha del producto se ve igual y el botón queda activo: la persona podría pagar dos veces. La vuelta trae `?ref=`, así que hay que mostrar «Recibimos tu pago» y consultar el estado por referencia sin datos personales. También restaurar el botón en `pageshow`.
-4. **Detalles de entrega** (apartamento, torre) que no llegan al pedido: enviar `direccion + ' · ' + detalles` como `comprador.direccion`. El documento del comprador solo viaja a Wompi; guardarlo para la factura es una decisión pendiente y requiere una columna nueva.
-5. **Mensajes de error de pago siempre genéricos:** leer el JSON de `error.context`, con el mismo patrón de `suscripcion/suscripcion.js`.
+**Tienda:** ~~3, 4 y 5~~ **cerrados (D0, 9-oct-2026).** La vuelta de Wompi ya muestra en qué quedó el pago y bloquea «Comprar ahora» mientras no haya veredicto, así que el cobro doble está cerrado; los detalles de entrega llegan al pedido; y los errores de pago dicen el motivo real. Falta **desplegar** la migración `20261021000000` y la Edge Function `estado-pago` (runbook `supabase/INSTRUCCIONES.md` §D0). Pendiente de decisión aparte: guardar el documento del comprador para la factura requiere una columna nueva.
 
 **Producto y operación:**
 6. Copys definitivos de los correos del pedido (`correo_plantillas`, hoy en borrador; se cambian por SQL) y de las políticas públicas (estructura provisional en magandhi.com/politicas/).
@@ -256,7 +254,7 @@ No hay nada a medias. Lo que sigue, por orden sugerido:
 9. **D3** (permisos granulares por capacidad en panel, grants, RLS y RPC) antes del primer usuario que no sea admin.
 10. Menores: el canal web visible en la lista de Seguimiento (hoy solo en el detalle), el cierre anual de Finanzas cuando cambie el ejercicio, el pulido de exportaciones, favicons propios para Marketing, Producción y Ventas, y la elasticidad cuando haya necesidad validada.
 
-**Frente nuevo · dropshipping y envíos (9-oct-2026):** vender productos de proveedores de Dropi, que despacha el proveedor, y dar guía y rastreo a los pedidos propios. **Hito del 9-oct: Dropi ya le responde a MAGANDHI.** La cuenta está verificada y, desde Supabase, se lee el catálogo y la ficha completa de cualquier producto por su id, con sus existencias por bodega. La causa de un día entero de 401 era que Dropi rechaza los `User-Agent` que no reconoce; se resolvió sin Shopify, sin WooCommerce y sin gastar un peso. Lo único que queda medido a medias es si el stock se refresca solo. Los pedidos (`orders/`) y el contrato oficial siguen sin confirmar, y los puntos 3 y 4 de la tienda son requisito antes de vender productos de proveedor. Todo en `docs/dropshipping-envios/LEEME.md`.
+**Frente nuevo · dropshipping y envíos (9-oct-2026):** vender productos de proveedores de Dropi, que despacha el proveedor, y dar guía y rastreo a los pedidos propios. **Hito del 9-oct: Dropi ya le responde a MAGANDHI.** La cuenta está verificada y, desde Supabase, se lee el catálogo y la ficha completa de cualquier producto por su id, con sus existencias por bodega. La causa de un día entero de 401 era que Dropi rechaza los `User-Agent` que no reconoce; se resolvió sin Shopify, sin WooCommerce y sin gastar un peso. Lo único que queda medido a medias es si el stock se refresca solo. Los pedidos (`orders/`) y el contrato oficial siguen sin confirmar. Los puntos 3 y 4 de la tienda, que eran requisito, ya están hechos (D0); el requisito que sigue abierto es la **lista cerrada de municipios**, porque Dropi exige que la ciudad coincida con su catálogo y hoy es texto libre. Todo en `docs/dropshipping-envios/LEEME.md`.
 
 **Repositorios:** quedan abiertos PR viejos ya superados: panel #227 y #216; tienda #46, #21 y #15. Cerrarlos o no lo decide el dueño.
 

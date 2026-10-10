@@ -86,9 +86,8 @@ La URL actual de detalle de Dropi contiene `product-details/:id/:name`, por lo q
 
 **Tienda:**
 
-- Lista cerrada de municipios con código DANE. Hoy la ciudad es texto libre.
-- Los detalles de entrega llegan al pedido (pendiente #4).
-- Confirmación al volver de Wompi (pendiente #3).
+- Lista cerrada de municipios con código DANE. Hoy la ciudad es texto libre, y Dropi exige que coincida con su catálogo: es el requisito que **sigue abierto** y el más riesgoso, porque una ciudad que Dropi no reconoce hace fallar el pedido *después* del pago.
+- ~~Los detalles de entrega llegan al pedido~~ y ~~confirmación al volver de Wompi~~: **hechos** (D0, 9-oct-2026), pendientes de desplegar.
 - Tiempo de entrega por producto en la ficha.
 
 **Ventas (panel):**
