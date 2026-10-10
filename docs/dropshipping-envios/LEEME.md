@@ -52,10 +52,7 @@ El dueño puede cambiarlos:
 | 4 | Pedidos de proveedor enviados a Dropi y seguimiento de la guía | Falta confirmar el contrato de `orders/` y el contador |
 | 5 | Contraentrega | Solo si los números lo piden |
 
-**Antes de vender productos de proveedor, la tienda necesita dos arreglos** (pendientes #3 y #4 de `CONTEXTO-MAGANDHI.md` §9):
-
-- la confirmación al volver de Wompi, para evitar el pago doble;
-- que los detalles de entrega lleguen al pedido.
+**Los dos arreglos que la tienda necesitaba antes de vender productos de proveedor ya están hechos** (D0, 9-oct-2026): la confirmación al volver de Wompi, que cierra el pago doble, y los detalles de entrega llegando al pedido. Quedan **pendientes de desplegar** (runbook `supabase/INSTRUCCIONES.md` §D0). El que sigue siendo requisito propio de este frente es la **lista cerrada de municipios**: Dropi necesita que la ciudad coincida con su catálogo, y hoy en la tienda es texto libre, así que un pedido podría fallar *después* de que el cliente pagó.
 
 ## 5. Archivos
 

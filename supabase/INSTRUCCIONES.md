@@ -4075,3 +4075,115 @@ Si algo no salió solo, nada se pierde:
 - Sin regresión: F2 **40/40**, webhook **21/21**, intención **19/19**, ciclo F2
   **12/12**, puesta al día **23/23**, diagnóstico **10/10**, M1, M2, EM5,
   EM5.1 y EM6.
+
+# D0 · Confirmación al volver de Wompi (evita el cobro doble)
+
+**Corte:** 9 de octubre de 2026. Cierra los pendientes **3, 4 y 5** de
+`CONTEXTO-MAGANDHI.md` §9.
+
+**El problema.** Con la tienda en producción, al volver de Wompi la ficha del
+producto se veía **exactamente igual** que antes y «Comprar ahora» seguía
+activo. Quien acababa de pagar no tenía forma de saber si su pago entró, así que
+podía pagar dos veces. Esto era un cobro doble real, con dinero real.
+
+De paso se cierran dos fugas del mismo flujo: los **detalles de entrega**
+(apartamento, torre) que nunca llegaban al pedido, y los **mensajes de error**
+de pago, que decían lo mismo para cualquier causa.
+
+| Pieza | Dónde vive |
+|---|---|
+| RPC `pw_estado_publico(text)` | migración `20261021000000_pagos_estado_publico.sql` |
+| Edge Function `estado-pago` | `supabase/functions/estado-pago/index.ts` |
+| Aviso de vuelta, dirección unida y mensajes reales | repositorio `magandhi`, `producto/index.html` |
+
+**No se abre nada nuevo para `anon`.** La autorización es la **posesión de la
+referencia**, igual que la posesión de `pedidos.codigo_resena` autoriza a
+opinar. `pw_estado_publico` no tiene grant para `anon` ni para `authenticated`:
+la única puerta es la Edge Function, que corre con `service_role`.
+
+## D0.1. Aplicar la migración (SQL Editor, una sola vez)
+
+Pegar y ejecutar `supabase/migrations/20261021000000_pagos_estado_publico.sql`.
+Solo **agrega** una función: no toca `pagos_intencion`, no toca
+`catalogo_publico` y no cambia ningún permiso existente.
+
+Comprobación inmediata (debe devolver las tres filas tal cual):
+
+```sql
+select
+  has_function_privilege('anon',          'pw_estado_publico(text)', 'execute') as anon_ejecuta,
+  has_function_privilege('authenticated', 'pw_estado_publico(text)', 'execute') as auth_ejecuta,
+  has_function_privilege('service_role',  'pw_estado_publico(text)', 'execute') as servicio_ejecuta;
+-- esperado: false | false | true
+```
+
+## D0.2. Desplegar `estado-pago`
+
+Supabase → Edge Functions → **Deploy a new function** → nombre exacto
+`estado-pago` → pegar `supabase/functions/estado-pago/index.ts` → Deploy.
+**Verify JWT: encendido.** No necesita ningún secreto nuevo: usa la
+`SUPABASE_SERVICE_ROLE_KEY` que inyecta el runtime.
+
+## D0.3. Comprobar con una referencia real
+
+Tomar una referencia cualquiera del Table Editor (`pagos_intencion.referencia`)
+y, desde la consola del navegador en `magandhi.com`:
+
+```js
+const { supabase } = await import('/supabase-config.js');
+const r = await supabase.functions.invoke('estado-pago', { body: { referencia: 'MAG-…' } });
+console.log(r.data ?? r.error);
+```
+
+| Respuesta | Qué significa |
+|---|---|
+| `{ estado: 'pendiente', … }` | El webhook aún no ha llegado |
+| `{ estado: 'aprobado', … }` | Hay pedido y el correo «Recibido» salió |
+| `{ estado: 'revision', … }` | El pago entró pero no se pudo crear el pedido. Hay aviso rojo en Ventas |
+| `{ estado: 'rechazado', … }` | No hubo cobro |
+| 404 | La referencia no existe, o está mal formada. No se distingue a propósito |
+
+La respuesta trae **solo** `estado`, `nombre_producto` y `slug`. Nunca el monto,
+los datos del comprador, el pedido ni la transacción.
+
+## D0.4. Qué ve quien compra
+
+| Estado | Mensaje | «Comprar ahora» |
+|---|---|---|
+| pendiente | «Estamos confirmando tu pago» | **bloqueado** |
+| revision | «Recibimos tu pago» (sin prometer el pedido) | **bloqueado** |
+| aprobado | «¡Recibimos tu pago!» | libre (ya sabe que pagó; repetir sería su decisión) |
+| rechazado | «El pago no se completó» | libre (reintentar es lo correcto) |
+| sin respuesta | el mensaje de `pendiente` | **bloqueado** (lado seguro) |
+
+El aviso aparece por dos caminos: `?ref=` en la URL (la vuelta oficial) y la
+memoria de la pestaña, que cubre el caso de volver con el botón **atrás** del
+navegador, donde no hay `?ref=`. La referencia se **borra de la barra de
+direcciones** en cuanto se lee.
+
+**Orden de despliegue.** La tienda degrada sola: si `estado-pago` todavía no
+está desplegada, el aviso igual aparece con el mensaje prudente y el botón
+igual queda bloqueado. Así que no importa si primero sale la tienda o primero
+la función; el cobro doble queda cerrado desde el primer despliegue.
+
+## D0.5. Pruebas locales hechas
+
+- `supabase/pruebas/local/pagos-estado-publico.sql` **24/24**: traducción de los
+  cuatro estados, un estado desconocido que cae en `pendiente` y nunca en
+  `aprobado`, referencias inexistentes / mal formadas / nulas / largas que
+  responden igual (no confirman existencia), que la firma no expone monto ni
+  datos del comprador, los tres permisos, y la forma de la función (definer,
+  `stable`, `search_path` fijo). Ya corre en GitHub Actions.
+- Matriz de permisos **170/170** con la migración aplicada: `anon` sigue sin
+  poder ejecutar **ninguna** función, `authenticated` conserva su lista blanca
+  de 86 y `service_role` ejecuta todas. 66 migraciones aplicadas.
+- Runtime de la Edge Function **23/23** contra un doble del endpoint: CORS
+  (origen ajeno no se refleja y nunca `*`), 405, 400, los cuatro 404 sin tocar
+  la base, traducción de estados, respuesta de solo 3 campos, `no-store`, y 500
+  sin inventar estado cuando falta la configuración.
+- Navegador (Chromium, PC 1280 y celular 390) **70/70** sobre la ficha real:
+  **35** del aviso de vuelta (incluida la carrera con `pintarAgotado`, la
+  degradación sin servidor, el producto despublicado, el botón «atrás», el pago
+  de otro producto y la ventana de 6 h) y **35** de la dirección unida y los
+  mensajes de error, con las regresiones de firma, monto y cantidad.
+- Sin regresión: F3 **84/84** y el resto del banco.
