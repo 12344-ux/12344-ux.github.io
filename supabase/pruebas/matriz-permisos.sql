@@ -141,6 +141,14 @@ begin
       v_lista_blanca := v_lista_blanca || array['ds_llevar_a_campanas'];
     end if;
 
+    -- D2b: el historial de pruebas es privado de Marketing y su única puerta
+    -- de escritura es la RPC append-only. Se mantiene condicional para que la
+    -- matriz también pueda medir una foto histórica anterior a D2b.
+    if to_regclass('public.producto_pruebas') is not null then
+      v_obj := v_obj || array['producto_pruebas'];
+      v_lista_blanca := v_lista_blanca || array['cm_registrar_producto_prueba'];
+    end if;
+
     -- F2 solo existe desde 202610190. La matriz corre también una foto anterior
     -- a F2 para comprobar el diagnóstico, por eso la lista blanca es sensible
     -- al esquema realmente instalado, no a la versión más nueva del repo.
@@ -178,6 +186,13 @@ begin
     select id into v_producto from productos order by creado limit 1;
     if v_producto is null then
       raise exception 'La prueba necesita al menos un producto en Inventario.';
+    end if;
+
+    -- D2b: una fila realista asegura que la matriz mida RLS de la tabla privada
+    -- y no confunda una tabla vacía (NADA) con acceso correcto de Marketing.
+    if to_regclass('public.producto_pruebas') is not null then
+      insert into producto_pruebas (product_id, probado_por, probado_en, notas, veredicto)
+      values (v_producto, 'Equipo de prueba', current_date, 'Evidencia temporal de la matriz; se deshace al finalizar.', 'entra_con_sello');
     end if;
 
     insert into asientos (fecha, descripcion)
@@ -270,8 +285,10 @@ begin
           -- Ventas (datos personales de terceros): SOLO Ventas.
           when v_obj[i] in ('clientes','pedidos','pedido_items','pedido_bitacora','portafolio_metricas')
             then case when v_pers[j] = 'ventas' then 'TODO' else 'NADA' end
-          -- Campanas: SOLO Marketing.
+          -- Campañas y pruebas de curaduría: SOLO Marketing.
           when v_obj[i] like 'campana_%'
+            then case when v_pers[j] = 'marketing' then 'TODO' else 'NADA' end
+          when v_obj[i] = 'producto_pruebas'
             then case when v_pers[j] = 'marketing' then 'TODO' else 'NADA' end
           else 'SIN EXPECTATIVA'
         end;

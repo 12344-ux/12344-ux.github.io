@@ -107,6 +107,17 @@
 
   const lista = document.getElementById('cm-lista');
 
+  function mensajeErrorCuraduria(error) {
+    const bruto = String(error?.message || error || '').trim();
+    if (bruto.startsWith('CM_SELLO_SIN_PRODUCTO')) {
+      return 'Liga primero un producto antes de usar el sello Elegido por MAGANDHI.';
+    }
+    if (bruto.startsWith('CM_SELLO_SIN_PRUEBA')) {
+      return 'Registra una prueba vigente con veredicto “Entra con sello” antes de publicar esta campaña.';
+    }
+    return bruto || 'error desconocido.';
+  }
+
   // ----------------------------------------------------------
   // ESTADO DEL REORDENAMIENTO (pedido B · arrastrar y soltar)
   // 'campanas' es el arreglo ORDENADO en memoria (como 'galeria' en los
@@ -336,7 +347,7 @@
         if (error) {
           btn.disabled = false;
           if (msg) {
-            msg.textContent = 'No se pudo actualizar: ' + (error.message || 'error desconocido.');
+            msg.textContent = 'No se pudo actualizar: ' + mensajeErrorCuraduria(error);
             msg.hidden = false;
           }
           return;

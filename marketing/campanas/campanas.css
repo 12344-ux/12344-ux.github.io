@@ -706,3 +706,54 @@
   .cm-barra-acciones{width:100%}
   .cm-barra-acciones a{flex:1;justify-content:center}
 }
+
+
+/* ============================================================
+   D2b · PRUEBA DE CURADURÍA Y SELLO RESPALDADO
+   ------------------------------------------------------------
+   La prueba pertenece al producto, no a una campaña específica. Se muestra
+   dentro del editor porque es donde se decide el distintivo, pero queda como
+   historial append-only: corregir una evaluación significa registrar otra.
+   ============================================================ */
+.cm-prueba-vacia{
+  font-size:13px;line-height:1.5;color:var(--mk-gris);
+  background:rgba(16,28,51,.03);border:1px dashed var(--mk-linea);
+  border-radius:11px;padding:14px 16px;
+}
+.cm-prueba-vacia[hidden],#cm-prueba-contenido[hidden]{display:none}
+.cm-prueba-estado{
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:13px;line-height:1.45;border-radius:11px;padding:13px 15px;
+  margin-bottom:16px;border:1px solid var(--mk-linea);color:var(--mk-gris);
+  background:rgba(16,28,51,.03);
+}
+.cm-prueba-estado strong{color:var(--mk-marino);font-weight:600}
+.cm-prueba-estado.aprobada{color:#2F6E4E;background:rgba(47,110,78,.10);border-color:rgba(47,110,78,.25)}
+.cm-prueba-estado.aprobada strong{color:#2F6E4E}
+.cm-prueba-estado.no-aprobada{color:#8A5A00;background:rgba(191,124,0,.10);border-color:rgba(191,124,0,.24)}
+.cm-prueba-estado.no-aprobada strong{color:#8A5A00}
+.cm-prueba-campos{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cm-prueba-campos .cm-campo:last-child{grid-column:1 / -1}
+.cm-prueba-campos textarea.mk-input{min-height:106px}
+.cm-prueba-acciones{display:flex;align-items:center;gap:10px;margin-top:14px}
+.cm-prueba-acciones .cm-btn-secundario:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.cm-prueba-historial{margin-top:16px;padding-top:16px;border-top:1px solid var(--mk-linea)}
+.cm-prueba-historial > b{display:block;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mk-gris);margin-bottom:10px}
+.cm-prueba-timeline{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.cm-prueba-timeline:empty::before{content:'Aún no hay pruebas registradas para este producto.';display:block;font-size:12.5px;color:var(--mk-gris);font-style:italic}
+.cm-prueba-item{position:relative;padding:12px 14px 12px 17px;border:1px solid var(--mk-linea);border-radius:10px;background:rgba(16,28,51,.018)}
+.cm-prueba-item::before{content:'';position:absolute;left:0;top:11px;bottom:11px;width:3px;border-radius:999px;background:var(--mk-gris)}
+.cm-prueba-item.aprobada::before{background:#2F6E4E}
+.cm-prueba-item.no-aprobada::before{background:#B57800}
+.cm-prueba-item-cab{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.cm-prueba-item-cab b{font-size:13px;color:var(--mk-marino);font-weight:600}
+.cm-prueba-item-cab time{font-size:11.5px;color:var(--mk-gris);font-variant-numeric:tabular-nums}
+.cm-prueba-item p{margin:7px 0 0;font-size:12.5px;line-height:1.5;color:var(--mk-gris);white-space:pre-wrap}
+.cm-prueba-item-meta{margin-top:6px;font-size:11.5px;color:var(--mk-gris)}
+.cm-distintivo-opcion.es-bloqueada{opacity:.62;background:rgba(16,28,51,.025);cursor:not-allowed}
+.cm-distintivo-opcion.es-bloqueada:hover{border-color:var(--mk-linea);transform:none}
+.cm-distintivo-opcion.es-bloqueada input{cursor:not-allowed}
+@media(max-width:760px){
+  .cm-prueba-campos{grid-template-columns:1fr}
+  .cm-prueba-campos .cm-campo:last-child{grid-column:auto}
+}
