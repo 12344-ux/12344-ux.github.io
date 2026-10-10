@@ -1,6 +1,6 @@
 # Dropi · integración
 
-**Corte:** 10 de octubre de 2026 · **Estado:** la lectura funciona y D1 tiene área/bandeja interna en el repositorio, pendiente de despliegue. MAGANDHI lee el catálogo, busca por página y consulta la ficha de cualquier producto por id, directo desde Supabase, sin intermediarios. Los pedidos (`orders/`) siguen sin probar.
+**Corte:** 10 de octubre de 2026 · **Estado:** la lectura funciona y D1 (área/bandeja interna) está desplegado en producción. Las fotos y la paginación se corrigieron en el ajuste de uso real (§8 bis). MAGANDHI lee el catálogo, busca por página y consulta la ficha de cualquier producto por id, directo desde Supabase, sin intermediarios. Los pedidos (`orders/`) siguen sin probar.
 
 > **Hito del 9-oct-2026.** Después de un día de 401, la causa era que Dropi **rechaza las peticiones cuyo `User-Agent` no reconoce**. No era el token, ni el permiso de la cuenta, ni la IP, ni la validación de identidad, ni la falta de WooCommerce. Con el `User-Agent` correcto, la cuenta de `magandhi.com` entra sola: **se descartan Shopify y WooCommerce como puentes** y el sandbox de prueba se puede borrar. Cómo se halló, en §7.
 
@@ -243,9 +243,8 @@ Contenido parafraseado de las fuentes.
 
 ## 8. D1 · Cimientos internos implementados (10-oct-2026)
 
-> **Estado de despliegue:** el código está listo y probado en el repositorio;
-> aplicar la migración `20261023000000_dropshipping_cimientos.sql` y redesplegar
-> `dropi-sonda` antes de llamarlo producción. D1 sigue sin tocar `orders/`.
+> **Estado de despliegue:** desplegado en producción el 10-oct-2026
+> (migración `20261023000000` + `dropi-sonda`). D1 sigue sin tocar `orders/`.
 
 D1 convierte el hallazgo de lectura en una estructura operativa segura, sin
 confundir catálogo de proveedor con inventario propio:
@@ -293,3 +292,25 @@ amplía una API externa a perfiles reducidos por comodidad de interfaz.
 La prueba controlada de reserva sigue necesitando contrato oficial, producto +
 variante + proveedor aprobados, dirección propia, saldo/presupuesto, una sola
 creación y mecanismo de cancelación confirmado antes de enviar nada.
+
+## 8 bis. Contrato de fotos y paginación (medido en uso real, 10-oct-2026)
+
+El primer uso real de D1 mostró cero fotos y «0 coincidencias reportadas»
+con Anterior/Siguiente muertos. Las dos cosas eran supuestos del doble de
+pruebas que no coincidían con Dropi:
+
+| Tema | Lo que Dropi manda | Fuente |
+|---|---|---|
+| Fotos del listado (`products/index`) | `gallery: [{ urlS3: "colombia/products/…" }]`, ruta **relativa** | Plugin Dropify v4.7.3, `Product_List.php` |
+| Fotos de la ficha (`products/v2/{id}`) | `photos: [{ urlS3 }]`, misma forma | `ProductsModel.php` (`setPostImages`) |
+| Dónde viven | `https://d39ru7awumhhs2.cloudfront.net/` + `urlS3`; los registros viejos traen `url` relativa a `https://api.dropi.co/` | Ambos archivos del plugin |
+| `count` del listado | Llegó **0** con resultados. El plugin tampoco lo usa (manda `no_count: true` y fija 9999 como total) | Captura del dueño + `Product_List.php` |
+
+`dropi-sonda` arma la URL solo sobre esos dos orígenes y descarta cualquier
+ruta que intente apuntar a otro host. Para paginar pide `tamano + 1`: si llega
+el de más, hay página siguiente. El panel muestra 24 por página.
+
+**Medición pendiente y barata:** si alguna foto real no carga en el panel, la
+consola del runbook («Dropshipping D1 · ajuste de uso real») muestra
+`campos_disponibles` y `fotos_remotas` del primer resultado para ajustar sin
+adivinar.

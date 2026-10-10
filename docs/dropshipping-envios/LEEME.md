@@ -48,14 +48,14 @@ El dueño puede cambiarlos:
 | Fase | Qué entrega | Estado |
 |---|---|---|
 | 0 | Cuentas, consulta a Dropi, muestras y cotizaciones (`PUESTA-EN-MARCHA.md`), y la sonda de solo lectura (`DROPI.md` §6) | **Casi cerrada.** **Dropi ya le responde a MAGANDHI:** faltaba el `User-Agent` (§7). Quedan muestras, cotizaciones y contador |
-| **D1 · Cimientos internos** | Área propia, bandeja privada, `origen=proveedor`, ficha externa, bloqueo de Inventario/Métricas y sonda paginable | **Desplegada en producción (10-oct-2026).** No publica, no crea productos/campañas, no descarga imágenes ni llama `orders/` |
+| **D1 · Cimientos internos** | Área propia, bandeja privada, `origen=proveedor`, ficha externa, bloqueo de Inventario/Métricas y sonda paginable | **Desplegada en producción (10-oct-2026).** No publica, no crea productos/campañas, no descarga imágenes ni llama `orders/`. **Ajuste de uso real** (fotos directas de Dropi, 24 por página con Anterior/Siguiente, bandeja como carrito): sin migración, falta redesplegar `dropi-sonda` (runbook «Dropshipping D1 · ajuste de uso real») |
 | 1 | Guía manual en Ventas y correo «En camino» automático con el rastreo | Diseñada, no depende de nadie |
 | 2 | Guías automáticas para productos propios | Espera las cotizaciones |
 | 3 | Embudo por producto y sello ligado a una prueba registrada | **D1 deja el cimiento listo.** D2 construirá importación atómica, imágenes propias, prueba/sello, stock vigente y fallo cerrado |
 | 4 | Pedidos de proveedor enviados a Dropi y seguimiento de la guía | Falta confirmar el contrato de `orders/`, la reserva `PENDIENTE CONFIRMACION`, su liberación/cancelación y el contador |
 | 5 | Contraentrega | Solo si los números lo piden |
 
-**Los dos arreglos que la tienda necesitaba antes de vender productos de proveedor ya están hechos** (D0, 9-oct-2026): la confirmación al volver de Wompi, que cierra el pago doble, y los detalles de entrega llegando al pedido. Quedan **pendientes de desplegar** (runbook `supabase/INSTRUCCIONES.md` §D0). El que sigue siendo requisito propio de este frente es la **lista cerrada de municipios**: Dropi necesita que la ciudad coincida con su catálogo, y hoy en la tienda es texto libre, así que un pedido podría fallar *después* de que el cliente pagó.
+**Los dos arreglos que la tienda necesitaba antes de vender productos de proveedor ya están hechos** (D0, 9-oct-2026): la confirmación al volver de Wompi, que cierra el pago doble, y los detalles de entrega llegando al pedido. **Desplegados el 10-oct-2026** (runbook `supabase/INSTRUCCIONES.md` §D0). El que sigue siendo requisito propio de este frente es la **lista cerrada de municipios**: Dropi necesita que la ciudad coincida con su catálogo, y hoy en la tienda es texto libre, así que un pedido podría fallar *después* de que el cliente pagó.
 
 ## 5. Archivos
 

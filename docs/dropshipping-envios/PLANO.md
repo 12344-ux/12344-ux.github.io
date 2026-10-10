@@ -1,6 +1,6 @@
 # PLANO · Dropshipping y envíos
 
-**Corte:** 10 de octubre de 2026 · **Estado:** diseño vigente con **D1 construido en el repositorio y pendiente de desplegar**. D1 no vende ni llama `orders/`; el resto se ajusta con la respuesta de Dropi, las cotizaciones y el contador.
+**Corte:** 10 de octubre de 2026 · **Estado:** diseño vigente con **D1 desplegado en producción** (más su ajuste de uso real: fotos, paginación y bandeja-carrito). D1 no vende ni llama `orders/`; el resto se ajusta con la respuesta de Dropi, las cotizaciones y el contador.
 
 ## 0. La promesa
 
@@ -94,7 +94,7 @@ La URL actual de detalle de Dropi contiene `product-details/:id/:name`, por lo q
 
 - Lista cerrada de municipios con código DANE y equivalencia aceptada por Dropi. Hoy la ciudad es texto libre, y Dropi exige que coincida con su catálogo: es el requisito que **sigue abierto** y el más riesgoso, porque una ciudad que Dropi no reconoce hace fallar el pedido *después* del pago.
 - Nombres y apellidos separados para el destinatario. Hoy el checkout guarda un nombre completo; Dropi pide `name` y `surname`. Se conserva el nombre completo de MAGANDHI por compatibilidad, pero el adaptador no debe inventar el apellido separando texto.
-- ~~Los detalles de entrega llegan al pedido~~ y ~~confirmación al volver de Wompi~~: **hechos** (D0, 9-oct-2026), pendientes de desplegar.
+- ~~Los detalles de entrega llegan al pedido~~ y ~~confirmación al volver de Wompi~~: **hechos y desplegados** (D0, 9–10-oct-2026).
 - Tiempo de entrega por producto en la ficha.
 
 **Ventas (panel):**
@@ -122,7 +122,7 @@ La URL actual de detalle de Dropi contiene `product-details/:id/:name`, por lo q
 
 | Fase | Entrega | Estado / depende de |
 |---|---|---|
-| **D1 · Cimientos internos** | Área propia, búsqueda/paginación read-only, bandeja, origen/ficha proveedor, candados de Inventario/Métricas, bloqueo de publicación | **Hecha en repositorio; pendiente de desplegar.** 68 migraciones y pruebas. No toca `orders/` |
+| **D1 · Cimientos internos** | Área propia, búsqueda/paginación read-only, bandeja, origen/ficha proveedor, candados de Inventario/Métricas, bloqueo de publicación | **Desplegada (10-oct-2026).** 68 migraciones y pruebas. No toca `orders/`. Ajuste de uso real: fotos directas de Dropi, 24 por página, bandeja como carrito |
 | **1 · Guía manual** | `despachos` y `despacho_eventos`; pegar la guía en Seguimiento; paso a `en_camino` con el correo automático | Diseñada, no depende de nadie |
 | **2 · Guías automáticas (propios)** | Peso y medidas; municipios DANE en la tienda; Edge Function para cotizar y crear la guía; avisos de estado firmados | Cotizaciones y elección de plataforma |
 | **D2 / 3 · Embudo de producto Dropi y sello** | Variante exacta, importación atómica a producto + `producto_proveedor` + borrador, imágenes propias, prueba/sello server-side, municipios, stock vigente/fallo cerrado y verificación antes de Wompi | Medir frecuencia/contrato de lectura y decidir datos de destinatario |

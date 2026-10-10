@@ -59,7 +59,8 @@ button:disabled{cursor:not-allowed}
 .ds-kicker{margin:0 0 6px;color:var(--ds-rojo);font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase}
 .ds-title{margin:0;color:var(--ds-marino);font-size:clamp(23px,3vw,30px);font-weight:600;letter-spacing:-.01em}
 .ds-lead{margin:8px 0 0;max-width:76ch;color:var(--ds-gris);font-size:14px}
-.ds-wrap{max-width:1120px;width:100%;margin:0 auto;padding:18px 24px 60px}
+/* padding inferior amplio: el carrito flotante nunca tapa la última fila. */
+.ds-wrap{max-width:1120px;width:100%;margin:0 auto;padding:18px 24px 110px}
 .ds-sello{margin-top:auto;padding:26px 24px 30px;text-align:center;color:var(--ds-gris);font-size:11.5px;letter-spacing:.05em}
 .ds-sello span{color:var(--ds-marino);font-weight:600;letter-spacing:.06em}
 
@@ -100,14 +101,30 @@ button:disabled{cursor:not-allowed}
 .ds-vacio{padding:31px 20px;border:1px dashed var(--ds-linea);border-radius:var(--ds-radio);background:rgba(255,255,255,.45);color:var(--ds-gris);font-size:13px;text-align:center}
 .ds-vacio strong{display:block;margin-bottom:4px;color:var(--ds-carbon)}
 
-/* Resultado remoto y bandeja usan la misma tarjeta; la diferencia se expresa
+/* Resultado remoto y bandeja comparten lenguaje; la diferencia se expresa
    con etiquetas, nunca con una segunda paleta. */
-.ds-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:15px}
+.ds-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:15px}
 .ds-card{position:relative;display:flex;flex-direction:column;min-width:0;overflow:hidden;background:var(--ds-tarjeta);border:1px solid var(--ds-linea);border-radius:var(--ds-radio)}
-.ds-foto{height:166px;background:rgba(16,28,51,.045);display:flex;align-items:center;justify-content:center;overflow:hidden}
-.ds-foto img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* FOTO REMOTA (ajuste de uso real D1): <img> directa al CDN de Dropi. Fondo blanco y
+   `contain`, como un catálogo: la foto del proveedor no se recorta. */
+.ds-foto{position:relative;height:200px;background:#fff;border-bottom:1px solid var(--ds-linea);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ds-foto img{width:100%;height:100%;object-fit:contain;display:block;padding:10px}
 .ds-foto svg{width:38px;color:var(--ds-gris)}
-.ds-card-body{display:flex;flex-direction:column;gap:9px;padding:15px}
+.ds-foto--vacia{flex-direction:column;gap:6px;background:rgba(16,28,51,.035);color:var(--ds-gris);font-size:11px}
+.ds-foto-ph{display:none;position:absolute;inset:0;flex-direction:column;gap:6px;align-items:center;justify-content:center;background:rgba(16,28,51,.035);color:var(--ds-gris);font-size:11px}
+.ds-foto--rota img{visibility:hidden}
+.ds-foto--rota .ds-foto-ph{display:flex}
+.ds-foto-nav{position:absolute;top:50%;z-index:2;display:flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:1px solid var(--ds-linea);border-radius:50%;background:rgba(255,255,255,.92);color:var(--ds-marino);box-shadow:0 3px 10px rgba(16,28,51,.14);transform:translateY(-50%);opacity:0;transition:opacity .15s}
+.ds-foto-nav svg{width:16px;height:16px;color:currentColor}
+.ds-foto-nav--prev{left:8px}
+.ds-foto-nav--next{right:8px}
+.ds-foto-nav--next svg,.ds-btn--sig svg{transform:rotate(180deg)}
+.ds-foto:hover .ds-foto-nav,.ds-foto:focus-within .ds-foto-nav{opacity:1}
+.ds-foto-nav:focus-visible{outline:3px solid rgba(143,163,196,.75);outline-offset:1px}
+@media (hover:none){.ds-foto-nav{opacity:1}}
+.ds-foto-n{position:absolute;right:8px;bottom:8px;z-index:2;padding:2px 8px;border-radius:999px;background:rgba(16,28,51,.72);color:#fff;font-size:10.5px;font-weight:600}
+.ds-card-body{display:flex;flex-direction:column;gap:9px;padding:15px;flex:1}
 .ds-card-k{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--ds-gris);font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase}
 .ds-card-k code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;color:var(--ds-marino);letter-spacing:0;text-transform:none}
 .ds-card h3{margin:0;color:var(--ds-marino);font-size:15px;font-weight:600;line-height:1.35}
@@ -119,26 +136,81 @@ button:disabled{cursor:not-allowed}
 .ds-dato{display:flex;flex-direction:column;gap:1px;min-width:0}
 .ds-dato span:first-child{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ds-gris)}
 .ds-dato span:last-child{overflow:hidden;text-overflow:ellipsis;color:var(--ds-carbon);font-size:12.5px;white-space:nowrap}
-.ds-card-acciones{display:flex;gap:8px;align-items:center;margin-top:3px}
+.ds-card-nota{margin:0;color:var(--ds-gris);font-size:11px;line-height:1.4}
+.ds-card-acciones{display:flex;gap:8px;align-items:center;margin-top:auto;padding-top:3px}
 .ds-card-acciones .ds-btn{flex:1;padding:10px 12px;font-size:12.5px}
+.ds-btn.ds-btn--hecho{background:rgba(27,122,70,.07);color:#1B7A46;border:1px solid rgba(27,122,70,.28)}
+.ds-btn.ds-btn--hecho:disabled{opacity:1;cursor:default}
 .ds-card-msg{min-height:17px;margin:0;color:var(--ds-gris);font-size:11.5px}
+.ds-card-msg:empty{min-height:0}
 .ds-card-msg.err{color:var(--ds-rojo)}
 .ds-card-msg.ok{color:#1B7A46}
-.ds-fotos-puntos{display:flex;gap:4px;margin-top:-2px}
-.ds-fotos-puntos i{display:block;width:6px;height:6px;border-radius:50%;background:var(--ds-azul-cl)}
 
 .ds-result-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;margin:18px 0 12px;background:rgba(16,28,51,.045);border-radius:10px;color:var(--ds-gris);font-size:12px}
 .ds-result-head b{color:var(--ds-marino)}
-.ds-paginacion{display:flex;gap:8px;align-items:center}
-.ds-paginacion .ds-btn{padding:7px 10px;font-size:12px}
+.ds-paginacion{display:flex;gap:8px;align-items:center;color:var(--ds-gris);font-size:12px;white-space:nowrap}
+.ds-paginacion .ds-btn{padding:7px 10px;font-size:12px;gap:4px}
+.ds-paginacion .ds-btn svg{width:15px;height:15px}
+.ds-paginacion--pie{justify-content:center;margin-top:18px}
+.ds-limite{display:flex;align-items:center;justify-content:center;gap:7px;margin:16px 0 0;color:var(--ds-gris);font-size:12px;text-align:center}
+.ds-limite svg{width:16px;flex:none;color:var(--ds-dorado)}
 
-/* Bandeja: el candidato no es producto ni campaña. */
-.ds-bandeja-card .ds-card-k{color:var(--ds-dorado)}
-.ds-bandeja-card.ds-descartado{opacity:.68}
-.ds-bandeja-card.ds-descartado .ds-foto{filter:grayscale(.75)}
-.ds-proximo{display:inline-flex;align-items:center;gap:5px;color:var(--ds-gris);font-size:11px}
-.ds-proximo svg{width:14px}
-.ds-proximo[hidden]{display:none}
+/* ── BANDEJA COMO CARRITO (ajuste de uso real D1) ─────────────────────────────────────────
+   Botón flotante en la esquina + panel lateral (<dialog> nativo). Así la
+   bandeja no empuja los resultados aunque una búsqueda traiga muchos. */
+.ds-carrito{position:fixed;right:22px;bottom:22px;z-index:40;display:inline-flex;align-items:center;gap:9px;padding:12px 14px 12px 15px;border:0;border-radius:999px;background:var(--ds-marino);color:#fff;font-size:13.5px;font-weight:600;box-shadow:0 10px 28px rgba(16,28,51,.30);transition:background .15s,transform .15s}
+.ds-carrito:hover{background:var(--ds-marino-2);transform:translateY(-1px)}
+.ds-carrito:focus-visible{outline:3px solid rgba(143,163,196,.8);outline-offset:3px}
+.ds-carrito[hidden]{display:none}
+.ds-carrito svg{width:20px;height:20px;display:block}
+.ds-carrito-n{min-width:23px;height:23px;padding:0 7px;border-radius:999px;background:var(--ds-rojo);color:#fff;font-size:12px;line-height:23px;text-align:center}
+.ds-carrito-n[data-cero]{background:rgba(143,163,196,.32)}
+.ds-carrito.ds-pulso .ds-carrito-n{animation:ds-pulso .6s ease}
+@keyframes ds-pulso{0%{transform:scale(1)}35%{transform:scale(1.4)}100%{transform:scale(1)}}
+
+body.ds-sin-scroll{overflow:hidden}
+.ds-cajon{position:fixed;inset:0 0 0 auto;width:min(440px,100vw);max-width:100vw;height:100%;max-height:100%;margin:0;padding:0;border:0;background:var(--ds-crema);color:var(--ds-carbon);box-shadow:-18px 0 50px rgba(16,28,51,.25)}
+.ds-cajon[open]{display:flex;animation:ds-entrar .22s ease-out}
+.ds-cajon::backdrop{background:rgba(16,28,51,.42)}
+@keyframes ds-entrar{from{transform:translateX(28px);opacity:.3}to{transform:none;opacity:1}}
+.ds-cajon-in{display:flex;flex-direction:column;width:100%;height:100%;min-height:0}
+.ds-cajon-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:20px 18px 14px 20px;background:#fff;border-bottom:1px solid var(--ds-linea)}
+.ds-cajon-head h2{margin:0;color:var(--ds-marino);font-size:17px;font-weight:600}
+.ds-cajon-head p{margin:3px 0 0;color:var(--ds-gris);font-size:12px;line-height:1.45}
+.ds-cajon-x{flex:none;display:flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:1px solid var(--ds-linea);border-radius:50%;background:#fff;color:var(--ds-marino)}
+.ds-cajon-x:hover{background:rgba(16,28,51,.05)}
+.ds-cajon-x svg{width:17px;height:17px}
+.ds-cajon-filtros{display:flex;gap:6px;padding:12px 16px 4px}
+.ds-cajon-filtros button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 10px;border:1px solid var(--ds-linea);border-radius:999px;background:#fff;color:var(--ds-gris);font-size:12.5px;font-weight:600}
+.ds-cajon-filtros button b{min-width:20px;padding:0 6px;border-radius:999px;background:rgba(16,28,51,.07);color:var(--ds-marino);font-size:11px;line-height:19px}
+.ds-cajon-filtros button[aria-pressed="true"]{background:var(--ds-marino);border-color:var(--ds-marino);color:#fff}
+.ds-cajon-filtros button[aria-pressed="true"] b{background:rgba(255,255,255,.18);color:#fff}
+.ds-cajon-lista{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:10px;padding:12px 16px 18px}
+.ds-cajon-pie{display:flex;align-items:flex-start;gap:8px;padding:12px 18px 16px;background:#fff;border-top:1px solid var(--ds-linea);color:var(--ds-gris);font-size:11.5px;line-height:1.45}
+.ds-cajon-pie b{color:var(--ds-marino)}
+.ds-cajon-pie svg{width:15px;flex:none;margin-top:1px}
+
+/* Fila de la bandeja: compacta, foto a la izquierda. */
+.ds-item{display:grid;grid-template-columns:92px minmax(0,1fr);gap:12px;padding:12px;background:#fff;border:1px solid var(--ds-linea);border-radius:12px}
+.ds-item-foto .ds-foto{width:92px;height:92px;border:1px solid var(--ds-linea);border-radius:10px}
+.ds-item-foto .ds-foto img{padding:5px}
+.ds-item-foto .ds-foto-n{right:4px;bottom:4px;padding:1px 6px;font-size:9.5px}
+.ds-item-foto .ds-foto--vacia span,.ds-item-foto .ds-foto-ph span{display:none}
+.ds-item-body{display:flex;flex-direction:column;gap:6px;min-width:0}
+.ds-item-body .ds-card-k{color:var(--ds-dorado)}
+.ds-item-body h3{margin:0;color:var(--ds-marino);font-size:13.5px;font-weight:600;line-height:1.35}
+.ds-item-datos{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--ds-gris);font-size:11.5px}
+.ds-item-datos b{color:var(--ds-carbon);font-weight:600}
+.ds-item-lectura{color:var(--ds-gris);font-size:10.5px}
+.ds-item-acciones{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}
+.ds-item-acciones .ds-btn{flex:1;padding:8px 10px;font-size:12px}
+.ds-item.ds-descartado{opacity:.72}
+.ds-item.ds-descartado .ds-foto{filter:grayscale(.75)}
+
+@media (prefers-reduced-motion: reduce){
+  .ds-cajon[open],.ds-carrito.ds-pulso .ds-carrito-n{animation:none}
+  .ds-carrito,.ds-foto-nav{transition:none}
+}
 
 .ds-denegado{max-width:560px;margin:60px auto;padding:34px 28px;text-align:center;background:#fff;border:1px solid var(--ds-linea);border-radius:var(--ds-radio)}
 .ds-denegado h2{margin:0 0 8px;color:var(--ds-rojo);font-size:18px}
@@ -150,10 +222,19 @@ button:disabled{cursor:not-allowed}
   .ds-consulta .ds-btn{width:100%}
   .ds-seccion-head{align-items:flex-start;flex-direction:column}
   .ds-meta{white-space:normal}
+  .ds-result-head{flex-direction:column;align-items:stretch}
+  .ds-result-head .ds-paginacion{justify-content:space-between}
 }
 @media (max-width:620px){
   .ds-word,.ds-area,.ds-sep{display:none}
   .ds-header{padding:12px 14px;gap:10px}.ds-header-left{gap:10px}
   .ds-screen-head,.ds-wrap{padding-left:16px;padding-right:16px}
-  .ds-foto{height:145px}
+  .ds-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .ds-foto{height:150px}
+  .ds-card-body{padding:12px;gap:8px}
+  .ds-card h3{font-size:13.5px}
+  .ds-datos{grid-template-columns:1fr}
+  .ds-carrito{right:14px;bottom:14px;padding:12px}
+  .ds-carrito-txt{display:none}
+  .ds-cajon{width:100vw}
 }
