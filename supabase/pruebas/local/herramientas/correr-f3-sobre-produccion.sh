@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # ============================================================
 # Impulse · aplica F3 (20261020000000) sobre una base que REPRODUCE PRODUCCION
-# al 9-oct-2026: todas las migraciones menos 20261002 (superada) y 20261020,
-# CON datos previos: asientos manuales (uno usa 135518), un ajuste a mano del
-# dueno en contabilidad_config y un pedido web de PRUEBA anterior a F3.
+# al 9-oct-2026: aplica hasta F2 (20261019000000), omite 202610020 (superada)
+# y toda migración posterior. Con datos previos: asientos manuales (uno usa
+# 135518), un ajuste a mano del dueño en contabilidad_config y un pedido web de
+# PRUEBA anterior a F3.
 # Aplica F3 DOS veces (idempotencia) y comprueba que no dana nada.
 # Uso: bash supabase/pruebas/local/herramientas/correr-f3-sobre-produccion.sh
 # ============================================================
@@ -13,6 +14,12 @@ REPO=/projects/sandbox/12344-ux.github.io
 AQUI=/projects/sandbox/pruebas-em5
 BD=f3_sobre_produccion
 F3=$REPO/supabase/migrations/20261020000000_pagos_f3_asiento_automatico.sql
+CORTE_ANTES_F3=20261019000000
+
+if [ ! -f $D/PG_VERSION ]; then
+  sudo mkdir -p $D && sudo chown pg:pg $D && sudo chmod 700 $D
+  sudo -u pg initdb -D $D -U postgres --auth=trust >/dev/null
+fi
 
 sudo -u pg pg_ctl -D $D -l $D/pglog.log -o "-k $D -c listen_addresses=''" status >/dev/null 2>&1 || {
   sudo rm -f $D/postmaster.pid $D/.s.PGSQL.5432.lock
@@ -25,7 +32,12 @@ psql -v ON_ERROR_STOP=1 -q -d $BD -f $REPO/supabase/pruebas/local/supabase-simul
 psql -v ON_ERROR_STOP=1 -q -d $BD -f $AQUI/storage-minimo.sql >/dev/null
 n=0
 for f in $REPO/supabase/migrations/*.sql; do
-  case "$(basename $f)" in 20261002000000_*|20261020000000_*) continue ;; esac
+  b=$(basename "$f")
+  marca=${b%%_*}
+  # Reproduce producción justo antes de F3: F2 (20261019) sí existía;
+  # F3 y cualquier migración posterior NO pueden filtrarse hacia el pasado.
+  case "$b" in 20261002000000_*) continue ;; esac
+  if [[ "$marca" > "$CORTE_ANTES_F3" ]]; then continue; fi
   psql -v ON_ERROR_STOP=1 -q -d $BD -f "$f" >/dev/null 2>$AQUI/ultimo-error.txt || {
     echo "FALLA migracion $(basename $f)"; cat $AQUI/ultimo-error.txt; exit 1; }
   n=$((n+1))

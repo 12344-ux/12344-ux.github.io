@@ -24,21 +24,23 @@ sudo -u pg pg_ctl -D $D -l $D/pglog.log -o "-k $D -c listen_addresses=''" status
   sudo -u pg pg_ctl -D $D -l $D/pglog.log -o "-k $D -c listen_addresses=''" -w start >/dev/null
 export PGHOST=$D PGUSER=postgres
 
-armar() {  # $1 = base, $2.. = prefijos de migraciones a omitir
-  local bd=$1; shift
+armar() {  # $1 = base, $2 = ultimo timestamp que existia en la foto histórica, $3.. = prefijos extra a omitir
+  local bd=$1; local corte=$2; shift 2
   psql -v ON_ERROR_STOP=1 -q -d postgres -c "drop database if exists $bd" -c "create database $bd" >/dev/null
   psql -v ON_ERROR_STOP=1 -q -d $bd -f $REPO/supabase/pruebas/local/supabase-simulado.sql >/dev/null
   psql -v ON_ERROR_STOP=1 -q -d $bd -f $AQUI/storage-minimo.sql >/dev/null
-  local n=0 f b o salta
+  local n=0 f b marca o salta omitidas=""
   for f in $REPO/supabase/migrations/*.sql; do
-    b=$(basename "$f"); salta=0
+    b=$(basename "$f"); marca=${b%%_*}; salta=0
+    # Una fotografía histórica nunca absorbe migraciones futuras por accidente.
+    if [[ "$marca" > "$corte" ]]; then salta=1; fi
     for o in "$@"; do case "$b" in "$o"_*) salta=1 ;; esac; done
-    [ $salta = 1 ] && continue
+    if [ $salta = 1 ]; then omitidas="$omitidas $b"; continue; fi
     psql -v ON_ERROR_STOP=1 -q -d $bd -f "$f" >/dev/null 2>$AQUI/ultimo-error.txt || {
       echo "FALLA migracion $b"; cat $AQUI/ultimo-error.txt; exit 1; }
     n=$((n+1))
   done
-  echo "== base $bd: $n migraciones (omitidas: ${*:-ninguna})"
+  echo "== base $bd: $n migraciones (corte: $corte · omitidas:${omitidas:- ninguna})"
 }
 
 diagnosticar() {  # $1 = base
@@ -47,7 +49,7 @@ diagnosticar() {  # $1 = base
   cat $AQUI/diag-$1.txt
 }
 
-armar diag_completa
+armar diag_completa 99999999999999
 # Semilla minima para que las filas con datos muestren algo (producto con costo,
 # campana publicada y ligada, una intencion). Va DESPUES de armar la base.
 psql -v ON_ERROR_STOP=1 -q -d diag_completa <<'SQL'
@@ -63,10 +65,10 @@ select pw_registrar_intencion('REF-DIAG-0001', 'a9000000-0000-4000-8000-00000000
 SQL
 diagnosticar diag_completa
 
-armar diag_hoy 20261002000000 20261020000000
+armar diag_hoy 20261019000000 20261002000000
 diagnosticar diag_hoy
 
-armar diag_antes_f2 20261002000000 20261018000000 20261019000000 20261020000000
+armar diag_antes_f2 20261017000000 20261002000000
 diagnosticar diag_antes_f2
 
 # Comprobaciones minimas del resultado (no solo "que corra").

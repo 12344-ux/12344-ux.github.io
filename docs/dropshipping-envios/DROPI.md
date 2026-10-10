@@ -1,6 +1,6 @@
 # Dropi · integración
 
-**Corte:** 9 de octubre de 2026 · **Estado:** **la lectura funciona.** MAGANDHI lee el catálogo de Dropi y la ficha de cualquier producto por su id, directo desde Supabase, sin intermediarios. Los pedidos (`orders/`) siguen sin probar.
+**Corte:** 10 de octubre de 2026 · **Estado:** la lectura funciona y D1 tiene área/bandeja interna en el repositorio, pendiente de despliegue. MAGANDHI lee el catálogo, busca por página y consulta la ficha de cualquier producto por id, directo desde Supabase, sin intermediarios. Los pedidos (`orders/`) siguen sin probar.
 
 > **Hito del 9-oct-2026.** Después de un día de 401, la causa era que Dropi **rechaza las peticiones cuyo `User-Agent` no reconoce**. No era el token, ni el permiso de la cuenta, ni la IP, ni la validación de identidad, ni la falta de WooCommerce. Con el `User-Agent` correcto, la cuenta de `magandhi.com` entra sola: **se descartan Shopify y WooCommerce como puentes** y el sandbox de prueba se puede borrar. Cómo se halló, en §7.
 
@@ -240,3 +240,56 @@ Pruebas locales de esta versión (13 en verde): `User-Agent` honesto por defecto
 - [Dropi · soluciones para marca propia](https://dropi.co/soluciones-para-marca-propia/) y [contacto](https://dropi.co/contactanos)
 
 Contenido parafraseado de las fuentes.
+
+## 8. D1 · Cimientos internos implementados (10-oct-2026)
+
+> **Estado de despliegue:** el código está listo y probado en el repositorio;
+> aplicar la migración `20261023000000_dropshipping_cimientos.sql` y redesplegar
+> `dropi-sonda` antes de llamarlo producción. D1 sigue sin tocar `orders/`.
+
+D1 convierte el hallazgo de lectura en una estructura operativa segura, sin
+confundir catálogo de proveedor con inventario propio:
+
+| Pieza | Qué queda listo | Qué NO hace todavía |
+|---|---|---|
+| Área `Dropshipping` | Séptima tarjeta del panel; búsqueda, resultados y bandeja privada | No publica ni vende |
+| `productos.origen` | Distingue `propio` de `proveedor`, inmutable tras el alta | No crea todavía productos proveedor desde la UI |
+| `producto_proveedor` | Ficha privada 1:1 para id Dropi + variante + proveedor + última lectura | D1 no inserta filas: lo hará D2 de forma atómica |
+| `dropshipping_candidatos` | Bandeja de candidatos elegidos por MAGANDHI, con snapshot y URLs de preview | No es un espejo de catálogo ni un producto/campaña |
+| Inventario/Métricas | Trigger bloquea movimientos proveedor; `stock_actual` y `mt_inventario()` solo cuentan propio | No calcula aún stock remoto para vitrina |
+| Campañas/tienda | `cm_publicar_campana` y `catalogo_publico` excluyen proveedor | D2 habilitará solo tras stock vivo/fallo cerrado |
+
+### `dropi-sonda` D1: búsqueda paginable y previews, siempre lectura
+
+El body suma dos campos acotados:
+
+```js
+{ buscar: 'serum', inicio: 0, tamano: 6 }  // inicio: 0..500 · tamaño: 1..25
+{ producto_id: 101 }                       // ficha y bodegas de un candidato
+```
+
+La función ahora devuelve previews HTTPS de fotos y variantes como diagnóstico.
+No descarga una foto, no crea una variante y no usa ese dato para órdenes. Una
+foto que falle en la bandeja se reemplaza por un placeholder; D2 volverá a leer
+la ficha desde Dropi por id antes de descargar solo las imágenes elegidas al
+bucket `campanas`.
+
+La función sigue requiriendo **admin**, aunque el área ya tenga módulo propio:
+D3 debe definir permisos por capacidad antes del primer usuario no-admin. No se
+amplía una API externa a perfiles reducidos por comodidad de interfaz.
+
+### Lo que D1 prueba y lo que todavía no puede afirmar
+
+- **Medido en doble local de Dropi/Supabase, 23/23:** CORS, sesión/admin, body
+  nulo, búsqueda, paginación, límite de página, URLs HTTPS sin credenciales,
+  variante diagnóstica, stock desde `warehouse_product`, token ausente y nunca
+  `orders/`.
+- **Medible ahora en la cuenta real:** buscar, paginar y correr dos lecturas del
+  mismo `producto_id` para comparar `leido`, bodegas y stock.
+- **No medido ni implementado:** crear `SIN RECAUDO`, semántica real de reserva
+  `PENDIENTE CONFIRMACION`, idempotencia remota, liberar/cancelar reserva,
+  guía, estados y costo final. Ningún POST a `orders/myorders` se improvisa.
+
+La prueba controlada de reserva sigue necesitando contrato oficial, producto +
+variante + proveedor aprobados, dirección propia, saldo/presupuesto, una sola
+creación y mecanismo de cancelación confirmado antes de enviar nada.

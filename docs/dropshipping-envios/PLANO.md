@@ -1,6 +1,6 @@
 # PLANO · Dropshipping y envíos
 
-**Corte:** 9 de octubre de 2026 · **Estado:** **propuesta.** Nada aprobado ni construido. Se ajusta con las respuestas de Dropi, las cotizaciones y el contador.
+**Corte:** 10 de octubre de 2026 · **Estado:** diseño vigente con **D1 construido en el repositorio y pendiente de desplegar**. D1 no vende ni llama `orders/`; el resto se ajusta con la respuesta de Dropi, las cotizaciones y el contador.
 
 ## 0. La promesa
 
@@ -20,13 +20,18 @@
 
 **Ojo:** `productos.proveedor` ya existe, pero es texto libre. No sirve para la integración.
 
-### Decisiones del dueño (cerradas el 9-oct-2026)
+### Decisiones del dueño (cerradas el 9–10-oct-2026)
 
 1. **Sin Shopify. WooCommerce solo como prueba aislada:** nunca sobre `magandhi.com`, nunca como tienda pública ni fuente de verdad. Se autoriza un sandbox/subdominio desechable con un solo producto para medir si completa OAuth, importa bien y entrega stock actualizable.
-2. MAGANDHI no replica todo el catálogo. El dueño elige un producto dentro de Dropi y pega su URL/id en **Campañas → Traer desde Dropi**.
-3. Una Edge Function lee solo ese producto y crea un borrador ligado a Inventario/Campañas; el dueño lo adapta, prueba y decide si lo publica.
-4. Dropi es la fuente de verdad del stock de los productos de proveedor. El inventario propio conserva su libro actual.
-5. Si el dato de Dropi está vencido o Dropi no responde, la tienda falla de forma segura: «Temporalmente no disponible», nunca inventa stock.
+2. **Área propia Dropshipping:** no es subárea de Producción ni Marketing. Allí se consulta Dropi, los candidatos elegidos caen en una bandeja privada y se ve el estado futuro de proveedor/despacho.
+3. MAGANDHI no replica todo el catálogo. La búsqueda es una vista remota temporal; el dueño guarda solo un candidato en bandeja. **«Llevar a Campañas»** crea después un borrador ligado, abre nuestro editor y nunca publica solo.
+4. Las fotos remotas se ven solo dentro de la bandeja. Al llevar un candidato a Campañas, se descargan únicamente las elegidas y se transforman a grande + `-sm` en nuestro bucket; el editor permite reemplazar fotos genéricas o feas antes de publicar.
+5. Todo producto de proveedor tiene fila interna `productos.origen='proveedor'`, pero no admite movimientos de Inventario ni afecta stock/rotación/días de inventario propios. Una variante Dropi será un producto/campaña MAGANDHI distinta por ahora.
+6. El precio comercial se define a mano. El proveedor solo informa costo interno, nunca precio público.
+7. Dropi es la fuente de verdad del stock proveedor. Si la lectura vence o falla, la tienda falla cerrada como «Temporalmente no disponible».
+8. Después de Wompi, el diseño objetivo es reserva automática `PENDIENTE CONFIRMACION` y botón humano **«Confirmar despacho con proveedor»** para liberarla. No se implementa hasta medir reserva, transición, cancelación e idempotencia en la cuenta MAGANDHI.
+9. El sello MAGANDHI solo se habilita si existe una prueba aprobada del equipo; la UI pregunta, pero el servidor decide.
+10. Cliente, pedido, correos, opiniones y métricas de relación siguen siendo MAGANDHI. La política/copy ante stock perdido después del pago queda pendiente de decisión legal/comercial.
 
 Flujo mínimo:
 
@@ -41,17 +46,18 @@ Dropi (el dueño elige y copia URL/id)
 
 La URL actual de detalle de Dropi contiene `product-details/:id/:name`, por lo que no hace falta acceso al listado completo para identificar lo elegido.
 
-## 2. Modelo de datos (propuesta)
+## 2. Modelo de datos
 
-| Cambio | Para qué |
-|---|---|
-| `productos.origen`: `propio` \| `proveedor`, por defecto `propio` | Un producto de proveedor también vive en `productos`. Así Campañas sigue ligando por `product_id_ref` y se mantiene la regla de no publicar sin producto ligado |
-| `productos.peso_g`, `largo_cm`, `ancho_cm`, `alto_cm` | Cotizar guías |
-| `producto_proveedor`, 1 a 1 con los productos de proveedor | Plataforma (`dropi`), ids del producto, la variante y el proveedor en Dropi, costo del proveedor, stock reportado, ciudad de la bodega y última sincronización |
-| `despachos` | Un envío por fila: pedido, tipo (propio o proveedor), plataforma, id externo, transportadora, guía, enlace de rastreo, estado, flete y fechas |
-| `despacho_eventos` | Libro de cambios de estado que solo crece, como `pagos_eventos`. Da idempotencia a los avisos y consultas repetidos |
-| `producto_pruebas` | La prueba del sello: quién, cuándo, notas y veredicto (`CURADURIA-Y-SELLO.md`) |
-| `campana_producto.tiempo_entrega` | La ficha muestra el tiempo de entrega, nunca el origen |
+| Cambio | Para qué | Estado D1 |
+|---|---|---|
+| `productos.origen`: `propio` \| `proveedor`, por defecto `propio` | Un producto de proveedor también vive en `productos`; Campañas y Pedido Items conservan una FK interna única | **Hecho.** Inmutable después del alta |
+| `dropshipping_candidatos` | Bandeja privada: snapshot de candidato elegido, stock leído y URLs de preview, sin copiar catálogo | **Hecho.** No es producto ni campaña |
+| `producto_proveedor`, 1 a 1 con los productos de proveedor | Plataforma, ids producto/variante, proveedor, costo, stock reportado y vencimiento de lectura | **Hecho como estructura.** D2 la llena al importar |
+| `productos.peso_g`, `largo_cm`, `ancho_cm`, `alto_cm` | Cotizar guías | Pendiente de fase de guías |
+| `despachos` | Un envío por fila: pedido, tipo, plataforma, id externo, guía, rastreo, estado, flete y fechas | Pendiente |
+| `despacho_eventos` | Libro append-only de cambios de estado e idempotencia | Pendiente |
+| `producto_pruebas` | La prueba del sello: quién, cuándo, notas y veredicto | Pendiente D2 |
+| `campana_producto.tiempo_entrega` | La ficha muestra el tiempo de entrega, nunca el origen | Pendiente D2 |
 
 **Estados del despacho:** `creado`, `recogido`, `en_transito`, `novedad`, `entregado`, `devuelto`, `cancelado`.
 
@@ -86,15 +92,17 @@ La URL actual de detalle de Dropi contiene `product-details/:id/:name`, por lo q
 
 **Tienda:**
 
-- Lista cerrada de municipios con código DANE. Hoy la ciudad es texto libre, y Dropi exige que coincida con su catálogo: es el requisito que **sigue abierto** y el más riesgoso, porque una ciudad que Dropi no reconoce hace fallar el pedido *después* del pago.
+- Lista cerrada de municipios con código DANE y equivalencia aceptada por Dropi. Hoy la ciudad es texto libre, y Dropi exige que coincida con su catálogo: es el requisito que **sigue abierto** y el más riesgoso, porque una ciudad que Dropi no reconoce hace fallar el pedido *después* del pago.
+- Nombres y apellidos separados para el destinatario. Hoy el checkout guarda un nombre completo; Dropi pide `name` y `surname`. Se conserva el nombre completo de MAGANDHI por compatibilidad, pero el adaptador no debe inventar el apellido separando texto.
 - ~~Los detalles de entrega llegan al pedido~~ y ~~confirmación al volver de Wompi~~: **hechos** (D0, 9-oct-2026), pendientes de desplegar.
 - Tiempo de entrega por producto en la ficha.
 
 **Ventas (panel):**
 
-- Aviso «Pedido de proveedor por confirmar», con el botón «Enviar al proveedor».
+- Aviso «Pedido de proveedor por confirmar», con el botón **«Confirmar despacho con proveedor»**. La reserva/conexión ya habría ocurrido antes; el botón libera el despacho solo después de revisión humana.
 - Guía, transportadora y rastreo en el detalle del pedido.
 - Estado del despacho, y aviso rojo si el despacho falla.
+- **D1 no cambia Ventas todavía:** no existe `despachos` ni se llama `orders/` hasta medir contrato, reserva, liberación y cancelación.
 
 **Inventario y Métricas:**
 
@@ -112,12 +120,13 @@ La URL actual de detalle de Dropi contiene `product-details/:id/:name`, por lo q
 
 ## 4. Fases
 
-| Fase | Entrega | Depende de |
+| Fase | Entrega | Estado / depende de |
 |---|---|---|
-| **1 · Guía manual** | `despachos` y `despacho_eventos`; pegar la guía en Seguimiento; paso a `en_camino` con el correo automático | Nada |
+| **D1 · Cimientos internos** | Área propia, búsqueda/paginación read-only, bandeja, origen/ficha proveedor, candados de Inventario/Métricas, bloqueo de publicación | **Hecha en repositorio; pendiente de desplegar.** 68 migraciones y pruebas. No toca `orders/` |
+| **1 · Guía manual** | `despachos` y `despacho_eventos`; pegar la guía en Seguimiento; paso a `en_camino` con el correo automático | Diseñada, no depende de nadie |
 | **2 · Guías automáticas (propios)** | Peso y medidas; municipios DANE en la tienda; Edge Function para cotizar y crear la guía; avisos de estado firmados | Cotizaciones y elección de plataforma |
-| **3 · Embudo de producto Dropi y sello** | Pegar URL/id en Campañas; leer solo `products/v2/{id}` / `products/{id}`; crear borrador; refrescar stock de los seleccionados; `agotado` y fallo seguro; `producto_pruebas` y candado del sello | Acceso **de solo lectura por producto** a la API de Dropi |
-| **4 · Pedidos a Dropi** | `crear_pedido` y `anular_pedido` sin inventario para proveedor; confirmación de un clic; creación con verificación por id; consulta programada de estado y guía; asiento con la cuenta del saldo | Fase 3 y contador |
+| **D2 / 3 · Embudo de producto Dropi y sello** | Variante exacta, importación atómica a producto + `producto_proveedor` + borrador, imágenes propias, prueba/sello server-side, municipios, stock vigente/fallo cerrado y verificación antes de Wompi | Medir frecuencia/contrato de lectura y decidir datos de destinatario |
+| **D3 / 4 · Pedidos a Dropi** | Reserva `PENDIENTE CONFIRMACION`, detalle de Ventas, confirmación humana, verificación por id, guía/estado y asiento del saldo | Contrato medido de `orders/`, reserva/liberación/cancelación y contador |
 | **5 · Contraentrega** | `CON RECAUDO` y su conciliación | Solo si los números lo piden |
 
 Cada fase sigue las reglas de `CONTEXTO-MAGANDHI.md` §10: migración forward nueva, pruebas en el banco y medir en producción antes de afirmar.

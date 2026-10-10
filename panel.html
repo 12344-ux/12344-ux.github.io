@@ -20,10 +20,11 @@
   · Protegido por auth-guard.js: sin sesion valida, redirige al login.
     Recordatorio: el redirect es comodidad de UX; la seguridad real
     esta en RLS sobre los datos (ver supabase-config.js / migraciones).
-  · Arquitectura por AREAS: el panel agrupa el back-office en 4 areas
-    (FINANZAS, MARKETING, PRODUCCION, VENTAS). Cada tarjeta es una 'carpeta' que
-    lleva al index.html del area, donde viven sus sub-areas. Preparado
-    para crecer: agregar un area = agregar su tarjeta + su clave de modulo.
+  · Arquitectura por AREAS: el panel agrupa el back-office en áreas operativas.
+    Cada tarjeta es una 'carpeta' que lleva al index.html del área, donde viven
+    sus sub-áreas. Preparado para crecer: agregar un área = agregar su tarjeta
+    + su clave de módulo. Hoy incluye Finanzas, Marketing, Producción, Ventas,
+    Opiniones, Métricas y Dropshipping.
   · Reutiliza el sistema de marca (marca.css, wordmark, Poppins, terracota).
   · Prefijo mg- para el CSS especifico de esta pagina.
 -->
@@ -229,6 +230,15 @@
       <p>La operacion en datos: ventas en vivo, interaccion con la tienda y el camino a la compra, organizados en graficas.</p>
     </a>
 
+    <!-- DROPSHIPPING (area propia: curaduria/proveedor, NO inventario propio) -->
+    <a class="mg-mod-card" id="mg-card-dropshipping" href="dropshipping/index.html" hidden>
+      <span class="mg-mod-ico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 4 10 5-10 5-4-2v6l4 2 10-5v-6L7 4Z"/><path d="M3 12V7l4-2"/><path d="M7 14v6"/><path d="M17 9v6"/><path d="m13 18 2 2 4-4"/></svg>
+      </span>
+      <h3>Dropshipping</h3>
+      <p>Curaduría de productos de proveedor: consulta, bandeja privada y control de disponibilidad antes de llevarlos a Campañas.</p>
+    </a>
+
   </section>
 
   <!-- Placeholder: solo visible si el usuario NO puede ver ningun area. -->
@@ -283,6 +293,10 @@
         { id: 'ventas',     claves: ['ventas', 'pedidos', 'clientes', 'portafolio'], card: 'mg-card-ventas' },
         { id: 'opiniones',  claves: ['opiniones'],                  card: 'mg-card-opiniones' },
         { id: 'metricas',   claves: ['metricas'],                   card: 'mg-card-metricas' },
+        // Dropshipping es area propia: proveedor/candidatos/despachos no son
+        // Inventario propio ni Marketing. D1 solo habilita consulta y bandeja;
+        // no publica ni crea pedidos externos.
+        { id: 'dropshipping', claves: ['dropshipping', 'proveedores', 'despachos'], card: 'mg-card-dropshipping' },
       ];
 
       const esAdmin = perfil?.rol === 'admin';
