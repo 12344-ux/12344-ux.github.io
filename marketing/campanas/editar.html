@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
-<link rel="stylesheet" href="campanas.css?v=d2b">
+<link rel="stylesheet" href="campanas.css?v=d2b-casilla">
 
 <!--
   MAGANDHI · Area de Marketing · Sub-area CAMPANAS · EDITAR.
@@ -207,63 +207,26 @@
         </div>
       </section>
 
-      <!-- ============ D2b · PRUEBA DE CURADURÍA ============ -->
-      <section class="cm-seccion cm-prueba-seccion" id="cm-prueba-seccion">
-        <div class="cm-seccion-cab">
-          <span class="cm-seccion-num">3</span>
-          <div>
-            <h2 class="cm-seccion-tit">Prueba de curaduría</h2>
-            <p class="cm-seccion-sub">El sello «Elegido por MAGANDHI» solo se habilita con una prueba vigente del producto ligado. La evidencia se conserva como historial: una reevaluación se registra como una fila nueva.</p>
-          </div>
-        </div>
-        <div class="cm-prueba-vacia" id="cm-prueba-sin-producto" aria-live="polite">
-          Esta campaña todavía no tiene un producto ligado. Liga uno para registrar su prueba de curaduría.
-        </div>
-        <div id="cm-prueba-contenido" hidden>
-          <div class="cm-prueba-estado" id="cm-prueba-estado" aria-live="polite"></div>
-          <div class="cm-prueba-campos">
-            <div class="cm-campo">
-              <label for="cm-prueba-probador" class="cm-campo-lbl">Quién realizó la prueba *</label>
-              <input id="cm-prueba-probador" class="mk-input" type="text" maxlength="160" placeholder="Ej. Equipo MAGANDHI">
-            </div>
-            <div class="cm-campo">
-              <label for="cm-prueba-fecha" class="cm-campo-lbl">Fecha real de la prueba *</label>
-              <input id="cm-prueba-fecha" class="mk-input" type="date">
-            </div>
-            <div class="cm-campo">
-              <label for="cm-prueba-veredicto" class="cm-campo-lbl">Veredicto *</label>
-              <select id="cm-prueba-veredicto" class="mk-select">
-                <option value="">Elige el resultado</option>
-                <option value="entra_con_sello">Entra con sello</option>
-                <option value="entra_sin_sello">Entra sin sello</option>
-                <option value="no_entra">No entra</option>
-              </select>
-            </div>
-            <div class="cm-campo">
-              <label for="cm-prueba-notas" class="cm-campo-lbl">Notas de la prueba *</label>
-              <textarea id="cm-prueba-notas" class="mk-input" maxlength="4000" placeholder="Qué se revisó, cómo respondió el producto y la conclusión del equipo."></textarea>
-            </div>
-          </div>
-          <div class="cm-prueba-acciones">
-            <button type="button" id="cm-prueba-registrar" class="cm-btn-secundario">Registrar prueba</button>
-          </div>
-          <p id="cm-prueba-msg" class="cm-form-msg" hidden></p>
-          <div class="cm-prueba-historial">
-            <b>Historial de pruebas</b>
-            <ol id="cm-prueba-lista" class="cm-prueba-timeline"></ol>
-          </div>
-        </div>
-      </section>
-
       <!-- ============ CONTROLES / INTERRUPTORES ============ -->
       <section class="cm-seccion">
         <div class="cm-seccion-cab">
-          <span class="cm-seccion-num">4</span>
+          <span class="cm-seccion-num">3</span>
           <div>
             <h2 class="cm-seccion-tit">Distintivo de la tarjeta</h2>
-            <p class="cm-seccion-sub">Elige una sola señal para acompañar el producto en el escaparate. El bloque queda preparado para incorporar nuevos distintivos en el futuro.</p>
+            <p class="cm-seccion-sub">Elige una sola señal para acompañar el producto en el escaparate. Para usar «Elegido por MAGANDHI», liga un producto y confirma esta decisión simple.</p>
           </div>
         </div>
+        <div class="cm-producto-probado">
+          <label class="cm-producto-probado-control" for="cm-producto-probado">
+            <input id="cm-producto-probado" type="checkbox" disabled aria-describedby="cm-producto-probado-ayuda">
+            <span>
+              <b>Este producto fue probado por MAGANDHI</b>
+              <small>Esta confirmación solo habilita el sello; no publica ni habilita la venta de productos de proveedor.</small>
+            </span>
+          </label>
+          <span class="cm-campo-ayuda" id="cm-producto-probado-ayuda">La casilla requiere un producto ligado a esta campaña.</span>
+        </div>
+        <p class="cm-sello-historico-aviso" id="cm-sello-historico-aviso" role="alert" hidden>Esta campaña histórica conserva «Elegido por MAGANDHI», pero aún no tiene esta confirmación guardada. Para conservar el sello al guardar, liga un producto si hace falta y marca la casilla; si no, elige «Ninguno».</p>
         <fieldset class="cm-distintivos" aria-describedby="cm-distintivo-ayuda">
           <legend class="cm-sr-only">Distintivo de la tarjeta</legend>
 
@@ -308,7 +271,7 @@
       <!-- ============ PUBLICAR / DESPUBLICAR (cm_publicar_campana) ============ -->
       <section class="cm-seccion">
         <div class="cm-seccion-cab">
-          <span class="cm-seccion-num">5</span>
+          <span class="cm-seccion-num">4</span>
           <div>
             <h2 class="cm-seccion-tit">Publicación</h2>
             <p class="cm-seccion-sub">Controla si el producto aparece en la tienda pública (magandhi.com).</p>
@@ -409,192 +372,46 @@
   let publicadoActual = false;
 
   // ------------------------------------------------------------
-  // D2b · PRUEBAS DE CURADURÍA
+  // D2b · CONFIRMACIÓN SIMPLE DEL PRODUCTO
   // ------------------------------------------------------------
-  // La base decide de forma autoritativa si el sello puede usarse. Esta capa
-  // solo guía al operador: muestra el historial append-only y evita subir
-  // imágenes antes de una llamada que el servidor necesariamente rechazaría.
-  let productoPruebaActual = null;
-  let pruebaAprobada = false;
-  let solicitudPruebas = 0;
-
-  const VEREDICTOS_PRUEBA = {
-    entra_con_sello: 'Entra con sello',
-    entra_sin_sello: 'Entra sin sello',
-    no_entra: 'No entra'
-  };
-
-  function fechaPruebaLegible(valor) {
-    const partes = String(valor || '').split('-');
-    return partes.length === 3 ? partes[2] + '/' + partes[1] + '/' + partes[0] : 'Fecha no registrada';
-  }
-
+  // La casilla pertenece a esta presentación comercial. La UI solo orienta:
+  // cm_crear_campana, cm_editar_campana, cm_publicar_campana y el gatillo SQL
+  // vuelven a imponer la misma regla.
   function mensajeErrorCuraduria(error) {
     const bruto = String(error?.message || error || '').trim();
-    if (bruto.startsWith('CM_SELLO_SIN_PRODUCTO')) {
-      return 'Liga primero un producto para poder usar el sello Elegido por MAGANDHI.';
+    if (bruto.startsWith('CM_PRUEBA_SIN_PRODUCTO')) {
+      return 'Liga un producto antes de marcarlo como probado por MAGANDHI.';
     }
     if (bruto.startsWith('CM_SELLO_SIN_PRUEBA')) {
-      return 'Registra una prueba vigente con veredicto “Entra con sello” antes de usar este distintivo.';
+      return 'Marca «Este producto fue probado por MAGANDHI» antes de usar Elegido por MAGANDHI.';
     }
-    if (bruto.startsWith('CM_PRUEBA_SIN_ACCESO')) return 'Tu cuenta no tiene acceso para registrar pruebas de curaduría.';
-    if (bruto.startsWith('CM_PRUEBA_PRODUCTO_NO_ENCONTRADO')) return 'El producto ligado ya no existe. Recarga la página y vuelve a elegirlo.';
-    if (bruto.startsWith('CM_PRUEBA_PROBADOR_INVALIDO')) return 'Indica quién realizó la prueba (máximo 160 caracteres).';
-    if (bruto.startsWith('CM_PRUEBA_FECHA_OBLIGATORIA')) return 'Indica la fecha real de la prueba.';
-    if (bruto.startsWith('CM_PRUEBA_FECHA_INVALIDA')) return 'La fecha de la prueba no puede estar en el futuro.';
-    if (bruto.startsWith('CM_PRUEBA_NOTAS_INVALIDAS')) return 'Registra notas de la prueba (máximo 4.000 caracteres).';
-    if (bruto.startsWith('CM_PRUEBA_VEREDICTO_INVALIDO')) return 'Elige un veredicto válido para la prueba.';
+    if (bruto.startsWith('DS_PUBLICACION_PENDIENTE')) {
+      return 'Este producto de proveedor sigue en borrador hasta D2c, cuando haya stock vivo y checkout seguro.';
+    }
     return bruto.replace(/^CM_[A-Z_]+:\s*/, '') || 'No se pudo completar la operación.';
   }
 
-  function mostrarMsgPrueba(texto, tipo) {
-    const el = $('cm-prueba-msg');
-    el.textContent = texto;
-    el.className = 'cm-form-msg ' + (tipo || 'err');
-    el.hidden = false;
-  }
+  function actualizarControlProductoProbado({ preservarSelloHistorico = false } = {}) {
+    const producto = $('cm-producto');
+    const control = $('cm-producto-probado');
+    const elegido = document.querySelector('input[name="cm-distintivo"][value="elegido"]');
+    const ninguno = document.querySelector('input[name="cm-distintivo"][value="ninguno"]');
+    const avisoHistorico = $('cm-sello-historico-aviso');
+    if (!producto || !control || !elegido) return;
 
-  function ocultarMsgPrueba() {
-    const el = $('cm-prueba-msg');
-    el.hidden = true;
-    el.textContent = '';
-  }
+    const tieneProducto = Boolean(producto.value);
+    control.disabled = !tieneProducto;
+    if (!tieneProducto) control.checked = false;
 
-  function actualizarOpcionSello(aprobada, preservarSeleccion) {
-    const radio = document.querySelector('input[name="cm-distintivo"][value="elegido"]');
-    const tarjeta = radio?.closest('.cm-distintivo-opcion');
-    const bloqueada = !productoPruebaActual || !aprobada;
-    if (!radio) return;
-
-    // Al cambiar de producto no dejamos un sello seleccionado para una ficha
-    // distinta sin evidencia. En una campaña histórica se conserva el radio
-    // inicial para que el operador vea y corrija la inconsistencia.
-    if (bloqueada && !preservarSeleccion && radio.checked) {
-      const ninguno = document.querySelector('input[name="cm-distintivo"][value="ninguno"]');
-      if (ninguno) ninguno.checked = true;
+    const puedeElegir = tieneProducto && control.checked;
+    if (!puedeElegir && elegido.checked && !preservarSelloHistorico && ninguno) {
+      ninguno.checked = true;
     }
-    radio.disabled = bloqueada;
-    if (tarjeta) {
-      tarjeta.classList.toggle('es-bloqueada', bloqueada);
-      tarjeta.title = !productoPruebaActual
-        ? 'Liga un producto y registra su prueba de curaduría.'
-        : (aprobada ? '' : 'La prueba vigente debe tener veredicto “Entra con sello”.');
+    elegido.disabled = !puedeElegir;
+    if (avisoHistorico) {
+      avisoHistorico.hidden = !(elegido.checked && !control.checked);
     }
     refrescarPreview();
-  }
-
-  function pintarPruebas(filas, preservarSeleccion) {
-    const estado = $('cm-prueba-estado');
-    const lista = $('cm-prueba-lista');
-    const vigente = filas[0] || null;
-    pruebaAprobada = !!vigente && vigente.veredicto === 'entra_con_sello';
-
-    if (!vigente) {
-      estado.className = 'cm-prueba-estado no-aprobada';
-      estado.innerHTML = '<strong>Aún no hay prueba registrada.</strong><span>Registra la prueba real del equipo para habilitar el sello.</span>';
-    } else if (pruebaAprobada) {
-      estado.className = 'cm-prueba-estado aprobada';
-      estado.innerHTML = '<strong>Prueba vigente: Entra con sello.</strong><span>El distintivo Elegido por MAGANDHI está habilitado para este producto.</span>';
-    } else {
-      estado.className = 'cm-prueba-estado no-aprobada';
-      estado.innerHTML = '<strong>La prueba vigente no autoriza el sello.</strong><span>Registra una nueva prueba con veredicto “Entra con sello” si el equipo la aprueba.</span>';
-    }
-
-    lista.innerHTML = filas.map((fila) => {
-      const aprobada = fila.veredicto === 'entra_con_sello';
-      const clase = aprobada ? 'aprobada' : 'no-aprobada';
-      const notas = escaparHTML(fila.notas || '').replace(/\n/g, '<br>');
-      return '<li class="cm-prueba-item ' + clase + '">' +
-        '<div class="cm-prueba-item-cab"><b>' + escaparHTML(VEREDICTOS_PRUEBA[fila.veredicto] || fila.veredicto || 'Sin veredicto') + '</b>' +
-        '<time datetime="' + escaparHTML(fila.probado_en || '') + '">' + escaparHTML(fechaPruebaLegible(fila.probado_en)) + '</time></div>' +
-        '<div class="cm-prueba-item-meta">Probó: ' + escaparHTML(fila.probado_por || 'Sin registrar') + '</div>' +
-        '<p>' + notas + '</p></li>';
-    }).join('');
-
-    actualizarOpcionSello(pruebaAprobada, preservarSeleccion);
-  }
-
-  async function cargarPruebas(productoId, preservarSeleccion = false) {
-    const turno = ++solicitudPruebas;
-    productoPruebaActual = productoId || null;
-    pruebaAprobada = false;
-    const vacio = $('cm-prueba-sin-producto');
-    const contenido = $('cm-prueba-contenido');
-
-    if (!productoPruebaActual) {
-      vacio.hidden = false;
-      contenido.hidden = true;
-      actualizarOpcionSello(false, preservarSeleccion);
-      return;
-    }
-
-    vacio.hidden = true;
-    contenido.hidden = false;
-    const estado = $('cm-prueba-estado');
-    estado.className = 'cm-prueba-estado';
-    estado.textContent = 'Cargando historial de pruebas…';
-    $('cm-prueba-lista').innerHTML = '';
-    actualizarOpcionSello(false, preservarSeleccion);
-
-    const { data, error } = await supabase
-      .from('producto_pruebas')
-      .select('id, probado_por, probado_en, notas, veredicto, registrado_en')
-      .eq('product_id', productoPruebaActual)
-      .order('probado_en', { ascending: false })
-      .order('registrado_en', { ascending: false })
-      .order('id', { ascending: false });
-
-    if (turno !== solicitudPruebas || productoId !== productoPruebaActual) return;
-    if (error) {
-      estado.className = 'cm-prueba-estado no-aprobada';
-      estado.innerHTML = '<strong>No se pudo confirmar la prueba vigente.</strong><span>El sello queda bloqueado hasta que el historial pueda cargarse.</span>';
-      actualizarOpcionSello(false, preservarSeleccion);
-      return;
-    }
-    pintarPruebas(data || [], preservarSeleccion);
-  }
-
-  async function registrarPrueba() {
-    ocultarMsgPrueba();
-    const productId = $('cm-producto').value || null;
-    const probadoPor = $('cm-prueba-probador').value.trim();
-    const probadoEn = $('cm-prueba-fecha').value;
-    const veredicto = $('cm-prueba-veredicto').value;
-    const notas = $('cm-prueba-notas').value.trim();
-
-    if (!productId) {
-      mostrarMsgPrueba('Esta campaña necesita un producto ligado antes de registrar una prueba.');
-      return;
-    }
-    if (!probadoPor) { mostrarMsgPrueba('Indica quién realizó la prueba.'); $('cm-prueba-probador').focus(); return; }
-    if (!probadoEn) { mostrarMsgPrueba('Indica la fecha real de la prueba.'); $('cm-prueba-fecha').focus(); return; }
-    if (!veredicto) { mostrarMsgPrueba('Elige el veredicto de la prueba.'); $('cm-prueba-veredicto').focus(); return; }
-    if (!notas) { mostrarMsgPrueba('Registra las notas y conclusión de la prueba.'); $('cm-prueba-notas').focus(); return; }
-
-    const boton = $('cm-prueba-registrar');
-    boton.disabled = true;
-    const { error } = await supabase.rpc('cm_registrar_producto_prueba', {
-      p_product_id: productId,
-      p_probado_por: probadoPor,
-      p_probado_en: probadoEn,
-      p_notas: notas,
-      p_veredicto: veredicto
-    });
-    boton.disabled = false;
-
-    if (error) {
-      mostrarMsgPrueba('No se pudo registrar la prueba: ' + mensajeErrorCuraduria(error));
-      return;
-    }
-
-    $('cm-prueba-probador').value = '';
-    $('cm-prueba-fecha').value = '';
-    $('cm-prueba-veredicto').value = '';
-    $('cm-prueba-notas').value = '';
-    if (($('cm-producto').value || null) === productId) {
-      await cargarPruebas(productId, veredicto === 'entra_con_sello');
-    }
-    mostrarMsgPrueba('Prueba registrada. El historial conserva esta decisión sin modificar las anteriores.', 'ok');
   }
 
   // Estado de imagenes en memoria (igual que agregar.html).
@@ -954,6 +771,7 @@
     const avisoSub = $('cm-aviso-sub');
     document.querySelectorAll('input[name="cm-distintivo"]').forEach((radio) => {
       radio.addEventListener('change', () => {
+        actualizarControlProductoProbado();
         const esUltimas = tipoDistintivo() === 'ultimas';
         avisoSub.hidden = !esUltimas;
         if (esUltimas) $('cm-aviso-cantidad').focus();
@@ -1000,11 +818,15 @@
         const campoNombre = $('cm-nombre');
         if (!campoNombre.value.trim() && prod.nombre) campoNombre.value = prod.nombre;
       }
+      const controlProductoProbado = $('cm-producto-probado');
+      controlProductoProbado.checked = false;
+      actualizarControlProductoProbado();
       refrescarPreview();
-      void cargarPruebas($('cm-producto').value || null);
     });
 
-    $('cm-prueba-registrar').addEventListener('click', registrarPrueba);
+    $('cm-producto-probado').addEventListener('change', () => {
+      actualizarControlProductoProbado();
+    });
   }
 
   // ------------------------------------------------------------
@@ -1132,7 +954,7 @@
       .from('campana_producto')
       .select('id, nombre, slug, categoria_codigo, detalle_presentacion, imagen_banner_path, ' +
               'caracteristica_adicional, precio_venta, hook_largo, por_que_magandhi, sobre_este_producto, ' +
-              'ficha_tecnica, imagenes, sello_elegido, tope_escaparate, ' +
+              'ficha_tecnica, imagenes, sello_elegido, probado_por_magandhi, tope_escaparate, ' +
               'aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, product_id_ref, ' +
               'campana_producto_etiqueta ( etiqueta_codigo )')
       .eq('id', campanaId)
@@ -1164,6 +986,7 @@
     // solo lo cambia si elige otro producto o "Sin producto de inventario".
     await asegurarOpcionProductoLigado(data.product_id_ref || null);
     $('cm-producto').value = data.product_id_ref || '';
+    $('cm-producto-probado').checked = !!data.probado_por_magandhi;
     $('cm-nombre').value = data.nombre || '';
     // Slug precargado: si la campana ya tiene uno, se marca "tocado" para que la
     // autosugerencia desde el nombre NO lo pise. El operador puede editarlo.
@@ -1190,13 +1013,14 @@
     const imgs = Array.isArray(data.imagenes) ? data.imagenes.filter((p) => typeof p === 'string') : [];
     inicializarGaleria(imgs);
 
-    // Distintivo único. Si un registro histórico trae ambos estados, la
-    // disponibilidad tiene prioridad visual; al guardar queda normalizado a
-    // una sola opción y la base impedirá futuras combinaciones dobles.
+    // Distintivo único. Una campaña histórica con sello y sin la nueva
+    // confirmación conserva el sello visible: debe poder confirmarse o quitarse
+    // conscientemente, nunca normalizarse de forma silenciosa al cargar.
     const conflictoDistintivo = !!data.sello_elegido && !!data.aviso_urgencia_activo;
-    const tipoActual = data.aviso_urgencia_activo
-      ? 'ultimas'
-      : (data.sello_elegido ? 'elegido' : 'ninguno');
+    const selloHistoricoSinConfirmacion = !!data.sello_elegido && !data.probado_por_magandhi;
+    const tipoActual = selloHistoricoSinConfirmacion
+      ? 'elegido'
+      : (data.aviso_urgencia_activo ? 'ultimas' : (data.sello_elegido ? 'elegido' : 'ninguno'));
     const radioActual = document.querySelector('input[name="cm-distintivo"][value="' + tipoActual + '"]');
     if (radioActual) radioActual.checked = true;
 
@@ -1204,7 +1028,9 @@
     $('cm-aviso-cantidad').value = (data.aviso_urgencia_cantidad === null || data.aviso_urgencia_cantidad === undefined)
       ? '' : String(data.aviso_urgencia_cantidad);
     if (conflictoDistintivo) {
-      mostrarMsg('Esta campaña conservaba dos distintivos históricos. Se muestra “Últimas unidades” para que elijas una sola opción y guardes la normalización.', 'aviso');
+      mostrarMsg(selloHistoricoSinConfirmacion
+        ? 'Esta campaña histórica conserva sello y aviso de urgencia. Se muestra el sello para que confirmes la casilla o elijas «Ninguno» al guardar.'
+        : 'Esta campaña conservaba dos distintivos históricos. Se muestra «Últimas unidades» para que elijas una sola opción y guardes la normalización.', 'aviso');
     }
 
     // Estado de publicacion.
@@ -1254,9 +1080,18 @@
       }
     }
 
-    if (selloElegido && !pruebaAprobada) {
-      mostrarMsg('Para guardar con el sello Elegido por MAGANDHI, registra primero una prueba vigente con veredicto “Entra con sello”.');
-      $('cm-prueba-seccion').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const productId = $('cm-producto').value || null;
+    const productoProbado = $('cm-producto-probado').checked;
+    if (productoProbado && !productId) {
+      mostrarMsg('Liga un producto antes de marcarlo como probado por MAGANDHI.');
+      $('cm-producto').focus();
+      return;
+    }
+    if (selloElegido && !productoProbado) {
+      mostrarMsg(productId
+        ? 'Marca «Este producto fue probado por MAGANDHI» antes de usar Elegido por MAGANDHI.'
+        : 'Liga un producto y marca «Este producto fue probado por MAGANDHI» antes de usar el sello.');
+      (productId ? $('cm-producto-probado') : $('cm-producto')).focus();
       return;
     }
 
@@ -1346,13 +1181,15 @@
       p_aviso_urgencia_activo: avisoActivo,
       p_aviso_urgencia_cantidad: avisoCant,
       p_etiquetas: recolectarEtiquetas(),
-      // Producto de Inventario ligado (uuid) o null si aun no se liga.
-      p_product_id_ref: $('cm-producto').value || null,
+      // Producto de Inventario ligado (uuid) o null si aún no se liga.
+      p_product_id_ref: productId,
       // Direccion web legible (slug). El servidor la re-normaliza; vacio -> null.
       p_slug: slugificar($('cm-slug').value) || null,
       // Tope de escaparate (opcion A): maximo de unidades a ofrecer en la web.
-      // null = ofrecer todo el stock. Ultimo parametro de la firma SQL.
-      p_tope_escaparate: tope
+      // null = ofrecer todo el stock.
+      p_tope_escaparate: tope,
+      // D2b: confirmación simple que habilita el sello, nunca la publicación.
+      p_producto_probado: productoProbado
     });
 
     // FALLO REAL: la edicion NO se guardo. Las imagenes NUEVAS que acabamos de
@@ -1406,21 +1243,17 @@
       pubMsg.hidden = true;
       btn.disabled = true;
       const nuevo = !publicadoActual;
-      if (nuevo && tipoDistintivo() === 'elegido' && !pruebaAprobada) {
-        btn.disabled = false;
-        pubMsg.textContent = 'Registra una prueba vigente con veredicto “Entra con sello” antes de publicar esta campaña con el distintivo.';
-        pubMsg.className = 'cm-form-msg err';
-        pubMsg.hidden = false;
-        $('cm-prueba-seccion').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return;
-      }
       const { error } = await supabase.rpc('cm_publicar_campana', {
         p_id: campanaId,
         p_publicado: nuevo
       });
       if (error) {
         btn.disabled = false;
-        pubMsg.textContent = 'No se pudo actualizar la publicación: ' + mensajeErrorCuraduria(error);
+        const bruto = String(error?.message || error || '').trim();
+        const detalle = bruto.startsWith('CM_SELLO_SIN_PRUEBA') && $('cm-producto-probado').checked
+          ? 'Guarda primero la campaña con «Este producto fue probado por MAGANDHI» marcada antes de publicarla.'
+          : mensajeErrorCuraduria(error);
+        pubMsg.textContent = 'No se pudo actualizar la publicación: ' + detalle;
         pubMsg.className = 'cm-form-msg err';
         pubMsg.hidden = false;
         return;
@@ -1525,7 +1358,7 @@
     pintarEtiquetas(tagRes.error ? [] : (tagRes.data || []), seleccionadas || []);
 
     cablearInterruptores();
-    await cargarPruebas(seleccionadas !== null ? ($('cm-producto').value || null) : null, true);
+    actualizarControlProductoProbado({ preservarSelloHistorico: true });
     cablearPublicar();
     reflejarEstadoPublicado();
     $('cm-pub-btn').disabled = !campanaId || seleccionadas === null;

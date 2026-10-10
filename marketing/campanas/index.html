@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
-<link rel="stylesheet" href="campanas.css?v=d2a">
+<link rel="stylesheet" href="campanas.css?v=d2b-casilla">
 
 <!--
   MAGANDHI · Area de Marketing · Sub-area CAMPANAS · HOME/LISTA.
@@ -109,13 +109,16 @@
 
   function mensajeErrorCuraduria(error) {
     const bruto = String(error?.message || error || '').trim();
-    if (bruto.startsWith('CM_SELLO_SIN_PRODUCTO')) {
-      return 'Liga primero un producto antes de usar el sello Elegido por MAGANDHI.';
+    if (bruto.startsWith('CM_PRUEBA_SIN_PRODUCTO')) {
+      return 'Liga un producto antes de marcarlo como probado por MAGANDHI.';
     }
     if (bruto.startsWith('CM_SELLO_SIN_PRUEBA')) {
-      return 'Registra una prueba vigente con veredicto “Entra con sello” antes de publicar esta campaña.';
+      return 'Marca «Este producto fue probado por MAGANDHI» antes de publicar con el sello Elegido por MAGANDHI.';
     }
-    return bruto || 'error desconocido.';
+    if (bruto.startsWith('DS_PUBLICACION_PENDIENTE')) {
+      return 'Este producto de proveedor sigue en borrador hasta D2c, cuando haya stock vivo y checkout seguro.';
+    }
+    return bruto.replace(/^CM_[A-Z_]+:\s*/, '') || 'Error desconocido.';
   }
 
   // ----------------------------------------------------------
