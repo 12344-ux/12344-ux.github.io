@@ -4864,15 +4864,35 @@ la base. Como `pg_net` no trae sesión, su puerta es un secreto propio de
 **mínimo privilegio**: su único poder es pedir un refresco de stock. **No es la
 `service_role`**, que nunca sale de las Edge Functions.
 
-1. Generar un valor largo y aleatorio (40+ caracteres). Por ejemplo, en la
-   consola del navegador:
+El secreto va a hacer falta en **dos** lugares (Vault y Edge Functions). Para no
+tener que apuntarlo a mano ni perderlo, **se crea primero en Vault**, que lo
+cifra en reposo y permite volver a leerlo por SQL cuando haga falta.
 
-   ```js
-   console.log(crypto.randomUUID() + crypto.randomUUID());
+1. Habilitar `pg_cron` y `pg_net` (ver D2c1.4), y crear el secreto en el
+   **SQL Editor**, en un solo paso:
+
+   ```sql
+   -- gen_random_uuid() viene de pgcrypto, ya instalada en el proyecto.
+   select vault.create_secret(
+     replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''),
+     'dropi_refresco_secreto',
+     'D2c.1 · dispara el refresco de stock de Dropi. Minimo privilegio.'
+   );
    ```
 
-2. → [Edge Functions → Secrets](https://supabase.com/dashboard/project/bxlzipwxyxdtffnuizbz/settings/functions)
-   → añadir **`DROPI_REFRESCO_SECRETO`** con ese valor.
+2. Leerlo para copiarlo (se puede repetir las veces que haga falta, por eso no
+   se pierde nunca):
+
+   ```sql
+   select decrypted_secret from vault.decrypted_secrets
+   where name = 'dropi_refresco_secreto';
+   ```
+
+3. → [Edge Functions → Secrets](https://supabase.com/dashboard/project/bxlzipwxyxdtffnuizbz/settings/functions)
+   → añadir **`DROPI_REFRESCO_SECRETO`** con ese mismo valor.
+
+**Rotarlo** más adelante es cambiar el valor en los dos lugares; no hay nada más
+que tocar.
 
 **Si ese secreto se filtrara, el daño está acotado por diseño:** el auto-freno
 vive en la base, así que mil invocaciones devuelven cero trabajo y cuestan cero
@@ -4889,19 +4909,46 @@ La autorización la hace la propia función con el secreto, igual que
 `wompi-webhook` y `em-webhook` verifican su firma.
 
 Usa los secretos que ya existen (`DROPI_TOKEN`, `DROPI_USER_AGENT`) más el
-nuevo. Probar a mano, con el secreto real en lugar de `TU_SECRETO`:
+nuevo.
 
-```bash
-curl -s -X POST \
-  -H "x-refresco-secreto: TU_SECRETO" \
-  https://bxlzipwxyxdtffnuizbz.supabase.co/functions/v1/dropi-refrescar-stock
+> **No se puede probar con `fetch` desde la consola del navegador, y es a
+> propósito.** Esta función **no emite cabeceras CORS**: no la llama un
+> navegador. Un `fetch` con la cabecera `x-refresco-secreto` dispara un
+> *preflight* OPTIONS que la función contesta con 405 sin CORS, y el navegador
+> bloquea la petición con un error rojo que **no tiene nada que ver con el
+> secreto**. Abrirle CORS ampliaría la superficie sin ninguna ganancia.
+
+**Se prueba desde el SQL Editor con `pg_net`, que es quien la llamará de
+verdad.** Requiere `pg_net` ya habilitada (D2c1.4):
+
+```sql
+-- 1) Disparar una llamada y quedarse con su id.
+select net.http_post(
+  url     := 'https://bxlzipwxyxdtffnuizbz.supabase.co/functions/v1/dropi-refrescar-stock',
+  headers := jsonb_build_object(
+    'Content-Type', 'application/json',
+    'x-refresco-secreto', (select decrypted_secret from vault.decrypted_secrets
+                           where name = 'dropi_refresco_secreto')
+  ),
+  body    := '{}'::jsonb,
+  timeout_milliseconds := 25000
+) as id_peticion;
+```
+
+```sql
+-- 2) Un par de segundos después, leer la respuesta real.
+select status_code, content::text
+from net._http_response
+order by created desc limit 1;
 ```
 
 | Respuesta | Qué significa |
 |---|---|
-| `{"refrescados":0,...,"nada por refrescar"}` | **Correcto** si todavía no hay productos de proveedor importados |
-| `401 No autorizado` | El secreto no coincide |
-| `500 Falta el secreto...` | Falta `DROPI_REFRESCO_SECRETO` |
+| `200` con `"nada por refrescar en esta vuelta"` | **Correcto** si todavía no hay productos de proveedor importados |
+| `200` con `refrescados > 0` | **Correcto** y ya hay productos: el stock se actualizó |
+| `401 No autorizado` | El valor de Vault y el de Edge Functions no coinciden |
+| `500 Falta el secreto...` | Falta `DROPI_REFRESCO_SECRETO` en Edge Functions |
+| `500 No se pudo leer la cola` | Falta aplicar la migración D2c1.1 |
 
 ## D2c1.4 · Habilitar las extensiones y agendar el reloj
 
@@ -4914,13 +4961,11 @@ la base. Necesitamos dos:
 | **`pg_net`** | Permite a Postgres hacer peticiones **HTTP** sin bloquear la transacción | `pg_cron` solo ejecuta SQL, y refrescar stock exige llamar a Dropi. `pg_net` es el puente |
 
 1. → [Database → Extensions](https://supabase.com/dashboard/project/bxlzipwxyxdtffnuizbz/database/extensions)
-   → habilitar **`pg_cron`** y **`pg_net`**.
+   → habilitar **`pg_cron`** y **`pg_net`**. **Esto va primero**, porque el
+   secreto de D2c1.2 se crea en Vault por SQL y la prueba de D2c1.3 usa
+   `pg_net`.
 
-2. Guardar el secreto en **Vault**, que lo cifra en reposo
-   (→ [Vault](https://supabase.com/dashboard/project/bxlzipwxyxdtffnuizbz/settings/vault/secrets)),
-   con el nombre `dropi_refresco_secreto` y **el mismo valor** del paso D2c1.2.
-
-3. Agendar, en el SQL Editor (una sola vez):
+2. Agendar, en el SQL Editor (una sola vez):
 
 ```sql
 -- El reloj del stock proveedor: cada minuto pide una vuelta de refresco.
