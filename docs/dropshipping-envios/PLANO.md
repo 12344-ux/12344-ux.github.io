@@ -143,13 +143,47 @@ D2 se parte para que cada PR desbloquee algo real sin abrir la venta antes de ti
 
 El pedido automático a Dropi (`orders/`) sigue siendo D3/4. Municipio DANE y nombres/apellidos separados se necesitan antes de ese pedido automático; con el pedido manual de D2c el dueño transcribe los datos en Dropi.
 
+## 4 bis. Decisiones de D2c, cerradas (10-oct-2026)
+
+Todas discutidas con el dueño y, donde correspondía, con el contador. Los
+valores numéricos viven en `dropshipping_config` y `contabilidad_config`:
+cambiarlos **no exige migración**.
+
+| Decisión | Valor | Fundamento |
+|---|---|---|
+| **Piso de vitrina** | **20 unidades** (configurable por producto) | Idea del dueño. **Medido:** en 8 lecturas reales el stock fue 1277, 459, 300, 300, 230, 0, 0, 0 — nada entre 1 y 229. El stock de Dropi es bimodal, así que 20 no excluye ningún producto con existencias |
+| **Vara de entrada** | **100 unidades** al importar | Para no nacer al borde del piso |
+| **Vigencia de la lectura** | **120 minutos** | Perilla *comercial*, no de seguridad: lo que evita vender humo es la consulta en vivo antes de pagar. Equivocarla cuesta una venta o una incomodidad, nunca vender lo que no existe |
+| **Refresco** | **Rodante, 3 productos por minuto** con `pg_cron` + `pg_net` | **Medido:** Dropi responde 429 entre la petición 12 y 16 en ráfaga. Un lote grande coquetea con el techo; el goteo no. Y 15 productos quedan completos cada 5 min |
+| **Copy «Temporalmente no disponible»** | **No existe.** Se reutiliza `agotado` | Un texto distinto para proveedor sería **una etiqueta que delata** el dropshipping. Cero cambios en la tienda |
+| **Cuenta del saldo en Dropi** | **138010**, bajo 1380 Deudores varios | **Aprobada por el contador.** No es un anticipo: no está asignado a ningún proveedor (son muchos y cambian) y nadie ha facturado nada. Misma naturaleza que 138095 «Wompi por liquidar»: una plataforma con dinero nuestro |
+| **Cuenta del flete** | **523535** Transporte, fletes y acarreos | **Aprobada por el contador.** El envío va incluido en el precio, así que no es costo de la mercancía: es gasto de vender |
+| **Costo de la mercancía** | **613505 directo, sin pasar por 1435** | **Aprobado por el contador.** Nunca hay inventario que descargar. No tener la mercancía físicamente no es lo mismo que no haberla comprado: MAGANDHI es el vendedor, factura y responde por la garantía |
+| **El ingreso** | **Precio completo (413505)**, no el margen | Actuamos como comerciantes, no como intermediarios |
+| **Momento del asiento del costo** | **Manual**, con el cobro real de Dropi | Forzado por los hechos: **el flete no se puede cotizar por API** (medido), y depende del destino. Al vender es literalmente desconocido. Se reutiliza el mecanismo de «venta con algo pendiente» que F3 ya tiene en la portada de Finanzas |
+| **Precio frente al flete variable** | **Promedio, con el flete incluido en el precio** | Se calcula a mano al investigar el producto, en Campañas. El sistema solo guarda el precio final: no hay nada que construir |
+| **Flete y destino por pedido** | **Se guardan desde el primer pedido** | Sin eso, Métricas no tendría nada que analizar en tres meses y el histórico se perdería para siempre. Es lo que después permitirá centralizar destinos con datos |
+| **Contraentrega** | **Descartada en esta fase** | `CON RECAUDO` está disponible en la API y nunca estuvo bloqueada, pero no hay rutas de estado ni de dinero: quedaríamos ciegos justo en lo que define el ingreso. Y el prepago **selecciona** al cliente comprometido, que es el posicionamiento elegido |
+| **Guías y rastreo** | **Manuales** | Medido: el plugin oficial no tiene ninguna ruta de guía ni de estado del pedido |
+
+**Idea aparcada:** una app propia que calcule el flete usando las tarifas reales
+de Dropi, para integrarla en la tienda. Hoy **no es posible**: la API conocida no
+tiene ruta de cotización de fletes (`DROPI.md` §9.3). Se retoma si soporte
+entrega el contrato oficial.
+
 ## 5. Decisiones abiertas
 
-1. Plataforma de guías (cotizaciones).
-2. Cuentas del saldo de Dropi y del flete, y forma de facturar (contador).
-3. Intermediario con IP fija, si Dropi la exige.
-4. Si `devuelto` también será un estado del pedido o solo del despacho.
-5. Cuándo deja de ser manual la confirmación de un clic.
+1. Plataforma de guías para productos **propios** (cotizaciones).
+2. Intermediario con IP fija, si Dropi la exige.
+3. Si `devuelto` también será un estado del pedido o solo del despacho.
+4. Cuándo deja de ser manual la confirmación de un clic.
+5. **Política ante una entrega fallida** (devolución total, reenvío, o según el
+   motivo). Es más caro para nosotros que para un vendedor de contraentrega,
+   porque la plata del cliente ya se cobró. Pendiente del dueño.
+6. Cuándo se debita el saldo de Dropi: al crear, al despachar o al entregar.
+   **Ya es medible sin riesgo** leyendo `walletAmount` antes y después de un
+   pedido hecho a mano (`DROPI.md` §9.6). El saldo arranca en 0, así que
+   cualquier movimiento es evidencia directa.
 
 ## 6. Riesgos
 
