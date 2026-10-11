@@ -18,9 +18,30 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 >
 > **Avance · 10-oct-2026 (desplegado).** `20261025000000_dropshipping_d2b_sello_con_prueba.sql` (**Dropshipping D2b**, PR #261): el sello «Elegido por MAGANDHI» exige una casilla simple «Este producto fue probado por MAGANDHI» en la campaña (columna `campana_producto.probado_por_magandhi`), impuesta en `cm_crear/editar/publicar_campana` y por un trigger. **El dueño lo aplicó y verificó el 10-oct-2026: funciona.** Sin Edge Functions ni secretos nuevos. No hay tabla/RPC de pruebas, fechas, notas ni historial.
 >
-> **El estado actual de producción llega hasta la migración `20261025000000`.**
-> Lo siguiente es **Dropshipping D2c** (stock vivo y venta de proveedor). Para
-> retomar en un chat nuevo: `docs/dropshipping-envios/RELEVO-2026-10-10.md`.
+> **Hito · 10-oct-2026 · D2c COMPLETO: MAGANDHI ya vende productos de proveedor.**
+> El dueño recorrió el circuito entero con una venta real y lo confirmó. Se
+> desplegaron cuatro migraciones, una Edge Function nueva y una pantalla:
+> - `20261026000000` + **`dropi-refrescar-stock`** (PR #264, **D2c.1**): stock
+>   vivo que **falla cerrado**, refresco **rodante cada minuto** con `pg_cron` +
+>   `pg_net`, y pantalla de stock y saldo en Dropshipping.
+> - `20261027000000` (PR #265, **D2c.2a**): `crear_pedido` y `anular_pedido`
+>   ramifican por `productos.origen`; `pedido_proveedor` guarda qué despachar,
+>   con qué flete, a dónde y la **evidencia de lo que Dropi reportaba al
+>   cobrar**. Crea en el PUC las cuentas **138010** y **523535**, que no existían.
+> - `20261028000000` (PR #265, **D2c.2b**): **levanta `DS_PUBLICACION_PENDIENTE`**.
+>   El asiento descuenta del saldo en Dropi, y aparecen las RPC del despacho manual.
+> - `20261029000000` + `crear-intencion-pago` (PR #265, **D2c.2c**):
+>   **verificación en vivo contra Dropi antes de cobrar**.
+> - `ventas/despachos-proveedor/` (PR #265): la pantalla del despacho manual y
+>   el aviso en la portada de Ventas.
+>
+> Antes, el mismo día: la **sonda de dinero** (PR #263) que lee el saldo de
+> Dropi sin crear pedidos. **1.065 comprobaciones en verde.**
+>
+> **El estado actual de producción llega hasta la migración `20261029000000`.**
+> Lo siguiente es **D3/D4** (pedido automático a Dropi), que necesita el
+> contrato oficial de `orders/`. Para retomar en un chat nuevo:
+> `docs/dropshipping-envios/RELEVO-2026-10-10.md`.
 
 ## 1. Separación de superficies
 
@@ -134,6 +155,7 @@ Entrega del código: va en el correo de «Entregado», ya en producción. Opinio
 ### Ventas — operativo
 
 - Seguimiento de pedidos.
+- **Despachos de proveedor (D2c, 10-oct-2026):** pedidos ya cobrados que hay que crear **a mano** en el panel de Dropi. La pantalla dice qué pedir (producto, variante, cantidad, destino, SIN RECAUDO), muestra cuánto lleva esperando y recibe de vuelta el número de pedido de Dropi, el costo y el flete. Mientras un pedido siga pendiente, sus unidades se descuentan del stock disponible en la tienda. El aviso aparece también en la portada del área, solo si hay alguno.
 - Registro manual con cliente, items y snapshot de dirección.
 - Avance de estado con bitácora.
 - Anulación transaccional y movimientos compensatorios de inventario.
@@ -268,6 +290,15 @@ No hay nada a medias. Lo que sigue, por orden sugerido:
 - Ajuste de uso real de D1: solo redespliegue de `dropi-sonda` (runbook «Dropshipping D1 · ajuste de uso real»).
 - `20261024000000` + redespliegue de `dropi-sonda` (Dropshipping D2a, runbook «Dropshipping D2a»).
 - `20261025000000` (Dropshipping D2b, PR #261, runbook «Dropshipping D2b»): sello con casilla simple. Sin Edge Functions ni secretos.
+- `dropi-sonda` con la **sonda de dinero** (PR #263): lee el saldo de Dropi (`walletAmount`) sin crear pedidos.
+- `20261026000000` + Edge Function **`dropi-refrescar-stock`** + `pg_cron`/`pg_net` + el secreto `DROPI_REFRESCO_SECRETO` (D2c.1, PR #264, runbook «Dropshipping D2c.1»).
+- `20261027000000`, `20261028000000`, `20261029000000` + redespliegue de `crear-intencion-pago` + la pantalla de Despachos (D2c.2, PR #265). **Aquí se habilitó la venta de proveedor.**
+
+**Decisiones del dueño aún abiertas (lo primero del próximo chat):**
+1. Los **detalles cosméticos** que mencionó al cerrar la sesión del 10-oct y no detalló. Hay que preguntárselos.
+2. **¿En qué momento se debita el saldo de Dropi?** Al crear el pedido, al despacharlo o al entregarlo. Ya es medible sin riesgo leyendo `walletAmount` antes y después; puede que ya tenga el dato de la venta de prueba.
+3. **Política ante una entrega fallida** (devolución total, reenvío, o según el motivo). Es más caro para nosotros que para un vendedor de contraentrega, porque la plata del cliente ya se cobró.
+4. Los **fletes por destino** para afinar el precio, y el **tiempo de entrega** en la ficha del producto (prepago sin tiempo visible asusta).
 
 **Tienda:** ~~3, 4 y 5~~ **cerrados y desplegados (D0, 9–10-oct-2026).** La vuelta de Wompi ya muestra en qué quedó el pago y bloquea «Comprar ahora» mientras no haya veredicto, así que el cobro doble está cerrado; los detalles de entrega llegan al pedido; y los errores de pago dicen el motivo real. Pendiente de decisión aparte: guardar el documento del comprador para la factura requiere una columna nueva.
 
@@ -288,10 +319,18 @@ No hay nada a medias. Lo que sigue, por orden sugerido:
 
 **D2b · sello con casilla simple (DESPLEGADO el 10-oct-2026, PR #261; migración `20261025000000`):** el sello «Elegido por MAGANDHI» exige la casilla «Este producto fue probado por MAGANDHI» en la campaña (columna `campana_producto.probado_por_magandhi`), con producto ligado; impuesto en `cm_crear/editar/publicar_campana` y por un trigger. **No hay `producto_pruebas`, RPC de registro, formulario, fechas, notas, veredictos ni historial.** Una campaña histórica con sello y casilla falsa se advierte al editar para confirmarla o elegir «Ninguno»; no se inventan datos históricos. No levanta `DS_PUBLICACION_PENDIENTE`: proveedor sigue sin publicarse hasta D2c.
 
-**Lo que sigue de D2:**
-- **D2c · stock vivo y venta de proveedor (siguiente, no empezado):** refresco de stock desde el servidor, fallo cerrado en `catalogo_publico`, «Temporalmente no disponible» en la tienda, verificación en vivo en `crear-intencion-pago`, `crear_pedido`/`anular_pedido` sin libro de Inventario para proveedor, asiento con las cuentas del saldo Dropi (contador) y aviso en Ventas para crear el pedido en Dropi a mano. Recién ahí se levanta `DS_PUBLICACION_PENDIENTE`.
+**D2c · stock vivo y venta de proveedor (COMPLETO, desplegado y probado el 10-oct-2026, PR #263, #264 y #265):**
 
-Antes de un pedido proveedor **automático** faltan además municipio DANE/equivalencia Dropi y nombres/apellidos separados en el checkout. Lo que sigue sin tocarse: contrato oficial de `orders/`, si el stock de Dropi se refresca solo, y la reserva `PENDIENTE CONFIRMACION` con su liberación/cancelación e idempotencia (no se prueba con un POST improvisado). Todo en `docs/dropshipping-envios/LEEME.md`, `PLANO.md` y `.kiro/steering/dropshipping-magandhi.md`.
+- **El stock vivo.** Un reloj (`pg_cron` + `pg_net`) llama cada minuto a la Edge Function `dropi-refrescar-stock`, que refresca **de forma rodante los 3 productos con la lectura más vieja**. El refresco rodante no es un detalle: Dropi responde **429 alrededor de la petición 12–16 en ráfaga** (medido), así que un lote grande coquetea con el techo y el goteo no. Una lectura fallida **no toca el stock ni la vigencia**: fallar jamás le alarga la vida a un dato viejo.
+- **Falla cerrado.** `catalogo_publico` da el producto por agotado si la lectura venció (120 min), falta, o el stock está por debajo del **piso de vitrina de 20 unidades**, menos los pedidos pagados que aún no se han transcrito a Dropi. **El copy público NO cambió:** se reutiliza el booleano `agotado` que la tienda ya sabía leer, porque un texto distinto para proveedor sería **una etiqueta que delata el dropshipping**. Cero cambios en el repositorio `magandhi`.
+- **Por qué falla cerrado y no «con holgura»:** se midió que dos productos pasaron de **300 unidades en 3 bodegas a 0 sin ninguna en 24 horas**, y seguían con `active: true`. Un derrumbe no avisa, así que ni el piso ni `active` protegen: solo la frescura de la lectura.
+- **La venta.** `crear_pedido` y `anular_pedido` ramifican por `productos.origen`. Antes de D2c.2a vender proveedor era **imposible**: la primera lo rechazaba con `STOCK_INSUFICIENTE` (no hay fila en `stock_actual`) y la segunda habría fallado al devolver stock (el gatillo de D1 lo bloquea). Un pedido de proveedor **no toca el libro de Inventario**; deja una fila en `pedido_proveedor` con la **evidencia de lo que Dropi reportaba al cobrar**.
+- **Antes de cobrar se pregunta a Dropi en vivo.** `crear-intencion-pago` consulta la ficha justo antes de abrir Wompi. Si Dropi dice que no hay, **rechaza**. Si Dropi no responde y la lectura es fresca (10 min), **permite**, porque bloquear convertiría cualquier hipo de Dropi en una tienda caída; si la lectura ya envejeció, **rechaza**.
+- **El despacho es MANUAL, y no es un olvido.** Ventas → **Despachos de proveedor** dice qué pedir en Dropi (producto, variante, cantidad, destino, SIN RECAUDO) y recibe de vuelta el número de pedido, el costo y el flete. El aviso sale también en la portada del área, solo si hay pendientes.
+- **Contabilidad** (cuentas aprobadas por el contador): la venta entra automática contra 138095 como siempre; el costo se registra a mano con los números reales de Dropi, **D 613505 costo + D 523535 flete contra C 138010 saldo en Dropi**, sin pasar nunca por inventario 1435. **No puede ser automático** porque el flete depende del destino y la API de Dropi **no tiene ruta de cotización** (medido). Las cuentas 138010 y 523535 **no existían en el PUC** y las crea la migración.
+- Todas las perillas viven en `dropshipping_config`: cambiarlas **no exige migración**.
+
+**Lo que sigue · D3/D4, el pedido automático a Dropi.** Faltan, y ninguno es opcional: el **contrato oficial de `orders/`** (el correo a soporte sigue sin enviar), los **municipios DANE** con equivalencia Dropi —hoy la ciudad es texto libre y una que Dropi no reconozca **hace fallar el pedido después del pago**—, **nombre y apellido separados** en el checkout, y la reserva `PENDIENTE CONFIRMACION` con su liberación, cancelación e idempotencia medidas en un protocolo controlado. **Nunca un POST improvisado a `orders/`:** crea un pedido real con plata real y duplica si uno reintenta sin consultar antes por id. Todo en `docs/dropshipping-envios/LEEME.md`, `PLANO.md` (§4 bis trae las decisiones cerradas con su fundamento), `DROPI.md` §9 (el alcance real de la API, medido) y `.kiro/steering/dropshipping-magandhi.md`.
 
 **Repositorios:** quedan abiertos PR viejos ya superados: panel #252, #227 y #216; tienda #46, #21 y #15. Cerrarlos o no lo decide el dueño.
 
