@@ -34,6 +34,12 @@
        alguno: un aviso que aparece siempre deja de ser un aviso. -->
   <div id="vt-revisiones"></div>
 
+  <!-- Despachos de proveedor pendientes (D2c.2). Misma regla que el aviso de
+       arriba: solo se pinta si hay alguno. Un pedido cobrado que no se pidió al
+       proveedor es el problema más caro del frente, así que se avisa en la
+       portada del área y no solo dentro de su pantalla. -->
+  <div id="vt-despachos"></div>
+
   <div class="vt-cards">
     <a class="vt-card" href="seguimiento-pedidos/index.html">
       <span class="vt-card-ico" data-ico="recibo"></span>
@@ -46,6 +52,12 @@
       <h3>Portafolio de clientes</h3>
       <p>La cartera de clientes con sus métricas derivadas de pedidos reales: cuánto han comprado, cada cuánto y qué prefieren.</p>
     </a>
+    <a class="vt-card" href="despachos-proveedor/index.html">
+      <span class="vt-card-ico" data-ico="camion"></span>
+      <h3>Despachos de proveedor</h3>
+      <p>Pedidos ya cobrados que hay que crear a mano en Dropi. Muestra qué pedir y recibe el número, el costo y el flete cuando ya lo hiciste.</p>
+    </a>
+
     <!-- Hueco preparado para crecer: nuevas sub-areas de Ventas. No es un
          enlace (sobrio, no promete funciones); comunica que el area escala. -->
     <div class="vt-card proxima" aria-hidden="true">
@@ -136,6 +148,41 @@
     });
   }
 
+  // --------------------------------------------------------------------------
+  // DESPACHOS DE PROVEEDOR PENDIENTES (D2c.2)
+  // --------------------------------------------------------------------------
+  // Un pedido cobrado que todavia no se pidio al proveedor es el problema mas
+  // caro de este frente: el cliente ya pago y nadie esta despachando. Por eso
+  // se avisa en la PORTADA del area, no solo dentro de su pantalla.
+  //
+  // El aviso cuenta cuanto lleva esperando el mas viejo, porque el numero que
+  // importa no es cuantos hay sino cuanto llevan sin atender.
+  // --------------------------------------------------------------------------
+  async function pintarDespachos() {
+    const caja = document.getElementById('vt-despachos');
+    const { data, error } = await supabase.rpc('ds_pedidos_por_transcribir');
+    if (error || !Array.isArray(data) || !data.length) { caja.innerHTML = ''; return; }
+
+    const n = data.length;
+    const horas = Math.max(...data.map((x) => Number(x.horas_esperando) || 0));
+    const espera = horas >= 24
+      ? Math.floor(horas / 24) + (Math.floor(horas / 24) === 1 ? ' día' : ' días')
+      : (horas < 1 ? 'minutos' : Math.round(horas) + ' h');
+
+    caja.innerHTML =
+      '<section class="vt-revisiones" role="region" aria-label="Despachos de proveedor pendientes">' +
+        '<div class="vt-rev-cab">' + (ICONOS.camion || ICONOS.alerta || '') +
+          '<div><h2 class="vt-rev-tit">' + n +
+            (n === 1 ? ' pedido por crear en Dropi' : ' pedidos por crear en Dropi') + '</h2>' +
+          '<p class="vt-rev-sub">Ya los cobraste y todavía no existen en Dropi. ' +
+          'El más antiguo lleva esperando <b>' + escaparHTML(espera) + '</b>. ' +
+          'Mientras sigan pendientes, sus unidades se descuentan del stock disponible en la tienda.</p></div></div>' +
+        '<div class="vt-rev-acc">' +
+          '<a class="vt-rev-btn" href="despachos-proveedor/index.html">Ver y registrar despachos</a>' +
+        '</div>' +
+      '</section>';
+  }
+
   (async () => {
     const main = document.getElementById('vt-main');
     const acceso = await asegurarAcceso(document.body, '../panel.html');
@@ -156,8 +203,10 @@
     });
 
     main.hidden = false;
-    // Al final: el aviso de pagos sin pedido no debe retrasar el area.
+    // Al final: los avisos no deben retrasar el area. Cada uno en su propio
+    // try: si un tramo no esta aplicado, el otro aviso sigue funcionando.
     try { await pintarRevisiones(); } catch (_) { /* tramo F2 sin aplicar: sin aviso */ }
+    try { await pintarDespachos(); } catch (_) { /* tramo D2c.2 sin aplicar: sin aviso */ }
   })();
 </script>
 
