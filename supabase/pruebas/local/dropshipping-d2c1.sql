@@ -217,13 +217,44 @@ select pg_temp.chk(
 -- ------------------------------------------------------------
 -- (7) La cola del refresco rodante
 -- ------------------------------------------------------------
+-- OJO: la cola tiene AUTO-FRENO. Si no se reinicia `ultimo_refresco` entre
+-- llamadas, devuelve cero filas y entonces una prueba como «count(*) <= 3»
+-- pasaría por VACÍO, no por correcta. Cada bloque reinicia el freno y además
+-- exige que la cola traiga algo.
+create or replace function pg_temp.sin_freno() returns void language sql as
+$$ update dropshipping_config set ultimo_refresco = null where id = 1 $$;
+
+select pg_temp.sin_freno();
 select pg_temp.chk(
-  (select count(*) from ds_productos_por_refrescar()) <= 3,
-  'la cola respeta la tanda de la config (3 por vuelta)');
+  (select count(*) from ds_productos_por_refrescar()) = 2,
+  'la cola entrega los 2 productos proveedor (y no se queda vacía)');
+
+select pg_temp.sin_freno();
+select pg_temp.chk(
+  (select count(*) from ds_productos_por_refrescar(1)) = 1,
+  'la cola respeta la tanda que se le pide');
+
+select pg_temp.sin_freno();
+select pg_temp.chk(
+  (select count(*) from ds_productos_por_refrescar(99)) = 2,
+  'pedir 99 no rompe: devuelve lo que hay, topado en 8 (el techo de Dropi es ~12-16)');
+
+-- El AUTO-FRENO: la segunda llamada seguida no entrega trabajo. Es lo que
+-- impide que un secreto filtrado se convierta en un bucle que nos quema el
+-- presupuesto de peticiones de Dropi.
+select pg_temp.sin_freno();
+select count(*) from ds_productos_por_refrescar();
+select pg_temp.chk(
+  (select count(*) from ds_productos_por_refrescar()) = 0,
+  'AUTO-FRENO: llamar la cola dos veces seguidas no entrega trabajo la segunda');
 
 select pg_temp.chk(
-  (select count(*) from ds_productos_por_refrescar(99)) <= 8,
-  'pedir 99 productos queda topado en 8: el techo de Dropi es ~12-16 en ráfaga');
+  (select ultimo_refresco is not null from dropshipping_config where id = 1),
+  'la cola estampa ultimo_refresco para poder frenarse');
+
+select pg_temp.chk(
+  pg_temp.err_postgres($$update dropshipping_config set refresco_minimo_segundos = 1 where id = 1$$) <> 'SIN ERROR',
+  'un mínimo absurdo (1 segundo) lo rechaza el CHECK');
 
 -- El que falla cede el turno. Si la cola ordenara por stock_leido_en, el
 -- producto que falla volvería primero en cada vuelta y ahogaría a los demás.
@@ -231,22 +262,27 @@ update producto_proveedor set ultimo_intento = now() - interval '1 hour'
   where product_id = 'c0000000-0000-4000-8000-00000000000c';
 update producto_proveedor set ultimo_intento = now()
   where product_id = 'c0000000-0000-4000-8000-00000000000b';
+select pg_temp.sin_freno();
 select pg_temp.chk(
   (select product_id from ds_productos_por_refrescar(1)) = 'c0000000-0000-4000-8000-00000000000c',
   'la cola ordena por intento más viejo, así el que falla cede el turno');
 
 update producto_proveedor set refrescar = false
   where product_id = 'c0000000-0000-4000-8000-00000000000c';
+select pg_temp.sin_freno();
 select pg_temp.chk(
-  not exists (select 1 from ds_productos_por_refrescar(9)
-              where product_id = 'c0000000-0000-4000-8000-00000000000c'),
-  'un producto pausado (refrescar=false) sale de la cola');
+  (select count(*) from ds_productos_por_refrescar(9)) = 1
+  and not exists (select 1 from ds_productos_por_refrescar(9)
+                  where product_id = 'c0000000-0000-4000-8000-00000000000c'),
+  'un producto pausado (refrescar=false) sale de la cola, y el otro sigue');
 update producto_proveedor set refrescar = true
   where product_id = 'c0000000-0000-4000-8000-00000000000c';
 
+select pg_temp.sin_freno();
 select pg_temp.chk(
-  not exists (select 1 from ds_productos_por_refrescar(9)
-              where product_id = 'c0000000-0000-4000-8000-00000000000a'),
+  (select count(*) from ds_productos_por_refrescar(9)) = 2
+  and not exists (select 1 from ds_productos_por_refrescar(9)
+                  where product_id = 'c0000000-0000-4000-8000-00000000000a'),
   'la cola NUNCA incluye un producto propio');
 
 -- ------------------------------------------------------------

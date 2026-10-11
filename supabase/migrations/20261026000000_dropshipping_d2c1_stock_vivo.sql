@@ -80,6 +80,16 @@ create table if not exists dropshipping_config (
   -- Cuantos productos refresca cada vuelta del reloj. Techo bajo a proposito.
   refresco_por_tanda  integer not null default 3
                         check (refresco_por_tanda between 1 and 8),
+  -- AUTO-FRENO. La Edge Function del refresco se invoca con un secreto propio y
+  -- Verify JWT apagado (pg_net no trae sesion). Si ese secreto se filtrara,
+  -- alguien podria dispararla en bucle y quemarnos el presupuesto de peticiones
+  -- de Dropi: un ataque que no roba nada pero nos apaga la vitrina. El freno
+  -- vive AQUI, en la base, no en la funcion: la cola devuelve cero filas si se
+  -- la llama antes de tiempo, asi que llamarla mil veces no cuesta ni una
+  -- peticion a Dropi.
+  refresco_minimo_segundos integer not null default 20
+                        check (refresco_minimo_segundos between 5 and 3600),
+  ultimo_refresco     timestamptz,
   -- Avisar en el panel cuando el saldo de Dropi baje de aqui (en pesos). Si el
   -- saldo llega a cero la operacion se rompe EN SILENCIO: se vende y no se
   -- puede despachar.
@@ -184,25 +194,45 @@ returns table (
   variacion_externa_id text,
   stock_leido_en       timestamptz
 )
-language sql
+language plpgsql
 volatile
 security definer
 set search_path = public
 as $$
-  select pp.product_id, pp.producto_externo_id, pp.variacion_externa_id, pp.stock_leido_en
-  from producto_proveedor pp
-  join productos p on p.id = pp.product_id
-  where pp.refrescar
-    and p.origen = 'proveedor'
-  order by pp.ultimo_intento asc nulls first, pp.product_id
-  limit greatest(1, least(
-    coalesce(p_limite, (select refresco_por_tanda from dropshipping_config where id = 1), 3),
-    8
-  ));
+declare
+  v_cfg   dropshipping_config;
+  v_tanda integer;
+begin
+  select * into v_cfg from dropshipping_config where id = 1;
+
+  -- AUTO-FRENO: si se la llama antes del minimo, no se entrega trabajo. Asi un
+  -- secreto filtrado no puede convertirse en un bucle que quema el presupuesto
+  -- de peticiones de Dropi; mil llamadas cuestan cero peticiones externas.
+  if v_cfg.ultimo_refresco is not null
+     and now() - v_cfg.ultimo_refresco
+         < make_interval(secs => coalesce(v_cfg.refresco_minimo_segundos, 20)) then
+    return;
+  end if;
+
+  update dropshipping_config
+  set ultimo_refresco = now(), actualizado = now()
+  where id = 1;
+
+  v_tanda := greatest(1, least(coalesce(p_limite, v_cfg.refresco_por_tanda, 3), 8));
+
+  return query
+    select pp.product_id, pp.producto_externo_id, pp.variacion_externa_id, pp.stock_leido_en
+    from producto_proveedor pp
+    join productos p on p.id = pp.product_id
+    where pp.refrescar
+      and p.origen = 'proveedor'
+    order by pp.ultimo_intento asc nulls first, pp.product_id
+    limit v_tanda;
+end;
 $$;
 
 comment on function ds_productos_por_refrescar(integer) is
-  'D2c.1 · cola del refresco rodante: los N productos proveedor con el intento mas viejo. La llama la Edge Function dropi-refrescar-stock (service_role). Ordena por ultimo_intento, no por stock_leido_en, para que un producto que falla ceda el turno en vez de monopolizar la cola. El limite esta topado a 8 aunque se pida mas: el techo de Dropi es ~12-16 peticiones en rafaga.';
+  'D2c.1 · cola del refresco rodante: los N productos proveedor con el intento mas viejo. La llama la Edge Function dropi-refrescar-stock (service_role). Ordena por ultimo_intento, no por stock_leido_en, para que un producto que falla ceda el turno en vez de monopolizar la cola. El limite esta topado a 8 aunque se pida mas (el techo de Dropi es ~12-16 peticiones en rafaga) y trae AUTO-FRENO: antes de refresco_minimo_segundos devuelve cero filas, asi que invocarla en bucle no cuesta ni una peticion externa.';
 
 revoke all on function ds_productos_por_refrescar(integer) from public;
 grant execute on function ds_productos_por_refrescar(integer) to service_role;

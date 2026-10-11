@@ -70,6 +70,10 @@ jobs:
         run: |
           sudo bash "$AQUI/correr-dropi-sonda-d1.sh" 2>&1 | tee -a /tmp/banco.log
 
+      - name: Dropi D2c.1 · refresco de stock (solo GET, nunca orders/)
+        run: |
+          sudo bash "$AQUI/correr-dropi-refresco.sh" 2>&1 | tee -a /tmp/banco.log
+
       - name: Puesta al dia forward sobre una base que reproduce produccion
         run: |
           sudo bash "$AQUI/correr-puesta-al-dia.sh" 2>&1 | tee -a /tmp/banco.log

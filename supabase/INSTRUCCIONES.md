@@ -4806,3 +4806,206 @@ que ya costó las fotos y el `count` en D1. Lo que se comprueba:
 - un 429 se informa y se nombra en la conclusión, en catálogo y en dinero;
 - **nunca** `orders/myorders`, **nunca** POST a `orders`, **nunca** muta un
   producto.
+
+---
+
+# Dropshipping D2c.1 · stock vivo del proveedor
+
+**Corte:** 10 de octubre de 2026. Migración forward
+`20261026000000_dropshipping_d2c1_stock_vivo.sql` + Edge Function **nueva**
+`dropi-refrescar-stock` + dos extensiones de Postgres + un secreto nuevo.
+
+> **D2c.1 es INERTE a propósito.** No levanta `DS_PUBLICACION_PENDIENTE` y
+> `dropshipping_config.venta_proveedor_habilitada` nace en **false**, así que
+> ningún producto de proveedor puede publicarse ni asomarse a la tienda, ni
+> siquiera como tarjeta agotada. Lo único que hace es **mantener el stock
+> fresco** y mostrártelo en el panel. La venta llega en D2c.2.
+
+## Qué hace y por qué así
+
+| Pieza | Qué resuelve |
+|---|---|
+| `dropshipping_config` | Tus perillas en una fila: vigencia 120 min, piso de vitrina 20, vara de entrada 100, tanda 3, mínimo entre vueltas 20 s. **Cambiarlas no exige migración** |
+| `ds_productos_por_refrescar()` | La **cola rodante**, con auto-freno. Ordena por *último intento* |
+| `ds_registrar_lectura_stock()` | Donde escribe la Edge Function. Un fallo **no** toca el stock ni la vigencia |
+| `ds_estado_stock()` | El panel ve frescura y **por qué** un producto está fuera de vitrina |
+| `catalogo_publico` | Falla cerrado con proveedor, reutilizando el mismo booleano `agotado` |
+
+**Refresco rodante, no un lote.** MEDIDO el 10-oct: Dropi responde **429**
+alrededor de la petición 12–16 en ráfaga, y refrescar un producto cuesta 1
+petición. Tres por minuto nunca se acercan al techo y aun así un catálogo de 15
+productos queda completo cada 5 minutos — más fresco que un lote cada 15. Si
+Dropi devuelve 429, la vuelta **se aborta** en vez de insistir.
+
+**El copy público NO cambia.** Se reutiliza `agotado` («Agotado por ahora» +
+botón deshabilitado, que ya existen). Un texto distinto para proveedor sería una
+**etiqueta que delata** el dropshipping, y la tienda nunca debe oler a eso. Por
+eso D2c.1 no toca el repositorio `magandhi`: **cero cambios en la tienda.**
+
+## D2c1.1 · Aplicar la migración (SQL Editor, una sola vez)
+
+→ [SQL Editor](https://supabase.com/dashboard/project/bxlzipwxyxdtffnuizbz/sql/new)
+
+Pegar `supabase/migrations/20261026000000_dropshipping_d2c1_stock_vivo.sql`
+completo y ejecutar. Comprobación:
+
+```sql
+select vigencia_minutos, piso_vitrina, vara_entrada, refresco_por_tanda,
+       refresco_minimo_segundos, venta_proveedor_habilitada
+from dropshipping_config where id = 1;
+```
+
+Debe salir `120 · 20 · 100 · 3 · 20 · false`.
+
+## D2c1.2 · Crear el secreto del refresco
+
+La Edge Function del refresco **no la llama un navegador**: la llama el reloj de
+la base. Como `pg_net` no trae sesión, su puerta es un secreto propio de
+**mínimo privilegio**: su único poder es pedir un refresco de stock. **No es la
+`service_role`**, que nunca sale de las Edge Functions.
+
+1. Generar un valor largo y aleatorio (40+ caracteres). Por ejemplo, en la
+   consola del navegador:
+
+   ```js
+   console.log(crypto.randomUUID() + crypto.randomUUID());
+   ```
+
+2. → [Edge Functions → Secrets](https://supabase.com/dashboard/project/bxlzipwxyxdtffnuizbz/settings/functions)
+   → añadir **`DROPI_REFRESCO_SECRETO`** con ese valor.
+
+**Si ese secreto se filtrara, el daño está acotado por diseño:** el auto-freno
+vive en la base, así que mil invocaciones devuelven cero trabajo y cuestan cero
+peticiones a Dropi. No se puede leer nada ni escribir nada.
+
+## D2c1.3 · Desplegar `dropi-refrescar-stock`
+
+→ [Edge Functions](https://supabase.com/dashboard/project/bxlzipwxyxdtffnuizbz/functions)
+→ **Deploy a new function** → nombre exacto **`dropi-refrescar-stock`** → pegar
+`supabase/functions/dropi-refrescar-stock/index.ts` → Deploy.
+
+**Verify JWT: APAGADO.** Es obligatorio: `pg_net` no manda sesión de usuario.
+La autorización la hace la propia función con el secreto, igual que
+`wompi-webhook` y `em-webhook` verifican su firma.
+
+Usa los secretos que ya existen (`DROPI_TOKEN`, `DROPI_USER_AGENT`) más el
+nuevo. Probar a mano, con el secreto real en lugar de `TU_SECRETO`:
+
+```bash
+curl -s -X POST \
+  -H "x-refresco-secreto: TU_SECRETO" \
+  https://bxlzipwxyxdtffnuizbz.supabase.co/functions/v1/dropi-refrescar-stock
+```
+
+| Respuesta | Qué significa |
+|---|---|
+| `{"refrescados":0,...,"nada por refrescar"}` | **Correcto** si todavía no hay productos de proveedor importados |
+| `401 No autorizado` | El secreto no coincide |
+| `500 Falta el secreto...` | Falta `DROPI_REFRESCO_SECRETO` |
+
+## D2c1.4 · Habilitar las extensiones y agendar el reloj
+
+**Qué son.** Una extensión de Postgres es un módulo que le añade capacidades a
+la base. Necesitamos dos:
+
+| Extensión | Qué hace | Por qué |
+|---|---|---|
+| **`pg_cron`** | Programador de tareas **dentro** de la base: «ejecuta este SQL cada N» | Es el reloj que el proyecto no tenía. Mínimo **1 minuto** (GitHub Actions es 5 y se retrasa 10–15) |
+| **`pg_net`** | Permite a Postgres hacer peticiones **HTTP** sin bloquear la transacción | `pg_cron` solo ejecuta SQL, y refrescar stock exige llamar a Dropi. `pg_net` es el puente |
+
+1. → [Database → Extensions](https://supabase.com/dashboard/project/bxlzipwxyxdtffnuizbz/database/extensions)
+   → habilitar **`pg_cron`** y **`pg_net`**.
+
+2. Guardar el secreto en **Vault**, que lo cifra en reposo
+   (→ [Vault](https://supabase.com/dashboard/project/bxlzipwxyxdtffnuizbz/settings/vault/secrets)),
+   con el nombre `dropi_refresco_secreto` y **el mismo valor** del paso D2c1.2.
+
+3. Agendar, en el SQL Editor (una sola vez):
+
+```sql
+-- El reloj del stock proveedor: cada minuto pide una vuelta de refresco.
+-- El trabajo real y el auto-freno viven en la base y en la Edge Function; esto
+-- solo toca el timbre. Si se llama de más, la cola devuelve cero filas.
+select cron.schedule(
+  'dropi-refrescar-stock',
+  '* * * * *',
+  $$
+  select net.http_post(
+    url     := 'https://bxlzipwxyxdtffnuizbz.supabase.co/functions/v1/dropi-refrescar-stock',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-refresco-secreto', (select decrypted_secret from vault.decrypted_secrets
+                             where name = 'dropi_refresco_secreto')
+    ),
+    body    := '{}'::jsonb,
+    timeout_milliseconds := 25000
+  );
+  $$
+);
+```
+
+Comprobar que quedó y que corre:
+
+```sql
+select jobid, schedule, active from cron.job where jobname = 'dropi-refrescar-stock';
+
+-- Últimas vueltas (debería haber una por minuto)
+select start_time, status, return_message
+from cron.job_run_details
+where jobname = 'dropi-refrescar-stock'
+order by start_time desc limit 5;
+```
+
+**Para pausar el reloj** (por ejemplo si Dropi nos frena de forma sostenida):
+
+```sql
+select cron.unschedule('dropi-refrescar-stock');
+```
+
+## D2c1.5 · Comprobar que el stock se mueve
+
+Desde el panel, con sesión de admin:
+
+```js
+const { supabase } = await import('/supabase-config.js');
+const { data } = await supabase.rpc('ds_estado_stock');
+console.table(data);
+```
+
+Cada fila dice `stock`, `piso_efectivo`, `vence_en`, `en_vitrina` y el **motivo**
+(`sin lectura todavía`, `lectura vencida`, `por debajo del piso`, `en vitrina`).
+
+Y el saldo, con la sonda de dinero:
+
+```js
+const r = await supabase.functions.invoke('dropi-sonda', { body: { dinero: true } });
+console.log('saldo:', (r.data ?? {}).saldo?.wallet_amount);
+```
+
+## D2c1.6 · Pruebas hechas
+
+```
+bash supabase/pruebas/local/herramientas/preparar.sh      # una vez
+bash /projects/sandbox/pruebas-em5/pg.sh supabase/pruebas/local/dropshipping-d2c1.sql
+bash supabase/pruebas/local/herramientas/correr-dropi-refresco.sh
+```
+
+**469 comprobaciones, 0 fallan.** Matriz de permisos 170/170, D2c.1 SQL 44/44,
+refresco (Deno) 32/32, D1 29/29, D2a 30/30, F3 84/84, fechas-colombia 16/16,
+sonda 68/68. Lo que se mide:
+
+- lectura **vencida** ⇒ `agotado=true` aunque Dropi reporte 230 unidades;
+- piso 20: stock 19 fuera, stock 20 dentro; el piso propio manda sobre el global;
+- el derrumbe medido (300 ⇒ 0) saca el producto de inmediato;
+- **un fallo NO toca stock ni vigencia**: la foto vieja sigue envejeciendo;
+- el **auto-freno**: dos llamadas seguidas no entregan trabajo la segunda;
+- la cola ordena por último intento, así el que falla **cede el turno**;
+- **con variante fijada se usa el stock de ESA variante**, no el del producto
+  (si no, una talla agotada vendería humo porque otra tiene unidades);
+- una variante que desapareció se registra como **0**, no como error;
+- ante un **429 se aborta la vuelta**: una petición, no tres;
+- sin el secreto: 401, y **no toca Dropi ni la base**;
+- ni el token, ni la `service_role`, ni el secreto aparecen en la respuesta;
+- contra Dropi **solo GET**, solo `products/v2/{id}`, **nunca** `orders/`;
+- con el interruptor cerrado **ningún** producto proveedor sale a la tienda;
+- publicar una campaña de proveedor **sigue bloqueado**.
