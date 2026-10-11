@@ -310,3 +310,56 @@ body.ds-sin-scroll{overflow:hidden}
   .ds-carrito-txt{display:none}
   .ds-cajon{width:100vw}
 }
+
+/* ===========================================================================
+   D2c.1 · STOCK VIVO Y SALDO
+   ---------------------------------------------------------------------------
+   Sin paleta nueva: usa las variables del área (marino, crema, gris, línea) y
+   el terracota de marca (--ds-rojo) para lo que exige atención. La regla del
+   proyecto es explícita: el área se distingue por su contrato, no por colores
+   decorativos nuevos.
+   =========================================================================== */
+
+/* El saldo. En terracota cuando está en cero, porque ese es el fallo
+   silencioso: la tienda vende y el despacho es imposible. */
+.ds-saldo{margin:0 0 14px}
+.ds-saldo-caja{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:12px 14px;border:1px solid var(--ds-linea);
+  border-radius:var(--ds-radio);background:var(--ds-crema);
+}
+.ds-saldo-caja svg{width:22px;height:22px;flex:none;color:var(--ds-marino)}
+.ds-saldo-caja>div{display:flex;flex-direction:column;line-height:1.15}
+.ds-saldo-caja>div span{font-size:.74rem;letter-spacing:.04em;text-transform:uppercase;color:var(--ds-gris)}
+.ds-saldo-caja>div b{font-size:1.22rem;font-variant-numeric:tabular-nums;color:var(--ds-marino)}
+.ds-saldo-caja p{margin:0;flex:1 1 260px;font-size:.84rem;color:var(--ds-gris)}
+.ds-saldo-caja--alerta{border-color:var(--ds-rojo);background:rgba(166,51,46,.06)}
+.ds-saldo-caja--alerta svg,
+.ds-saldo-caja--alerta>div b{color:var(--ds-rojo)}
+.ds-saldo-caja--alerta p{color:var(--ds-carbon)}
+
+/* La tabla. Scroll horizontal en móvil en vez de apretar las columnas: los
+   números del stock tienen que quedar legibles. */
+.ds-tabla-env{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.ds-tabla{width:100%;border-collapse:collapse;font-size:.88rem;min-width:720px}
+.ds-tabla th,.ds-tabla td{
+  padding:9px 10px;text-align:left;border-bottom:1px solid var(--ds-linea);vertical-align:top;
+}
+.ds-tabla thead th{
+  font-size:.73rem;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--ds-gris);font-weight:600;white-space:nowrap;
+}
+.ds-tabla tbody tr:last-child td{border-bottom:0}
+.ds-tabla td small{display:block;margin-top:2px;font-size:.76rem;color:var(--ds-gris)}
+.ds-tabla .ds-num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* Una lectura vencida es el dato que más se busca de un vistazo. */
+.ds-vencido{color:var(--ds-rojo)}
+.ds-vencido small{color:var(--ds-rojo);font-weight:600}
+
+/* Dorado de marca para «está en vitrina, pero algo requiere tu atención». */
+.ds-tag--aviso{background:rgba(194,138,58,.12);border-color:var(--ds-dorado);color:#7a5520}
+
+@media (max-width:620px){
+  .ds-saldo-caja>div b{font-size:1.1rem}
+}

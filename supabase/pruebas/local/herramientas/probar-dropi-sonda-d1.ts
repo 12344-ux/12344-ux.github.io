@@ -16,6 +16,9 @@ const NO_ADMIN = "operador-jwt-prueba";
 let esAdmin = true;
 let ultimoBodyIndice: unknown = null;
 const rutasDropi: string[] = [];
+// Reproduce el freno REAL de Dropi medido el 10-oct-2026: 429 Too Many
+// Requests cuando se encadenan consultas.
+let forzar429 = false;
 
 const servidor = Deno.serve({ port: PORT, onListen() {} }, async (req) => {
   const url = new URL(req.url);
@@ -37,6 +40,9 @@ const servidor = Deno.serve({ port: PORT, onListen() {} }, async (req) => {
   // nunca aparece orders/ ni un método distinto de GET/POST de catálogo.
   if (ruta.startsWith("/integrations/")) {
     rutasDropi.push(`${req.method} ${ruta}`);
+    if (forzar429) {
+      return Response.json({ isSuccess: false, message: "Too Many Requests" }, { status: 429 });
+    }
     if (ruta === "/integrations/categories/") {
       return Response.json({ isSuccess: true, objects: [{ name: "Cuidado" }] });
     }
@@ -129,6 +135,49 @@ const servidor = Deno.serve({ port: PORT, onListen() {} }, async (req) => {
     }
     if (ruta === "/integrations/products/101") {
       return Response.json({ isSuccess: false, message: "No tiene permisos para ver este producto" }, { status: 400 });
+    }
+
+    // --- Sonda de dinero (solo lectura) -------------------------------------
+    // whoiam: la especificación publicada lo marca con seguridad `bearer`. El
+    // doble reproduce ese comportamiento REAL: rechaza el encabezado de
+    // integración y solo acepta Authorization: Bearer. Así se comprueba que la
+    // función hace el reintento en vez de rendirse.
+    if (ruta === "/integrations/whoiam") {
+      const bearer = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+      if (!bearer) {
+        return Response.json({ isSuccess: false, message: "Unauthorized" }, { status: 401 });
+      }
+      if (bearer !== "TOKEN-SECRETO-QUE-NO-DEBE-SALIR") {
+        return Response.json({ isSuccess: false, message: "Token invalido" }, { status: 401 });
+      }
+      // FORMA REAL, medida en la cuenta del dueño el 10-oct-2026. La versión
+      // anterior de este doble copiaba la ESPECIFICACIÓN (`wallets`, `id`,
+      // `status`, `category_name`) y por eso las pruebas pasaban mientras en
+      // producción el saldo salía null. Es la misma trampa que ya nos costó las
+      // fotos y el `count`: el doble tiene que imitar a Dropi, no al papel.
+      return Response.json({
+        user_id: 4242,
+        name: "Dueño",
+        surname: "De Prueba",
+        email: "dueno@ejemplo.invalid",
+        phone: "+57 300 000 0000",
+        avatarUrl: "https://s3.invalid/avatar.png",
+        walletAmount: 150000.5,
+      });
+    }
+    if (ruta === "/integrations/warehouses/") {
+      // MEDIDO: en la cuenta real llega el sobre completo con `objects: []`
+      // (un dropshipper no tiene bodegas propias).
+      return Response.json({
+        isSuccess: true,
+        status: 200,
+        count: 0,
+        error: null,
+        error_code: null,
+        error_origin: null,
+        message: null,
+        objects: [],
+      });
     }
     return Response.json({ error: "ruta no esperada" }, { status: 404 });
   }
@@ -293,8 +342,107 @@ async function llamar(body: unknown, jwt = ADMIN, metodo = "POST") {
   chk(f.detalle_variaciones.length === 2, "una variante con id no válido se descarta en vez de llegar a la importación");
 }
 
-// La línea roja: ni una sola ruta de pedido, mutación o proveedor aparece.
-chk(!rutasDropi.some((r) => /orders|POST \/integrations\/products\/(?!index)/.test(r)), "NUNCA llama orders/ ni muta un producto Dropi");
+// ---------------------------------------------------------------------------
+// SONDA DE DINERO · solo lectura
+// ---------------------------------------------------------------------------
+{
+  rutasDropi.length = 0;
+  const r = await llamar({ dinero: true });
+  const d = await r.json();
+  chk(r.status === 200, "la sonda de dinero responde 200");
+  chk(d.sonda === "dinero", "se identifica como sonda de dinero");
+
+  // El premio: el saldo, leído del nombre REAL del campo (`walletAmount`), no
+  // del que dice la especificación (`wallets`).
+  chk(d.saldo?.wallet_amount === 150000.5, "lee el saldo desde el campo REAL whoiam.walletAmount");
+  chk(d.saldo?.id_usuario === 4242, "lee el id desde user_id (la especificación decía `id`)");
+  // El doble rechaza el encabezado de integración y solo acepta bearer, igual
+  // que marca la especificación: la función debe REINTENTAR, no rendirse.
+  chk(d.saldo?.autenticacion_que_funciono === "bearer", "si el encabezado de integración no sirve, reintenta el MISMO token como bearer");
+  chk(d.saldo?.reintento_bearer?.http === 200, "queda registrado qué respondió cada forma de autenticación");
+  chk(d.conclusion?.includes("walletAmount"), "la conclusión nombra el campo del que salió el saldo");
+
+  // Diagnóstico de FORMA: tipos sin valores. Es lo que faltó el 10-oct y costó
+  // una ronda extra para descubrir que el campo se llamaba distinto.
+  chk(d.saldo?.forma?.walletAmount === "number", "informa el TIPO de cada campo para no volver a adivinar el nombre");
+  chk(!JSON.stringify(d.saldo?.forma ?? {}).includes("dueno@ejemplo.invalid"),
+    "el diagnóstico de forma no lleva valores, así que no puede filtrar PII");
+
+  // PII: whoiam devuelve nombre, correo y teléfono del dueño. No deben salir.
+  const crudo = JSON.stringify(d);
+  chk(!crudo.includes("dueno@ejemplo.invalid") && !crudo.includes("300 000 0000"),
+    "NO devuelve el correo ni el teléfono de la cuenta Dropi");
+  chk(Array.isArray(d.saldo?.pii_omitida) && d.saldo.pii_omitida.includes("email"),
+    "declara explícitamente qué PII llegó y se omitió");
+  // `category_name`, `status` y `store_url` los promete la especificación pero
+  // la cuenta real NO los devuelve: se dejaron de informar en vez de publicar
+  // un campo que siempre sería null.
+  chk(!("categoria" in (d.saldo ?? {})) && !("estado_cuenta" in (d.saldo ?? {})),
+    "no publica campos que la cuenta real no devuelve (category_name/status eran del papel)");
+
+  // Bodegas: la cuenta real devuelve lista vacía y eso NO es un error.
+  chk(d.bodegas?.http === 200 && d.bodegas?.cantidad === 0,
+    "warehouses/ con lista vacía se informa como 0, no como fallo (un dropshipper no tiene bodegas propias)");
+
+  // Las dos rutas ya medidas y concluidas no se vuelven a llamar.
+  chk(!rutasDropi.some((x) => /cancellationReasons/.test(x)),
+    "NO reintenta cancellationReasons: exige el JWT de login y siempre daría 401");
+  chk(!rutasDropi.some((x) => /importlist/.test(x)),
+    "NO vuelve a tocar importlist: es PUT (escritura), ya medido con un 405");
+  chk(d.rutas_descartadas?.["importlist/importstore/1"]?.includes("PUT"),
+    "documenta en la respuesta por qué cada ruta quedó descartada");
+
+  // Disciplina de peticiones: con { dinero: true } NO se gasta catálogo.
+  chk(!rutasDropi.some((x) => /products|categories/.test(x)),
+    "la sonda de dinero NO consulta catálogo en la misma invocación (presupuesto de 429)");
+  chk(rutasDropi.length <= 3, `gasta como máximo 3 peticiones (gastó ${rutasDropi.length})`);
+
+  // El token nunca sale, igual que en el resto de la sonda.
+  chk(!crudo.includes("TOKEN-SECRETO-QUE-NO-DEBE-SALIR"), "el token no aparece en la respuesta de la sonda de dinero");
+}
+{
+  // La sonda de dinero respeta los mismos candados que el resto.
+  esAdmin = false;
+  rutasDropi.length = 0;
+  const r = await llamar({ dinero: true });
+  chk(r.status === 403, "un no-admin no puede leer el saldo");
+  chk(rutasDropi.length === 0, "un no-admin no llega a Dropi ni por la sonda de dinero");
+  esAdmin = true;
+}
+{
+  // Una bandera que no sea exactamente true sigue el camino de catálogo: no se
+  // activa una sonda financiera por un valor ambiguo.
+  rutasDropi.length = 0;
+  const r = await llamar({ dinero: "si" });
+  const d = await r.json();
+  chk(d.sonda === undefined && !rutasDropi.some((x) => /whoiam/.test(x)),
+    "solo { dinero: true } estricto activa la sonda de dinero");
+}
+
+{
+  // El 429 tiene que decirse en voz alta. El 10-oct-2026 el dueño recibió 429
+  // en dos lecturas y la conclusión decía «Conectados», porque el catálogo sí
+  // respondía: el freno quedaba escondido en un campo del JSON.
+  forzar429 = true;
+  const r = await llamar({ producto_id: 101 });
+  const d = await r.json();
+  chk(d.frenado_por_dropi === true, "un 429 de Dropi se informa como frenado_por_dropi");
+  chk(/429/.test(d.conclusion ?? ""), "la conclusión NOMBRA el 429 en vez de decir «conectados»");
+  chk(/4 peticiones/.test(d.conclusion ?? ""), "la conclusión explica que cada consulta gasta 4 peticiones");
+
+  const rd = await llamar({ dinero: true });
+  const dd = await rd.json();
+  chk(dd.frenado_por_dropi === true && /429/.test(dd.conclusion ?? ""),
+    "la sonda de dinero también avisa del 429 en vez de decir que no hay saldo");
+  forzar429 = false;
+}
+
+// La línea roja, ahora precisa: `cancellationReasons` es una LECTURA
+// documentada, pero myorders (crear/consultar pedidos) sigue prohibida, y
+// ninguna ruta de orders se toca con POST.
+chk(!rutasDropi.some((r) => /myorders/.test(r)), "NUNCA llama orders/myorders");
+chk(!rutasDropi.some((r) => /^POST .*orders/.test(r)), "NUNCA hace POST a una ruta de orders");
+chk(!rutasDropi.some((r) => /POST \/integrations\/products\/(?!index)/.test(r)), "NUNCA muta un producto Dropi");
 
 await servidor.shutdown();
 for (const r of resultados) console.log(`${r.ok ? "pasa" : "FALLA"} | ${r.que}`);

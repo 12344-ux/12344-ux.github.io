@@ -4685,3 +4685,352 @@ evidencia histórica.
   intento de desmarcar la casilla con sello activo por DML privilegiado →
   rechazado por el trigger.
 - Chromium Dropshipping **D1 54/54** y **D2a 60/60** (PC 1280 y celular 390).
+
+---
+
+# Dropshipping · sonda de dinero (solo lectura)
+
+**Corte:** 10 de octubre de 2026. **Sin migración, sin secretos nuevos.** Solo
+un redespliegue de la Edge Function `dropi-sonda`.
+
+## Qué hace y por qué
+
+Responde las preguntas de dinero de D2c **sin crear ningún pedido en Dropi**.
+
+La especificación publicada de Dropi (`https://api.dropi.co/docs`, OpenAPI
+crudo) declara en `POST whoiam` el campo **`wallets`: nuestro saldo**. Es el
+único lugar de toda la API conocida donde aparece nuestro dinero. Con eso, el
+protocolo para saber *cuándo se debita el saldo* es **leer el saldo antes y
+después de acciones que el dueño hace a mano en el panel de Dropi** — cero POST
+nuestros a `orders/`. Detalle en `docs/dropshipping-envios/DROPI.md` §9.
+
+Añade a `dropi-sonda` una bandera **opt-in** `{ dinero: true }` que hace 4
+lecturas y nada más:
+
+| Ruta | Para qué |
+|---|---|
+| `POST whoiam` | **El saldo**, en el campo real `walletAmount` |
+| `GET warehouses/` | Las bodegas (ruta del plugin oficial, nunca llamada) |
+
+**Medido en la cuenta real el 10-oct-2026 y ya corregido aquí:** el campo del
+saldo se llama **`walletAmount`**, no `wallets` como dice la especificación
+publicada; el id llega en `user_id`; y `status`/`category_name`/`store_url` no
+existen. Dos rutas quedaron **descartadas** tras medirlas:
+`api/orders/cancellationReasons` da 401 porque las rutas `/api/*` exigen el JWT
+de login, e `importlist/importstore/1` da 405 porque es **PUT** (escritura).
+
+Decisiones de diseño, todas medidas:
+
+- **Es excluyente:** con `{ dinero: true }` **no** se consulta catálogo. Dropi
+  responde 429 alrededor de la petición 12–16 en ráfaga y cada consulta de
+  catálogo de la sonda gasta 4. Mezclarlas es provocarse un 429 sin aprender
+  nada.
+- **Prueba las dos autenticaciones con el MISMO token:** la especificación marca
+  `whoiam` con seguridad `bearer`. Se intenta primero con
+  `dropi-integration-key` (lo que ya usamos) y, solo si responde 401/403, se
+  reintenta como `Authorization: Bearer`. **No se añade ningún secreto.** Si las
+  dos fallan, el camino sería el JWT de `/integrations/login`, que exigiría
+  guardar usuario y contraseña de Dropi: **eso lo decide el dueño**, la función
+  no lo intenta sola.
+- **PII:** `whoiam` devuelve nombre, correo y teléfono de la cuenta. **No se
+  devuelven.** La respuesta informa qué campos llegaron (`pii_omitida`) y solo
+  los valores operativos. El saldo tampoco se escribe en los logs.
+- **Límite autoimpuesto:** solo se llaman rutas que la especificación o el
+  plugin oficial prueban que existen. **No se adivinan URLs**: el acceso depende
+  de un `User-Agent` que Dropi tolera pero no autorizó.
+- **El 429 ahora se dice en voz alta**, también en el flujo normal de catálogo.
+  Antes la conclusión decía «Conectados» porque el catálogo sí respondía y el
+  freno quedaba escondido en un campo del JSON.
+
+**Lo que NO hace:** no llama `orders/myorders`, no hace POST a ninguna ruta de
+`orders`, no escribe en Supabase, no crea pedidos, reservas ni despachos.
+
+## D.1. Redesplegar `dropi-sonda`
+
+Supabase → Edge Functions → `dropi-sonda` → pestaña **Code** → pegar el
+contenido de `supabase/functions/dropi-sonda/index.ts` → **Deploy**.
+**Verify JWT: encendido** (sin cambios).
+
+## D.2. Leer el saldo desde el panel
+
+`https://montaguth.institute/panel.html` con sesión de admin → F12 → Consola:
+
+```js
+const { supabase } = await import('/supabase-config.js');
+const r = await supabase.functions.invoke('dropi-sonda', { body: { dinero: true } });
+const d = r.data ?? r.error;
+console.log(d.conclusion);
+console.table([{
+  saldo: d.saldo?.wallet_amount,
+  autenticacion: d.saldo?.autenticacion_que_funciono,
+  http_whoiam: d.saldo?.http,
+  bodegas: d.bodegas?.cantidad,
+  frenado: d.frenado_por_dropi,
+}]);
+// Si el saldo saliera null, esto dice qué campos y de qué TIPO llegaron
+// (nombres y tipos, nunca valores: no puede filtrar PII ni el saldo).
+console.log('forma de whoiam:', d.saldo?.forma);
+```
+
+| Resultado | Qué sigue |
+|---|---|
+| `saldo` con número | Listo: empieza el protocolo de §9.6 de `DROPI.md` |
+| `saldo: null` con `http_whoiam: 200` | Mirar `forma`: el nombre del campo cambió otra vez |
+| `http_whoiam: 401` por las dos vías | Decidir si se guardan usuario/contraseña de Dropi para el JWT de login |
+| `frenado: true` | Dropi frenó (429). Esperar unos minutos y repetir |
+
+## D.3. Pruebas hechas
+
+`bash supabase/pruebas/local/herramientas/correr-dropi-sonda-d1.sh` →
+**68 comprobaciones, 0 fallan** (las 40 de D1/D2a intactas + 28 nuevas).
+
+**El doble de pruebas imita la forma REAL de Dropi, no la especificación.** La
+primera versión copiaba el papel (`wallets`, `id`, `status`) y por eso las
+pruebas pasaban mientras en producción el saldo salía `null`: la misma trampa
+que ya costó las fotos y el `count` en D1. Lo que se comprueba:
+
+- lee el saldo desde el campo real `walletAmount`, y el id desde `user_id`;
+- informa el **tipo** de cada campo (`forma`) para no volver a adivinar nombres,
+  sin incluir valores;
+- no publica campos que la cuenta real no devuelve;
+- no reintenta `cancellationReasons` ni toca `importlist`, y documenta por qué;
+- trata `warehouses/` vacío como 0, no como fallo;
+- reintenta como `bearer` cuando el encabezado de integración no sirve, y deja
+  registrado qué respondió cada forma;
+- **no** devuelve el correo ni el teléfono de la cuenta, y declara la PII
+  omitida;
+- con `{ dinero: true }` **no** toca catálogo, y gasta como máximo 3 peticiones;
+- un no-admin recibe 403 y **no llega a Dropi**;
+- solo `{ dinero: true }` estricto activa la sonda (un `"si"` no la activa);
+- el token no aparece en la respuesta;
+- un 429 se informa y se nombra en la conclusión, en catálogo y en dinero;
+- **nunca** `orders/myorders`, **nunca** POST a `orders`, **nunca** muta un
+  producto.
+
+---
+
+# Dropshipping D2c.1 · stock vivo del proveedor
+
+**Corte:** 10 de octubre de 2026. Migración forward
+`20261026000000_dropshipping_d2c1_stock_vivo.sql` + Edge Function **nueva**
+`dropi-refrescar-stock` + dos extensiones de Postgres + un secreto nuevo.
+
+> **D2c.1 es INERTE a propósito.** No levanta `DS_PUBLICACION_PENDIENTE` y
+> `dropshipping_config.venta_proveedor_habilitada` nace en **false**, así que
+> ningún producto de proveedor puede publicarse ni asomarse a la tienda, ni
+> siquiera como tarjeta agotada. Lo único que hace es **mantener el stock
+> fresco** y mostrártelo en el panel. La venta llega en D2c.2.
+
+## Qué hace y por qué así
+
+| Pieza | Qué resuelve |
+|---|---|
+| `dropshipping_config` | Tus perillas en una fila: vigencia 120 min, piso de vitrina 20, vara de entrada 100, tanda 3, mínimo entre vueltas 20 s. **Cambiarlas no exige migración** |
+| `ds_productos_por_refrescar()` | La **cola rodante**, con auto-freno. Ordena por *último intento* |
+| `ds_registrar_lectura_stock()` | Donde escribe la Edge Function. Un fallo **no** toca el stock ni la vigencia |
+| `ds_estado_stock()` | El panel ve frescura y **por qué** un producto está fuera de vitrina |
+| `catalogo_publico` | Falla cerrado con proveedor, reutilizando el mismo booleano `agotado` |
+
+**Refresco rodante, no un lote.** MEDIDO el 10-oct: Dropi responde **429**
+alrededor de la petición 12–16 en ráfaga, y refrescar un producto cuesta 1
+petición. Tres por minuto nunca se acercan al techo y aun así un catálogo de 15
+productos queda completo cada 5 minutos — más fresco que un lote cada 15. Si
+Dropi devuelve 429, la vuelta **se aborta** en vez de insistir.
+
+**El copy público NO cambia.** Se reutiliza `agotado` («Agotado por ahora» +
+botón deshabilitado, que ya existen). Un texto distinto para proveedor sería una
+**etiqueta que delata** el dropshipping, y la tienda nunca debe oler a eso. Por
+eso D2c.1 no toca el repositorio `magandhi`: **cero cambios en la tienda.**
+
+## D2c1.1 · Aplicar la migración (SQL Editor, una sola vez)
+
+→ [SQL Editor](https://supabase.com/dashboard/project/bxlzipwxyxdtffnuizbz/sql/new)
+
+Pegar `supabase/migrations/20261026000000_dropshipping_d2c1_stock_vivo.sql`
+completo y ejecutar. Comprobación:
+
+```sql
+select vigencia_minutos, piso_vitrina, vara_entrada, refresco_por_tanda,
+       refresco_minimo_segundos, venta_proveedor_habilitada
+from dropshipping_config where id = 1;
+```
+
+Debe salir `120 · 20 · 100 · 3 · 20 · false`.
+
+## D2c1.2 · Crear el secreto del refresco
+
+La Edge Function del refresco **no la llama un navegador**: la llama el reloj de
+la base. Como `pg_net` no trae sesión, su puerta es un secreto propio de
+**mínimo privilegio**: su único poder es pedir un refresco de stock. **No es la
+`service_role`**, que nunca sale de las Edge Functions.
+
+1. Generar un valor largo y aleatorio (40+ caracteres). Por ejemplo, en la
+   consola del navegador:
+
+   ```js
+   console.log(crypto.randomUUID() + crypto.randomUUID());
+   ```
+
+2. → [Edge Functions → Secrets](https://supabase.com/dashboard/project/bxlzipwxyxdtffnuizbz/settings/functions)
+   → añadir **`DROPI_REFRESCO_SECRETO`** con ese valor.
+
+**Si ese secreto se filtrara, el daño está acotado por diseño:** el auto-freno
+vive en la base, así que mil invocaciones devuelven cero trabajo y cuestan cero
+peticiones a Dropi. No se puede leer nada ni escribir nada.
+
+## D2c1.3 · Desplegar `dropi-refrescar-stock`
+
+→ [Edge Functions](https://supabase.com/dashboard/project/bxlzipwxyxdtffnuizbz/functions)
+→ **Deploy a new function** → nombre exacto **`dropi-refrescar-stock`** → pegar
+`supabase/functions/dropi-refrescar-stock/index.ts` → Deploy.
+
+**Verify JWT: APAGADO.** Es obligatorio: `pg_net` no manda sesión de usuario.
+La autorización la hace la propia función con el secreto, igual que
+`wompi-webhook` y `em-webhook` verifican su firma.
+
+Usa los secretos que ya existen (`DROPI_TOKEN`, `DROPI_USER_AGENT`) más el
+nuevo. Probar a mano, con el secreto real en lugar de `TU_SECRETO`:
+
+```bash
+curl -s -X POST \
+  -H "x-refresco-secreto: TU_SECRETO" \
+  https://bxlzipwxyxdtffnuizbz.supabase.co/functions/v1/dropi-refrescar-stock
+```
+
+| Respuesta | Qué significa |
+|---|---|
+| `{"refrescados":0,...,"nada por refrescar"}` | **Correcto** si todavía no hay productos de proveedor importados |
+| `401 No autorizado` | El secreto no coincide |
+| `500 Falta el secreto...` | Falta `DROPI_REFRESCO_SECRETO` |
+
+## D2c1.4 · Habilitar las extensiones y agendar el reloj
+
+**Qué son.** Una extensión de Postgres es un módulo que le añade capacidades a
+la base. Necesitamos dos:
+
+| Extensión | Qué hace | Por qué |
+|---|---|---|
+| **`pg_cron`** | Programador de tareas **dentro** de la base: «ejecuta este SQL cada N» | Es el reloj que el proyecto no tenía. Mínimo **1 minuto** (GitHub Actions es 5 y se retrasa 10–15) |
+| **`pg_net`** | Permite a Postgres hacer peticiones **HTTP** sin bloquear la transacción | `pg_cron` solo ejecuta SQL, y refrescar stock exige llamar a Dropi. `pg_net` es el puente |
+
+1. → [Database → Extensions](https://supabase.com/dashboard/project/bxlzipwxyxdtffnuizbz/database/extensions)
+   → habilitar **`pg_cron`** y **`pg_net`**.
+
+2. Guardar el secreto en **Vault**, que lo cifra en reposo
+   (→ [Vault](https://supabase.com/dashboard/project/bxlzipwxyxdtffnuizbz/settings/vault/secrets)),
+   con el nombre `dropi_refresco_secreto` y **el mismo valor** del paso D2c1.2.
+
+3. Agendar, en el SQL Editor (una sola vez):
+
+```sql
+-- El reloj del stock proveedor: cada minuto pide una vuelta de refresco.
+-- El trabajo real y el auto-freno viven en la base y en la Edge Function; esto
+-- solo toca el timbre. Si se llama de más, la cola devuelve cero filas.
+select cron.schedule(
+  'dropi-refrescar-stock',
+  '* * * * *',
+  $$
+  select net.http_post(
+    url     := 'https://bxlzipwxyxdtffnuizbz.supabase.co/functions/v1/dropi-refrescar-stock',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-refresco-secreto', (select decrypted_secret from vault.decrypted_secrets
+                             where name = 'dropi_refresco_secreto')
+    ),
+    body    := '{}'::jsonb,
+    timeout_milliseconds := 25000
+  );
+  $$
+);
+```
+
+Comprobar que quedó y que corre:
+
+```sql
+select jobid, schedule, active from cron.job where jobname = 'dropi-refrescar-stock';
+
+-- Últimas vueltas (debería haber una por minuto)
+select start_time, status, return_message
+from cron.job_run_details
+where jobname = 'dropi-refrescar-stock'
+order by start_time desc limit 5;
+```
+
+**Para pausar el reloj** (por ejemplo si Dropi nos frena de forma sostenida):
+
+```sql
+select cron.unschedule('dropi-refrescar-stock');
+```
+
+## D2c1.5 · Comprobar que el stock se mueve
+
+**Ya está en la pantalla.** Abre
+`https://montaguth.institute/dropshipping/` y arriba aparece **«Stock vivo y
+saldo»**: tu saldo de Dropi y una tabla con cada producto importado, su stock,
+su piso, cuándo se leyó, cuándo vence y **por qué** está o no en vitrina
+(`sin lectura todavía`, `lectura vencida`, `por debajo del piso`, `en vitrina`).
+El botón **Actualizar** relee las dos cosas.
+
+- Una lectura **vencida** se marca aparte, para verla de un golpe.
+- Si el saldo está en **cero**, sale una alerta: sin saldo se vende y **no se
+  puede despachar**.
+- Si Dropi falla o frena (429), el aviso va en su propia caja y **la tabla de
+  stock se pinta igual**: son dos lecturas independientes.
+- El saldo solo lo ve un **admin** (la sonda es de admin hasta D3); el estado del
+  stock lo ve cualquier perfil con el módulo.
+
+Si prefieres la consola:
+
+```js
+const { supabase } = await import('/supabase-config.js');
+const { data } = await supabase.rpc('ds_estado_stock');
+console.table(data);
+```
+
+## D2c1.6 · Pruebas hechas
+
+```
+bash supabase/pruebas/local/herramientas/preparar.sh      # una vez
+bash /projects/sandbox/pruebas-em5/pg.sh supabase/pruebas/local/dropshipping-d2c1.sql
+bash supabase/pruebas/local/herramientas/correr-dropi-refresco.sh
+```
+
+Y la pantalla, en Chromium a 1280 y a 390 px:
+
+```
+bash supabase/pruebas/local/herramientas/correr-ui-dropshipping.sh
+```
+
+**613 comprobaciones, 0 fallan.** Matriz de permisos 170/170, D2c.1 SQL 44/44,
+refresco (Deno) 32/32, pantalla D2c.1 50/50, pantalla D1 54/54, pantalla D2a
+60/60, D1 29/29, D2a 30/30, F3 84/84, fechas-colombia 16/16, sonda 68/68,
+pagos-f2 40/40. Lo que se mide:
+
+- lectura **vencida** ⇒ `agotado=true` aunque Dropi reporte 230 unidades;
+- piso 20: stock 19 fuera, stock 20 dentro; el piso propio manda sobre el global;
+- el derrumbe medido (300 ⇒ 0) saca el producto de inmediato;
+- **un fallo NO toca stock ni vigencia**: la foto vieja sigue envejeciendo;
+- el **auto-freno**: dos llamadas seguidas no entregan trabajo la segunda;
+- la cola ordena por último intento, así el que falla **cede el turno**;
+- **con variante fijada se usa el stock de ESA variante**, no el del producto
+  (si no, una talla agotada vendería humo porque otra tiene unidades);
+- una variante que desapareció se registra como **0**, no como error;
+- ante un **429 se aborta la vuelta**: una petición, no tres;
+- sin el secreto: 401, y **no toca Dropi ni la base**;
+- ni el token, ni la `service_role`, ni el secreto aparecen en la respuesta;
+- contra Dropi **solo GET**, solo `products/v2/{id}`, **nunca** `orders/`;
+- con el interruptor cerrado **ningún** producto proveedor sale a la tienda;
+- publicar una campaña de proveedor **sigue bloqueado**.
+
+En la pantalla, además:
+
+- el motivo de cada producto se lee y se entiende, en PC y en celular;
+- una lectura vencida con 500 unidades se muestra como **vencida**, no como
+  disponible;
+- el saldo en **cero** pinta la alerta y explica la consecuencia real;
+- si la consulta del saldo falla, la tabla de stock **se pinta igual** y el aviso
+  **no pisa** el estado del área de búsqueda;
+- sin stock no se inventa un 0: se muestra un guion;
+- si el campo del saldo volviera a cambiar de nombre, **se dice** en vez de
+  mostrar 0;
+- un perfil no-admin **no ve el saldo** y no se le inventa un error.
