@@ -124,6 +124,170 @@ function generarReferencia(idProducto: string): string {
 
 // Detecta si un identificador de producto tiene forma de UUID (para decidir si
 // se filtra por id o por slug en catalogo_publico).
+// ----------------------------------------------------------------------------
+// D2c.2c · VERIFICACION EN VIVO contra Dropi antes de cobrar
+// ----------------------------------------------------------------------------
+// Para un producto PROPIO no hace nada: su candado es el libro de Inventario y
+// lo aplica crear_pedido. Para uno de PROVEEDOR le pregunta a Dropi ahora.
+//
+// EL CRITERIO, que es la decision dificil de todo el tramo:
+//   · Dropi responde que NO hay  -> se rechaza. Fallo cerrado, sin discusion.
+//   · Dropi NO responde (caido, 429, lento) y la ultima lectura es FRESCA
+//     -> se permite. Esa lectura ya paso la vigencia y el piso, y es la mejor
+//     informacion disponible. Bloquear aqui convertiria cualquier hipo de Dropi
+//     en una tienda caida, que es peor que el riesgo que evita.
+//   · Dropi NO responde y la lectura YA ENVEJECIO -> se rechaza. Si no hay
+//     forma de confirmar y la evidencia tiene tiempo, no se cobra.
+//
+// El umbral de frescura vive en dropshipping_config, no aqui.
+// ----------------------------------------------------------------------------
+const DROPI_BASE = (Deno.env.get("DROPI_API_BASE") ?? "https://api.dropi.co/integrations/")
+  .replace(/\/*$/, "/");
+const DROPI_UA = () =>
+  (Deno.env.get("DROPI_USER_AGENT") ?? "MAGANDHI-Impulse/1.0 (+https://magandhi.com)").trim();
+
+type Obj = Record<string, unknown>;
+const esObjeto = (v: unknown): v is Obj => !!v && typeof v === "object" && !Array.isArray(v);
+
+const sumarStockBodegas = (filas: unknown): number | null =>
+  Array.isArray(filas)
+    ? filas.reduce((s: number, w) => s + (esObjeto(w) ? Number(w.stock) || 0 : 0), 0)
+    : null;
+
+function stockDeVariacion(v: Obj): number | null {
+  if (typeof v.stock === "number") return v.stock;
+  if (Array.isArray(v.warehouse_product_variation)) {
+    return sumarStockBodegas(v.warehouse_product_variation);
+  }
+  return null;
+}
+
+// Misma regla que dropi-refrescar-stock: si el registro tiene variante, el
+// stock sale de ESA variante. Usar el total del producto venderia humo de una
+// talla agotada porque otra tiene unidades.
+function stockDeLaFicha(p: Obj, variacion: string | null): number | null {
+  const variaciones = Array.isArray(p.variations) ? p.variations : [];
+  if (variacion) {
+    const v = variaciones.find((x) => esObjeto(x) && String(x.id) === variacion);
+    // La variante desaparecio del catalogo: es exactamente «no hay».
+    if (!esObjeto(v)) return 0;
+    return stockDeVariacion(v) ?? 0;
+  }
+  if (String(p.type ?? "").toUpperCase() === "VARIABLE" && variaciones.length) {
+    return variaciones.reduce(
+      (s: number, v) => s + (esObjeto(v) ? (stockDeVariacion(v) ?? 0) : 0),
+      0,
+    );
+  }
+  if (typeof p.stock === "number") return p.stock;
+  return sumarStockBodegas(p.warehouse_product);
+}
+
+async function verificarProveedorEnVivo(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  campanaId: string,
+): Promise<{ rechazar: boolean; log: Obj }> {
+  let datos: Obj | null = null;
+  try {
+    const { data } = await supabase.rpc("ds_verificacion_checkout", { p_campana_id: campanaId });
+    datos = esObjeto(data) ? data : null;
+  } catch (_) {
+    datos = null;
+  }
+
+  // Sin datos (migracion D2c.2c no aplicada, o campania sin producto): no se
+  // inventa una verificacion ni se bloquea una venta que hoy ya funciona. El
+  // candado de crear_pedido sigue detras.
+  if (!datos) return { rechazar: false, log: { motivo: "sin datos de verificacion" } };
+  if (datos.origen !== "proveedor") return { rechazar: false, log: { origen: datos.origen } };
+
+  const dropiId = String(datos.dropi_id ?? "");
+  const variante = datos.variante == null ? null : String(datos.variante);
+  const piso = Number(datos.piso ?? 20);
+  const reservadas = Number(datos.reservadas ?? 0);
+  const minutos = datos.minutos_desde_lectura == null ? null : Number(datos.minutos_desde_lectura);
+  const frescuraMax = Number(datos.frescura_max_min ?? 10);
+  const token = (Deno.env.get("DROPI_TOKEN") ?? "").trim();
+
+  // Sin id externo no hay a quien preguntarle, y tampoco a quien pedirle: un
+  // producto proveedor sin ficha no se puede despachar.
+  if (!/^\d{1,12}$/.test(dropiId)) {
+    return { rechazar: true, log: { motivo: "producto proveedor sin id de Dropi" } };
+  }
+
+  const lecturaFresca = minutos !== null && minutos <= frescuraMax;
+
+  if (!token) {
+    // Falta el secreto: es un problema NUESTRO de configuracion, no del stock.
+    return {
+      rechazar: !lecturaFresca,
+      log: { motivo: "falta DROPI_TOKEN", lectura_min: minutos, permitido: lecturaFresca },
+    };
+  }
+
+  let http = 0;
+  let cuerpo: Obj | null = null;
+  try {
+    const ctrl = new AbortController();
+    // Corto a proposito: hay una persona esperando para pagar. Si Dropi tarda
+    // mas que esto, se decide con la lectura en cache.
+    const t = setTimeout(() => ctrl.abort(), 6000);
+    try {
+      const r = await fetch(`${DROPI_BASE}products/v2/${encodeURIComponent(dropiId)}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json;charset=UTF-8",
+          "dropi-integration-key": token,
+          Accept: "application/json",
+          "User-Agent": DROPI_UA(),
+        },
+        signal: ctrl.signal,
+      });
+      http = r.status;
+      const texto = await r.text();
+      try {
+        const j = JSON.parse(texto);
+        cuerpo = esObjeto(j?.objects) ? j.objects as Obj : null;
+      } catch { /* no era JSON */ }
+    } finally {
+      clearTimeout(t);
+    }
+  } catch (_) {
+    http = 0;
+  }
+
+  if (http !== 200 || !cuerpo) {
+    // Dropi no confirmo. Decide la EDAD de la evidencia.
+    return {
+      rechazar: !lecturaFresca,
+      log: {
+        motivo: "Dropi no confirmo",
+        http,
+        lectura_min: minutos,
+        frescura_max: frescuraMax,
+        permitido: lecturaFresca,
+      },
+    };
+  }
+
+  const stock = stockDeLaFicha(cuerpo, variante);
+  if (stock === null) {
+    return {
+      rechazar: !lecturaFresca,
+      log: { motivo: "ficha sin stock reconocible", permitido: lecturaFresca },
+    };
+  }
+
+  // Dropi hablo: su numero manda, menos lo que ya nos llevamos sin transcribir.
+  const disponible = stock - reservadas;
+  const alcanza = disponible >= Math.max(piso, 1);
+  return {
+    rechazar: !alcanza,
+    log: { http, stock, reservadas, disponible, piso, alcanza },
+  };
+}
+
 function pareceUuid(valor: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     .test(valor);
@@ -287,6 +451,26 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // --- (2) Rechazar producto agotado ----------------------------------------
   // Coherente con el boton Comprar deshabilitado en la tienda cuando agotado.
   if (fila.agotado === true) {
+    return json({ error: "Producto agotado." }, 409, cors);
+  }
+
+  // --- (2 bis) D2c.2c · VERIFICACION EN VIVO del producto de proveedor ------
+  // El booleano `agotado` sale de una FOTOGRAFIA de Dropi, no del presente. Es
+  // fresca (el reloj refresca cada minuto) pero no es ahora. Aqui, con el
+  // cliente a un clic de pagar, se le pregunta a Dropi DIRECTAMENTE.
+  //
+  // Es el unico momento del flujo en que vale la pena gastar una peticion
+  // externa: ocurre una vez por compra, no por visita, asi que no amenaza el
+  // limite de Dropi (429 medido alrededor de la peticion 12-16 en rafaga).
+  //
+  // Va DESPUES del chequeo de agotado y ANTES de registrar la intencion: si
+  // rechaza, no queda rastro de una intencion que nunca debio existir.
+  const verificacion = await verificarProveedorEnVivo(supabase, String(fila.id));
+  if (verificacion.rechazar) {
+    console.log("[crear-intencion-pago] proveedor rechazado en vivo:", JSON.stringify(verificacion.log));
+    // MISMO mensaje que el agotado normal, a proposito: la tienda ya sabe
+    // traducirlo («se agotó mientras llenabas tus datos») y un texto distinto
+    // delataria cuales productos son de proveedor.
     return json({ error: "Producto agotado." }, 409, cors);
   }
 

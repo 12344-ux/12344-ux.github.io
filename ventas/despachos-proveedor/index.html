@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Despachos de proveedor · Ventas · MAGANDHI</title>
+<link rel="icon" type="image/png" href="../../marca-areas/ventas.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=2">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=2">
+<link rel="stylesheet" href="../ventas.css?v=3">
+<link rel="stylesheet" href="despachos.css?v=1">
+</head>
+<body class="vt-body">
+
+<main class="vt-wrap" id="vt-main" hidden>
+  <!-- La promesa del tramo, dicha sin rodeos: el cliente ya pagó. Mientras un
+       pedido esté aquí, sus unidades cuentan como reservadas contra el stock
+       del proveedor, así que esta lista no es un recordatorio: es lo que
+       mantiene honesta la vitrina. -->
+  <section class="vt-nota" aria-label="Qué es esta pantalla">
+    <span data-ico="info" aria-hidden="true"></span>
+    <div><strong>El cliente ya pagó. Falta pedirlo al proveedor.</strong>
+      Estos pedidos se cobraron y todavía <b>no existen en Dropi</b>. Créalos
+      allá a mano, y vuelve a anotar aquí el número que te dé, el costo y el
+      flete. Mientras un pedido siga en esta lista, sus unidades se descuentan
+      del stock disponible en la tienda.</div>
+  </section>
+
+  <div id="vt-estado" aria-live="polite"></div>
+  <div id="vt-lista"><div class="vt-empty">Cargando despachos pendientes…</div></div>
+</main>
+
+<script type="module">
+  import {
+    asegurarAcceso, montarHeader, ICONOS, supabase,
+    escaparHTML, formatearCOP, formatearMomento, analizarMonto
+  } from '../ventas-core.js';
+
+  const main = document.getElementById('vt-main');
+  const estadoEl = document.getElementById('vt-estado');
+  const listaEl = document.getElementById('vt-lista');
+  const ico = (n) => ICONOS[n] || '';
+
+  let filas = [];
+
+  function aviso(clase, titulo, cuerpo) {
+    // Clases propias: la convención de Ventas es «.vt-msg.err» (sin variantes
+    // --ok), así que no se inventan modificadores sobre una clase ajena.
+    estadoEl.innerHTML =
+      '<section class="dp-banner ' + clase + '">' +
+      '<strong>' + escaparHTML(titulo) + '</strong>' +
+      (cuerpo ? '<br>' + escaparHTML(cuerpo) : '') + '</section>';
+  }
+
+  // Cuánto lleva esperando. Un pedido pagado que no se despacha es el problema
+  // más caro del frente, así que el tiempo se dice en voz alta y en rojo cuando
+  // ya es mucho.
+  function espera(horas) {
+    const h = Number(horas);
+    if (!Number.isFinite(h)) return '';
+    if (h < 1) return '<span class="dp-espera">hace minutos</span>';
+    if (h < 24) return '<span class="dp-espera">hace ' + Math.round(h) + ' h</span>';
+    const d = Math.floor(h / 24);
+    return '<span class="dp-espera dp-espera--tarde">hace ' + d + (d === 1 ? ' día' : ' días') + '</span>';
+  }
+
+  function tarjeta(f, i) {
+    const variante = f.variante ? ' · variante <b>' + escaparHTML(f.variante) + '</b>' : '';
+    const destino = [f.ciudad, f.departamento].filter(Boolean).map(escaparHTML).join(', ');
+    return '' +
+    '<article class="dp-item" data-i="' + i + '">' +
+      '<header class="dp-cab">' +
+        '<div>' +
+          '<h2 class="dp-nombre">' + escaparHTML(f.producto || '(sin nombre)') + '</h2>' +
+          '<p class="dp-meta">Pedido <b>' + escaparHTML(f.pedido_corto) + '</b> · ' +
+            escaparHTML(f.sku || '') + ' · ' + espera(f.horas_esperando) + '</p>' +
+        '</div>' +
+        '<span class="vt-badge">' + escaparHTML(f.estado || '') + '</span>' +
+      '</header>' +
+
+      // Lo que hay que copiar a Dropi, junto y grande: es la tarea real.
+      '<div class="dp-copiar">' +
+        '<p class="dp-copiar-tit">Pide esto en Dropi</p>' +
+        '<ul>' +
+          '<li>Producto <b>#' + escaparHTML(f.dropi_id) + '</b>' + variante + '</li>' +
+          '<li>Cantidad <b>' + Number(f.cantidad) + '</b></li>' +
+          '<li>Destino <b>' + (destino || '—') + '</b></li>' +
+          '<li>Tipo <b>SIN RECAUDO</b> (el cliente ya pagó)</li>' +
+        '</ul>' +
+        (f.stock_al_vender != null
+          ? '<p class="dp-evidencia">Al cobrar, Dropi reportaba ' +
+            Number(f.stock_al_vender) + ' unidad(es).</p>'
+          : '') +
+      '</div>' +
+
+      '<div class="dp-form">' +
+        '<p class="dp-form-tit">Ya lo creé en Dropi</p>' +
+        '<div class="vt-form-grid">' +
+          '<label class="vt-campo"><span>Número de pedido en Dropi *</span>' +
+            '<input class="vt-input" data-c="externo" type="text" maxlength="60" ' +
+              'autocomplete="off" placeholder="El que te dio Dropi"></label>' +
+          '<label class="vt-campo"><span>Costo del producto</span>' +
+            '<input class="vt-input" data-c="costo" type="text" inputmode="numeric" ' +
+              'autocomplete="off" placeholder="Ej. 21.000"></label>' +
+          '<label class="vt-campo"><span>Flete</span>' +
+            '<input class="vt-input" data-c="flete" type="text" inputmode="numeric" ' +
+              'autocomplete="off" placeholder="Ej. 14.500"></label>' +
+        '</div>' +
+        '<p class="dp-ayuda">El número es obligatorio: es lo que permite verificar ' +
+          'después si el pedido existe, y lo que evita crearlo dos veces. El costo y el ' +
+          'flete puedes dejarlos vacíos si Dropi aún no los muestra y completarlos luego; ' +
+          'mientras falten, el asiento contable queda pendiente en Finanzas.</p>' +
+        '<div class="vt-acciones">' +
+          '<button class="vt-btn" data-c="guardar" type="button">' + ico('check') +
+            'Registrar despacho</button>' +
+          '<span class="dp-msg" data-c="msg" aria-live="polite"></span>' +
+        '</div>' +
+      '</div>' +
+    '</article>';
+  }
+
+  function pintar() {
+    if (!filas.length) {
+      listaEl.innerHTML =
+        '<div class="vt-empty"><strong>No hay despachos pendientes</strong>' +
+        'Cuando se venda un producto de proveedor, aparecerá aquí para que lo pidas en Dropi.</div>';
+      return;
+    }
+    listaEl.innerHTML =
+      '<p class="dp-cuenta">' + filas.length +
+        (filas.length === 1 ? ' pedido por crear en Dropi' : ' pedidos por crear en Dropi') + '</p>' +
+      filas.map(tarjeta).join('');
+    listaEl.querySelectorAll('[data-c="guardar"]').forEach((b) => {
+      b.addEventListener('click', () => guardar(b.closest('.dp-item')));
+    });
+  }
+
+  async function cargar() {
+    const { data, error } = await supabase.rpc('ds_pedidos_por_transcribir');
+    if (error) {
+      listaEl.innerHTML = '';
+      aviso('dp-banner--err', 'No se pudo leer la lista de despachos',
+        error.message || 'Intenta de nuevo en un momento.');
+      return;
+    }
+    // OJO: aquí NO se limpia el aviso. Hacerlo borraba el mensaje de éxito en
+    // el mismo instante en que se pintaba, porque guardar() recarga la lista.
+    filas = Array.isArray(data) ? data : [];
+    pintar();
+  }
+
+  async function guardar(item) {
+    if (!item) return;
+    const i = Number(item.dataset.i);
+    const f = filas[i];
+    if (!f) return;
+    const val = (c) => (item.querySelector('[data-c="' + c + '"]')?.value ?? '').trim();
+    const msg = item.querySelector('[data-c="msg"]');
+    const btn = item.querySelector('[data-c="guardar"]');
+
+    const externo = val('externo');
+    if (!externo) {
+      msg.className = 'dp-msg dp-msg--err';
+      msg.textContent = 'Anota el número de pedido que te dio Dropi.';
+      item.querySelector('[data-c="externo"]')?.focus();
+      return;
+    }
+    // Los montos se leen con el MISMO parser del resto de Ventas, así que
+    // «21.000», «21000» y «$ 21.000» significan lo mismo.
+    //
+    // OJO: parsearMonto NUNCA devuelve null — un texto sin dígitos se vuelve 0.
+    // Aceptar eso convertiría «veintiún mil» en un costo de cero sin avisar, y
+    // el asiento contable saldría mal. Se usa analizarMonto, que sí marca lo
+    // ambiguo, y además se exige al menos un dígito. Un 0 escrito a propósito
+    // sigue siendo válido: el flete puede ser gratis.
+    const monto = (campo) => {
+      const t = val(campo);
+      if (!t) return { valor: null };
+      const a = analizarMonto(t);
+      if (a.invalido || !/\d/.test(t)) return { malo: true, valor: null };
+      return { valor: a.valor };
+    };
+    const mCosto = monto('costo');
+    const mFlete = monto('flete');
+    if (mCosto.malo) {
+      msg.className = 'dp-msg dp-msg--err';
+      msg.textContent = 'El costo no se entiende. Usa solo números, por ejemplo 21.000.';
+      return;
+    }
+    if (mFlete.malo) {
+      msg.className = 'dp-msg dp-msg--err';
+      msg.textContent = 'El flete no se entiende. Usa solo números, por ejemplo 14.500.';
+      return;
+    }
+    const costo = mCosto.valor;
+    const flete = mFlete.valor;
+
+    btn.disabled = true;
+    msg.className = 'dp-msg';
+    msg.textContent = 'Guardando…';
+    const { data, error } = await supabase.rpc('ds_registrar_transcripcion', {
+      p_pedido_id: f.pedido_id,
+      p_product_id: f.product_id,
+      p_pedido_externo_id: externo,
+      p_costo_real: costo,
+      p_flete: flete,
+    });
+    btn.disabled = false;
+
+    if (error) {
+      msg.className = 'dp-msg dp-msg--err';
+      // El mensaje del servidor ya explica qué hacer; no se traduce ni se tapa.
+      msg.textContent = String(error.message || 'No se pudo registrar.')
+        .replace(/^[A-Z_]+:\s*/, '');
+      return;
+    }
+    const faltan = costo == null || flete == null;
+    await cargar();
+    // El aviso va DESPUÉS de recargar: pintarlo antes y recargar después lo
+    // borraba sin que nadie lo viera.
+    aviso('dp-banner--ok',
+      'Despacho registrado' + (data?.ya_estaba ? ' (ya estaba, se completaron los datos)' : ''),
+      faltan
+        ? 'Falta el costo o el flete: el asiento contable queda pendiente en Finanzas hasta que los anotes.'
+        : 'El asiento ya se puede registrar desde Finanzas.');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  (async () => {
+    const acceso = await asegurarAcceso(main, '../index.html');
+    if (!acceso) return;
+    montarHeader({
+      titulo: 'Despachos de proveedor',
+      kicker: 'VENTAS · DESPACHO CON PROVEEDOR',
+      lead: 'Pedidos ya cobrados que hay que crear a mano en Dropi. Aquí ves qué pedir y anotas el número, el costo y el flete cuando ya lo hiciste.',
+      sesion: acceso.sesion,
+      areaLabel: 'VENTAS',
+      volverHref: '../index.html',
+      volverTexto: 'Ventas',
+    });
+    document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = ico(el.dataset.ico); });
+    main.hidden = false;
+    await cargar();
+  })();
+</script>
+</body>
+</html>
