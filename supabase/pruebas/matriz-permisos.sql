@@ -140,6 +140,14 @@ begin
     if to_regprocedure('public.ds_llevar_a_campanas(uuid,text,text,text,bigint,integer,timestamptz,jsonb)') is not null then
       v_lista_blanca := v_lista_blanca || array['ds_llevar_a_campanas'];
     end if;
+    -- D2c.1 (20261026000000): una sola puerta nueva de panel, de LECTURA
+    -- (frescura del stock y por qué un producto está fuera de vitrina). Las dos
+    -- RPC del refresco —ds_productos_por_refrescar y ds_registrar_lectura_stock—
+    -- quedan a propósito FUERA de esta lista: solo las ejecuta service_role
+    -- desde la Edge Function, nunca un usuario con sesión.
+    if to_regprocedure('public.ds_estado_stock()') is not null then
+      v_lista_blanca := v_lista_blanca || array['ds_estado_stock'];
+    end if;
 
     -- F2 solo existe desde 202610190. La matriz corre también una foto anterior
     -- a F2 para comprobar el diagnóstico, por eso la lista blanca es sensible
