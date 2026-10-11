@@ -364,10 +364,16 @@ exception when others then
   return sqlerrm;
 end $$;
 
+-- NOTA: aquí vivía la afirmación «D2c.1 no levanta el candado». Dejó de ser
+-- medible cuando D2c.2b lo levantó, y el banco aplica TODAS las migraciones: la
+-- inercia de un tramo intermedio no se puede observar desde el estado final.
+-- Lo que sí se conserva aquí es el interruptor, que esta prueba controla ella
+-- misma (comprobación de más abajo). El candado de publicación y su requisito
+-- nuevo se miden en dropshipping-d2c2b.sql.
 select pg_temp.chk(
   pg_temp.err_con_sub($$select cm_publicar_campana(
-    'ca000000-0000-4000-8000-00000000000b'::uuid, true)$$) like '%DS_PUBLICACION_PENDIENTE%',
-  'D2c.1 NO levanta el candado: publicar una campaña de proveedor sigue bloqueado');
+    'ca000000-0000-4000-8000-00000000000b'::uuid, true)$$) = 'SIN ERROR',
+  'con ficha y precio, publicar un producto de proveedor funciona (lo abrió D2c.2b)');
 
 -- El candado duro de la vitrina: con el interruptor en false, una campaña
 -- proveedor publicada por DML directo NO se asoma a la tienda.

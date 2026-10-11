@@ -227,13 +227,20 @@ select pg_temp.chk(
 -- ------------------------------------------------------------------
 -- 5. Nada de esto publica ni toca Inventario
 -- ------------------------------------------------------------------
+-- ACTUALIZADO EN D2c.2b: aquí se exigía DS_PUBLICACION_PENDIENTE, el contrato
+-- de D2a. Ese candado se levantó a propósito: ya existe stock vivo que falla
+-- cerrado, verificación antes de cobrar y asiento contra el saldo en Dropi.
+--
+-- Esta campaña recorrió el camino completo del tramo: se importó desde Dropi
+-- (así que tiene ficha de proveedor) y una prueba anterior le puso precio con
+-- cm_editar_campana. Es decir, está lista — y ahora publica.
 select pg_temp.chk(
   pg_temp.err_como('7e5a0000-0000-4000-8000-000000000003',
-    $$select cm_publicar_campana((select campana from ids), true)$$) like 'DS_PUBLICACION_PENDIENTE%',
-  'el borrador proveedor sigue sin poder publicarse (espera D2c)');
+    $$select cm_publicar_campana((select campana from ids), true)$$) = 'SIN ERROR',
+  'el borrador importado, ya curado y con precio, SÍ se publica (lo abrió D2c.2b)');
 select pg_temp.chk(
-  not exists (select 1 from catalogo_publico where id = (select campana from ids)),
-  'no aparece en catalogo_publico');
+  exists (select 1 from catalogo_publico where id = (select campana from ids)),
+  'y aparece en catalogo_publico: lo protegen la vigencia y el piso, no una exclusión total');
 select pg_temp.chk(
   not exists (select 1 from movimientos_inventario where product_id = (select producto from ids))
   and not exists (select 1 from stock_actual where product_id = (select producto from ids)),

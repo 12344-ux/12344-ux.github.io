@@ -148,6 +148,22 @@ begin
     if to_regprocedure('public.ds_estado_stock()') is not null then
       v_lista_blanca := v_lista_blanca || array['ds_estado_stock'];
     end if;
+    -- D2c.2a (20261027000000): la puerta unica de disponibilidad. La usa
+    -- crear_pedido y la pueden leer las pantallas internas de Ventas.
+    -- OJO: catalogo_publico NO la llama. Si la llamara, `anon` necesitaria
+    -- EXECUTE y esta funcion devuelve EXISTENCIAS EXACTAS, que la lista blanca
+    -- publica no puede exponer. Por eso la vista repite la condicion.
+    if to_regprocedure('public.ventas_disponible_para_venta(uuid)') is not null then
+      v_lista_blanca := v_lista_blanca || array['ventas_disponible_para_venta'];
+    end if;
+    -- D2c.2b (20261028000000): las dos puertas del despacho manual. Ventas las
+    -- necesita para ver qué falta transcribir a Dropi y para anotar el número
+    -- externo, el costo real y el flete.
+    if to_regprocedure('public.ds_pedidos_por_transcribir()') is not null then
+      v_lista_blanca := v_lista_blanca || array[
+        'ds_pedidos_por_transcribir', 'ds_registrar_transcripcion'
+      ];
+    end if;
 
     -- F2 solo existe desde 202610190. La matriz corre también una foto anterior
     -- a F2 para comprobar el diagnóstico, por eso la lista blanca es sensible

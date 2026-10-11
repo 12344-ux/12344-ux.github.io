@@ -222,16 +222,22 @@ select set_config('impulse.ds_importando', 'on', true);
 insert into campana_producto (id, nombre, slug, precio_venta, product_id_ref, publicado, activo) values
   ('d2300000-0000-4000-8000-000000000021', 'Campaña proveedor D1', 'd1-proveedor', 30000, 'd2300000-0000-4000-8000-000000000002', false, true);
 select set_config('impulse.ds_importando', 'off', true);
+-- ACTUALIZADO EN D2c.2b: aqui se exigia DS_PUBLICACION_PENDIENTE, que era el
+-- contrato de D1. D2c.2b levanto ese candado a proposito, porque ya existe
+-- stock vivo que falla cerrado, verificacion antes de cobrar y asiento contra
+-- el saldo en Dropi. Lo que se conserva de D1 es el requisito de FICHA: un
+-- producto de proveedor sin su id de Dropi no se puede pedir a nadie.
+-- Este producto SI tiene ficha, asi que ahora publica.
 select pg_temp.chk(
   pg_temp.err_como('7e590000-0000-4000-8000-000000000003',
-    $$select cm_publicar_campana('d2300000-0000-4000-8000-000000000021', true)$$)
-    like 'DS_PUBLICACION_PENDIENTE%',
-  'Marketing no puede publicar proveedor antes de stock vivo/checkout D2');
--- Incluso con un update privilegiado accidental, catalogo_publico lo oculta.
+    $$select cm_publicar_campana('d2300000-0000-4000-8000-000000000021', true)$$) = 'SIN ERROR',
+  'desde D2c.2b, Marketing SI puede publicar un producto de proveedor con ficha');
 update campana_producto set publicado = true where id = 'd2300000-0000-4000-8000-000000000021';
+-- Y ahora si debe verse, porque el interruptor quedo abierto. La vitrina sigue
+-- protegida por la vigencia y el piso, no por una exclusion total.
 select pg_temp.chk(
-  not exists (select 1 from catalogo_publico where slug = 'd1-proveedor'),
-  'catalogo_publico oculta proveedor aun ante escritura privilegiada accidental');
+  exists (select 1 from catalogo_publico where slug = 'd1-proveedor'),
+  'y catalogo_publico ya lo muestra (lo protege la vigencia y el piso, no una exclusion)');
 
 -- ------------------------------------------------------------------
 -- 6. Privacidad y permisos nominales
