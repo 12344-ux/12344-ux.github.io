@@ -362,6 +362,25 @@ function cuerpoUtil(r: Awaited<ReturnType<typeof llamarDropi>>): Obj | null {
   return j;
 }
 
+// Diagnóstico de FORMA: nombre del campo -> tipo. Nunca valores, así que no
+// puede filtrar datos personales ni el saldo. Existe porque el 10-oct-2026
+// `campos` (solo nombres) no alcanzó para saber por qué el saldo salía null, y
+// costó una ronda extra con el dueño.
+function formaDe(o: Obj | null): Record<string, string> {
+  if (!o) return {};
+  const f: Record<string, string> = {};
+  for (const [k, v] of Object.entries(o).slice(0, 40)) {
+    f[k] = v === null || v === undefined
+      ? "null"
+      : Array.isArray(v)
+      ? `array[${v.length}]`
+      : typeof v === "object"
+      ? "object"
+      : typeof v;
+  }
+  return f;
+}
+
 // Número que puede llegar como number o como string ("150000.50").
 function numeroSuave(v: unknown): number | null {
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
@@ -384,6 +403,7 @@ function resumirRuta(r: Awaited<ReturnType<typeof llamarDropi>>) {
     isSuccess: j.isSuccess ?? null,
     mensaje: corto(j.message) || corto(j.error) || r.crudo,
     campos: c ? Object.keys(c).sort().slice(0, 40) : [],
+    forma: formaDe(c),
   };
 }
 
@@ -414,39 +434,42 @@ async function sondaDinero(token: string) {
   }
 
   const cuerpo = cuerpoUtil(r);
+  // MEDIDO en la cuenta real el 10-oct-2026: el campo del saldo se llama
+  // `walletAmount`, NO `wallets` como dice la especificación publicada. Esa
+  // misma respuesta trae `user_id` (no `id`) y `avatarUrl` (no `urlS3_logo`), y
+  // no trae `status`, `category_name` ni `store_url`. El /docs de Dropi no solo
+  // es parcial: es inexacto en los nombres. Los alias quedan como red por si
+  // otra cuenta o una versión futura responde distinto.
   const saldo = cuerpo
-    ? numeroSuave(cuerpo.wallets ?? cuerpo.wallet ?? cuerpo.balance ?? cuerpo.saldo)
+    ? numeroSuave(
+      cuerpo.walletAmount ?? cuerpo.wallet_amount ?? cuerpo.wallets ?? cuerpo.wallet ?? cuerpo.balance,
+    )
     : null;
 
   const bodegas = await llamarDropi("GET", "warehouses/", token);
-  const motivos = await llamarDropi("GET", "orders/cancellationReasons", token, undefined, { base: BASE_API });
-  const importlist = await llamarDropi("GET", "importlist/importstore/1", token);
 
-  const rutas = [r, bodegas, motivos, importlist];
-  const frenado = rutas.some((x) => x.http === 429);
-
+  const frenado = [r, bodegas].some((x) => x.http === 429);
   const objetosBodegas = Array.isArray(bodegas.j?.objects) ? bodegas.j!.objects as unknown[] : null;
-  const objetosMotivos = esObj(motivos.j?.objects) ? motivos.j!.objects as Obj : null;
 
   return {
     frenado_por_dropi: frenado,
     saldo: {
       ...resumirRuta(r),
       // Lo que vinimos a buscar. null = la ruta no lo entregó.
-      wallets: saldo,
+      wallet_amount: saldo,
       autenticacion_que_funciono: autenticacion,
       reintento_bearer: reintento,
-      // Campos operativos, sin datos personales.
-      categoria: cuerpo ? corto(cuerpo.category_name, 60) : null,
-      estado_cuenta: cuerpo ? corto(cuerpo.status, 40) : null,
-      id_usuario: cuerpo ? (cuerpo.id ?? null) : null,
+      id_usuario: cuerpo ? (cuerpo.user_id ?? cuerpo.id ?? null) : null,
       // Señal explícita de que NO devolvemos la PII que sí llegó.
       pii_omitida: cuerpo
-        ? ["name", "surname", "email", "phone"].filter((k) => k in cuerpo)
+        ? ["name", "surname", "email", "phone", "avatarUrl"].filter((k) => k in cuerpo)
         : [],
     },
     bodegas: {
       ...resumirRuta(bodegas),
+      // MEDIDO: en la cuenta real llega `objects: []`. Coherente con que un
+      // dropshipper no tiene bodegas propias: las bodegas son del proveedor y
+      // ya vienen dentro de la ficha del producto (`warehouse_product`).
       cantidad: objetosBodegas ? objetosBodegas.length : null,
       muestra: (objetosBodegas ?? []).slice(0, 10).map((w) =>
         esObj(w)
@@ -458,21 +481,18 @@ async function sondaDinero(token: string) {
           : null
       ),
     },
-    motivos_cancelacion: {
-      ...resumirRuta(motivos),
-      // La especificación muestra los motivos agrupados por rol.
-      por_rol: objetosMotivos
-        ? Object.fromEntries(
-          Object.entries(objetosMotivos).slice(0, 6).map(([rol, lista]) => [
-            rol,
-            Array.isArray(lista)
-              ? lista.slice(0, 15).map((m) => (esObj(m) ? corto(m.name, 60) : null))
-              : null,
-          ]),
-        )
-        : null,
+    // RETIRADAS del reconocimiento el 10-oct-2026, ya medidas y concluidas:
+    //   · api/orders/cancellationReasons -> 401 «The token could not be parsed
+    //     from the request». Las rutas /api/* exigen el JWT de
+    //     /integrations/login; el token de integración NUNCA sirve ahí. Volver
+    //     a llamarla es gastar una petición del presupuesto a cambio de nada.
+    //   · importlist/importstore/1 -> 405 «Supported methods: PUT». Es una ruta
+    //     de ESCRITURA. Se supo sin tocarla precisamente porque esta sonda solo
+    //     hace GET. Fuera del reconocimiento: no se prueban mutaciones.
+    rutas_descartadas: {
+      "api/orders/cancellationReasons": "401 · exige el JWT de /integrations/login, no el token de integración",
+      "importlist/importstore/1": "405 · es PUT (escritura). No se prueba.",
     },
-    importlist: resumirRuta(importlist),
   };
 }
 
@@ -523,12 +543,10 @@ Deno.serve(async (req) => {
   // peticiones (429 medido alrededor de la 12-16 en ráfaga).
   if (body.dinero === true) {
     const dinero = await sondaDinero(token);
-    const leyoSaldo = typeof dinero.saldo.wallets === "number";
+    const leyoSaldo = typeof dinero.saldo.wallet_amount === "number";
     console.log("[dropi-sonda:dinero]", JSON.stringify({
       whoiam: dinero.saldo.http,
       bodegas: dinero.bodegas.http,
-      motivos: dinero.motivos_cancelacion.http,
-      importlist: dinero.importlist.http,
       // El valor del saldo NO se loguea: es información financiera.
       saldo_leido: leyoSaldo,
     }));
@@ -537,8 +555,8 @@ Deno.serve(async (req) => {
       conclusion: dinero.frenado_por_dropi
         ? "Dropi nos frenó por exceso de consultas (429). Espera unos minutos y repite: el freno es temporal y la ventana medida es corta."
         : leyoSaldo
-        ? `Leímos el saldo de Dropi (campo wallets) usando ${dinero.saldo.autenticacion_que_funciono}. Con esto se puede medir cuándo se debita el saldo SIN crear ningún pedido desde aquí.`
-        : "No se pudo leer el saldo. Mira abajo qué respondió cada ruta: si whoiam da 401 por los dos encabezados, el camino sería el JWT de /integrations/login, que exige guardar usuario y contraseña de Dropi (decisión del dueño).",
+        ? `Saldo de Dropi leído del campo walletAmount usando ${dinero.saldo.autenticacion_que_funciono}. Con esto se mide cuándo se debita el saldo SIN crear ningún pedido desde aquí: lee, crea el pedido a mano en el panel de Dropi, vuelve a leer.`
+        : "whoiam respondió pero no se encontró el saldo. Mira `saldo.forma` para ver qué campos y de qué tipo llegaron: el nombre del campo pudo cambiar otra vez (la especificación dice `wallets`, la realidad decía `walletAmount`).",
       user_agent_usado: ua(),
       leido: new Date().toISOString(),
       ...dinero,

@@ -4709,10 +4709,15 @@ lecturas y nada más:
 
 | Ruta | Para qué |
 |---|---|
-| `POST whoiam` | El saldo (`wallets`), la categoría y el estado de la cuenta |
+| `POST whoiam` | **El saldo**, en el campo real `walletAmount` |
 | `GET warehouses/` | Las bodegas (ruta del plugin oficial, nunca llamada) |
-| `GET api/orders/cancellationReasons` | Motivos oficiales de cancelación por rol |
-| `GET importlist/importstore/1` | Reconocimiento: qué es |
+
+**Medido en la cuenta real el 10-oct-2026 y ya corregido aquí:** el campo del
+saldo se llama **`walletAmount`**, no `wallets` como dice la especificación
+publicada; el id llega en `user_id`; y `status`/`category_name`/`store_url` no
+existen. Dos rutas quedaron **descartadas** tras medirlas:
+`api/orders/cancellationReasons` da 401 porque las rutas `/api/*` exigen el JWT
+de login, e `importlist/importstore/1` da 405 porque es **PUT** (escritura).
 
 Decisiones de diseño, todas medidas:
 
@@ -4756,34 +4761,45 @@ const r = await supabase.functions.invoke('dropi-sonda', { body: { dinero: true 
 const d = r.data ?? r.error;
 console.log(d.conclusion);
 console.table([{
-  saldo: d.saldo?.wallets,
+  saldo: d.saldo?.wallet_amount,
   autenticacion: d.saldo?.autenticacion_que_funciono,
   http_whoiam: d.saldo?.http,
   bodegas: d.bodegas?.cantidad,
-  motivos: d.motivos_cancelacion?.http,
   frenado: d.frenado_por_dropi,
 }]);
-console.log(JSON.stringify(d.motivos_cancelacion?.por_rol, null, 2));
+// Si el saldo saliera null, esto dice qué campos y de qué TIPO llegaron
+// (nombres y tipos, nunca valores: no puede filtrar PII ni el saldo).
+console.log('forma de whoiam:', d.saldo?.forma);
 ```
 
 | Resultado | Qué sigue |
 |---|---|
 | `saldo` con número | Listo: empieza el protocolo de §9.6 de `DROPI.md` |
+| `saldo: null` con `http_whoiam: 200` | Mirar `forma`: el nombre del campo cambió otra vez |
 | `http_whoiam: 401` por las dos vías | Decidir si se guardan usuario/contraseña de Dropi para el JWT de login |
 | `frenado: true` | Dropi frenó (429). Esperar unos minutos y repetir |
 
 ## D.3. Pruebas hechas
 
 `bash supabase/pruebas/local/herramientas/correr-dropi-sonda-d1.sh` →
-**64 comprobaciones, 0 fallan** (las 40 de D1/D2a intactas + 24 nuevas):
+**68 comprobaciones, 0 fallan** (las 40 de D1/D2a intactas + 28 nuevas).
 
-- lee `wallets` desde `whoiam`;
+**El doble de pruebas imita la forma REAL de Dropi, no la especificación.** La
+primera versión copiaba el papel (`wallets`, `id`, `status`) y por eso las
+pruebas pasaban mientras en producción el saldo salía `null`: la misma trampa
+que ya costó las fotos y el `count` en D1. Lo que se comprueba:
+
+- lee el saldo desde el campo real `walletAmount`, y el id desde `user_id`;
+- informa el **tipo** de cada campo (`forma`) para no volver a adivinar nombres,
+  sin incluir valores;
+- no publica campos que la cuenta real no devuelve;
+- no reintenta `cancellationReasons` ni toca `importlist`, y documenta por qué;
+- trata `warehouses/` vacío como 0, no como fallo;
 - reintenta como `bearer` cuando el encabezado de integración no sirve, y deja
   registrado qué respondió cada forma;
 - **no** devuelve el correo ni el teléfono de la cuenta, y declara la PII
   omitida;
-- lee bodegas y motivos de cancelación (esta última desde la otra base, `/api/`);
-- con `{ dinero: true }` **no** toca catálogo, y gasta como máximo 5 peticiones;
+- con `{ dinero: true }` **no** toca catálogo, y gasta como máximo 3 peticiones;
 - un no-admin recibe 403 y **no llega a Dropi**;
 - solo `{ dinero: true }` estricto activa la sonda (un `"si"` no la activa);
 - el token no aparece en la respuesta;

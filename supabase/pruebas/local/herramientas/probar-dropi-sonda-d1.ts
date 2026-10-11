@@ -150,46 +150,33 @@ const servidor = Deno.serve({ port: PORT, onListen() {} }, async (req) => {
       if (bearer !== "TOKEN-SECRETO-QUE-NO-DEBE-SALIR") {
         return Response.json({ isSuccess: false, message: "Token invalido" }, { status: 401 });
       }
+      // FORMA REAL, medida en la cuenta del dueño el 10-oct-2026. La versión
+      // anterior de este doble copiaba la ESPECIFICACIÓN (`wallets`, `id`,
+      // `status`, `category_name`) y por eso las pruebas pasaban mientras en
+      // producción el saldo salía null. Es la misma trampa que ya nos costó las
+      // fotos y el `count`: el doble tiene que imitar a Dropi, no al papel.
       return Response.json({
-        id: 4242,
+        user_id: 4242,
         name: "Dueño",
         surname: "De Prueba",
         email: "dueno@ejemplo.invalid",
         phone: "+57 300 000 0000",
-        status: "active",
-        category_name: "Dropshipper",
-        store_url: "https://magandhi.com",
-        // El campo que vinimos a buscar, con la forma float de la especificación.
-        wallets: 150000.5,
+        avatarUrl: "https://s3.invalid/avatar.png",
+        walletAmount: 150000.5,
       });
     }
     if (ruta === "/integrations/warehouses/") {
-      return Response.json({
-        isSuccess: true,
-        objects: [
-          { id: 34067, name: "Bodega Centro", city: "BOGOTA" },
-          { id: 34946, name: "Bodega Norte", city: "MEDELLIN" },
-        ],
-      });
-    }
-    if (ruta === "/integrations/importlist/importstore/1") {
-      return Response.json({ isSuccess: true, objects: { total: 0 } });
-    }
-    return Response.json({ error: "ruta no esperada" }, { status: 404 });
-  }
-
-  // Las rutas que la especificación publica bajo /api/ viven en otra base.
-  if (ruta.startsWith("/api/")) {
-    rutasDropi.push(`${req.method} ${ruta}`);
-    if (ruta === "/api/orders/cancellationReasons") {
+      // MEDIDO: en la cuenta real llega el sobre completo con `objects: []`
+      // (un dropshipper no tiene bodegas propias).
       return Response.json({
         isSuccess: true,
         status: 200,
-        message: "Motivos de cancelación obtenidos correctamente",
-        objects: {
-          Dropshipper: [{ id: 1, name: "Datos incompletos" }, { id: 2, name: "Cliente no responde" }],
-          others: [{ id: 8, name: "Publicidad engañosa" }],
-        },
+        count: 0,
+        error: null,
+        error_code: null,
+        error_origin: null,
+        message: null,
+        objects: [],
       });
     }
     return Response.json({ error: "ruta no esperada" }, { status: 404 });
@@ -365,13 +352,21 @@ async function llamar(body: unknown, jwt = ADMIN, metodo = "POST") {
   chk(r.status === 200, "la sonda de dinero responde 200");
   chk(d.sonda === "dinero", "se identifica como sonda de dinero");
 
-  // El premio: el saldo.
-  chk(d.saldo?.wallets === 150000.5, "lee el saldo real desde whoiam.wallets");
+  // El premio: el saldo, leído del nombre REAL del campo (`walletAmount`), no
+  // del que dice la especificación (`wallets`).
+  chk(d.saldo?.wallet_amount === 150000.5, "lee el saldo desde el campo REAL whoiam.walletAmount");
+  chk(d.saldo?.id_usuario === 4242, "lee el id desde user_id (la especificación decía `id`)");
   // El doble rechaza el encabezado de integración y solo acepta bearer, igual
   // que marca la especificación: la función debe REINTENTAR, no rendirse.
   chk(d.saldo?.autenticacion_que_funciono === "bearer", "si el encabezado de integración no sirve, reintenta el MISMO token como bearer");
   chk(d.saldo?.reintento_bearer?.http === 200, "queda registrado qué respondió cada forma de autenticación");
-  chk(d.conclusion?.includes("saldo"), "la conclusión dice que se leyó el saldo");
+  chk(d.conclusion?.includes("walletAmount"), "la conclusión nombra el campo del que salió el saldo");
+
+  // Diagnóstico de FORMA: tipos sin valores. Es lo que faltó el 10-oct y costó
+  // una ronda extra para descubrir que el campo se llamaba distinto.
+  chk(d.saldo?.forma?.walletAmount === "number", "informa el TIPO de cada campo para no volver a adivinar el nombre");
+  chk(!JSON.stringify(d.saldo?.forma ?? {}).includes("dueno@ejemplo.invalid"),
+    "el diagnóstico de forma no lleva valores, así que no puede filtrar PII");
 
   // PII: whoiam devuelve nombre, correo y teléfono del dueño. No deben salir.
   const crudo = JSON.stringify(d);
@@ -379,19 +374,28 @@ async function llamar(body: unknown, jwt = ADMIN, metodo = "POST") {
     "NO devuelve el correo ni el teléfono de la cuenta Dropi");
   chk(Array.isArray(d.saldo?.pii_omitida) && d.saldo.pii_omitida.includes("email"),
     "declara explícitamente qué PII llegó y se omitió");
-  chk(d.saldo?.categoria === "Dropshipper" && d.saldo?.estado_cuenta === "active",
-    "sí informa los campos operativos (categoría y estado de la cuenta)");
+  // `category_name`, `status` y `store_url` los promete la especificación pero
+  // la cuenta real NO los devuelve: se dejaron de informar en vez de publicar
+  // un campo que siempre sería null.
+  chk(!("categoria" in (d.saldo ?? {})) && !("estado_cuenta" in (d.saldo ?? {})),
+    "no publica campos que la cuenta real no devuelve (category_name/status eran del papel)");
 
-  // Las otras tres rutas de reconocimiento.
-  chk(d.bodegas?.cantidad === 2 && d.bodegas?.muestra?.[0]?.id === 34067, "lee las bodegas de warehouses/");
-  chk(d.motivos_cancelacion?.por_rol?.Dropshipper?.includes("Datos incompletos"),
-    "lee los motivos de cancelación por rol desde la base /api/");
-  chk(d.importlist?.http === 200, "reconoce importlist sin interpretarlo");
+  // Bodegas: la cuenta real devuelve lista vacía y eso NO es un error.
+  chk(d.bodegas?.http === 200 && d.bodegas?.cantidad === 0,
+    "warehouses/ con lista vacía se informa como 0, no como fallo (un dropshipper no tiene bodegas propias)");
+
+  // Las dos rutas ya medidas y concluidas no se vuelven a llamar.
+  chk(!rutasDropi.some((x) => /cancellationReasons/.test(x)),
+    "NO reintenta cancellationReasons: exige el JWT de login y siempre daría 401");
+  chk(!rutasDropi.some((x) => /importlist/.test(x)),
+    "NO vuelve a tocar importlist: es PUT (escritura), ya medido con un 405");
+  chk(d.rutas_descartadas?.["importlist/importstore/1"]?.includes("PUT"),
+    "documenta en la respuesta por qué cada ruta quedó descartada");
 
   // Disciplina de peticiones: con { dinero: true } NO se gasta catálogo.
   chk(!rutasDropi.some((x) => /products|categories/.test(x)),
     "la sonda de dinero NO consulta catálogo en la misma invocación (presupuesto de 429)");
-  chk(rutasDropi.length <= 5, `gasta como máximo 5 peticiones (gastó ${rutasDropi.length})`);
+  chk(rutasDropi.length <= 3, `gasta como máximo 3 peticiones (gastó ${rutasDropi.length})`);
 
   // El token nunca sale, igual que en el resto de la sonda.
   chk(!crudo.includes("TOKEN-SECRETO-QUE-NO-DEBE-SALIR"), "el token no aparece en la respuesta de la sonda de dinero");

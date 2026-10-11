@@ -337,18 +337,57 @@ POST /integrations/login                   <- exige email, password, white_brand
 POST /integrations/whoiam                  <- AQUÍ ESTÁ EL SALDO
 ```
 
-**El hallazgo que importa:** el esquema de respuesta de `whoiam` declara
+**El hallazgo que importa:** el esquema de respuesta de `whoiam` declara un
+campo con el saldo de la cuenta. Es el **único** lugar de toda la API conocida
+donde aparece nuestro dinero.
 
-```json
-"wallets": { "type": "number", "format": "float", "example": 150000.5 }
+### 9.1 bis · La especificación es INEXACTA en los nombres (medido en la cuenta real)
+
+`whoiam` respondió **200 con el token de integración** (no hizo falta el JWT de
+login, aunque la especificación lo marque con seguridad `bearer`). Pero los
+campos **no** son los que promete el papel:
+
+| La especificación dice | La cuenta real devuelve |
+|---|---|
+| `wallets` (number) | **`walletAmount`** ← el saldo |
+| `id` | **`user_id`** |
+| `urlS3_logo` | **`avatarUrl`** |
+| `status`, `category_name`, `store_url` | **no existen** |
+
+Campos reales y completos de `whoiam`:
+
+```
+avatarUrl · email · name · phone · surname · user_id · walletAmount
 ```
 
-**Ese es el saldo de la cuenta**, y es el **único** lugar de toda la API
-conocida donde aparece nuestro dinero. `whoiam` está marcado con seguridad
-`bearer`, no con `dropi-integration-key`.
+**Regla que queda:** el `/docs` de Dropi no solo es parcial, **es inexacto**.
+Orienta, no manda. Cualquier campo se confirma leyéndolo de la cuenta real
+antes de depender de él.
 
-Nota de bases: las rutas `/api/...` **no** viven bajo `/integrations/`. Son dos
-prefijos distintos del mismo host.
+`whoiam` **no** envuelve la respuesta: no trae `isSuccess` ni `message`, los
+datos van en la raíz del JSON.
+
+### 9.1 ter · Los dos prefijos usan autenticación distinta
+
+| Prefijo | Autenticación | Evidencia |
+|---|---|---|
+| `/integrations/*` | `dropi-integration-key` | Funciona: categorías, productos, `whoiam`, `warehouses/` |
+| `/api/*` | **JWT de `/integrations/login`** | `api/orders/cancellationReasons` con nuestro token: **401 · «The token could not be parsed from the request»** |
+
+Por tanto las rutas `/api/*` **no son accesibles** con el token de integración,
+y llamarlas es gastar presupuesto de peticiones a cambio de un 401 seguro.
+Quedaron fuera de la sonda.
+
+Y una ruta menos que adivinar: `importlist/importstore/1` respondió
+**405 · «The GET method is not supported for this route. Supported methods:
+PUT.»** Es una ruta de **escritura**. Se supo sin tocarla, precisamente porque
+la sonda solo hace GET. No se prueban mutaciones.
+
+### 9.1 quater · `warehouses/` está vacío, y es correcto
+
+La cuenta real devuelve `objects: []`. No es un fallo: **un dropshipper no tiene
+bodegas propias.** Las bodegas son del proveedor y ya vienen dentro de la ficha
+del producto (`warehouse_product`), que es de donde sale el stock.
 
 ### 9.2 El universo completo del plugin oficial: 7 rutas
 
