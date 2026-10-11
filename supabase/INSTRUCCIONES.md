@@ -4989,23 +4989,53 @@ select cron.schedule(
 );
 ```
 
-Comprobar que quedó y que corre:
+> **Ejecuta el `cron.schedule` SOLO, sin otras consultas en el editor.** El SQL
+> Editor corre todo el bloque en una sola transacción: si una consulta
+> posterior falla, **el agendamiento se deshace con ella** y queda la impresión
+> de que se creó.
+
+**La comprobación buena es una sola consulta, y usa nuestros propios datos:**
 
 ```sql
-select jobid, schedule, active from cron.job where jobname = 'dropi-refrescar-stock';
-
--- Últimas vueltas (debería haber una por minuto)
-select start_time, status, return_message
-from cron.job_run_details
-where jobname = 'dropi-refrescar-stock'
-order by start_time desc limit 5;
+select ultimo_refresco, now() - ultimo_refresco as hace_cuanto
+from dropshipping_config where id = 1;
 ```
 
-**Para pausar el reloj** (por ejemplo si Dropi nos frena de forma sostenida):
+Si `hace_cuanto` es menor que dos minutos, **el reloj funciona**. Y prueba la
+cadena completa de un golpe, porque ese campo solo lo estampa
+`ds_productos_por_refrescar` cuando la Edge Function llama a la base de verdad:
+`pg_cron → pg_net → función → secreto validado → RPC → ultimo_refresco`.
+
+Para ver el trabajo y su historial:
+
+```sql
+select jobid, jobname, schedule, active
+from cron.job where jobname = 'dropi-refrescar-stock';
+```
+
+```sql
+-- OJO: cron.job_run_details NO tiene columna `jobname` (solo `jobid`).
+-- El nombre vive en cron.job, así que hay que unirlas.
+select d.start_time, d.status, left(coalesce(d.return_message, ''), 60) as mensaje
+from cron.job_run_details d
+join cron.job j on j.jobid = d.jobid
+where j.jobname = 'dropi-refrescar-stock'
+order by d.start_time desc limit 5;
+```
+
+**El extintor, NO un paso del despliegue.** El reloj debe quedarse encendido: es
+lo que mantiene el stock fresco. Esto solo se usa si Dropi nos frena de forma
+sostenida, para mantenimiento, o para parar el mundo mientras se investiga algo:
 
 ```sql
 select cron.unschedule('dropi-refrescar-stock');
 ```
+
+**Nota sobre el panel de Supabase:** el bloque «Invoke function» que muestra la
+página de la Edge Function trae un `curl` de ejemplo con la llave publicable del
+proyecto. **No aplica a esta función:** no usa ninguna llave de Supabase, usa su
+propia cabecera `x-refresco-secreto`. Ese ejemplo es genérico para cualquier
+función y aquí despista.
 
 ## D2c1.5 · Comprobar que el stock se mueve
 
