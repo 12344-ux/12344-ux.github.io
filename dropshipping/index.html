@@ -38,7 +38,22 @@
 <main class="ds-wrap" id="ds-main" hidden>
   <section class="ds-nota" aria-label="Alcance de esta fase">
     <span data-ico="info" aria-hidden="true"></span>
-    <div><strong>Consulta, curaduría y borradores.</strong> Lee candidatos desde Dropi y agrégalos a la bandeja; las fotos se ven directo desde Dropi sin guardarse. Desde la bandeja, <b>Llevar a Campañas</b> crea un borrador con fotos propias para curarlo en el editor. Nada se publica, se vende ni se pide al proveedor desde aquí todavía.</div>
+    <div><strong>Consulta, curaduría, borradores y stock vivo.</strong> Lee candidatos desde Dropi y agrégalos a la bandeja; las fotos se ven directo desde Dropi sin guardarse. Desde la bandeja, <b>Llevar a Campañas</b> crea un borrador con fotos propias para curarlo en el editor. De los productos ya importados, el reloj refresca el stock solo y lo muestra aquí arriba. Nada se publica, se vende ni se pide al proveedor desde aquí todavía.</div>
+  </section>
+
+  <!-- D2c.1 · STOCK VIVO. Lo que el reloj (pg_cron) mantiene fresco y el saldo
+       que paga los despachos. Si el saldo llega a cero la operación se rompe
+       EN SILENCIO: se vende y no se puede despachar. Por eso va arriba. -->
+  <section class="ds-seccion" id="ds-seccion-vivo" aria-labelledby="ds-vivo-tit">
+    <div class="ds-seccion-head">
+      <div>
+        <h2 id="ds-vivo-tit">Stock vivo y saldo</h2>
+        <p>El reloj refresca las existencias de cada producto importado. Una lectura vencida, sin dato o por debajo del piso saca el producto de la vitrina automáticamente.</p>
+      </div>
+      <button class="ds-btn ds-btn--sec" id="ds-vivo-refrescar" type="button"><span data-ico="reloj"></span>Actualizar</button>
+    </div>
+    <div id="ds-saldo" class="ds-saldo" aria-live="polite"></div>
+    <div id="ds-vivo" class="ds-vacio"><strong>Cargando estado del stock…</strong></div>
   </section>
 
   <section class="ds-consulta" aria-labelledby="ds-consulta-tit">
@@ -217,10 +232,17 @@
   });
 
   // ── AVISOS ─────────────────────────────────────────────────────────────
-  function aviso(clase, titulo, cuerpo) {
-    estadoConsulta.innerHTML =
-      '<section class="ds-aviso ' + clase + '">' + ico(clase === 'ds-aviso--err' ? 'alerta' : clase === 'ds-aviso--ok' ? 'check' : 'info') +
+  // Devuelve el marcado del aviso sin pintarlo. D2c.1 lo necesita para poner un
+  // aviso DENTRO de su propia sección: `aviso()` escribe en el área de la
+  // búsqueda, y reutilizarlo ahí borraría el estado de la consulta.
+  function avisoHTML(clase, titulo, cuerpo) {
+    return '<section class="ds-aviso ' + clase + '">' +
+      ico(clase === 'ds-aviso--err' ? 'alerta' : clase === 'ds-aviso--ok' ? 'check' : 'info') +
       '<div><strong>' + escaparHTML(titulo) + '</strong><br>' + escaparHTML(cuerpo) + '</div></section>';
+  }
+
+  function aviso(clase, titulo, cuerpo) {
+    estadoConsulta.innerHTML = avisoHTML(clase, titulo, cuerpo);
   }
 
   async function cuerpoError(error) {
@@ -845,6 +867,127 @@
     renderResultados(data || {});
   }
 
+  // ==========================================================================
+  // D2c.1 · STOCK VIVO Y SALDO
+  // --------------------------------------------------------------------------
+  // Dos lecturas independientes, y a propósito:
+  //   · ds_estado_stock()  -> la base. Siempre responde, es barata.
+  //   · dropi-sonda {dinero} -> Dropi. Gasta peticiones y puede dar 429.
+  // Si el saldo falla, la tabla de stock se pinta igual: un problema con Dropi
+  // no puede dejar la pantalla en blanco.
+  // ==========================================================================
+  const vivoEl = document.getElementById('ds-vivo');
+  const saldoEl = document.getElementById('ds-saldo');
+  const btnVivo = document.getElementById('ds-vivo-refrescar');
+
+  function etiquetaMotivo(fila) {
+    // Un motivo, en orden de precedencia, con el color que corresponde. Lo
+    // decide el servidor (ds_estado_stock); aquí solo se viste.
+    const m = String(fila.motivo || '');
+    if (fila.en_vitrina === true) {
+      return m.indexOf('pausado') >= 0
+        ? '<span class="ds-tag ds-tag--aviso">En vitrina · refresco pausado</span>'
+        : '<span class="ds-tag ds-tag--stock">En vitrina</span>';
+    }
+    return '<span class="ds-tag ds-tag--sin-stock">' + escaparHTML(m || 'fuera de vitrina') + '</span>';
+  }
+
+  function filaVivo(f) {
+    const stock = f.stock == null ? '—' : Number(f.stock);
+    const piso = f.piso_efectivo == null ? '—' : Number(f.piso_efectivo);
+    // El vencimiento es el dato que más se mira: si ya pasó, se dice en rojo.
+    const vencido = !f.vigente;
+    return '<tr>' +
+      '<td><b>' + escaparHTML(f.nombre || '(sin nombre)') + '</b>' +
+        '<small>' + escaparHTML(f.sku || '') +
+        (f.variante ? ' · variante ' + escaparHTML(f.variante) : '') +
+        ' · Dropi #' + escaparHTML(f.dropi_id || '') + '</small></td>' +
+      '<td class="ds-num">' + stock + '</td>' +
+      '<td class="ds-num">' + piso + '</td>' +
+      '<td>' + (f.leido_en ? escaparHTML(formatearMomento(f.leido_en)) : '—') + '</td>' +
+      '<td class="' + (vencido ? 'ds-vencido' : '') + '">' +
+        (f.vence_en ? escaparHTML(formatearMomento(f.vence_en)) : '—') +
+        (vencido ? ' <small>vencida</small>' : '') + '</td>' +
+      '<td>' + etiquetaMotivo(f) +
+        (f.ultimo_error ? '<small class="ds-vencido">último fallo: ' + escaparHTML(f.ultimo_error) + '</small>' : '') +
+      '</td></tr>';
+  }
+
+  async function cargarEstadoStock() {
+    vivoEl.className = 'ds-vacio';
+    vivoEl.innerHTML = '<strong>Cargando estado del stock…</strong>';
+    const { data, error } = await supabase.rpc('ds_estado_stock');
+    if (error) {
+      vivoEl.innerHTML = avisoHTML('ds-aviso--err', 'No se pudo leer el estado del stock',
+        await cuerpoError(error));
+      return;
+    }
+    const filas = Array.isArray(data) ? data : [];
+    if (!filas.length) {
+      vivoEl.className = 'ds-vacio';
+      vivoEl.innerHTML = '<strong>Todavía no hay productos de proveedor</strong>' +
+        'Cuando lleves un candidato a Campañas, aparecerá aquí y el reloj empezará a refrescar su stock.';
+      return;
+    }
+    const fuera = filas.filter((f) => f.en_vitrina !== true).length;
+    vivoEl.className = '';
+    vivoEl.innerHTML =
+      '<div class="ds-tabla-env"><table class="ds-tabla"><thead><tr>' +
+        '<th>Producto</th><th class="ds-num">Stock</th><th class="ds-num">Piso</th>' +
+        '<th>Última lectura</th><th>Vence</th><th>Estado</th>' +
+      '</tr></thead><tbody>' + filas.map(filaVivo).join('') + '</tbody></table></div>' +
+      '<p class="ds-meta">' + filas.length + ' producto' + (filas.length === 1 ? '' : 's') +
+        ' de proveedor · ' + fuera + ' fuera de vitrina. La publicación de proveedor sigue bloqueada hasta D2c.2.</p>';
+  }
+
+  async function cargarSaldo() {
+    if (!esAdmin) {
+      // La sonda es de admin hasta D3. No se finge un saldo ni se muestra un
+      // error: se dice la verdad de por qué no está.
+      saldoEl.innerHTML = '';
+      return;
+    }
+    saldoEl.innerHTML = '<span class="ds-meta">Consultando saldo en Dropi…</span>';
+    let d = null;
+    try {
+      const r = await supabase.functions.invoke('dropi-sonda', { body: { dinero: true } });
+      d = r.data || null;
+    } catch (_) { d = null; }
+
+    if (!d) {
+      saldoEl.innerHTML = avisoHTML('ds-aviso--warn', 'No se pudo consultar el saldo de Dropi',
+        'El stock de arriba no depende de esto. Reintenta en un momento.');
+      return;
+    }
+    if (d.frenado_por_dropi) {
+      saldoEl.innerHTML = avisoHTML('ds-aviso--warn', 'Dropi frenó la consulta (429)',
+        'Es temporal y se levanta en pocos minutos. El refresco de stock sigue su curso.');
+      return;
+    }
+    const monto = d.saldo && typeof d.saldo.wallet_amount === 'number' ? d.saldo.wallet_amount : null;
+    if (monto == null) {
+      saldoEl.innerHTML = avisoHTML('ds-aviso--warn', 'Dropi respondió sin el saldo',
+        'El campo del saldo pudo cambiar de nombre otra vez. Revisa el runbook de la sonda de dinero.');
+      return;
+    }
+    // El aviso que importa: con saldo en cero se vende y no se puede despachar.
+    const critico = monto <= 0;
+    saldoEl.innerHTML =
+      '<div class="ds-saldo-caja' + (critico ? ' ds-saldo-caja--alerta' : '') + '">' +
+        ico(critico ? 'alerta' : 'proveedor') +
+        '<div><span>Saldo en Dropi</span><b>$' + formatearCOP(monto) + '</b></div>' +
+        '<p>' + (critico
+          ? 'Sin saldo no se puede despachar ningún pedido de proveedor, aunque la tienda lo venda. Recarga antes de publicar.'
+          : 'De aquí Dropi descuenta el costo del proveedor y el flete de cada pedido.') + '</p>' +
+      '</div>';
+  }
+
+  async function cargarVivo() {
+    btnVivo.disabled = true;
+    try { await Promise.all([cargarEstadoStock(), cargarSaldo()]); }
+    finally { btnVivo.disabled = false; }
+  }
+
   (async () => {
     const acceso = await asegurarAcceso(main, '../panel.html');
     if (!acceso) return;
@@ -869,7 +1012,10 @@
     btnConsultar.addEventListener('click', () => consultar());
     buscarEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') consultar(); });
     productoIdEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') consultar(); });
+    btnVivo.addEventListener('click', () => cargarVivo());
     await cargarBandeja();
+    // Al final y sin bloquear: la bandeja es lo que el dueño viene a usar.
+    await cargarVivo();
   })();
 </script>
 </body>

@@ -30,5 +30,8 @@ sleep 4
 R=0
 "$PY" "$AQUI/probar-ui-dropshipping-d1.py" $CAPS || R=1
 "$PY" "$AQUI/probar-ui-dropshipping-d2a.py" $CAPS || R=1
+# D2c.1 no usa el doble de Dropi ni la Edge Function: responde ds_estado_stock y
+# la sonda de dinero desde Python, porque lo que mide es la PANTALLA.
+"$PY" "$AQUI/probar-ui-dropshipping-d2c1.py" $CAPS || R=1
 kill $P1 $P2 2>/dev/null
 exit $R

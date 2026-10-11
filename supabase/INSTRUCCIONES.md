@@ -4964,22 +4964,27 @@ select cron.unschedule('dropi-refrescar-stock');
 
 ## D2c1.5 · Comprobar que el stock se mueve
 
-Desde el panel, con sesión de admin:
+**Ya está en la pantalla.** Abre
+`https://montaguth.institute/dropshipping/` y arriba aparece **«Stock vivo y
+saldo»**: tu saldo de Dropi y una tabla con cada producto importado, su stock,
+su piso, cuándo se leyó, cuándo vence y **por qué** está o no en vitrina
+(`sin lectura todavía`, `lectura vencida`, `por debajo del piso`, `en vitrina`).
+El botón **Actualizar** relee las dos cosas.
+
+- Una lectura **vencida** se marca aparte, para verla de un golpe.
+- Si el saldo está en **cero**, sale una alerta: sin saldo se vende y **no se
+  puede despachar**.
+- Si Dropi falla o frena (429), el aviso va en su propia caja y **la tabla de
+  stock se pinta igual**: son dos lecturas independientes.
+- El saldo solo lo ve un **admin** (la sonda es de admin hasta D3); el estado del
+  stock lo ve cualquier perfil con el módulo.
+
+Si prefieres la consola:
 
 ```js
 const { supabase } = await import('/supabase-config.js');
 const { data } = await supabase.rpc('ds_estado_stock');
 console.table(data);
-```
-
-Cada fila dice `stock`, `piso_efectivo`, `vence_en`, `en_vitrina` y el **motivo**
-(`sin lectura todavía`, `lectura vencida`, `por debajo del piso`, `en vitrina`).
-
-Y el saldo, con la sonda de dinero:
-
-```js
-const r = await supabase.functions.invoke('dropi-sonda', { body: { dinero: true } });
-console.log('saldo:', (r.data ?? {}).saldo?.wallet_amount);
 ```
 
 ## D2c1.6 · Pruebas hechas
@@ -4990,9 +4995,16 @@ bash /projects/sandbox/pruebas-em5/pg.sh supabase/pruebas/local/dropshipping-d2c
 bash supabase/pruebas/local/herramientas/correr-dropi-refresco.sh
 ```
 
-**469 comprobaciones, 0 fallan.** Matriz de permisos 170/170, D2c.1 SQL 44/44,
-refresco (Deno) 32/32, D1 29/29, D2a 30/30, F3 84/84, fechas-colombia 16/16,
-sonda 68/68. Lo que se mide:
+Y la pantalla, en Chromium a 1280 y a 390 px:
+
+```
+bash supabase/pruebas/local/herramientas/correr-ui-dropshipping.sh
+```
+
+**613 comprobaciones, 0 fallan.** Matriz de permisos 170/170, D2c.1 SQL 44/44,
+refresco (Deno) 32/32, pantalla D2c.1 50/50, pantalla D1 54/54, pantalla D2a
+60/60, D1 29/29, D2a 30/30, F3 84/84, fechas-colombia 16/16, sonda 68/68,
+pagos-f2 40/40. Lo que se mide:
 
 - lectura **vencida** ⇒ `agotado=true` aunque Dropi reporte 230 unidades;
 - piso 20: stock 19 fuera, stock 20 dentro; el piso propio manda sobre el global;
@@ -5009,3 +5021,16 @@ sonda 68/68. Lo que se mide:
 - contra Dropi **solo GET**, solo `products/v2/{id}`, **nunca** `orders/`;
 - con el interruptor cerrado **ningún** producto proveedor sale a la tienda;
 - publicar una campaña de proveedor **sigue bloqueado**.
+
+En la pantalla, además:
+
+- el motivo de cada producto se lee y se entiende, en PC y en celular;
+- una lectura vencida con 500 unidades se muestra como **vencida**, no como
+  disponible;
+- el saldo en **cero** pinta la alerta y explica la consecuencia real;
+- si la consulta del saldo falla, la tabla de stock **se pinta igual** y el aviso
+  **no pisa** el estado del área de búsqueda;
+- sin stock no se inventa un 0: se muestra un guion;
+- si el campo del saldo volviera a cambiar de nombre, **se dice** en vez de
+  mostrar 0;
+- un perfil no-admin **no ve el saldo** y no se le inventa un error.
