@@ -12,6 +12,30 @@
 //   · GET products/{id}                  -> diagnóstico (hoy responde 400;
 //                                            nunca se usa como fuente de stock)
 //
+// SONDA DE DINERO (10-oct-2026, opt-in con { dinero: true }) · SOLO LECTURA:
+//   · POST whoiam                        -> la especificación publicada de Dropi
+//                                            (https://api.dropi.co/docs) declara
+//                                            el campo `wallets`: NUESTRO SALDO
+//   · GET  warehouses/                   -> bodegas (ruta que usa el plugin
+//                                            oficial y nunca habíamos llamado)
+//   · GET  api/orders/cancellationReasons-> motivos de cancelación por rol
+//   · GET  importlist/importstore/1      -> reconocimiento: qué es
+//
+// POR QUÉ existe: las preguntas de dinero (¿cuándo se debita el saldo? ¿se
+// reintegra al cancelar?) NO necesitan un POST a orders/. Se responden LEYENDO
+// el saldo antes y después de acciones que el dueño hace A MANO en el panel de
+// Dropi. Este bloque es el lector; el protocolo vive en DROPI.md.
+//
+// Con { dinero: true } NO se consulta catálogo: son 4 lecturas y nada más.
+// MEDIDO el 10-oct-2026: Dropi responde 429 alrededor de la petición 12-16 en
+// ráfaga, y cada consulta de catálogo de esta sonda gasta 4. Mezclar ambas
+// cosas en una invocación es la forma de provocarse un 429 sin aprender nada.
+//
+// LÍMITE AUTOIMPUESTO: solo se llaman rutas que la especificación publicada o
+// el código del plugin oficial PRUEBAN que existen. No se adivinan URLs: el
+// acceso depende de un User-Agent que Dropi tolera pero no ha autorizado, y un
+// escaneo es la manera de perder el frente completo.
+//
 // No llama orders/*, no escribe en Supabase, no guarda la respuesta y no
 // descarga imágenes. Las fotos que devuelve son URLs HTTPS de PREVIEW para la
 // bandeja PRIVADA: D2 volverá a leer la ficha por id y recién entonces podrá
@@ -45,6 +69,15 @@
 
 const BASE = (Deno.env.get("DROPI_API_BASE") ?? "https://api.dropi.co/integrations/").replace(/\/*$/, "/");
 const ESPERA_MS = 15000;
+
+// Las rutas que la especificación publica bajo el prefijo `/api/` (por ejemplo
+// orders/cancellationReasons) NO viven en la misma base que `/integrations/`.
+// Se deriva de BASE para que DROPI_API_BASE y el doble de pruebas sigan
+// mandando; nunca se arma a mano un host distinto.
+const BASE_API = (() => {
+  if (/integrations\/$/.test(BASE)) return BASE.replace(/integrations\/$/, "api/");
+  try { return new URL("/api/", BASE).href; } catch { return BASE; }
+})();
 
 // Ventana de paginación. Se pide `tamano + 1` a Dropi para saber si hay más.
 const TAMANO_MAX = 48;
@@ -197,16 +230,28 @@ function resumirVariaciones(p: Obj) {
 
 // Una llamada a Dropi con tiempo límite. Nunca lanza: devuelve qué pasó sin
 // incluir el token ni el cuerpo sensible en logs/respuesta.
-async function llamarDropi(metodo: "GET" | "POST", ruta: string, token: string, cuerpo?: Obj) {
+async function llamarDropi(
+  metodo: "GET" | "POST",
+  ruta: string,
+  token: string,
+  cuerpo?: Obj,
+  // `base`: para las rutas documentadas bajo /api/. `auth`: la especificación
+  // marca whoiam con seguridad `bearer`, así que hay que poder probar el mismo
+  // token por los dos encabezados. NO se añade ningún secreto nuevo.
+  opciones?: { base?: string; auth?: "key" | "bearer" },
+) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ESPERA_MS);
   const inicio = Date.now();
+  const autorizacion: Record<string, string> = opciones?.auth === "bearer"
+    ? { Authorization: `Bearer ${token}` }
+    : { "dropi-integration-key": token };
   try {
-    const r = await fetch(BASE + ruta, {
+    const r = await fetch((opciones?.base ?? BASE) + ruta, {
       method: metodo,
       headers: {
         "Content-Type": "application/json;charset=UTF-8",
-        "dropi-integration-key": token,
+        ...autorizacion,
         Accept: "application/json",
         "User-Agent": ua(),
       },
@@ -305,6 +350,132 @@ function muestraProducto(p: unknown) {
   };
 }
 
+// ----------------------------------------------------------------------------
+// SONDA DE DINERO · solo lectura
+// ----------------------------------------------------------------------------
+// Algunas rutas (whoiam) devuelven los datos en la raíz del JSON y otras los
+// envuelven en `objects`. Se acepta cualquiera de las dos formas sin suponer.
+function cuerpoUtil(r: Awaited<ReturnType<typeof llamarDropi>>): Obj | null {
+  const j = r.j;
+  if (!esObj(j)) return null;
+  if (esObj(j.objects)) return j.objects as Obj;
+  return j;
+}
+
+// Número que puede llegar como number o como string ("150000.50").
+function numeroSuave(v: unknown): number | null {
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  if (typeof v === "string" && /^-?\d+([.,]\d+)?$/.test(v.trim())) {
+    const n = Number(v.trim().replace(",", "."));
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+// Resumen uniforme de una ruta de la sonda de dinero. Nunca copia la respuesta
+// completa: solo estado, mensaje y los nombres de los campos, que es lo que
+// sirve para documentar el contrato.
+function resumirRuta(r: Awaited<ReturnType<typeof llamarDropi>>) {
+  const j = r.j ?? {};
+  const c = cuerpoUtil(r);
+  return {
+    http: r.http,
+    ms: r.ms,
+    isSuccess: j.isSuccess ?? null,
+    mensaje: corto(j.message) || corto(j.error) || r.crudo,
+    campos: c ? Object.keys(c).sort().slice(0, 40) : [],
+  };
+}
+
+// whoiam: el único lugar de toda la API conocida donde aparece nuestro saldo.
+// PII: la respuesta trae nombre, correo y teléfono del dueño de la cuenta. NO
+// se devuelven. Solo se informa QUÉ campos llegaron y los valores operativos
+// (saldo, categoría, estado), coherente con la disciplina de datos personales
+// del proyecto.
+async function sondaDinero(token: string) {
+  // Paso 1, el más barato: el token de integración que ya tenemos.
+  let r = await llamarDropi("POST", "whoiam", token);
+  let autenticacion: "dropi-integration-key" | "bearer" | null =
+    r.http >= 200 && r.http < 300 ? "dropi-integration-key" : null;
+
+  // La especificación marca whoiam con seguridad `bearer`. Si el encabezado de
+  // integración no sirve, se prueba el MISMO token como bearer: una petición
+  // más, cero secretos nuevos. Si también falla, el camino es el JWT de
+  // /integrations/login, que exigiría guardar usuario y contraseña de Dropi:
+  // eso es una decisión del dueño, no un intento automático.
+  let reintento: ReturnType<typeof resumirRuta> | null = null;
+  if (r.http === 401 || r.http === 403) {
+    const r2 = await llamarDropi("POST", "whoiam", token, undefined, { auth: "bearer" });
+    reintento = resumirRuta(r2);
+    if (r2.http >= 200 && r2.http < 300) {
+      r = r2;
+      autenticacion = "bearer";
+    }
+  }
+
+  const cuerpo = cuerpoUtil(r);
+  const saldo = cuerpo
+    ? numeroSuave(cuerpo.wallets ?? cuerpo.wallet ?? cuerpo.balance ?? cuerpo.saldo)
+    : null;
+
+  const bodegas = await llamarDropi("GET", "warehouses/", token);
+  const motivos = await llamarDropi("GET", "orders/cancellationReasons", token, undefined, { base: BASE_API });
+  const importlist = await llamarDropi("GET", "importlist/importstore/1", token);
+
+  const rutas = [r, bodegas, motivos, importlist];
+  const frenado = rutas.some((x) => x.http === 429);
+
+  const objetosBodegas = Array.isArray(bodegas.j?.objects) ? bodegas.j!.objects as unknown[] : null;
+  const objetosMotivos = esObj(motivos.j?.objects) ? motivos.j!.objects as Obj : null;
+
+  return {
+    frenado_por_dropi: frenado,
+    saldo: {
+      ...resumirRuta(r),
+      // Lo que vinimos a buscar. null = la ruta no lo entregó.
+      wallets: saldo,
+      autenticacion_que_funciono: autenticacion,
+      reintento_bearer: reintento,
+      // Campos operativos, sin datos personales.
+      categoria: cuerpo ? corto(cuerpo.category_name, 60) : null,
+      estado_cuenta: cuerpo ? corto(cuerpo.status, 40) : null,
+      id_usuario: cuerpo ? (cuerpo.id ?? null) : null,
+      // Señal explícita de que NO devolvemos la PII que sí llegó.
+      pii_omitida: cuerpo
+        ? ["name", "surname", "email", "phone"].filter((k) => k in cuerpo)
+        : [],
+    },
+    bodegas: {
+      ...resumirRuta(bodegas),
+      cantidad: objetosBodegas ? objetosBodegas.length : null,
+      muestra: (objetosBodegas ?? []).slice(0, 10).map((w) =>
+        esObj(w)
+          ? {
+            id: w.id ?? null,
+            nombre: corto(w.name, 60),
+            ciudad: corto(w.city ?? w.city_name, 60),
+          }
+          : null
+      ),
+    },
+    motivos_cancelacion: {
+      ...resumirRuta(motivos),
+      // La especificación muestra los motivos agrupados por rol.
+      por_rol: objetosMotivos
+        ? Object.fromEntries(
+          Object.entries(objetosMotivos).slice(0, 6).map(([rol, lista]) => [
+            rol,
+            Array.isArray(lista)
+              ? lista.slice(0, 15).map((m) => (esObj(m) ? corto(m.name, 60) : null))
+              : null,
+          ]),
+        )
+        : null,
+    },
+    importlist: resumirRuta(importlist),
+  };
+}
+
 Deno.serve(async (req) => {
   const c = cors(req.headers.get("origin"));
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: c });
@@ -347,6 +518,33 @@ Deno.serve(async (req) => {
   let leido: unknown = {};
   try { leido = await req.json(); } catch { /* sin cuerpo: búsqueda vacía */ }
   const body: Obj = esObj(leido) ? leido : {};
+  // 2 bis) Sonda de dinero: SOLO LECTURA y EXCLUYENTE. Si se pide, no se toca
+  // catálogo en la misma invocación, para no gastar el presupuesto de
+  // peticiones (429 medido alrededor de la 12-16 en ráfaga).
+  if (body.dinero === true) {
+    const dinero = await sondaDinero(token);
+    const leyoSaldo = typeof dinero.saldo.wallets === "number";
+    console.log("[dropi-sonda:dinero]", JSON.stringify({
+      whoiam: dinero.saldo.http,
+      bodegas: dinero.bodegas.http,
+      motivos: dinero.motivos_cancelacion.http,
+      importlist: dinero.importlist.http,
+      // El valor del saldo NO se loguea: es información financiera.
+      saldo_leido: leyoSaldo,
+    }));
+    return json({
+      sonda: "dinero",
+      conclusion: dinero.frenado_por_dropi
+        ? "Dropi nos frenó por exceso de consultas (429). Espera unos minutos y repite: el freno es temporal y la ventana medida es corta."
+        : leyoSaldo
+        ? `Leímos el saldo de Dropi (campo wallets) usando ${dinero.saldo.autenticacion_que_funciono}. Con esto se puede medir cuándo se debita el saldo SIN crear ningún pedido desde aquí.`
+        : "No se pudo leer el saldo. Mira abajo qué respondió cada ruta: si whoiam da 401 por los dos encabezados, el camino sería el JWT de /integrations/login, que exige guardar usuario y contraseña de Dropi (decisión del dueño).",
+      user_agent_usado: ua(),
+      leido: new Date().toISOString(),
+      ...dinero,
+    }, 200, c);
+  }
+
   const buscar = corto(body.buscar, 60) ?? "";
   const inicio = enteroAcotado(body.inicio, 0, INICIO_MAX, 0);
   const tamano = enteroAcotado(body.tamano, 1, TAMANO_MAX, 5);
@@ -386,6 +584,11 @@ Deno.serve(async (req) => {
 
   const entra = cat.isSuccess === true || prod.isSuccess === true;
   const negado = [cat, prod].some((r) => r.http === 401 || /access denied/i.test(r.mensaje ?? ""));
+  // MEDIDO el 10-oct-2026: cinco invocaciones seguidas (4 peticiones cada una)
+  // hicieron que Dropi devolviera 429 a partir de la 4ª. La conclusión decía
+  // «conectados» porque el catálogo sí respondía, y el 429 quedaba escondido en
+  // un campo. Un freno de Dropi tiene que decirse en voz alta.
+  const frenado = [cat, prod, detalle, stock].some((r) => r?.http === 429);
   const ip = cat.ip_vista_por_dropi ?? prod.ip_vista_por_dropi;
 
   const unProducto = (r: typeof detalle) => r ? (r.objeto ?? r.objetos?.[0] ?? null) : null;
@@ -393,7 +596,9 @@ Deno.serve(async (req) => {
   const fichaStock = unProducto(stock);
 
   let conclusion: string;
-  if (entra) {
+  if (frenado) {
+    conclusion = "Dropi nos frenó por exceso de consultas (429). Espera unos minutos: el freno es temporal. Cada consulta de esta sonda gasta 4 peticiones, así que no encadenes varias seguidas.";
+  } else if (entra) {
     conclusion = productoId
       ? (detalle?.isSuccess === true
         ? `Conectados: el producto ${productoId} se leyó directo desde Dropi. La ficha y sus bodegas salen de products/v2; aún no se creó ningún producto, campaña, reserva ni pedido.`
@@ -428,6 +633,7 @@ Deno.serve(async (req) => {
 
   return json({
     conectado: entra,
+    frenado_por_dropi: frenado,
     conclusion,
     user_agent_usado: ua(),
     busqueda: buscar || null,

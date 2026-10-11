@@ -4685,3 +4685,108 @@ evidencia histórica.
   intento de desmarcar la casilla con sello activo por DML privilegiado →
   rechazado por el trigger.
 - Chromium Dropshipping **D1 54/54** y **D2a 60/60** (PC 1280 y celular 390).
+
+---
+
+# Dropshipping · sonda de dinero (solo lectura)
+
+**Corte:** 10 de octubre de 2026. **Sin migración, sin secretos nuevos.** Solo
+un redespliegue de la Edge Function `dropi-sonda`.
+
+## Qué hace y por qué
+
+Responde las preguntas de dinero de D2c **sin crear ningún pedido en Dropi**.
+
+La especificación publicada de Dropi (`https://api.dropi.co/docs`, OpenAPI
+crudo) declara en `POST whoiam` el campo **`wallets`: nuestro saldo**. Es el
+único lugar de toda la API conocida donde aparece nuestro dinero. Con eso, el
+protocolo para saber *cuándo se debita el saldo* es **leer el saldo antes y
+después de acciones que el dueño hace a mano en el panel de Dropi** — cero POST
+nuestros a `orders/`. Detalle en `docs/dropshipping-envios/DROPI.md` §9.
+
+Añade a `dropi-sonda` una bandera **opt-in** `{ dinero: true }` que hace 4
+lecturas y nada más:
+
+| Ruta | Para qué |
+|---|---|
+| `POST whoiam` | El saldo (`wallets`), la categoría y el estado de la cuenta |
+| `GET warehouses/` | Las bodegas (ruta del plugin oficial, nunca llamada) |
+| `GET api/orders/cancellationReasons` | Motivos oficiales de cancelación por rol |
+| `GET importlist/importstore/1` | Reconocimiento: qué es |
+
+Decisiones de diseño, todas medidas:
+
+- **Es excluyente:** con `{ dinero: true }` **no** se consulta catálogo. Dropi
+  responde 429 alrededor de la petición 12–16 en ráfaga y cada consulta de
+  catálogo de la sonda gasta 4. Mezclarlas es provocarse un 429 sin aprender
+  nada.
+- **Prueba las dos autenticaciones con el MISMO token:** la especificación marca
+  `whoiam` con seguridad `bearer`. Se intenta primero con
+  `dropi-integration-key` (lo que ya usamos) y, solo si responde 401/403, se
+  reintenta como `Authorization: Bearer`. **No se añade ningún secreto.** Si las
+  dos fallan, el camino sería el JWT de `/integrations/login`, que exigiría
+  guardar usuario y contraseña de Dropi: **eso lo decide el dueño**, la función
+  no lo intenta sola.
+- **PII:** `whoiam` devuelve nombre, correo y teléfono de la cuenta. **No se
+  devuelven.** La respuesta informa qué campos llegaron (`pii_omitida`) y solo
+  los valores operativos. El saldo tampoco se escribe en los logs.
+- **Límite autoimpuesto:** solo se llaman rutas que la especificación o el
+  plugin oficial prueban que existen. **No se adivinan URLs**: el acceso depende
+  de un `User-Agent` que Dropi tolera pero no autorizó.
+- **El 429 ahora se dice en voz alta**, también en el flujo normal de catálogo.
+  Antes la conclusión decía «Conectados» porque el catálogo sí respondía y el
+  freno quedaba escondido en un campo del JSON.
+
+**Lo que NO hace:** no llama `orders/myorders`, no hace POST a ninguna ruta de
+`orders`, no escribe en Supabase, no crea pedidos, reservas ni despachos.
+
+## D.1. Redesplegar `dropi-sonda`
+
+Supabase → Edge Functions → `dropi-sonda` → pestaña **Code** → pegar el
+contenido de `supabase/functions/dropi-sonda/index.ts` → **Deploy**.
+**Verify JWT: encendido** (sin cambios).
+
+## D.2. Leer el saldo desde el panel
+
+`https://montaguth.institute/panel.html` con sesión de admin → F12 → Consola:
+
+```js
+const { supabase } = await import('/supabase-config.js');
+const r = await supabase.functions.invoke('dropi-sonda', { body: { dinero: true } });
+const d = r.data ?? r.error;
+console.log(d.conclusion);
+console.table([{
+  saldo: d.saldo?.wallets,
+  autenticacion: d.saldo?.autenticacion_que_funciono,
+  http_whoiam: d.saldo?.http,
+  bodegas: d.bodegas?.cantidad,
+  motivos: d.motivos_cancelacion?.http,
+  frenado: d.frenado_por_dropi,
+}]);
+console.log(JSON.stringify(d.motivos_cancelacion?.por_rol, null, 2));
+```
+
+| Resultado | Qué sigue |
+|---|---|
+| `saldo` con número | Listo: empieza el protocolo de §9.6 de `DROPI.md` |
+| `http_whoiam: 401` por las dos vías | Decidir si se guardan usuario/contraseña de Dropi para el JWT de login |
+| `frenado: true` | Dropi frenó (429). Esperar unos minutos y repetir |
+
+## D.3. Pruebas hechas
+
+`bash supabase/pruebas/local/herramientas/correr-dropi-sonda-d1.sh` →
+**64 comprobaciones, 0 fallan** (las 40 de D1/D2a intactas + 24 nuevas):
+
+- lee `wallets` desde `whoiam`;
+- reintenta como `bearer` cuando el encabezado de integración no sirve, y deja
+  registrado qué respondió cada forma;
+- **no** devuelve el correo ni el teléfono de la cuenta, y declara la PII
+  omitida;
+- lee bodegas y motivos de cancelación (esta última desde la otra base, `/api/`);
+- con `{ dinero: true }` **no** toca catálogo, y gasta como máximo 5 peticiones;
+- un no-admin recibe 403 y **no llega a Dropi**;
+- solo `{ dinero: true }` estricto activa la sonda (un `"si"` no la activa);
+- el token no aparece en la respuesta;
+- un 429 se informa y se nombra en la conclusión, en catálogo y en dinero;
+- **nunca** `orders/myorders`, **nunca** POST a `orders`, **nunca** muta un
+  producto.

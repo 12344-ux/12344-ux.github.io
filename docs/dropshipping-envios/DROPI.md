@@ -314,3 +314,182 @@ el de más, hay página siguiente. El panel muestra 24 por página.
 consola del runbook («Dropshipping D1 · ajuste de uso real») muestra
 `campos_disponibles` y `fotos_remotas` del primer resultado para ajustar sin
 adivinar.
+
+## 9. El alcance real de la API, medido (10-oct-2026)
+
+Esta sección existe para no volver a descubrir nada de lo que sigue. Casi todo
+se midió **sin gastar una sola llamada a Dropi**: leyendo su especificación
+publicada y el código de su plugin oficial.
+
+### 9.1 La especificación publicada: 8 rutas, y dos sirven
+
+`https://api.dropi.co/docs` devuelve el **OpenAPI crudo** (no una página de
+Swagger). Documenta exactamente 8 rutas:
+
+```
+GET  /api/categories
+GET  /api/orders/cancellationReasons      <- motivos de cancelación por rol
+POST /api/register
+POST /api/users/warehouses
+GET  /api/users/warehouses/{id}
+GET  /api/users/{id}
+POST /integrations/login                   <- exige email, password, white_brand_id
+POST /integrations/whoiam                  <- AQUÍ ESTÁ EL SALDO
+```
+
+**El hallazgo que importa:** el esquema de respuesta de `whoiam` declara
+
+```json
+"wallets": { "type": "number", "format": "float", "example": 150000.5 }
+```
+
+**Ese es el saldo de la cuenta**, y es el **único** lugar de toda la API
+conocida donde aparece nuestro dinero. `whoiam` está marcado con seguridad
+`bearer`, no con `dropi-integration-key`.
+
+Nota de bases: las rutas `/api/...` **no** viven bajo `/integrations/`. Son dos
+prefijos distintos del mismo host.
+
+### 9.2 El universo completo del plugin oficial: 7 rutas
+
+Extraído del código de [Dropify v4.7.3](https://github.com/vjcvictor/wc-dropi-integration)
+(`API_URL` se concatena con cada ruta):
+
+```
+categories/                  products/index               products/v2/
+products/                    warehouses/                  importlist/importstore/1
+orders/myorders
+```
+
+Y `Constants.php` confirma los literales del pedido:
+
+```php
+$STATUS_BORRADOR = 'PENDIENTE CONFIRMACION';
+$CON_RECAUDO = 'CON RECAUDO';
+$SIN_RECAUDO = 'SIN RECAUDO';
+```
+
+### 9.3 Los resultados NEGATIVOS, que acotan el proyecto
+
+En el plugin oficial **no existe ninguna ruta** de:
+
+| Lo que no hay | Consecuencia de diseño |
+|---|---|
+| Saldo / wallet / movimientos | El único rastro del dinero es `whoiam.wallets` |
+| **Cotización de fletes** | **El flete NO se puede cotizar por API.** Por eso el asiento del costo proveedor es manual por necesidad, no por comodidad |
+| Estado del pedido | No hay forma programática de saber en qué va un pedido |
+| Guía / rastreo | El número de guía sale del panel **a mano**. Confirma la trampa 4 de §2 |
+
+**No hay una API rica escondida.** La integración oficial hace seis lecturas de
+catálogo y crea un pedido. Nada de dinero, nada de seguimiento. Esto hace a
+D3/D4 más pequeño y más honesto de lo que se pensaba.
+
+**Contraentrega:** `CON RECAUDO` es un campo del pedido, así que técnicamente
+está disponible y nunca estuvo bloqueada por falta de acceso. Pero sin rutas de
+estado ni de dinero, en contraentrega quedaríamos ciegos justo en lo que define
+el ingreso. Sigue siendo la fase 5 del plano, aparcada por decisión, no por
+tecnología.
+
+### 9.4 El límite de consultas: 429 (medido por accidente)
+
+Cinco invocaciones seguidas de `dropi-sonda` con `producto_id`, en unos
+segundos. **Cada invocación gasta 4 peticiones** (categorías, listado, ficha
+por id, ruta vieja de stock):
+
+| Invocación | Peticiones | Respuesta |
+|---|---|---|
+| 1 | 1–4 | 200 |
+| 2 | 5–8 | 200 |
+| 3 | 9–12 | 200 |
+| 4 | 13–16 | **429** |
+| 5 | 17–20 | **429** |
+
+**El techo está entre la petición 12 y la 16 en ráfaga.** No bloquea la cuenta:
+es un freno temporal y **se recuperó en ~7 minutos o menos** (corte 23:32,
+respondiendo 200 a las 23:39).
+
+Falta distinguir si el límite es «N por minuto» o «N por ráfaga». Se mide con
+una invocación suelta tras el corte.
+
+Consecuencias ya aplicadas en el código: la sonda informa `frenado_por_dropi` y
+**nombra el 429 en la conclusión** (antes decía «Conectados» porque el catálogo
+sí respondía, y el freno quedaba escondido en un campo). La sonda de dinero es
+**excluyente**: con `{ dinero: true }` no se consulta catálogo.
+
+### 9.5 El stock se cae de golpe, no de a poco
+
+Dos lecturas del mismo producto separadas 24 h, más un desempate por las dos
+rutas en el mismo instante:
+
+| Producto | Ayer | Hoy | Veredicto |
+|---|---|---|---|
+| Lipogan 6 (2296058) | 300 = 100+100+100 en 3 bodegas | **0, ninguna bodega** | Derrumbe real |
+| Lipogan 3 (2296057) | 300 = 100+100+100 en 3 bodegas | **0, ninguna bodega** | Derrumbe real |
+| Gotas Berberine (2296060) | 230, una bodega | **230, una bodega** | Estable |
+
+**Desempate:** leyendo `products/v2/{id}` y `products/index` en el **mismo
+instante**, ambas rutas dicen **0**. Por tanto:
+
+1. **El listado NO miente** para productos `SIMPLE`: coincide con la ficha. Se
+   puede usar para refrescar varios productos con una sola petición.
+2. **El stock puede pasar de 300 a 0 en 24 horas**, y no bajando de a poco: se
+   evaporaron las tres bodegas enteras. Ningún piso de existencias protege de
+   esto; solo la frescura de la lectura y la consulta en vivo antes de pagar.
+3. **`activo: true` convive con stock 0.** El producto sigue activo y no
+   privado, con cero unidades. **`active` NO sirve como señal de
+   disponibilidad.**
+4. La firma de «no disponible» por la ruta por id es `stock: 0` **con
+   `warehouse_product` vacío**.
+
+**Distribución medida (8 lecturas):** 1277, 459, 300, 300, 230, 0, 0, 0. **Nada
+entre 1 y 229.** El stock es bimodal: o muerto, o profundo. Por eso un piso de
+vitrina de 20 unidades no excluye ningún producto que tenga existencias — es
+una protección prácticamente gratis.
+
+**Y el proveedor importa:** el mismo producto («Lipogan») existe con 1277 y 459
+unidades bajo otros ids y otros proveedores. Elegir proveedor es una decisión de
+curaduría con consecuencias medibles.
+
+### 9.6 Cómo medir el dinero SIN crear un pedido
+
+Las preguntas de dinero no necesitan un `POST orders/`. Se responden **leyendo
+el saldo alrededor de acciones que el dueño hace a mano en el panel de Dropi**:
+
+| Paso | Quién | Qué mide |
+|---|---|---|
+| 1. Leer `wallets` | `dropi-sonda` con `{ dinero: true }` | Punto de partida |
+| 2. Crear el pedido **a mano** en el panel | El dueño | Es el flujo de D2c de todos modos |
+| 3. Leer `wallets` | Sonda | **¿Se debita al crear?** |
+| 4. Confirmar / despachar | El dueño | |
+| 5. Leer `wallets` | Sonda | ¿Se debita al despachar? |
+| 6. Entrega o cancelación | Realidad | |
+| 7. Leer `wallets` | Sonda | ¿Al entregar? ¿Se reintegra al cancelar? |
+
+Cero POST nuestros, cero órdenes improvisadas. Es el protocolo controlado que
+este documento venía exigiendo: resulta que no hacía falta escribir nada.
+
+### 9.7 Las ciudades: pista fuerte, no autoridad
+
+El plugin trae `places/CO.php` (1.345 líneas) y `states/CO.php` con municipios y
+departamentos. **Pero no son el catálogo de Dropi:** la cabecera los acredita a
+un autor tercero bajo licencia GPL — son los datos estándar de localización de
+Colombia para WooCommerce.
+
+Y `OrdersModel.php` **manda `city` y `state` tal cual, sin ninguna traducción** a
+un catálogo de Dropi. El plugin oficial simplemente confía. Eso **confirma el
+riesgo** que el plano llama el más peligroso: una ciudad que Dropi no reconoce
+hace fallar el pedido *después* del pago.
+
+Por tanto esas listas sirven como **contraste**, no como fuente. La lista propia
+debe construirse desde **DANE** y cruzarse contra ellas. Si se copiara el
+archivo habría que respetar su GPL: mejor generar la nuestra.
+
+### 9.8 Límite autoimpuesto para futuras pruebas
+
+**Solo se llaman rutas que la especificación publicada o el código del plugin
+prueban que existen. No se adivinan URLs.** Dos razones medidas: el techo de
+~12–16 peticiones por ráfaga, y que el acceso depende de un `User-Agent` que
+Dropi **tolera pero nunca autorizó** (§7, deuda reconocida). Un escaneo es la
+forma de perder el frente completo de un día para otro.
+
+Contenido de las fuentes externas parafraseado por restricciones de licencia.
