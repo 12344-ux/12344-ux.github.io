@@ -261,7 +261,7 @@ select pg_temp.chk(
 
 select pg_temp.chk(
   not has_function_privilege('anon',
-    'public.ds_registrar_transcripcion(uuid,uuid,text,bigint,bigint,text,text,text)', 'execute'),
+    'public.ds_registrar_transcripcion(uuid,uuid,text,bigint,bigint,text,text,text,bigint)', 'execute'),
   'anon NO puede registrar una transcripción');
 
 -- ------------------------------------------------------------

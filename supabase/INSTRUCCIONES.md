@@ -5109,3 +5109,160 @@ En la pantalla, además:
 - si el campo del saldo volviera a cambiar de nombre, **se dice** en vez de
   mostrar 0;
 - un perfil no-admin **no ve el saldo** y no se le inventa un error.
+
+---
+
+# Cuadre contable · 14-oct-2026
+
+## Qué pasó
+
+El saldo del panel de Dropi no coincidía con los libros. Al medir salieron
+**cuatro** cosas sin contabilizar, no una:
+
+1. el **seguro del pedido** en Dropi («Asegurar pedido», 754), que se activó y
+   nunca se registró;
+2. los **dos shampoos**, que entraron a bodega sin asiento de apertura: el
+   inventario existía en Producción pero no en libros;
+3. la **recarga de 50.000** al saldo de Dropi;
+4. la **liquidación de Wompi** de las dos ventas, ya consignada al banco.
+
+## El script
+
+`supabase/operacion/cuadre-contable-2026-10-14.sql`, pegado completo en el SQL
+Editor. Es **un solo bloque**, o sea una transacción: comprueba seis saldos y el
+cuadre del balance antes de dar nada por bueno y, si algo no cuadra, **no deja
+nada escrito**. Es idempotente. Fija las claims del admin dentro de la propia
+transacción porque en el SQL Editor no hay sesión y `guardar_asiento` exige
+`tiene_modulo('finanzas')`; se hace así, y no con `INSERT` directo, para que los
+asientos pasen por el validador y por la bitácora.
+
+Crea cuatro cuentas con `agregar_cuenta_puc`: **3130 / 313005** capital de
+personas naturales y **5230 / 523095** seguros de ventas.
+
+## Dos correcciones de cuenta, verificadas contra el PUC
+
+Las dos que se habían sugerido estaban mal, y conviene que quede escrito:
+
+- **3120 no es** capital de personas naturales: es «Capital asignado», de
+  sucursales de sociedades **extranjeras**. La correcta es **3130**.
+- **524555 no es** una cuenta de seguros: **5245 es «Mantenimiento y
+  reparaciones»**. La de seguros de ventas es **5230**, y dentro de ella **no
+  existe** subcuenta de «transporte de mercancías» (las de transporte, 523040 a
+  523055, son para asegurar flota **propia**). Para el seguro de un envío que
+  despacha un tercero queda **523095 «Otros»**.
+
+## El bug del bruto escrito a mano
+
+La primera versión llevaba el bruto de las ventas (99.900) y la comisión (4.818)
+escritos a mano, y **reventó**: `138095` quedaba en −1. El cubo se había vendido
+a **29.999**, no a 30.000, y la aritmética del abono **no puede distinguirlos**
+porque con los dos precios el neto consignado da 95.082 exacto: la comisión se
+redondea al peso por arriba y se come la diferencia.
+
+Ahora el bruto **se lee** de lo que las ventas dejaron en `138095` y la comisión
+**se deriva** (es lo que Wompi no consignó). La lección: un número que se puede
+medir no se infiere, y menos si la inferencia es ambigua.
+
+## El resultado
+
+| Cuenta | Saldo | Contra qué se verifica |
+|---|---|---|
+| 111005 banco | 95.082 | extracto |
+| 138010 saldo en Dropi | 27.136 | panel de Dropi |
+| 138095 Wompi por liquidar | 0 | nada pendiente |
+| 143505 inventario | 47.705 | 1 shampoo |
+| 313005 capital aportado | 145.410 | 95.410 mercancía + 50.000 efectivo |
+| Utilidad del ejercicio | 24.513 | |
+| **ACTIVO = PATRIMONIO** | **169.923** | 122.218 plata + 47.705 inventario |
+
+Ingresos 99.899 · comisión Wompi 4.817 · **sin retenciones** (si las hubiera,
+99.899 − 4.817 no daría exactamente 95.082).
+
+---
+
+# Dropshipping D2c.3 · el seguro del pedido
+
+## Qué hace y por qué
+
+Cierra la causa del descuadre: `pedido_proveedor` solo tenía `costo_real` y
+`flete`, así que **no había dónde anotar un seguro** y el descuadre se habría
+repetido con cada pedido asegurado.
+
+**El seguro es OPCIONAL, y eso manda el diseño.** En Dropi se decide al comprar.
+La columna es *nullable* y `null` o `0` significan «no se aseguró», **no** «falta
+el dato»: por eso el seguro **nunca** bloquea el asiento y un despacho se cierra
+perfectamente sin él. Es la diferencia con `costo_real` y `flete`, que sí
+bloquean (`DS_COSTO_PROVEEDOR_PENDIENTE`) porque esos siempre existen.
+
+El asiento del producto de proveedor queda:
+
+```
+D 613505 costo de la mercancía
+D 523535 flete
+D 523095 seguro   (solo si se aseguró)      C 138010 saldo en Dropi
+```
+
+## D2c3.1 · Aplicar la migración (SQL Editor, una sola vez)
+
+`20261030000000_dropshipping_seguro_pedido.sql`. Trae las cuentas 5230/523095
+con `on conflict do nothing`, así que no choca con las que creó el script de
+cuadre.
+
+**Va ANTES de desplegar la pantalla.** La migración borra la firma de 8
+argumentos de `ds_registrar_transcripcion` y crea la de 9 (si quedaran las dos,
+PostgREST tendría dos candidatas para la misma llamada por nombre). Con la
+migración aplicada, la pantalla vieja sigue funcionando porque el argumento
+nuevo tiene *default*; al revés, no.
+
+## D2c3.2 · Nada que redesplegar en Edge Functions
+
+No hay funciones nuevas ni secretos. La pantalla
+`ventas/despachos-proveedor/` se publica con el merge a `main`.
+
+## D2c3.3 · Comprobar desde el panel
+
+1. Ventas → Despachos de proveedor: el formulario tiene el campo **Seguro**,
+   marcado «(si lo contrataste)».
+2. Registrar un despacho **dejándolo vacío**: tiene que cerrarse sin avisos y
+   decir que el asiento ya se puede registrar en Finanzas.
+3. Registrar otro **con seguro**: en Finanzas, el asiento debe llevar la línea
+   de **523095** y el crédito a **138010** debe ser costo + flete + seguro.
+
+## D2c3.4 · Pruebas hechas
+
+Banco SQL completo **613/613** y matriz de permisos **170/170**. De las nuevas:
+
+- `dropshipping-seguro.sql` **29/29**;
+- `cuadre-contable-2026-10-14.sql` **24/24** (las identidades del cuadre, con
+  dos juegos de costo/flete para demostrar que no dependen de ellos);
+- `cuadre-contable-aplicar.sql` **29/29**, que corre el **mismo** script que se
+  pega en producción y cubre el caso feo: si falta el asiento del costo del
+  pedido de proveedor, el script se niega y la transacción se deshace entera,
+  cuentas nuevas incluidas.
+
+Pantalla: `correr-ui-despachos.sh` **70/70** en PC y celular.
+
+Lo que se mide del seguro:
+
+- un despacho **sin seguro** se registra, manda `null` y su asiento **cuadra**:
+  es el caso normal, no una excepción;
+- **no se mete línea de 523095** cuando no hubo seguro, ni cuando es 0 (una
+  línea de cero la rechazaría la base);
+- con seguro, la diferencia en el crédito a 138010 es **exactamente** el seguro;
+- un seguro **ilegible** («setecientos») se rechaza y lo dice por su nombre:
+  `parsearMonto` nunca devuelve null y convertiría el texto en 0 en silencio,
+  que es justo el error que descuadró los libros;
+- el costo y el flete **siguen bloqueando**: el seguro no relajó esa regla;
+- el producto **propio** no cambió de camino (sigue descargando 143505 y no se
+  le cuela saldo de Dropi, ni seguro, ni flete);
+- la firma de 8 argumentos **ya no existe** y la de 9 conserva el grant a
+  `authenticated`, con `anon` fuera.
+
+## Deuda que queda a la vista
+
+`ds_pedidos_por_transcribir` solo devuelve despachos **sin transcribir**, así que
+un despacho ya registrado desaparece de la pantalla. La RPC admite completar
+costo, flete y seguro en una segunda llamada, pero **desde la pantalla no hay
+cómo llegar**. Hoy no muerde porque los tres números se conocen al mismo tiempo,
+al crear el pedido en Dropi. Si alguna vez Dropi los muestra en diferido, hace
+falta una vista de despachos ya transcritos. Es anterior a este tramo.

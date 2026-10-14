@@ -25,9 +25,9 @@
     <span data-ico="info" aria-hidden="true"></span>
     <div><strong>El cliente ya pagó. Falta pedirlo al proveedor.</strong>
       Estos pedidos se cobraron y todavía <b>no existen en Dropi</b>. Créalos
-      allá a mano, y vuelve a anotar aquí el número que te dé, el costo y el
-      flete. Mientras un pedido siga en esta lista, sus unidades se descuentan
-      del stock disponible en la tienda.</div>
+      allá a mano, y vuelve a anotar aquí el número que te dé, el costo, el
+      flete y el seguro si lo contrataste. Mientras un pedido siga en esta lista,
+      sus unidades se descuentan del stock disponible en la tienda.</div>
   </section>
 
   <div id="vt-estado" aria-live="polite"></div>
@@ -109,11 +109,18 @@
           '<label class="vt-campo"><span>Flete</span>' +
             '<input class="vt-input" data-c="flete" type="text" inputmode="numeric" ' +
               'autocomplete="off" placeholder="Ej. 14.500"></label>' +
+          // El seguro es OPCIONAL de verdad: en Dropi se decide al comprar. El
+          // placeholder lo dice para que un campo vacío no parezca un olvido.
+          '<label class="vt-campo"><span>Seguro <span class="dp-opt">(si lo contrataste)</span></span>' +
+            '<input class="vt-input" data-c="seguro" type="text" inputmode="numeric" ' +
+              'autocomplete="off" placeholder="Déjalo vacío si no aseguraste"></label>' +
         '</div>' +
         '<p class="dp-ayuda">El número es obligatorio: es lo que permite verificar ' +
           'después si el pedido existe, y lo que evita crearlo dos veces. El costo y el ' +
           'flete puedes dejarlos vacíos si Dropi aún no los muestra y completarlos luego; ' +
-          'mientras falten, el asiento contable queda pendiente en Finanzas.</p>' +
+          'mientras falten, el asiento contable queda pendiente en Finanzas. ' +
+          'El <strong>seguro</strong> es el cobro de «Asegurar pedido»: déjalo vacío si no lo ' +
+          'contrataste, y el despacho se cierra igual.</p>' +
         '<div class="vt-acciones">' +
           '<button class="vt-btn" data-c="guardar" type="button">' + ico('check') +
             'Registrar despacho</button>' +
@@ -186,6 +193,7 @@
     };
     const mCosto = monto('costo');
     const mFlete = monto('flete');
+    const mSeguro = monto('seguro');
     if (mCosto.malo) {
       msg.className = 'dp-msg dp-msg--err';
       msg.textContent = 'El costo no se entiende. Usa solo números, por ejemplo 21.000.';
@@ -196,8 +204,18 @@
       msg.textContent = 'El flete no se entiende. Usa solo números, por ejemplo 14.500.';
       return;
     }
+    // Un seguro ILEGIBLE sí se bloquea. Vacío significa «no aseguré» y pasa
+    // sin ruido, pero «setecientos» no puede convertirse en cero en silencio:
+    // ese es justo el error que descuadró los libros el 14-oct-2026.
+    if (mSeguro.malo) {
+      msg.className = 'dp-msg dp-msg--err';
+      msg.textContent = 'El seguro no se entiende. Usa solo números, por ejemplo 754, ' +
+        'o déjalo vacío si no aseguraste el pedido.';
+      return;
+    }
     const costo = mCosto.valor;
     const flete = mFlete.valor;
+    const seguro = mSeguro.valor;
 
     btn.disabled = true;
     msg.className = 'dp-msg';
@@ -208,6 +226,7 @@
       p_pedido_externo_id: externo,
       p_costo_real: costo,
       p_flete: flete,
+      p_seguro: seguro,
     });
     btn.disabled = false;
 
@@ -236,7 +255,7 @@
     montarHeader({
       titulo: 'Despachos de proveedor',
       kicker: 'VENTAS · DESPACHO CON PROVEEDOR',
-      lead: 'Pedidos ya cobrados que hay que crear a mano en Dropi. Aquí ves qué pedir y anotas el número, el costo y el flete cuando ya lo hiciste.',
+      lead: 'Pedidos ya cobrados que hay que crear a mano en Dropi. Aquí ves qué pedir y anotas el número, el costo, el flete y el seguro cuando ya lo hiciste.',
       sesion: acceso.sesion,
       areaLabel: 'VENTAS',
       volverHref: '../index.html',

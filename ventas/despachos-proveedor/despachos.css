@@ -69,3 +69,10 @@
 .dp-banner strong{display:inline}
 .dp-banner--ok{border-color:#9ec5a5;background:rgba(74,124,89,.08)}
 .dp-banner--err{border-color:var(--rojo,#A6332E);background:rgba(166,51,46,.06)}
+
+/* Marca un campo como opcional sin que parezca un olvido. */
+.dp-opt {
+  font-weight: 400;
+  opacity: .7;
+  font-size: .92em;
+}
