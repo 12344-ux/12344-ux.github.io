@@ -52,9 +52,13 @@ declare
   v_capital_merc  bigint := 95410;    -- 2 shampoos x 47.705, aporte en especie
   v_capital_efec  bigint := 50000;    -- recarga del saldo de Dropi, aporte
   v_costo_sham    bigint := 47705;    -- costo del shampoo vendido
-  v_comision      bigint := 4818;     -- Wompi: 2,65% + 700 + IVA, 2 transacciones
-  v_neto_banco    bigint := 95082;    -- lo que Wompi consigno
-  v_bruto_ventas  bigint := 99900;    -- 69.900 shampoo + 30.000 cubo
+  v_neto_banco    bigint := 95082;    -- lo que Wompi consigno DE VERDAD al banco
+  -- El bruto de las ventas y la comision NO se escriben a mano: se DERIVAN de
+  -- los libros. El bruto es lo que las ventas dejaron en 138095, y la comision
+  -- es, por definicion, lo que Wompi NO consigno. Escribirlos a mano fue un
+  -- error en la primera version: el cubo se vendio a 29.999 (no 30.000) y la
+  -- aritmetica del abono no puede distinguir un peso, porque con los dos
+  -- precios el neto da 95.082 igual. Derivarlo no se equivoca nunca.
 
   v_fecha_cap_merc date := '2026-10-01';  -- cuando entro la mercancia
   v_fecha_cap_efec date := '2026-10-10';  -- cuando se recargo Dropi
@@ -64,6 +68,8 @@ declare
 
   v_admin   uuid;
   v_esperado_dropi bigint;
+  v_bruto_ventas bigint;   -- derivado: lo que las ventas dejaron en 138095
+  v_comision     bigint;   -- derivado: bruto - lo que Wompi consigno
   n_138010 bigint; n_138095 bigint; n_143505 bigint;
   n_111005 bigint; n_413505 bigint; n_3130 bigint;
   v_debe bigint; v_haber bigint;
@@ -138,6 +144,33 @@ begin
   if not exists (select 1 from asientos
                   where descripcion = 'Cuadre 14-oct-2026 · liquidacion Wompi de las dos ventas'
                     and estado = 'activo') then
+
+    -- El bruto es lo que las ventas DEJARON en la cuenta puente. No se supone:
+    -- se mide. Asi el asiento la cierra exactamente, sea cual sea el precio.
+    select coalesce(sum(l.debe - l.haber), 0) into v_bruto_ventas
+      from asiento_lineas l join asientos a on a.id = l.asiento_id
+     where a.estado = 'activo' and l.cuenta_codigo = '138095';
+
+    -- La comision es, por definicion, lo que Wompi se quedo.
+    v_comision := v_bruto_ventas - v_neto_banco;
+
+    if v_bruto_ventas <= 0 then
+      raise exception 'En Wompi por liquidar (138095) no hay nada pendiente (%). '
+        'Faltan los asientos AUTOMATICOS de las ventas: registralos primero desde '
+        'Finanzas. No se escribio nada.', v_bruto_ventas;
+    end if;
+    if v_comision < 0 then
+      raise exception 'Wompi consigno % pero solo debia %: la consignacion no puede ser '
+        'mayor que lo recaudado. Revisa el extracto. No se escribio nada.',
+        v_neto_banco, v_bruto_ventas;
+    end if;
+    -- Red de seguridad floja a proposito: la comision de Wompi ronda el 3-4 %,
+    -- asi que por encima del 10 % algo esta mal y es mejor parar que escribir.
+    if v_comision > v_bruto_ventas / 10 then
+      raise exception 'La comision saldria % sobre un bruto de % (mas del 10 %%). '
+        'Revisa el neto consignado. No se escribio nada.', v_comision, v_bruto_ventas;
+    end if;
+
     perform guardar_asiento(
       v_fecha_liq,
       'Cuadre 14-oct-2026 · liquidacion Wompi de las dos ventas',
@@ -168,9 +201,10 @@ begin
   end if;
 
   if n_138095 <> 0 then
-    raise exception 'Wompi por liquidar (138095) quedo en % y deberia ser 0. '
-      'Lo mas probable: falta el asiento AUTOMATICO de una de las dos ventas, o el bruto '
-      'de las ventas no es %. No se escribio nada.', n_138095, v_bruto_ventas;
+    raise exception 'Wompi por liquidar (138095) quedo en % y deberia ser 0. Como el bruto '
+      'ahora se MIDE de los libros, esto solo puede pasar si entro una venta web nueva '
+      'despues de la consignacion del 13-oct: esa todavia no esta liquidada y hay que '
+      'dejarla para el proximo abono. No se escribio nada.', n_138095;
   end if;
 
   if n_138010 <> v_esperado_dropi then
@@ -191,9 +225,12 @@ begin
       n_111005, v_neto_banco;
   end if;
 
-  if n_413505 <> v_bruto_ventas then
-    raise exception 'Los ingresos (413505) quedaron en % y deberian ser %. No se escribio nada.',
-      n_413505, v_bruto_ventas;
+  -- Los ingresos NO se comparan contra un numero escrito a mano: son los que
+  -- las ventas reales dejaron. Se informan en el resumen para que el dueno los
+  -- vea. Lo que si tiene que cumplirse es el cuadre del balance, mas abajo.
+  if n_413505 <= 0 then
+    raise exception 'No hay ingresos registrados (413505 = %). Faltan los asientos de las '
+      'ventas. No se escribio nada.', n_413505;
   end if;
 
   -- Cuadre del balance por los dos lados.
@@ -220,6 +257,12 @@ begin
   raise notice '   Wompi por liquidar (138095)  $%', to_char(n_138095, 'FM999G999G999');
   raise notice 'Inventario (143505) ........... $%', to_char(n_143505, 'FM999G999G999');
   raise notice '-------------------------------------------------';
+  raise notice 'Ingresos (413505) ............. $%', to_char(n_413505, 'FM999G999G999');
+  raise notice 'Comision Wompi (530515) ....... $%',
+    to_char(coalesce((select sum(l.debe - l.haber) from asiento_lineas l
+                        join asientos a on a.id = l.asiento_id
+                       where a.estado = 'activo' and l.cuenta_codigo = '530515'), 0),
+            'FM999G999G999');
   raise notice 'Capital aportado (3130) ....... $%', to_char(n_3130, 'FM999G999G999');
   raise notice 'Utilidad del ejercicio ........ $%', to_char(v_ing - v_cg, 'FM999G999G999');
   raise notice 'ACTIVO = PAS + PAT + RESULTADO  $% = $%',

@@ -71,9 +71,9 @@ select pg_temp.ok(4, 'FASE 1 · tampoco creo las cuentas nuevas', '0',
 
 -- ============================ FASE 2 ========================================
 -- Llega el asiento automatico del cubo, con costo y flete contra el saldo Dropi.
-select pg_temp.sembrar('2026-10-10', 'Venta web 30.000 proveedor (automatico F3)',
-  '[{"cuenta_codigo":"138095","debe":30000,"haber":0},
-     {"cuenta_codigo":"413505","debe":0,"haber":30000},
+select pg_temp.sembrar('2026-10-10', 'Venta web 29.999 proveedor (automatico F3)',
+  '[{"cuenta_codigo":"138095","debe":29999,"haber":0},
+     {"cuenta_codigo":"413505","debe":0,"haber":29999},
      {"cuenta_codigo":"613505","debe":7200,"haber":0},
      {"cuenta_codigo":"523535","debe":14910,"haber":0},
      {"cuenta_codigo":"138010","debe":0,"haber":22110}]'::jsonb);
@@ -95,10 +95,10 @@ select pg_temp.ok(15, 'FASE 2 · Wompi por liquidar (138095) = 0', '0', pg_temp.
 select pg_temp.ok(16, 'FASE 2 · inventario (143505) = 47.705 (1 shampoo)', '47705', pg_temp.neto('143505')::text);
 select pg_temp.ok(17, 'FASE 2 · capital aportado (3130) = 145.410', '145410', (-pg_temp.neto('3130%'))::text);
 select pg_temp.ok(18, 'FASE 2 · seguro en 523095 = 754', '754', pg_temp.neto('523095')::text);
-select pg_temp.ok(19, 'FASE 2 · comision Wompi (530515) = 4.818', '4818', pg_temp.neto('530515')::text);
+select pg_temp.ok(19, 'FASE 2 · comision Wompi (530515) = 4.817', '4817', pg_temp.neto('530515')::text);
 select pg_temp.ok(20, 'FASE 2 · flete (523535) = 14.910', '14910', pg_temp.neto('523535')::text);
 select pg_temp.ok(21, 'FASE 2 · costo de ventas (613505) = 54.905', '54905', pg_temp.neto('613505')::text);
-select pg_temp.ok(22, 'FASE 2 · ingresos (413505) = 99.900', '99900', (-pg_temp.neto('413505'))::text);
+select pg_temp.ok(22, 'FASE 2 · ingresos (413505) = 99.899', '99899', (-pg_temp.neto('413505'))::text);
 
 -- PLATA y utilidad, que es lo que el dueño preguntó.
 select pg_temp.ok(23, 'FASE 2 · PLATA total = 122.218', '122218',
@@ -131,6 +131,44 @@ select pg_temp.ok(30, 'FASE 3 · sigue habiendo 4 asientos de cuadre, no 8', '4'
   (select count(*)::text from asientos where descripcion like 'Cuadre 14-oct-2026%' and estado = 'activo'));
 select pg_temp.ok(31, 'FASE 3 · el saldo en Dropi no se movio', '27136', pg_temp.neto('138010')::text);
 select pg_temp.ok(32, 'FASE 3 · la PLATA no se movio', '122218',
+  (pg_temp.neto('111005') + pg_temp.neto('138095') + pg_temp.neto('138010'))::text);
+
+-- ============================ FASE 4 ========================================
+-- LA REGRESION QUE IMPORTA. La primera version del script llevaba el bruto de
+-- las ventas y la comision escritos a mano (99.900 y 4.818) y REVENTO en
+-- produccion: el cubo se habia vendido a 29.999, asi que 138095 quedaba en -1
+-- y el script se negaba (bien) pero por el motivo equivocado (mal).
+-- Ahora el bruto se MIDE de la cuenta puente y la comision se deriva. Esta
+-- fase lo demuestra con un precio DISTINTO: libro nuevo, cubo a 30.000, y el
+-- script tiene que cerrar 138095 en cero y deducir una comision de 4.818 sin
+-- que nadie se lo diga.
+delete from asiento_bitacora; delete from asiento_lineas; delete from asientos;
+
+select pg_temp.sembrar('2026-10-09', 'Venta web 69.900 (automatico F3)',
+  '[{"cuenta_codigo":"138095","debe":69900,"haber":0},
+     {"cuenta_codigo":"413505","debe":0,"haber":69900},
+     {"cuenta_codigo":"613505","debe":47705,"haber":0},
+     {"cuenta_codigo":"143505","debe":0,"haber":47705}]'::jsonb);
+select pg_temp.sembrar('2026-10-10', 'Venta web 30.000 proveedor (automatico F3)',
+  '[{"cuenta_codigo":"138095","debe":30000,"haber":0},
+     {"cuenta_codigo":"413505","debe":0,"haber":30000},
+     {"cuenta_codigo":"613505","debe":7200,"haber":0},
+     {"cuenta_codigo":"523535","debe":14910,"haber":0},
+     {"cuenta_codigo":"138010","debe":0,"haber":22110}]'::jsonb);
+
+\echo ''
+\echo '>>> FASE 4 · mismo script, cubo a 30.000: debe deducir la comision solo'
+\i /projects/sandbox/12344-ux.github.io/supabase/operacion/cuadre-contable-2026-10-14.sql
+
+select pg_temp.ok(40, 'FASE 4 · cierra la cuenta puente igual (138095 = 0)', '0',
+  pg_temp.neto('138095')::text);
+select pg_temp.ok(41, 'FASE 4 · dedujo la comision sola: 99.900 - 95.082 = 4.818', '4818',
+  pg_temp.neto('530515')::text);
+select pg_temp.ok(42, 'FASE 4 · los ingresos son los reales, 99.900', '99900',
+  (-pg_temp.neto('413505'))::text);
+select pg_temp.ok(43, 'FASE 4 · el banco sigue siendo lo consignado de verdad', '95082',
+  pg_temp.neto('111005')::text);
+select pg_temp.ok(44, 'FASE 4 · la PLATA no cambia: no depende del precio', '122218',
   (pg_temp.neto('111005') + pg_temp.neto('138095') + pg_temp.neto('138010'))::text);
 
 -- ---------------------------------------------------------------------------
