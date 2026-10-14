@@ -48,7 +48,7 @@ declare
   -- Si alguno no es exacto, se cambia SOLO aqui y se vuelve a correr.
   v_costo_cubo    bigint := 7200;     -- lo que Dropi cobro por la mercancia
   v_flete_cubo    bigint := 14910;    -- el envio, sin el seguro
-  v_seguro        bigint := 755;      -- «Asegurar pedido»
+  v_seguro        bigint := 754;      -- «Asegurar pedido» (confirmado por el dueno)
   v_capital_merc  bigint := 95410;    -- 2 shampoos x 47.705, aporte en especie
   v_capital_efec  bigint := 50000;    -- recarga del saldo de Dropi, aporte
   v_costo_sham    bigint := 47705;    -- costo del shampoo vendido

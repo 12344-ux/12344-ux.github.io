@@ -44,7 +44,7 @@ create or replace function pg_temp.neto(cuenta text) returns bigint
 language sql as $$
   select coalesce(sum(l.debe - l.haber), 0)::bigint
     from asiento_lineas l join asientos a on a.id = l.asiento_id
-   where a.estado = 'activo' and l.cuenta_codigo = cuenta;
+   where a.estado = 'activo' and l.cuenta_codigo like cuenta;
 $$;
 
 create temp table res (n int, prueba text, esperado text, obtenido text, veredicto text);
@@ -67,16 +67,31 @@ begin
   -- su FK impide reutilizar el libro entre los dos juegos de números.
   delete from asiento_bitacora; delete from asiento_lineas; delete from asientos;
 
+  -- Las cuentas nuevas del cuadre, las mismas que crea el script de operación:
+  -- 3130/313005 capital de personas naturales y 5230/523095 seguros de ventas.
+  perform pg_temp.como('89e5028d-8c17-4deb-89c3-59acbd0ee2f2', $q$
+    select coalesce(
+      (select string_agg(x, ',') from (
+        select case when not exists (select 1 from puc_cuentas where codigo = v.c)
+                    then agregar_cuenta_puc(v.c, v.n, v.nat, v.imp) else '' end as x
+          from (values ('3130','CAPITAL DE PERSONAS NATURALES','credito',false),
+                       ('313005','CAPITAL DE PERSONAS NATURALES','credito',true),
+                       ('5230','SEGUROS','debito',false),
+                       ('523095','OTROS (SEGUROS DE VENTAS)','debito',true)
+               ) as v(c, n, nat, imp)
+      ) s), 'ok')
+  $q$);
+
   -- (1) Aporte de capital en mercancía: los dos shampoos.
   r := pg_temp.asiento('2026-10-01', 'Aporte de capital del dueno en mercancia: 2 shampoos',
     '[{"cuenta_codigo":"143505","detalle":"2 shampoos a 47.705","debe":95410,"haber":0},
-       {"cuenta_codigo":"310505","detalle":"aporte del dueno","debe":0,"haber":95410}]'::jsonb);
+       {"cuenta_codigo":"313005","detalle":"aporte del dueno","debe":0,"haber":95410}]'::jsonb);
   if r like 'ERROR%' then raise exception 'asiento 1 rechazado: %', r; end if;
 
   -- (2) Aporte de capital en efectivo para recargar Dropi.
   r := pg_temp.asiento('2026-10-10', 'Aporte de capital del dueno: recarga del saldo en Dropi',
     '[{"cuenta_codigo":"138010","detalle":"recarga en el panel de Dropi","debe":50000,"haber":0},
-       {"cuenta_codigo":"310505","detalle":"aporte del dueno","debe":0,"haber":50000}]'::jsonb);
+       {"cuenta_codigo":"313005","detalle":"aporte del dueno","debe":0,"haber":50000}]'::jsonb);
   if r like 'ERROR%' then raise exception 'asiento 2 rechazado: %', r; end if;
 
   -- (3) Venta del shampoo (lo que ya hizo el asiento AUTOMATICO de F3).
@@ -103,8 +118,8 @@ begin
 
   -- (6) El SEGURO del pedido, que se habia quedado sin contabilizar.
   r := pg_temp.asiento('2026-10-10', 'Seguro del pedido en Dropi (Asegurar pedido)',
-    '[{"cuenta_codigo":"523535","detalle":"seguro del envio","debe":755,"haber":0},
-       {"cuenta_codigo":"138010","detalle":"descontado del saldo en Dropi","debe":0,"haber":755}]'::jsonb);
+    '[{"cuenta_codigo":"523095","detalle":"seguro del envio","debe":754,"haber":0},
+       {"cuenta_codigo":"138010","detalle":"descontado del saldo en Dropi","debe":0,"haber":754}]'::jsonb);
   if r like 'ERROR%' then raise exception 'asiento 6 rechazado: %', r; end if;
 
   -- (7) Liquidacion de Wompi: el neto al banco y la comision como gasto.
@@ -148,22 +163,22 @@ begin
                      v_activo::text, (v_pasivo + v_patrim + (v_ing - v_cg))::text);
   perform pg_temp.ok(base + 4, 'Wompi por liquidar (138095) queda en cero',
                      '0', pg_temp.neto('138095')::text);
-  perform pg_temp.ok(base + 5, 'Saldo en Dropi (138010) = 50.000 - costo - flete - 755',
-                     (50000 - p_costo - p_flete - 755)::text, pg_temp.neto('138010')::text);
+  perform pg_temp.ok(base + 5, 'Saldo en Dropi (138010) = 50.000 - costo - flete - 754',
+                     (50000 - p_costo - p_flete - 754)::text, pg_temp.neto('138010')::text);
   perform pg_temp.ok(base + 6, 'Inventario (143505) = 1 shampoo = 47.705',
                      '47705', pg_temp.neto('143505')::text);
-  perform pg_temp.ok(base + 7, 'Capital aportado (310505) = 145.410',
-                     '145410', (-pg_temp.neto('310505'))::text);
+  perform pg_temp.ok(base + 7, 'Capital aportado (3130) = 145.410',
+                     '145410', (-pg_temp.neto('3130%'))::text);
   perform pg_temp.ok(base + 8, 'Ingresos (413505) = 99.900',
                      '99900', (-pg_temp.neto('413505'))::text);
   perform pg_temp.ok(base + 9, 'Banco (111005) = 95.082',
                      '95082', pg_temp.neto('111005')::text);
-  perform pg_temp.ok(base + 10, 'PLATA total = 144.327 - costo - flete',
-                     (144327 - p_costo - p_flete)::text, v_plata::text);
-  perform pg_temp.ok(base + 11, 'Resultado del ejercicio = 46.622 - costo - flete',
-                     (46622 - p_costo - p_flete)::text, (v_ing - v_cg)::text);
-  perform pg_temp.ok(base + 12, 'Activo total = 192.032 - costo - flete',
-                     (192032 - p_costo - p_flete)::text, v_activo::text);
+  perform pg_temp.ok(base + 10, 'PLATA total = 144.328 - costo - flete',
+                     (144328 - p_costo - p_flete)::text, v_plata::text);
+  perform pg_temp.ok(base + 11, 'Resultado del ejercicio = 46.623 - costo - flete',
+                     (46623 - p_costo - p_flete)::text, (v_ing - v_cg)::text);
+  perform pg_temp.ok(base + 12, 'Activo total = 192.033 - costo - flete',
+                     (192033 - p_costo - p_flete)::text, v_activo::text);
 end $$;
 
 -- Juego A y juego B: dos costos/fletes distintos, mismas identidades.

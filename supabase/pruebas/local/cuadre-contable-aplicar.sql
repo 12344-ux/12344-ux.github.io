@@ -90,20 +90,20 @@ select pg_temp.ok(12, 'FASE 2 · 3130 es de naturaleza credito y 313005 imputabl
   (select (select naturaleza from puc_cuentas where codigo = '3130') || '|' ||
           (select imputable from puc_cuentas where codigo = '313005')::text));
 select pg_temp.ok(13, 'FASE 2 · banco (111005) = 95.082', '95082', pg_temp.neto('111005')::text);
-select pg_temp.ok(14, 'FASE 2 · saldo en Dropi (138010) = 27.135', '27135', pg_temp.neto('138010')::text);
+select pg_temp.ok(14, 'FASE 2 · saldo en Dropi (138010) = 27.136', '27136', pg_temp.neto('138010')::text);
 select pg_temp.ok(15, 'FASE 2 · Wompi por liquidar (138095) = 0', '0', pg_temp.neto('138095')::text);
 select pg_temp.ok(16, 'FASE 2 · inventario (143505) = 47.705 (1 shampoo)', '47705', pg_temp.neto('143505')::text);
 select pg_temp.ok(17, 'FASE 2 · capital aportado (3130) = 145.410', '145410', (-pg_temp.neto('3130%'))::text);
-select pg_temp.ok(18, 'FASE 2 · seguro en 523095 = 755', '755', pg_temp.neto('523095')::text);
+select pg_temp.ok(18, 'FASE 2 · seguro en 523095 = 754', '754', pg_temp.neto('523095')::text);
 select pg_temp.ok(19, 'FASE 2 · comision Wompi (530515) = 4.818', '4818', pg_temp.neto('530515')::text);
 select pg_temp.ok(20, 'FASE 2 · flete (523535) = 14.910', '14910', pg_temp.neto('523535')::text);
 select pg_temp.ok(21, 'FASE 2 · costo de ventas (613505) = 54.905', '54905', pg_temp.neto('613505')::text);
 select pg_temp.ok(22, 'FASE 2 · ingresos (413505) = 99.900', '99900', (-pg_temp.neto('413505'))::text);
 
 -- PLATA y utilidad, que es lo que el dueño preguntó.
-select pg_temp.ok(23, 'FASE 2 · PLATA total = 122.217', '122217',
+select pg_temp.ok(23, 'FASE 2 · PLATA total = 122.218', '122218',
   (pg_temp.neto('111005') + pg_temp.neto('138095') + pg_temp.neto('138010'))::text);
-select pg_temp.ok(24, 'FASE 2 · utilidad del ejercicio = 24.512', '24512',
+select pg_temp.ok(24, 'FASE 2 · utilidad del ejercicio = 24.513', '24513',
   (select (coalesce(sum(l.haber-l.debe) filter (where l.cuenta_codigo like '4%'),0)
          - coalesce(sum(l.debe-l.haber) filter (where l.cuenta_codigo similar to '(5|6|7)%'),0))::text
      from asiento_lineas l join asientos a on a.id = l.asiento_id where a.estado='activo'));
@@ -129,8 +129,8 @@ select pg_temp.ok(26, 'FASE 2 · activo = pasivo + patrimonio + resultado',
 
 select pg_temp.ok(30, 'FASE 3 · sigue habiendo 4 asientos de cuadre, no 8', '4',
   (select count(*)::text from asientos where descripcion like 'Cuadre 14-oct-2026%' and estado = 'activo'));
-select pg_temp.ok(31, 'FASE 3 · el saldo en Dropi no se movio', '27135', pg_temp.neto('138010')::text);
-select pg_temp.ok(32, 'FASE 3 · la PLATA no se movio', '122217',
+select pg_temp.ok(31, 'FASE 3 · el saldo en Dropi no se movio', '27136', pg_temp.neto('138010')::text);
+select pg_temp.ok(32, 'FASE 3 · la PLATA no se movio', '122218',
   (pg_temp.neto('111005') + pg_temp.neto('138095') + pg_temp.neto('138010'))::text);
 
 -- ---------------------------------------------------------------------------
