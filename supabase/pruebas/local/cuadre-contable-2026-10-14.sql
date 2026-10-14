@@ -47,6 +47,10 @@ language sql as $$
    where a.estado = 'activo' and l.cuenta_codigo like cuenta;
 $$;
 
+-- Arranque limpio: el banco corre varias suites sobre la misma base.
+delete from asiento_bitacora; delete from asiento_lineas; delete from asientos;
+delete from puc_cuentas where codigo in ('313005', '3130');
+
 create temp table res (n int, prueba text, esperado text, obtenido text, veredicto text);
 create or replace function pg_temp.ok(n int, prueba text, esperado text, obtenido text)
 returns void language sql as $$
@@ -190,3 +194,9 @@ select pg_temp.verificar(18500, 13200, 200);
 -- ------------------------------------------------------------
 select n, prueba, esperado, obtenido, veredicto from res order by n;
 select veredicto, count(*) as cuantas from res group by veredicto order by veredicto;
+
+-- Dejar la base como se encontro: el banco corre todas las suites seguidas
+-- sobre la MISMA base, y un libro a medias aqui descuadra a la siguiente.
+-- 5230 y 523095 se conservan: las crea el esquema, no esta suite.
+delete from asiento_bitacora; delete from asiento_lineas; delete from asientos;
+delete from puc_cuentas where codigo in ('313005', '3130');

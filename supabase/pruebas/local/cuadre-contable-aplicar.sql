@@ -30,6 +30,15 @@ language sql as $$
    where a.estado = 'activo' and l.cuenta_codigo like cuenta;
 $$;
 
+-- ARRANQUE LIMPIO. El banco corre todas las suites sobre la MISMA base y esta
+-- no puede envolverse en begin/rollback como las demás: la FASE 1 provoca una
+-- excepción a propósito, y dentro de una transacción explícita eso abortaría
+-- todo lo que viene después. Así que se limpia a mano al entrar y al salir.
+-- OJO: 5230 y 523095 NO se borran. Desde la migración 20261030000000 las crea
+-- el esquema, no este script, y otras suites las necesitan.
+delete from asiento_bitacora; delete from asiento_lineas; delete from asientos;
+delete from puc_cuentas where codigo in ('313005', '3130');
+
 -- Registra un asiento actuando como el admin, igual que lo hace el script real.
 create or replace function pg_temp.sembrar(fecha date, descr text, lineas jsonb)
 returns void language plpgsql as $$
@@ -66,8 +75,9 @@ select pg_temp.ok(2, 'FASE 1 · el inventario sigue como estaba (sin apertura)',
   (-47705)::text, pg_temp.neto('143505')::text);
 select pg_temp.ok(3, 'FASE 1 · el banco sigue vacio', '0', pg_temp.neto('111005')::text);
 -- Las cuentas nuevas tampoco quedan: la transaccion se deshizo entera.
-select pg_temp.ok(4, 'FASE 1 · tampoco creo las cuentas nuevas', '0',
-  (select count(*)::text from puc_cuentas where codigo in ('3130','313005','5230','523095')));
+-- Solo 3130 y 313005: las de seguros ya vienen del esquema (20261030000000).
+select pg_temp.ok(4, 'FASE 1 · tampoco creo las cuentas de capital', '0',
+  (select count(*)::text from puc_cuentas where codigo in ('3130','313005')));
 
 -- ============================ FASE 2 ========================================
 -- Llega el asiento automatico del cubo, con costo y flete contra el saldo Dropi.
@@ -174,3 +184,9 @@ select pg_temp.ok(44, 'FASE 4 · la PLATA no cambia: no depende del precio', '12
 -- ---------------------------------------------------------------------------
 select n, prueba, esperado, obtenido, veredicto from res order by n;
 select veredicto, count(*) as cuantas from res group by veredicto order by veredicto;
+
+-- Dejar la base como se encontro: el banco corre todas las suites seguidas
+-- sobre la MISMA base, y un libro a medias aqui descuadra a la siguiente.
+-- 5230 y 523095 se conservan: las crea el esquema, no esta suite.
+delete from asiento_bitacora; delete from asiento_lineas; delete from asientos;
+delete from puc_cuentas where codigo in ('313005', '3130');

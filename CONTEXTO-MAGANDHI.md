@@ -38,7 +38,30 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > Antes, el mismo día: la **sonda de dinero** (PR #263) que lee el saldo de
 > Dropi sin crear pedidos. **1.065 comprobaciones en verde.**
 >
-> **El estado actual de producción llega hasta la migración `20261029000000`.**
+> **Cuadre contable y D2c.3 · 14-oct-2026.** El saldo del panel de Dropi no
+> coincidía con los libros y al medir salieron **cuatro** cosas sin contabilizar:
+> el **seguro del pedido** en Dropi (754), los **dos shampoos** sin asiento de
+> apertura, la **recarga de 50.000** a Dropi y la **liquidación de Wompi**. Se
+> cuadró con `supabase/operacion/cuadre-contable-2026-10-14.sql` (cuatro
+> asientos y cuatro cuentas nuevas) y quedó así: banco **95.082**, saldo en
+> Dropi **27.136**, Wompi por liquidar **0**, inventario **47.705** (1 shampoo),
+> capital aportado **145.410**, utilidad **24.513**, activo = patrimonio
+> **169.923**. **Plata real: 122.218.**
+>
+> Dos códigos de cuenta se corrigieron contra el PUC antes de crearlos: **3120
+> no es** capital de personas naturales (es «Capital asignado», de sucursales
+> extranjeras) sino **3130**; y **524555 no es** una cuenta de seguros porque
+> **5245 es «Mantenimiento y reparaciones»** — la de seguros de ventas es 5230 y,
+> como dentro de ella no hay subcuenta de transporte de mercancías, el seguro de
+> un envío de un tercero va a **523095 «Otros»**.
+>
+> La causa de fondo se cerró con `20261030000000` (**D2c.3**): `pedido_proveedor`
+> gana la columna `seguro` y la pantalla de Despachos su campo. **Es opcional de
+> verdad:** `null` o `0` significan «no se aseguró», no «falta el dato», así que
+> nunca bloquea el asiento, al contrario que el costo y el flete. Banco SQL
+> **613/613**, matriz **170/170**, pantalla **70/70**.
+>
+> **El estado actual de producción llega hasta la migración `20261030000000`.**
 > Lo siguiente es **D3/D4** (pedido automático a Dropi), que necesita el
 > contrato oficial de `orders/`. Para retomar en un chat nuevo:
 > `docs/dropshipping-envios/RELEVO-2026-10-10.md`.

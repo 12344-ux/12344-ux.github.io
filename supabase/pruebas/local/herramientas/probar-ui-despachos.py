@@ -140,6 +140,63 @@ with sync_playwright() as p:
             f"{d}: y avisa que el asiento queda PENDIENTE hasta anotarlos")
         c.close()
 
+        # ---------- D2c.3 · el SEGURO, cuando se contrató ----------
+        reset()
+        c, pg, err = abrir(b, ancho, "ventas/despachos-proveedor/index.html")
+        pg.wait_for_selector(".dp-item", timeout=15000)
+        pg.fill('[data-c="externo"]', "DROPI-SEG-1")
+        pg.fill('[data-c="costo"]', "7.200")
+        pg.fill('[data-c="flete"]', "14.910")
+        pg.fill('[data-c="seguro"]', "754")
+        pg.click('[data-c="guardar"]')
+        pg.wait_for_selector("#vt-estado .dp-banner--ok", timeout=10000)
+        r = E["registros"][0] if E["registros"] else {}
+        chk(r.get("p_seguro") == 754, f"{d}: envía el seguro de «Asegurar pedido»")
+        chk(r.get("p_costo_real") == 7200 and r.get("p_flete") == 14910,
+            f"{d}: y el costo y el flete siguen llegando bien junto al seguro")
+        c.close()
+
+        # ---------- El seguro es OPCIONAL: vacío no es un olvido ----------
+        # Es el caso normal, porque en Dropi asegurar se decide al comprar. Un
+        # despacho sin seguro tiene que cerrarse sin avisos ni fricción.
+        reset()
+        c, pg, err = abrir(b, ancho, "ventas/despachos-proveedor/index.html")
+        pg.wait_for_selector(".dp-item", timeout=15000)
+        # Se mira el TEXTO de la ayuda y, aparte, el placeholder: text_content()
+        # no incluye atributos, así que un placeholder no se ve ahí.
+        chk("déjalo vacío si no lo contrataste" in (pg.text_content(".dp-ayuda") or ""),
+            f"{d}: la ayuda dice que el seguro puede quedar vacío")
+        chk("si lo contrataste" in (pg.text_content('[data-c="seguro"] ~ *, .dp-form') or ""),
+            f"{d}: y la etiqueta del campo lo marca como opcional")
+        chk("vacío" in (pg.get_attribute('[data-c="seguro"]', "placeholder") or ""),
+            f"{d}: el placeholder del campo también lo dice")
+        pg.fill('[data-c="externo"]', "DROPI-SEG-0")
+        pg.fill('[data-c="costo"]', "7.200")
+        pg.fill('[data-c="flete"]', "14.910")
+        pg.click('[data-c="guardar"]')
+        pg.wait_for_selector("#vt-estado .dp-banner--ok", timeout=10000)
+        r = E["registros"][0] if E["registros"] else {}
+        chk(r.get("p_seguro") is None,
+            f"{d}: sin seguro manda null, que significa «no aseguré»")
+        chk("pendiente" not in (pg.text_content("#vt-estado") or ""),
+            f"{d}: y el asiento NO queda pendiente: el seguro no bloquea")
+        c.close()
+
+        # ---------- Un seguro ilegible SÍ se rechaza ----------
+        # «setecientos» no puede volverse 0 en silencio: ese es exactamente el
+        # error que descuadró los libros el 14-oct-2026.
+        reset()
+        c, pg, err = abrir(b, ancho, "ventas/despachos-proveedor/index.html")
+        pg.wait_for_selector(".dp-item", timeout=15000)
+        pg.fill('[data-c="externo"]', "DROPI-SEG-X")
+        pg.fill('[data-c="seguro"]', "setecientos cincuenta y cuatro")
+        pg.click('[data-c="guardar"]')
+        pg.wait_for_timeout(250)
+        chk("seguro no se entiende" in (pg.text_content('[data-c="msg"]') or ""),
+            f"{d}: un seguro en letras se rechaza y lo dice por su nombre")
+        chk(len(E["registros"]) == 0, f"{d}: y no se envía nada al servidor")
+        c.close()
+
         # ---------- Un monto que no se entiende ----------
         reset()
         c, pg, err = abrir(b, ancho, "ventas/despachos-proveedor/index.html")
