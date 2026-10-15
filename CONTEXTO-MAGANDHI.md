@@ -1,6 +1,6 @@
 # MAGANDHI + Impulse · contexto operativo vigente
 
-**Corte:** 10 de octubre de 2026
+**Corte:** 15 de octubre de 2026
 **Producción interna:** `https://montaguth.institute`
 **Tienda pública:** `https://magandhi.com`
 
@@ -61,21 +61,29 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > nunca bloquea el asiento, al contrario que el costo y el flete. Banco SQL
 > **613/613**, matriz **170/170**, pantalla **70/70**.
 >
-> **El estado actual de producción llega hasta la migración `20261030000000`.**
+> **El estado actual de producción llega hasta la migración `20261031000000`.**
 >
-> **Frente nuevo · cuentas de cliente · 15-oct-2026.** El dueño decidió
-> conservar compra como invitado y añadir inicio de sesión opcional en
+> **Cuentas de cliente C1 · DESPLEGADO · 15-oct-2026 (PR #268).** El dueño
+> decidió conservar compra como invitado y añadir inicio de sesión opcional en
 > `magandhi.com`, con beneficios futuros (puntos/cupones) pero sin frenar la
-> compra. C1 está codificado en una migración forward: mantiene `clientes.id`
-> como identidad comercial, crea el puente `cuentas_cliente` hacia Auth y
-> separa por base de datos los UID de clientes de los perfiles internos. El
-> guardia de `montaguth.institute` exige ahora sesión **y** fila en `perfiles`.
-> C1 no abre registro ni cambia checkout, Wompi u opiniones. Diseño y tramos:
-> `docs/CUENTAS-CLIENTE.md`. Producción sigue en `20261030000000` hasta que el
-> dueño aplique la migración nueva y lo verifique.
-> Lo siguiente es **D3/D4** (pedido automático a Dropi), que necesita el
-> contrato oficial de `orders/`. Para retomar en un chat nuevo:
-> `docs/dropshipping-envios/RELEVO-2026-10-10.md`.
+> compra. C1 mantiene `clientes.id` como identidad comercial y crea
+> `cuentas_cliente` como puente hacia Auth; un mismo UID no puede ser cliente y
+> perfil interno, ni siquiera ante altas concurrentes. El guardia de
+> `montaguth.institute` exige sesión **y** fila en `perfiles`.
+>
+> Verificación de cierre: el dueño aplicó `20261031000000`; producción reconoce
+> la tabla y `es_cuenta_cliente()`, pero `anon` obtiene 401/42501 en ambas; el
+> guardia publicado coincide con el archivo fusionado; y `disable_signup=true`
+> mantiene apagadas las altas mientras se construye C2. Email Auth permanece
+> habilitado con confirmación obligatoria. C1 no cambió checkout, Wompi ni
+> opiniones. Banco SQL **641/641**, matriz **202/202**, C1 **28/28**,
+> concurrencia **2/2** y guardia/login **12/12**.
+>
+> **Lo siguiente exacto es C2:** registro, confirmación, inicio de sesión y
+> recuperación en `magandhi.com`, manteniendo intacta la compra como invitado.
+> Relevo: `docs/RELEVO-CUENTAS-2026-10-15.md`. Diseño:
+> `docs/CUENTAS-CLIENTE.md`. Dropshipping D3/D4 queda aparcado y conserva su
+> propio relevo.
 
 ## 1. Separación de superficies
 
@@ -101,10 +109,15 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 
 ### Acceso y autorización
 
-- Login por Supabase Auth en `index.html`.
+- Login interno por Supabase Auth en `index.html`.
 - Panel modular en `panel.html`.
-- Guardia reutilizable en `auth-guard.js`.
-- `perfiles` define rol y módulos.
+- Guardia reutilizable en `auth-guard.js`: sesión Auth sola no basta; exige
+  además una fila en `perfiles`.
+- `perfiles` define rol y módulos únicamente para personal interno.
+- `cuentas_cliente` separa las futuras cuentas públicas y las vincula sin
+  reemplazar `clientes.id`.
+- Un mismo UID no puede existir como cliente y personal, incluso con altas
+  concurrentes.
 - Las 30 páginas internas cargan la guardia.
 - La visibilidad del frontend es UX; el candado real son RLS, grants y RPC.
 
@@ -298,24 +311,37 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 - `docs/PLANO-EMAIL-MARKETING.md` y `docs/PLANO-METRICAS.md`: diseño vigente de esas áreas.
 - `docs/PLANO-INVENTARIO.md`, `docs/PLANO-VENTAS.md`, `docs/PLANO-OPINIONES.md` y `docs/PLANO-CORREO.md`: memoria histórica de diseño, no DDL operativo.
 - `docs/MAPA-CONEXIONES-TANDA2.md`: mapa técnico de las conexiones ya implementadas.
-- `docs/dropshipping-envios/`: frente nuevo del 9-oct-2026 (productos de proveedor con Dropi y guías para los productos propios). Se empieza por su `LEEME.md`.
+- `docs/CUENTAS-CLIENTE.md`: decisiones permanentes de identidad, compra como
+  invitado y tramos C1–C4.
+- `docs/RELEVO-CUENTAS-2026-10-15.md`: relevo más reciente; C1 cerrado y punto
+  exacto de arranque de C2.
+- `docs/dropshipping-envios/`: frente del 9–10-oct-2026 (productos de proveedor
+  con Dropi y guías para los productos propios); su relevo queda como memoria de
+  ese frente, no como prioridad actual.
 - `supabase/pruebas/diagnostico-produccion.sql`: diagnóstico de solo lectura para medir producción sin fiarse de los documentos.
 - `supabase/pruebas/local/herramientas/LEEME.md`: banco de pruebas local (también corre en GitHub Actions en cada rama).
 
-Retirados el 9-oct-2026 porque ya cumplieron su función: `ANDAMIOS.md` (plan de tramos) y los relevos de sesión. Su contenido vigente quedó en §5 y §9.
+Los relevos antiguos y `ANDAMIOS.md` se retiraron el 9-oct porque su contenido
+vigente pasó a este archivo. El relevo actual de cuentas se conserva en
+`docs/RELEVO-CUENTAS-2026-10-15.md` para entrar a C2 sin redescubrir C1.
 
 ## 9. Pendientes vigentes
 
-No hay nada a medias. Lo que sigue, por orden sugerido:
+No hay nada a medias. El frente prioritario es **Cuentas de cliente**:
 
-**Contabilidad (lo primero, depende de Wompi):**
-1. Asiento de **liquidación** de la venta del 9-oct cuando Wompi consigne, con la fecha real del abono:
-   - D 111005 por lo que llegó al banco;
-   - D 530515 por la diferencia hasta 69.900;
-   - C 138095 69.900.
+1. **C1 está desplegado y cerrado** (PR #268, migración `20261031000000`):
+   puente Auth→cliente, separación firme del personal, guardia interna y actor
+   cliente en la matriz. Altas públicas apagadas.
+2. **C2 es lo siguiente:** registro, confirmación, login, recuperación, SMTP
+   propio, CAPTCHA y vínculo seguro en `magandhi.com`. Compra como invitado se
+   conserva. Ver `docs/RELEVO-CUENTAS-2026-10-15.md`.
+3. Después: **C3** (Mi cuenta: perfil, direcciones, pedidos, estado y opiniones)
+   y **C4** (checkout autenticado con `customer_id` derivado en servidor).
 
-   Wompi informa $66.862,71, pero los asientos van en pesos enteros: se usa el valor entero que figure en el extracto del banco (≈ 66.863 y 3.037).
-2. **Inventario inicial en libros:** si la mercancía no tiene asiento de apertura (fila 23 del diagnóstico), registrarlo. La contrapartida la define el contador según cómo se compró.
+**Contabilidad · cerrada el 14-oct-2026:** la liquidación de Wompi, el inventario
+inicial, la recarga de Dropi y el seguro ya quedaron registrados y conciliados.
+Wompi por liquidar está en cero; el detalle del cuadre está arriba y en
+`supabase/operacion/cuadre-contable-2026-10-14.sql`.
 
 **Desplegado el 10-oct-2026 (ya en producción):**
 - `20261021000000` + Edge Function `estado-pago` (D0, runbook §D0).
@@ -328,7 +354,7 @@ No hay nada a medias. Lo que sigue, por orden sugerido:
 - `20261026000000` + Edge Function **`dropi-refrescar-stock`** + `pg_cron`/`pg_net` + el secreto `DROPI_REFRESCO_SECRETO` (D2c.1, PR #264, runbook «Dropshipping D2c.1»).
 - `20261027000000`, `20261028000000`, `20261029000000` + redespliegue de `crear-intencion-pago` + la pantalla de Despachos (D2c.2, PR #265). **Aquí se habilitó la venta de proveedor.**
 
-**Decisiones del dueño aún abiertas (lo primero del próximo chat):**
+**Otras decisiones del dueño aún abiertas (no bloquean C2):**
 1. Los **detalles cosméticos** que mencionó al cerrar la sesión del 10-oct y no detalló. Hay que preguntárselos.
 2. **¿En qué momento se debita el saldo de Dropi?** Al crear el pedido, al despacharlo o al entregarlo. Ya es medible sin riesgo leyendo `walletAmount` antes y después; puede que ya tenga el dato de la venta de prueba.
 3. **Política ante una entrega fallida** (devolución total, reenvío, o según el motivo). Es más caro para nosotros que para un vendedor de contraentrega, porque la plata del cliente ya se cobró.
