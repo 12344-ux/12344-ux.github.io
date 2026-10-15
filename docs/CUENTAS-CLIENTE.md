@@ -73,11 +73,14 @@ idempotencia por pedido. Así un cambio de campaña no reescribe la historia.
 
 | Tramo | Entrega | Estado |
 |---|---|---|
-| **C1** | puente de identidad, separación cliente/personal, guardia interna y actor cliente en la matriz | Codificado y probado; pendiente de merge y despliegue, no abre registro público |
+| **C1** | puente de identidad, separación cliente/personal, guardia interna y actor cliente en la matriz | **Desplegado y verificado 15-oct-2026, PR #268** |
 | **C2** | registro, confirmación, login, recuperación, SMTP propio, CAPTCHA y vínculo seguro | Pendiente |
 | **C3** | Mi cuenta: perfil, direcciones, pedidos, estado y opiniones | Pendiente |
 | **C4** | checkout con cuenta, rellenado y `customer_id` server-side; invitado intacto | Pendiente |
 
-Antes de C2 se mantiene cerrado el registro público. La apertura se hace solo
-cuando C1 esté aplicada, la matriz esté verde y los correos de Auth salgan por
-un remitente separado de marketing.
+C1 ya está aplicado. Antes y durante C2 se mantiene cerrado el registro público:
+`disable_signup=true`, medido el 15-oct-2026. La apertura se hace solo cuando
+los correos de Auth salgan por un remitente separado de marketing y estén
+verificados registro, confirmación, recuperación, CAPTCHA, redirects y RLS.
+
+**Próximo punto de entrada:** `docs/RELEVO-CUENTAS-2026-10-15.md`.

@@ -5271,6 +5271,10 @@ falta una vista de despachos ya transcritos. Es anterior a este tramo.
 
 # Cuentas de cliente C1 · identidad y frontera interna
 
+> **Estado · 15-oct-2026:** desplegado y verificado por el dueño (PR #268,
+> migración `20261031000000`). Producción reconoce tabla y helper, ambos niegan
+> `anon`; el guardia interno está publicado y las altas están apagadas. Sigue C2.
+
 ## Decisión
 
 La tienda conserva compra como invitado. Iniciar sesión será opcional y dará
@@ -5285,11 +5289,12 @@ La separación es firme: un UID de `cuentas_cliente` no puede existir en
 `perfiles`, ni al revés. Una cuenta cliente Auth es `authenticated`, pero no es
 personal y no recibe ningún módulo interno.
 
-## C1.1 · Antes de abrir registro
+## C1.1 · Altas públicas apagadas
 
-Mientras C2 no exista, mantener apagado **Allow new users to sign up** en Auth →
-Providers → Email. Apagar altas nuevas no afecta el inicio de sesión del admin
-y reduce cuentas automáticas creadas contra la API sin interfaz pública.
+El dueño apagó **Allow new users to sign up** en Auth → Providers → Email el
+15-oct-2026. Se midió `disable_signup=true`. Esto no afecta el inicio de sesión
+del admin. Se mantiene así durante C2 y solo vuelve a encenderse al final,
+después de verificar correo, SMTP, CAPTCHA, redirects y RLS.
 
 ## C1.2 · Aplicar la migración
 
