@@ -62,6 +62,17 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > **613/613**, matriz **170/170**, pantalla **70/70**.
 >
 > **El estado actual de producción llega hasta la migración `20261030000000`.**
+>
+> **Frente nuevo · cuentas de cliente · 15-oct-2026.** El dueño decidió
+> conservar compra como invitado y añadir inicio de sesión opcional en
+> `magandhi.com`, con beneficios futuros (puntos/cupones) pero sin frenar la
+> compra. C1 está codificado en una migración forward: mantiene `clientes.id`
+> como identidad comercial, crea el puente `cuentas_cliente` hacia Auth y
+> separa por base de datos los UID de clientes de los perfiles internos. El
+> guardia de `montaguth.institute` exige ahora sesión **y** fila en `perfiles`.
+> C1 no abre registro ni cambia checkout, Wompi u opiniones. Diseño y tramos:
+> `docs/CUENTAS-CLIENTE.md`. Producción sigue en `20261030000000` hasta que el
+> dueño aplique la migración nueva y lo verifique.
 > Lo siguiente es **D3/D4** (pedido automático a Dropi), que necesita el
 > contrato oficial de `orders/`. Para retomar en un chat nuevo:
 > `docs/dropshipping-envios/RELEVO-2026-10-10.md`.

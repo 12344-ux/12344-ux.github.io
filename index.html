@@ -180,21 +180,40 @@
 
 <script type="module">
   import { supabase } from './supabase-config.js';
+  import { obtenerPerfilInterno, cerrarSesionLocal } from './acceso-interno.js';
 
   const form   = document.getElementById('mg-login');
   const submit = document.getElementById('mg-submit');
   const msg    = document.getElementById('mg-msg');
 
-  // Si ya hay sesion valida al cargar, entrar directo al panel.
-  (async () => {
+  // El arranque y el submit se serializan. Sin esto, una comprobacion tardia
+  // de una sesion cliente anterior podria cerrar la sesion de personal que el
+  // formulario acaba de crear.
+  submit.disabled = true;
+  const arranque = (async () => {
     try {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) window.location.replace('panel.html');
-    } catch (_) { /* sin conexion: se queda en el login */ }
-  })();
+      const { data, error } = await supabase.auth.getSession();
+      if (error || !data.session) return false;
+
+      const perfil = await obtenerPerfilInterno(data.session);
+      if (perfil) {
+        window.location.replace('panel.html');
+        return true;
+      }
+
+      await cerrarSesionLocal(data.session.user.id);
+      return false;
+    } catch (_) {
+      // Verificacion indisponible: permanecer en el login sin cerrar una sesion
+      // posiblemente interna. El siguiente intento vuelve a comprobarla.
+      return false;
+    }
+  })().finally(() => { submit.disabled = false; });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (await arranque) return;
+
     msg.textContent = '';
     submit.disabled = true;
 
@@ -202,15 +221,28 @@
     const password = form.password.value;
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error || !data.session) {
         // Mensaje sobrio e institucional: no filtramos detalles tecnicos.
         msg.textContent = 'No pudimos verificar el acceso. Revisa tus datos e intentalo de nuevo.';
         submit.disabled = false;
         return;
       }
+
+      // Auth responde tambien a futuras cuentas de clientes. Solo el personal
+      // tiene fila en perfiles; cualquier otra identidad se cierra localmente.
+      const perfil = await obtenerPerfilInterno(data.session);
+      if (!perfil) {
+        await cerrarSesionLocal(data.session.user.id);
+        msg.textContent = 'No pudimos verificar el acceso. Revisa tus datos e intentalo de nuevo.';
+        submit.disabled = false;
+        return;
+      }
+
       window.location.replace('panel.html');
     } catch (_) {
+      // Un error al comprobar perfiles no se trata como «cuenta cliente»: se
+      // conserva la sesion y se falla cerrado para poder reintentar.
       msg.textContent = 'No pudimos conectar en este momento. Intentalo de nuevo mas tarde.';
       submit.disabled = false;
     }

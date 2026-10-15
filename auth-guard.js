@@ -6,8 +6,10 @@
 //
 //      <script type="module" src="auth-guard.js"></script>
 //
-//  Al cargar, comprueba que haya una sesion de Supabase Auth valida.
-//  Si NO la hay, redirige al login (index.html) de inmediato.
+//  Al cargar, comprueba DOS cosas: que haya una sesion valida y que su UID
+//  tenga una fila en perfiles (personal interno). Una futura cuenta de cliente
+//  de magandhi.com tambien tendra Supabase Auth, pero NUNCA perfil interno: se
+//  cierra solo la sesion de este origen y se redirige al login.
 //
 //  IMPORTANTE (no te confundas de candado):
 //  · Ocultar o redirigir una pagina es solo COMODIDAD DE UX, no
@@ -20,6 +22,7 @@
 // ============================================================
 
 import { supabase } from './supabase-config.js';
+import { obtenerPerfilInterno, cerrarSesionLocal } from './acceso-interno.js';
 
 // Ruta al login resuelta SIEMPRE respecto a la raiz del sitio, no relativa
 // a la pagina actual. Asi funciona igual desde la raiz (panel.html) que
@@ -44,9 +47,10 @@ export async function obtenerSesion() {
 }
 
 /**
- * Exige una sesion valida. Si no la hay, redirige al login y devuelve
- * null. Si la hay, devuelve la sesion. Usar al inicio de cada pagina
- * interna protegida.
+ * Exige una sesion de PERSONAL INTERNO. Una sesion Auth sin fila en perfiles
+ * (caso de una cuenta cliente) falla cerrado: se elimina solo de este origen,
+ * se redirige al login y devuelve null. Las RLS/RPC siguen siendo el candado
+ * autoritativo de cada dato y modulo.
  */
 export async function exigirSesion() {
   const sesion = await obtenerSesion();
@@ -54,6 +58,23 @@ export async function exigirSesion() {
     window.location.replace(RUTA_LOGIN);
     return null;
   }
+
+  let perfil;
+  try {
+    perfil = await obtenerPerfilInterno(sesion);
+  } catch (_) {
+    // Verificacion indisponible: el panel sigue cerrado, pero no destruimos una
+    // sesion que puede ser de personal. Al volver al login se podra reintentar.
+    window.location.replace(RUTA_LOGIN);
+    return null;
+  }
+
+  if (!perfil) {
+    await cerrarSesionLocal(sesion.user.id);
+    window.location.replace(RUTA_LOGIN);
+    return null;
+  }
+
   return sesion;
 }
 
@@ -64,19 +85,7 @@ export async function exigirSesion() {
  */
 export async function obtenerPerfil() {
   const sesion = await obtenerSesion();
-  if (!sesion) return null;
-
-  const { data, error } = await supabase
-    .from('perfiles')
-    .select('rol, modulos')
-    .eq('id', sesion.user.id)
-    .maybeSingle();
-
-  if (error) {
-    console.error('No se pudo leer el perfil:', error.message);
-    return null;
-  }
-  return data;
+  return obtenerPerfilInterno(sesion);
 }
 
 // Auto-proteccion: al importar este modulo desde una pagina interna,

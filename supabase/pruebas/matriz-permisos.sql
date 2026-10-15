@@ -3,8 +3,9 @@
 -- ------------------------------------------------------------
 -- QUE HACE: comprueba, con datos reales del proyecto, QUE ve y QUE puede
 -- ejecutar cada tipo de persona:
---   anon (visitante de la tienda) · autenticado SIN modulo · Finanzas ·
---   Produccion/Inventario · Marketing · Ventas · admin · service_role (solo lo
+--   anon (visitante de la tienda) · cliente autenticado SIN perfil interno ·
+--   autenticado interno SIN modulo · Finanzas · Produccion/Inventario ·
+--   Marketing · Ventas · admin · service_role (solo lo
 --   que usa la Edge Function de pagos: catalogo y configuraciones).
 -- Para cada tabla/vista compara lo que ve la persona contra la VERDAD (lo que
 -- ve postgres, que salta la RLS) y lo clasifica:
@@ -44,6 +45,7 @@ create temp table tramo0_resultado (
 do $$
 declare
   -- Personas de prueba (UUID fijos y reconocibles; se deshacen al final).
+  c_cli   constant uuid := '7e570000-0000-4000-8000-000000000000';
   c_sin   constant uuid := '7e570000-0000-4000-8000-000000000001';
   c_fin   constant uuid := '7e570000-0000-4000-8000-000000000002';
   c_inv   constant uuid := '7e570000-0000-4000-8000-000000000003';
@@ -64,8 +66,8 @@ declare
   ];
 
   -- Personas: nombre, rol de base de datos, uid (null = sin sesion).
-  v_pers text[] := array['anon','sin_modulo','finanzas','produccion','marketing','ventas','admin','service_role'];
-  v_rol  text[] := array['anon','authenticated','authenticated','authenticated','authenticated','authenticated','authenticated','service_role'];
+  v_pers text[] := array['anon','cliente','sin_modulo','finanzas','produccion','marketing','ventas','admin','service_role'];
+  v_rol  text[] := array['anon','authenticated','authenticated','authenticated','authenticated','authenticated','authenticated','authenticated','service_role'];
   v_uid  uuid[];
 
   -- Resultados acumulados (sobreviven al rollback del bloque interno).
@@ -122,9 +124,18 @@ declare
   ];
   v_extra text;
 begin
-  v_uid := array[null, c_sin, c_fin, c_inv, c_mkt, c_ven, c_adm, null]::uuid[];
+  v_uid := array[null, c_cli, c_sin, c_fin, c_inv, c_mkt, c_ven, c_adm, null]::uuid[];
 
   begin  -- ===== bloque que SIEMPRE se deshace =====
+
+    -- C1 de cuentas publicas. En fotos historicas la tabla no existe: solo se
+    -- agrega cuando el esquema realmente contiene el puente.
+    if to_regclass('public.cuentas_cliente') is not null then
+      v_obj := v_obj || array['cuentas_cliente'];
+      v_lista_blanca := v_lista_blanca || array[
+        'es_personal_interno', 'es_cuenta_cliente', 'mi_cliente_id'
+      ];
+    end if;
 
     -- D1 puede no existir a propósito cuando los scripts reproducen una foto
     -- histórica anterior al 10-oct. Si la tabla existe, la lista blanca exige
@@ -184,6 +195,7 @@ begin
 
     -- ---------- Personas de prueba ----------
     insert into auth.users (id, email) values
+      (c_cli, 'prueba-cliente-publico@tramo0.invalid'),
       (c_sin, 'prueba-sin-modulo@tramo0.invalid'),
       (c_fin, 'prueba-finanzas@tramo0.invalid'),
       (c_inv, 'prueba-produccion@tramo0.invalid'),
@@ -215,6 +227,10 @@ begin
 
     insert into clientes (nombre, correo) values ('Cliente prueba Tramo 0', 'cliente@tramo0.invalid')
       returning id into v_cliente;
+    if to_regclass('public.cuentas_cliente') is not null then
+      insert into cuentas_cliente (auth_user_id, customer_id, vinculado_en)
+      values (c_cli, v_cliente, now());
+    end if;
     insert into pedidos (customer_id, total) values (v_cliente, 1000) returning id into v_pedido;
     insert into pedido_items (pedido_id, product_id, cantidad, precio_unitario, subtotal)
       values (v_pedido, v_producto, 1, 1000, 1000);
@@ -251,6 +267,9 @@ begin
         if v_obj[i] = 'perfiles' then
           v_sql := 'select count(*), case when count(*) = 1 and bool_and(id = auth.uid()) then ''PROPIA'' '
                 || 'else md5(coalesce(string_agg(t::text, ''|'' order by t::text), '''')) end from public.perfiles t';
+        elsif v_obj[i] = 'cuentas_cliente' then
+          v_sql := 'select count(*), case when count(*) = 1 and bool_and(auth_user_id = auth.uid()) then ''PROPIA'' '
+                || 'else md5(coalesce(string_agg(t::text, ''|'' order by t::text), '''')) end from public.cuentas_cliente t';
         else
           v_sql := format(
             'select count(*), md5(coalesce(string_agg(t::text, %L order by t::text), %L)) from public.%I t',
@@ -275,8 +294,10 @@ begin
           when v_obj[i] = 'catalogo_publico' then 'TODO'
           -- service_role (Edge Function de pagos) lee las dos configuraciones.
           when v_pers[j] = 'service_role' then 'TODO'
-          -- Cada persona con sesion ve SOLO su perfil; anon nada.
-          when v_obj[i] = 'perfiles' then case when v_pers[j] = 'anon' then 'NADA' else 'PROPIA' end
+          -- Cada integrante del personal ve SOLO su perfil. Un cliente Auth no
+          -- tiene fila en perfiles y solo ve su propio puente de cuenta.
+          when v_obj[i] = 'perfiles' then case when v_pers[j] in ('anon','cliente') then 'NADA' else 'PROPIA' end
+          when v_obj[i] = 'cuentas_cliente' then case when v_pers[j] = 'cliente' then 'PROPIA' else 'NADA' end
           when v_pers[j] = 'admin' then 'TODO'
           -- Finanzas
           when v_obj[i] in ('puc_cuentas','asientos','asiento_lineas','asiento_bitacora',
@@ -357,6 +378,21 @@ begin
     r_obt  := r_obt  || coalesce('LE FALTAN: ' || v_extra, 'TODAS');
 
     -- ---------- Comportamiento: el candado de las RPC sigue vivo ----------
+    -- Una cuenta de cliente es authenticated, pero no tiene perfil ni modulo.
+    execute 'set local role authenticated';
+    perform set_config('request.jwt.claims', json_build_object('sub', c_cli, 'role', 'authenticated')::text, true);
+    begin
+      perform crear_pedido(p_nombre => 'x', p_items => '[]'::jsonb);
+      v_obt := 'PERMITIDO';
+    exception when others then
+      v_obt := case when sqlerrm like 'Acceso denegado%' then 'RECHAZADO' else 'ERROR: ' || sqlerrm end;
+    end;
+    execute 'reset role';
+    r_pers := r_pers || 'cliente'::text;
+    r_obj  := r_obj  || 'llamar crear_pedido interno'::text;
+    r_esp  := r_esp  || 'RECHAZADO'::text;
+    r_obt  := r_obt  || v_obt;
+
     -- Un autenticado SIN modulo que llama crear_pedido debe ser rechazado por
     -- el guardia interno (no por permisos de EXECUTE: crear_pedido si esta en
     -- la lista blanca).
