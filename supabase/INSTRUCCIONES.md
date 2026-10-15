@@ -5266,3 +5266,75 @@ costo, flete y seguro en una segunda llamada, pero **desde la pantalla no hay
 cómo llegar**. Hoy no muerde porque los tres números se conocen al mismo tiempo,
 al crear el pedido en Dropi. Si alguna vez Dropi los muestra en diferido, hace
 falta una vista de despachos ya transcritos. Es anterior a este tramo.
+
+---
+
+# Cuentas de cliente C1 · identidad y frontera interna
+
+## Decisión
+
+La tienda conserva compra como invitado. Iniciar sesión será opcional y dará
+comodidad/beneficios, pero no será requisito para pagar. C1 solo prepara el
+cimiento seguro; todavía no publica formularios de registro o login.
+
+No se cambia ningún UUID comercial. `clientes.id` sigue siendo el
+`pedidos.customer_id`; `cuentas_cliente` une opcionalmente ese cliente con
+`auth.users.id`. Registrarse no inventa un cliente sin compras.
+
+La separación es firme: un UID de `cuentas_cliente` no puede existir en
+`perfiles`, ni al revés. Una cuenta cliente Auth es `authenticated`, pero no es
+personal y no recibe ningún módulo interno.
+
+## C1.1 · Antes de abrir registro
+
+Mientras C2 no exista, mantener apagado **Allow new users to sign up** en Auth →
+Providers → Email. Apagar altas nuevas no afecta el inicio de sesión del admin
+y reduce cuentas automáticas creadas contra la API sin interfaz pública.
+
+## C1.2 · Aplicar la migración
+
+Aplicar una sola vez, completa, desde el SQL Editor:
+
+`20261031000000_cuentas_cliente_cimientos.sql`
+
+Crea:
+
+- `cuentas_cliente`, con RLS y lectura únicamente de la fila propia;
+- cero escritura de cliente desde el navegador;
+- `es_personal_interno()`, `es_cuenta_cliente()` y `mi_cliente_id()`;
+- triggers en ambos sentidos, serializados por la fila de `auth.users`, que
+  impiden mezclar el mismo UID como cliente y personal incluso con altas
+  simultáneas.
+
+No hay Edge Functions, secretos ni cambios de Auth que desplegar en C1.
+
+## C1.3 · Publicación del guardia interno
+
+El merge publica `acceso-interno.js`, `auth-guard.js` e `index.html`. Desde ese
+momento `montaguth.institute` exige dos pruebas: sesión Auth válida **y** fila
+en `perfiles`. Si unas credenciales pertenecen a un cliente, el sitio cierra
+solo la sesión local de ese dominio y muestra el mismo error genérico; nunca
+revela si el correo existe ni revoca una sesión separada de `magandhi.com`.
+
+Los HTML siguen siendo archivos públicos por naturaleza. No contienen datos
+sensibles: la protección autoritativa de tablas/RPC continúa en RLS. El cambio
+impide entrar al panel utilizable y la matriz demuestra que el actor cliente
+obtiene cero filas internas.
+
+## C1.4 · Pruebas
+
+- Las 76 migraciones aplican desde cero.
+- Banco SQL completo: **641/641**.
+- Matriz de permisos: **202/202**, incluido cliente Auth sin perfil.
+- Suite C1: **28/28** (RLS, solo fila propia, cero escrituras, cero datos de
+  `clientes`, RPC interna rechazada, estados bloqueada/cerrada, exclusión
+  personal/cliente y conservación real de pedido + `customer_id` al borrar
+  Auth).
+- Concurrencia: **2/2**; dos conexiones simultáneas no pueden confirmar el
+  mismo UID en `cuentas_cliente` y `perfiles`, en ninguno de los dos órdenes.
+- Guardia/login: **12/12** (cliente expulsado, personal admitido, mensaje no
+  enumerable, error transitorio sin destruir sesión, carrera real entre
+  bootstrap/submit y `signOut` comprobado con `scope: 'local'`).
+
+El plan C2–C4 y las decisiones de identidad están en
+`docs/CUENTAS-CLIENTE.md`.
