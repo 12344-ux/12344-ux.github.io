@@ -12,7 +12,11 @@ Antes de proponer o tocar nada en una sesión nueva:
    Testing hasta que se redacten, revisen y publiquen las políticas.**
 3. Leer `docs/CUENTAS-CLIENTE.md` para las decisiones de identidad, compra como
    invitado y tramos C1–C4.
-4. Solo si la tarea vuelve a Dropshipping, leer además
+4. Si la tarea toca cantidades, carrito, enlaces comerciales, metadata de
+   producto o atribución, leer `docs/PLANO-FASE-COMERCIAL.md`. Es el plano
+   aprobado el 16-oct-2026; sus frentes C y P están **planificados, no
+   desplegados**.
+5. Solo si la tarea vuelve a Dropshipping, leer además
    `docs/dropshipping-envios/RELEVO-2026-10-10.md` y aplicar
    `.kiro/steering/dropshipping-magandhi.md`.
 
@@ -36,6 +40,10 @@ Realidad de arranque al 16-oct-2026:
 - `clientes.id` sigue siendo la identidad comercial; nunca reemplazarlo por el
   UID de Auth. `cuentas_cliente` es el puente.
 - La tienda conserva compra como invitado y cuenta opcional.
+- Siguiente evolución comercial aprobada: cantidades + carrito autenticado y
+  la herramienta Promocionar. El orden, fórmulas y fronteras viven en
+  `docs/PLANO-FASE-COMERCIAL.md`; no afirmar que existen en producción hasta
+  desplegar y medir cada tramo.
 
 Reglas que no cambian:
 

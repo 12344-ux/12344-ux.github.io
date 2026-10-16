@@ -328,6 +328,9 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 - `docs/MAPA-CONEXIONES-TANDA2.md`: mapa técnico de las conexiones ya implementadas.
 - `docs/CUENTAS-CLIENTE.md`: decisiones permanentes de identidad, compra como
   invitado y tramos C1–C4.
+- `docs/PLANO-FASE-COMERCIAL.md`: siguiente evolución aprobada —cantidades,
+  carrito autenticado y Promocionar— con fórmulas, contratos, orden de
+  despliegue y criterios de cierre. **Planificado; no desplegado.**
 - `docs/RELEVO-CUENTAS-C2-2026-10-16.md`: relevo más reciente; C2 está
   desplegado en preapertura y el siguiente paso es la prueba controlada de
   Google con signup apagado.
@@ -346,7 +349,26 @@ repetir migración, SMTP, plantillas o configuración Google.
 
 ## 9. Pendientes vigentes
 
-Cuentas de cliente sigue siendo el frente prioritario, ahora en **preapertura**:
+### Fase comercial aprobada · 16-oct-2026 · no desplegada
+
+El siguiente trabajo de producto se divide en dos frentes, gobernados por
+`docs/PLANO-FASE-COMERCIAL.md`:
+
+1. **Cantidades y carrito autenticado.** Campañas define un máximo por pedido;
+   la cantidad también funciona para invitado y el carrito solo para sesión
+   válida. El máximo efectivo de producto propio respeta Inventario; el de
+   proveedor es `min(máximo campaña, stock − pendientes − piso Dropi)`, de modo
+   que el remanente posterior conserva el piso. El checkout multiproducto debe
+   congelar líneas, precio y total antes de firmar Wompi.
+2. **Promocionar.** Estudio propio con URL canónica, enlaces por canal, previews,
+   textos, QR, kit visual, enlaces de marca y atribución hasta la venta. Meta
+   Ads, Pixel, Conversions API y publicación automática quedan fuera.
+
+Ambos se construyen y activan por tramos. No confundir la aprobación de este
+plano con código desplegado. La idea de mostrar proveedor público se descartó;
+MAGANDHI continúa siendo quien vende, cobra y responde.
+
+Cuentas de cliente sigue en **preapertura**:
 
 1. **C1 está desplegado y cerrado** (PR #268, migración `20261031000000`):
    puente Auth→cliente, separación firme del personal, guardia interna y actor

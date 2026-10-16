@@ -76,7 +76,7 @@ idempotencia por pedido. Así un cambio de campaña no reescribe la historia.
 | **C1** | puente de identidad, separación cliente/personal, guardia interna y actor cliente en la matriz | **Desplegado y verificado 15-oct-2026, PR #268** |
 | **C2** | registro, confirmación, login, recuperación, SMTP propio, Google, CAPTCHA y vínculo seguro | **Infraestructura desplegada y verificada en preapertura 16-oct-2026; signup OFF y Google Testing hasta publicar políticas** |
 | **C3** | Mi cuenta: perfil, direcciones, pedidos, estado y opiniones | Pendiente |
-| **C4** | checkout con cuenta, rellenado y `customer_id` server-side; invitado intacto | Pendiente |
+| **C4** | checkout con cuenta, carrito persistente, cantidades y `customer_id` server-side; invitado intacto | **Planificado por tramos en `PLANO-FASE-COMERCIAL.md`; no desplegado** |
 
 C1 y el backend de C2 ya están aplicados. `disable_signup=true` continúa
 vigente: correo/contraseña, SMTP, TokenHash y recuperación fueron medidos;
