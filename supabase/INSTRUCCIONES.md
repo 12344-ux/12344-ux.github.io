@@ -4,9 +4,10 @@
 > hasta `20261101000000` (Cuentas C2), salvo `20261002000000`, que quedó
 > **SUPERADA y no debe aplicarse** (ver §0). Wompi F1–F4 y Dropshipping D2c
 > están operativos. C1 y el backend C2 están desplegados; SMTP/TokenHash y
-> recuperación cross-browser fueron medidos. Google está configurado
-> External/Testing, pero falta probar el botón real. Signup y CAPTCHA siguen
-> apagados. Estado exacto: `docs/RELEVO-CUENTAS-C2-2026-10-16.md` y
+> recuperación cross-browser fueron medidos. Google Identity Services quedó
+> publicado y medido en External/Testing: `magandhi.com` visible, mismo UID,
+> identidad enlazada y una sola cuenta activa. Signup y CAPTCHA siguen apagados;
+> el siguiente paso es Turnstile. Estado exacto: `docs/RELEVO-CUENTAS-C2-2026-10-16.md` y
 > `CONTEXTO-MAGANDHI.md` §9.
 >
 > **Regla de migraciones:** los archivos ya aplicados son historia inmutable.

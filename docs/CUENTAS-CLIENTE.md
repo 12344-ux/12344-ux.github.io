@@ -74,14 +74,15 @@ idempotencia por pedido. Así un cambio de campaña no reescribe la historia.
 | Tramo | Entrega | Estado |
 |---|---|---|
 | **C1** | puente de identidad, separación cliente/personal, guardia interna y actor cliente en la matriz | **Desplegado y verificado 15-oct-2026, PR #268** |
-| **C2** | registro, confirmación, login, recuperación, SMTP propio, Google, CAPTCHA y vínculo seguro | **Desplegado en preapertura 16-oct-2026, backend #270 / tienda #93; falta prueba Google, Turnstile y apertura** |
+| **C2** | registro, confirmación, login, recuperación, SMTP propio, Google, CAPTCHA y vínculo seguro | **Desplegado en preapertura 16-oct-2026, backend #270 / tienda #93 y Google GIS #95; faltan Turnstile y apertura** |
 | **C3** | Mi cuenta: perfil, direcciones, pedidos, estado y opiniones | Pendiente |
 | **C4** | checkout con cuenta, rellenado y `customer_id` server-side; invitado intacto | Pendiente |
 
 C1 y el backend de C2 ya están aplicados. `disable_signup=true` continúa
 vigente: correo/contraseña, SMTP, TokenHash y recuperación fueron medidos;
-Google está configurado en Testing, pero aún falta su prueba real y Turnstile.
-La apertura se hace solo después de verificar Google, CAPTCHA, registro nuevo,
-redirects, RLS y políticas.
+Google Identity Services también quedó medido en Testing con mismo UID,
+identidad enlazada y una sola cuenta activa. Falta Turnstile. La apertura se
+hace solo después de verificar CAPTCHA, registro nuevo, redirects, RLS y
+políticas.
 
 **Próximo punto de entrada:** `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
