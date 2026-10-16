@@ -80,14 +80,16 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 >
 > Supabase Auth tiene Site URL/redirects de `magandhi.com`, SMTP desde
 > `cuenta@auth.magandhi.com` (dominio Resend verificado en Porkbun), plantillas
-> de confirmación/recuperación y Google Provider configurado. Google está
-> `External / Testing`, con test user y callback correcto. **Signup público y
-> CAPTCHA continúan apagados.** Google todavía no se ha probado de extremo a
-> extremo y `TURNSTILE_SITE_KEY` sigue vacía.
+> de confirmación/recuperación y Google Provider configurado. Google permanece
+> `External / Testing`; Google Identity Services se publicó mediante la tienda
+> PR #95 y la prueba controlada confirmó que el selector muestra `magandhi.com`,
+> conserva el mismo UID/identidad y una sola cuenta activa tras el segundo
+> acceso. **Signup público y CAPTCHA continúan apagados.**
+> `TURNSTILE_SITE_KEY` sigue vacía.
 >
-> **Lo siguiente exacto es probar `Continuar con Google` de forma controlada,**
-> creando primero en Auth un usuario manual autoconfirmado con el mismo correo
-> del Google Test User. No encender signup para esa prueba. Después: Turnstile,
+> **Lo siguiente exacto es crear un widget Turnstile administrado para
+> `magandhi.com`.** Guardar su secret solo en Supabase, mantener CAPTCHA apagado
+> y publicar primero la site key mediante rama + PR. Después: medir CAPTCHA,
 > prueba de registro real por correo, políticas y apertura controlada. Relevo
 > vigente: `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
 
@@ -347,11 +349,13 @@ Cuentas de cliente sigue siendo el frente prioritario, ahora en **preapertura**:
 2. **C2 está construido y desplegado** (backend #270, tienda #93, migración
    `20261101000000` y `cuenta-inicializar`). Correo/contraseña, SMTP,
    TokenHash, recuperación cross-browser y vínculo idempotente están medidos.
-   Google está configurado External/Testing, pero falta probar el botón real.
-   Signup y CAPTCHA siguen apagados.
-3. **Siguiente exacto:** prueba controlada de Google con un usuario Auth manual
-   que use el correo del Google Test User, sin encender signup. Luego Turnstile,
-   registro real controlado por correo y cierre de políticas antes de abrir.
+   Google Identity Services se publicó en tienda #95 y quedó medido en
+   External/Testing: `magandhi.com` visible, mismo UID/identidad y una sola
+   cuenta activa. Signup y CAPTCHA siguen apagados.
+3. **Siguiente exacto:** crear el widget Turnstile administrado para
+   `magandhi.com`, guardar el secret solo en Supabase y publicar primero la site
+   key sin encender CAPTCHA ni signup. Luego medir CAPTCHA, registro real
+   controlado por correo y cerrar políticas antes de abrir.
    Ver `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
 4. Después: **C3** (Mi cuenta: perfil, direcciones, pedidos, estado y opiniones)
    y **C4** (checkout autenticado con `customer_id` derivado en servidor).

@@ -7,18 +7,21 @@ tienda, `cuenta/CONFIGURACION.md`. No volver a construir C1 ni C2 desde cero.
 ## 1. Estado exacto
 
 **C2 está fusionado, publicado y desplegado, pero el registro público sigue
-apagado.** La siguiente acción es una prueba controlada de Google OAuth en modo
-Testing. Después se configura Cloudflare Turnstile y solo al final se decide la
-apertura.
+apagado.** Google Identity Services ya fue probado de extremo a extremo en modo
+Testing. La siguiente acción es configurar Cloudflare Turnstile y solo al final
+se decide la apertura.
 
 Código fusionado el 16-oct-2026:
 
 - Back-office/backend: PR `12344-ux/12344-ux.github.io#270`, merge
   `a62319594316bd3c2a903a259e33a3de522980ef`.
-- Tienda: PR `12344-ux/magandhi#93`, merge
+- Tienda C2: PR `12344-ux/magandhi#93`, merge
   `e17afa9eca01e79e4e109298f69aa4cb5d53e835`.
-- Los dos workflows terminaron en verde. El banco del backend ejecutó
-  PostgreSQL 15 + Deno 2; la tienda pasó 17/17 contratos C2.
+- Google Identity Services: PR `12344-ux/magandhi#95`, merge
+  `558ac97a002dff578954636d57ef49fb428d6329`.
+- Los workflows de backend C2, tienda C2 y Google GIS terminaron en verde.
+  El banco del backend ejecutó PostgreSQL 15 + Deno 2; la tienda pasó 17/17
+  contratos C2.
 
 Producción medida por el dueño:
 
@@ -28,16 +31,21 @@ Producción medida por el dueño:
   medidas de normalización, ambigüedad y duplicidad.
 - Edge Function `cuenta-inicializar` desplegada con Verify JWT activado.
 - `/cuenta/` y `/cuenta/callback/` están publicados en `magandhi.com`.
+- Google Identity Services está publicado; el selector muestra `magandhi.com`
+  en lugar del dominio técnico de Supabase.
+- La prueba controlada conservó el mismo UID e identidad Google y exactamente
+  una fila activa después del segundo acceso.
 - `Allow new users to sign up` permanece **apagado**.
 
 ## 2. Qué entrega C2
 
 - Registro e inicio por correo + contraseña.
-- Google OAuth mediante Supabase Auth.
+- Google Identity Services mediante ID token validado por Supabase Auth.
 - Confirmación obligatoria y recuperación con `TokenHash`; los enlaces se
   probaron abriéndolos en otro navegador.
-- Callback PKCE para Google, limpieza inmediata de credenciales de la URL y
-  comprobante breve/de un solo uso para cambiar contraseña.
+- Callback TokenHash para correo, compatibilidad PKCE transitoria, limpieza
+  inmediata de credenciales de la URL y comprobante breve/de un solo uso para
+  cambiar contraseña.
 - Cierre de sesión local.
 - Inicialización server-side idempotente de `cuentas_cliente`.
 - Vínculo histórico solo ante una coincidencia única del correo confirmado;
@@ -59,6 +67,11 @@ Con un usuario Auth creado manualmente y autoconfirmado:
 7. Enlace abierto en otro navegador: correcto.
 8. Nueva contraseña y login posterior: correctos.
 9. La cuenta siguió en una sola fila activa.
+10. El OAuth redirigido enlazó Google al mismo UID sin duplicar la cuenta.
+11. Google Identity Services sustituyó el redirect visible mediante la tienda
+    PR #95; el selector pasó a mostrar `magandhi.com`.
+12. Dos accesos GIS en ventanas privadas regresaron sin advertencias y
+    mantuvieron el mismo UID, identidad enlazada y una sola fila activa.
 
 No registrar en documentos el correo, contraseña, UID, TokenHash, API key de
 Resend ni secretos OAuth usados en estas pruebas.
@@ -87,24 +100,27 @@ Resend ni secretos OAuth usados en estas pruebas.
 - API key exclusiva creada y guardada únicamente en Supabase; no está en Git.
 - No crear un tracking subdomain para Auth ni reescribir sus enlaces.
 
-### Google OAuth
+### Google Identity Services
 
-Confirmado por el dueño:
+Confirmado por el dueño y medido en producción:
 
 - Proyecto Google creado.
 - Audience `External`, estado `Testing`.
 - Usuario de prueba agregado.
-- Cliente Web creado.
-- Callback autorizado coincide con
+- Cliente Web creado; `https://magandhi.com` está autorizado como JavaScript
+  origin.
+- El callback OAuth heredado se conserva durante la transición:
   `https://bxlzipwxyxdtffnuizbz.supabase.co/auth/v1/callback`.
 - Google Provider habilitado en Supabase con Client ID/Secret guardados allí.
+- El botón oficial usa nonce e ID token con `signInWithIdToken`; el Client ID
+  público está en el frontend y el Client Secret nunca sale de Supabase.
 - Scopes limitados a identidad básica (`openid`, email y profile).
+- El selector identifica `magandhi.com`; mismo UID/identidad y una fila activa
+  quedaron confirmados después del segundo acceso.
 - Signup público sigue apagado.
 
 ## 5. Lo que NO está cerrado todavía
 
-- Google está configurado, pero **no se ha ejecutado aún la prueba real del
-  botón `Continuar con Google`**.
 - `TURNSTILE_SITE_KEY` sigue vacía en `magandhi/cuenta/cuenta-config.js`.
 - Cloudflare Turnstile y CAPTCHA de Supabase siguen apagados.
 - No se ha probado un registro público nuevo por correo con CAPTCHA.
@@ -115,38 +131,30 @@ Confirmado por el dueño:
 
 ## 6. Siguiente paso exacto
 
-**Prueba controlada de Google con signup todavía apagado:**
+**Configurar Cloudflare Turnstile sin encender CAPTCHA ni signup todavía:**
 
-1. En Supabase Auth → Users, crear manualmente un usuario autoconfirmado con el
-   mismo correo del Google Test User. Usar una contraseña temporal fuerte y no
-   documentarla.
-2. En una ventana privada sin sesión, abrir `https://magandhi.com/cuenta/` y
-   pulsar `Continuar con Google`.
-3. Elegir exactamente el Google Test User.
-4. Verificar regreso a MAGANDHI, sesión activa y ausencia de advertencias.
-5. Medir en Supabase que existe una sola fila activa en `cuentas_cliente` para
-   ese UID y revisar que Google quedó enlazado como identidad del mismo usuario,
-   no como UID duplicado.
-6. Cerrar sesión y repetir una vez para comprobar idempotencia.
+1. En Cloudflare Turnstile, crear un widget administrado para
+   `magandhi.com`. Añadir únicamente otros hosts reales si después se necesitan.
+2. Guardar el secret exclusivamente en Supabase Auth CAPTCHA; nunca en Git,
+   documentación o chat. Si el panel exige habilitar CAPTCHA para guardarlo,
+   detenerse y publicar primero la site key.
+3. Compartir únicamente la site key pública para ponerla en
+   `magandhi/cuenta/cuenta-config.js` mediante rama + PR.
+4. Fusionar, esperar GitHub Pages y comprobar que el widget flexible carga en
+   móvil y escritorio mientras CAPTCHA y signup siguen apagados.
+5. Solo después de medir el frontend, encender CAPTCHA en Supabase y probar
+   token válido, ausente y vencido antes de abrir signup.
 
-Si Supabase bloquea Google por `disable_signup=true` aun existiendo el usuario,
-**no encender signup todavía**: registrar el error exacto y pasar primero a
-Turnstile.
+## 7. Después de Turnstile
 
-## 7. Después de la prueba Google
-
-1. Crear widget Cloudflare Turnstile para `magandhi.com`.
-2. Guardar el secret únicamente en Supabase Auth CAPTCHA.
-3. Poner la site key pública en `cuenta/cuenta-config.js` mediante rama + PR.
-4. Fusionar/publicar la site key y verificar que el widget flexible carga en
-   móvil y escritorio.
-5. Encender CAPTCHA en Supabase y probar token válido, ausente y vencido.
-6. Abrir signup de forma controlada y probar un registro real por correo:
+1. Mantener signup apagado mientras se prueba CAPTCHA en login y recuperación.
+2. Abrir signup de forma controlada y probar un registro real por correo:
    confirmación, inicialización, logout/login y una sola fila.
-7. Probar Google con un usuario realmente nuevo.
-8. Mantener compra invitada y consentimiento de marketing separados.
-9. Cerrar políticas antes de pasar Google a Production y anunciar registros.
-10. Actualizar este relevo solo después de medir la apertura.
+3. Probar Google con un usuario realmente nuevo.
+4. Mantener compra invitada y consentimiento de marketing separados.
+5. Cerrar políticas antes de pasar Google a Production y anunciar registros.
+6. Revisar el límite Auth de 30 correos/hora solo después de CAPTCHA y medición.
+7. Actualizar este relevo únicamente después de medir la apertura.
 
 ## 8. Reglas que no cambian
 
@@ -164,10 +172,11 @@ Turnstile.
 > Retomamos MAGANDHI en C2 preapertura. Lee
 > `docs/RELEVO-CUENTAS-C2-2026-10-16.md`, `CONTEXTO-MAGANDHI.md`,
 > `docs/CUENTAS-CLIENTE.md` y `magandhi/cuenta/CONFIGURACION.md`. C1 y el backend
-> C2 están desplegados; la migración máxima es `20261101000000`, el preflight
-> dio todo limpio, `cuenta-inicializar` está desplegada con JWT, SMTP/TokenHash
-> y recuperación cross-browser están verificados, y Google OAuth está
-> configurado External/Testing con proveedor habilitado. Signup y CAPTCHA siguen
-> apagados. Empieza directamente con la **prueba controlada del botón Continuar
-> con Google usando un usuario Auth manual con el correo del Google Test User**.
-> No repitas C1, migración C2, SMTP, plantillas ni configuración OAuth.
+> C2 están desplegados; migración máxima `20261101000000`, preflight limpio,
+> `cuenta-inicializar` con JWT y SMTP/TokenHash verificados. Google Identity
+> Services está publicado y medido en External/Testing: `magandhi.com` visible,
+> mismo UID/identidad y una sola cuenta activa. Signup y CAPTCHA siguen apagados.
+> Empieza directamente creando el widget Turnstile administrado para
+> `magandhi.com`; guarda el secret solo en Supabase y publica primero la site key
+> mediante rama + PR antes de encender CAPTCHA. No repitas C1, C2, SMTP, Google
+> ni recuperación.
