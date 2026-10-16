@@ -1,17 +1,25 @@
 # Supabase · runbook operativo MAGANDHI / Impulse
 
 > **Estado al 16-oct-2026:** en producción están aplicadas todas las migraciones
-> hasta `20261102000000` (Comercial C1), salvo `20261002000000`, que quedó
+> hasta `20261103000000` (Comercial C2), salvo `20261002000000`, que quedó
 > **SUPERADA y no debe aplicarse** (ver §0). Wompi F1–F4 y Dropshipping D2c
-> están operativos. Cuentas C1/C2 continúan desplegados y C2 está cerrado
-> técnicamente en preapertura; CAPTCHA activo, signup OFF y Google Testing hasta
-> publicar políticas. Comercial C1 está **desplegado y probado en estructura**:
-> postflight 9/9 `true`, `crear-intencion-pago` desplegada, cantidad 1 persistida
-> y cantidad 2 validada hasta intención por COP 139.800. No hubo pago real de dos
-> unidades ni se midió su cierre transaccional. Estado general exacto:
-> `docs/RELEVO-COMERCIAL-C1-2026-10-16.md` y `CONTEXTO-MAGANDHI.md` §9; para la
+> están operativos. Cuentas C1/C2 continúan desplegados y Cuentas C2 está
+> cerrado técnicamente en preapertura; CAPTCHA activo, signup OFF y Google
+> Testing hasta publicar políticas. Comercial C1 conserva su límite propio: no
+> hubo pago real de dos unidades ni se midió su cierre transaccional. Estado
+> comercial exacto: **Comercial C2 desplegado y probado en estructura, apagado
+> hasta C3**. Preflight 3/3 `true`, migración `20261103000000` aplicada,
+> postflight 10/10 `true`, operación temporal del carrito medida y flag final
+> `false`; no hubo dinero, Wompi, pedido ni Inventario. El siguiente tramo
+> aprobado es Comercial C3. Estado general exacto:
+> `docs/RELEVO-COMERCIAL-C2-2026-10-16.md` y `CONTEXTO-MAGANDHI.md` §9; para la
 > futura apertura de cuentas conserva vigencia temática
 > `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
+>
+> **Archivo operativo acumulativo:** el estado de la cabecera y el relevo vigente
+> mandan. Todas las secciones históricas anteriores a Comercial C1 que dicen
+> «acción manual», «aplicar» o «ejecutar» describen despliegues ya realizados y
+> **no autorizan repetirlos**. Nunca reaplicar una migración histórica.
 >
 > **Regla de migraciones:** los archivos ya aplicados son historia inmutable.
 > Nunca se reejecutan como arreglo o rollback sobre la base actual. Toda
@@ -45,11 +53,12 @@ lectura:
 | Borrado en bucket `campanas` | `false` | faltaba |
 | Vista = la del 3-oct | `true` | **ya estaba: no se toca** |
 
-### Lo que sí hay que aplicar
+### Lo que se aplicó en aquel corte (histórico; no ejecutar de nuevo)
 
-`supabase/migrations/20261018000000_puesta_al_dia_sin_vista.sql`, una sola vez en
-SQL Editor. Re-emite forward **solo los tres huecos reales** y **no toca la
-vista**. Es idempotente.
+`supabase/migrations/20261018000000_puesta_al_dia_sin_vista.sql` se aplicó una
+sola vez en SQL Editor. Reemitió forward **solo los tres huecos reales** y **no
+tocó la vista**. Su contrato idempotente no autoriza a repetirla sobre la base
+actual.
 
 Verificación después de aplicarla:
 
@@ -83,12 +92,11 @@ Para eso existe `supabase/pruebas/local/herramientas/correr-puesta-al-dia.sh`,
 que omite a propósito la migración no aplicada y comprueba el antes y el después
 (18/18 + matriz 170/170).
 
-## 0bis. Campañas · jubilar HOOK CORTO y orden por arrastrar y soltar
+## 0bis. Campañas · jubilar HOOK CORTO y orden por arrastrar y soltar (histórico)
 
-> **Acción MANUAL del dueño.** El agente no tiene acceso al dashboard: esta
-> migración NO se aplica sola. Ejecútala tú, **una sola vez**, en el SQL Editor,
-> después de `20261002000000`. Es una migración forward nueva (ledger inmutable):
-> nunca reescribas ni reejecutes las históricas.
+> **Procedimiento histórico ya ejecutado; no repetir.** El bloque siguiente
+> conserva cómo se aplicó y verificó la migración en su fecha. Hoy forma parte
+> de la historia inmutable de producción.
 
 Archivo: `supabase/migrations/20261003000000_campanas_jubilar_hook_y_reordenar.sql`.
 
@@ -108,12 +116,12 @@ Hace dos cosas en una sola migración, sobre las mismas funciones y la misma vis
   `order('orden', asc)`). La columna `orden`, su índice y su exposición en
   `catalogo_publico` ya existían: esta migración no los toca.
 
-### Aplicación
+### Aplicación histórica (ya ejecutada; no repetir)
 
-1. Abrir `supabase/migrations/20261003000000_campanas_jubilar_hook_y_reordenar.sql`.
-2. Ejecutarlo **una sola vez** en el SQL Editor (pulsar **Run**).
+1. En aquel corte se abrió `supabase/migrations/20261003000000_campanas_jubilar_hook_y_reordenar.sql`.
+2. Se ejecutó **una sola vez** en el SQL Editor.
 
-### Verificación MANUAL del dueño
+### Verificación histórica del dueño
 
 1. **La vista ya no trae `hook_corto`** (la consulta NO debe listar `hook_corto`):
 
@@ -179,11 +187,11 @@ Hace dos cosas en una sola migración, sobre las mismas funciones y la misma vis
 6. **`crear-intencion-pago` NO necesita redeploy** por esta migración: la vista
    sigue exponiendo `precio_venta` y el grant a `service_role` se re-otorgó.
 
-## 0ter. Corrección de permisos de Campañas (error 42501)
+## 0ter. Corrección de permisos de Campañas (incidente histórico 42501)
 
-> **Acción MANUAL del dueño.** Ejecuta esta migración forward después de
-> `20261003000000`. No edites ni reejecutes la migración anterior: ya forma
-> parte de la historia de producción.
+> **Procedimiento histórico ya ejecutado; no repetir.** La migración forward
+> descrita aquí corrigió el incidente posterior a `20261003000000`; hoy forma
+> parte de la historia inmutable de producción.
 
 Archivo: `supabase/migrations/20261003000100_campanas_execute_nominal.sql`.
 
@@ -206,11 +214,11 @@ La corrección mantiene menor privilegio: `PUBLIC` y `anon` continúan bloqueado
 `authenticated` puede entrar a las tres RPC y el segundo candado sigue siendo
 `tiene_acceso_marketing()`; `service_role` conserva la política de Tramo 0.
 
-### Aplicación
+### Aplicación histórica (ya ejecutada; no repetir)
 
-1. Abrir `supabase/migrations/20261003000100_campanas_execute_nominal.sql`.
-2. Copiarlo completo y ejecutarlo **una sola vez** en SQL Editor.
-3. No redesplegar ninguna Edge Function: esta corrección solo cambia permisos
+1. En aquel corte se abrió `supabase/migrations/20261003000100_campanas_execute_nominal.sql`.
+2. Se copió completa y se ejecutó **una sola vez** en SQL Editor.
+3. No se redesplegó ninguna Edge Function: esta corrección solo cambió permisos
    SQL de tres funciones existentes.
 
 ### Verificación
@@ -5413,14 +5421,70 @@ permanente.
 - El dueño confirmó selector, máximo, total, modal y compra invitada estructural
   en la tienda publicada.
 
-## Límite y continuación
+## Límite propio de C1
 
 No hubo pago real de dos unidades. Para cantidad 2 no están medidos webhook,
 pedido, baja2, asiento, correo ni repetición/idempotencia. No registrar ese caso
 como cierre transaccional ni como compra real. La prueba monetaria queda opcional
-y requiere autorización expresa del dueño.
+y requiere autorización expresa del dueño. Este límite de C1 se conserva aunque
+avance la fase comercial.
 
-El siguiente tramo aprobado es **Comercial C2 · carrito autenticado persistente**.
-Debe empezar después de la migración máxima aplicada `20261102000000`, mantener
-precio/máximo server-side, usar RLS por UID y permanecer apagable hasta el
-checkout multiproducto de C3. No reconstruir C1.
+---
+
+# Comercial C2 · carrito autenticado persistente
+
+> **Estado · 16-oct-2026:** **Comercial C2 desplegado y probado en estructura,
+> apagado hasta C3**. Backend/back-office PR #278 fusionado; tienda PR #104
+> fusionado; migración `20261103000000` aplicada; preflight 3/3 `true` y
+> postflight 10/10 `true`. El flag final quedó `false`. Estado y límites exactos:
+> `docs/RELEVO-COMERCIAL-C2-2026-10-16.md`.
+
+## Contrato acumulativo
+
+- Una sola cesta activa por UID, con `sin_doble_activo=true` en la comprobación
+  final.
+- Propiedad protegida por RLS y operaciones de agregar, consolidar, cambiar y
+  retirar.
+- Agregar de nuevo consolida la línea; el carrito no persiste precio como
+  autoridad.
+- La cesta persiste entre navegadores y no cruza cuentas.
+- El conflicto entre pestañas se resuelve sin crear dos carritos activos ni
+  líneas huérfanas; la comprobación final dio `sin_huerfanas=true`.
+- Logout retira el carrito autenticado visible y la compra invitada permanece
+  intacta.
+- C2 permanece gobernado por flag y no se anuncia como checkout multiproducto
+  antes de C3.
+
+## Código y despliegue
+
+- Backend/back-office: PR #278; implementación `f68fd24`; matriz `8d4c64d`;
+  merge a `main` `a811082cc585ad8d77a98aa346ffbd06ac2ac3f4`. Pages terminó
+  construido para ese merge.
+- Tienda: PR #104; implementación
+  `90dcb6d42eabd26935743b5bae4de9bba9692e39`; merge a `main`
+  `35a104a1c12b9b9276773bc7d7c082c0733c73a9`. Pages terminó construido.
+- Producción: preflight 3/3 `true`, migración `20261103000000` aplicada y
+  postflight 10/10 `true`.
+
+## Evidencia de producción
+
+El dueño confirmó el flag OFF correcto y después una activación temporal. En
+esa ventana probó agregar, consolidar, cambiar y retirar; persistencia entre
+navegadores; aislamiento entre dos cuentas; conflicto entre pestañas; logout y
+compra invitada. Las comprobaciones finales dieron `sin_doble_activo=true` y
+`sin_huerfanas=true`.
+
+No hubo dinero, Wompi, pedido ni Inventario. Finalizada la comprobación, el flag
+quedó `false`.
+
+## Límite y continuación
+
+C2 no entrega intención multiproducto, líneas congeladas, cobro, pedido, consumo
+postpago ni vínculo transaccional de cuenta. No registrar este tramo como cierre
+completo ni como cierre de la fase comercial.
+
+El siguiente tramo aprobado es **Comercial C3 · intención y checkout
+multiproducto**. Debe empezar después de la migración máxima aplicada
+`20261103000000`, conservar precio/máximo server-side, congelar líneas y total,
+y mantener compatibilidad con compra inmediata e invitada. No reconstruir C1 ni
+C2.

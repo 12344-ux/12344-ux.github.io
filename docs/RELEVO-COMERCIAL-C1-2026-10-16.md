@@ -1,6 +1,17 @@
 # Relevo de sesión · Comercial C1 · cantidad inmediata · 16 de octubre de 2026
 
-Este es el punto exacto para continuar el frente comercial en un chat nuevo. Leer junto con `CONTEXTO-MAGANDHI.md`, `docs/PLANO-FASE-COMERCIAL.md` y `supabase/INSTRUCCIONES.md`. Para identidad y apertura de cuentas, `docs/RELEVO-CUENTAS-C2-2026-10-16.md` queda como relevo temático histórico. **No reconstruir Comercial C1 ni confundirlo con Cuentas C1/C2.**
+> **HISTÓRICO · COMERCIAL C1:** este archivo conserva la evidencia y el punto de
+> avance de C1 en su fecha. El relevo general vigente es
+> `docs/RELEVO-COMERCIAL-C2-2026-10-16.md`; Comercial C2 ya quedó desplegado y
+> probado en estructura, apagado hasta C3. Las referencias de este documento a
+> C2 como siguiente tramo son históricas y no gobiernan el arranque actual.
+
+Este archivo ya no es un punto de arranque ni un procedimiento ejecutable.
+Conserva el corte exacto de C1 para auditoría; el trabajo vigente continúa
+exclusivamente desde `docs/RELEVO-COMERCIAL-C2-2026-10-16.md`. Para identidad y
+apertura de cuentas, `docs/RELEVO-CUENTAS-C2-2026-10-16.md` queda como relevo
+temático histórico. **No ejecutar las instrucciones de continuación de este
+archivo ni reconstruir Comercial C1/C2.**
 
 ## 1. Estado exacto
 
@@ -81,7 +92,7 @@ Por eso el cierre exacto es **“desplegado y probado en estructura”**, no “
 - Código fusionado no prueba despliegue: el estado se actualiza solo con medición de producción.
 - No registrar secretos, llaves, referencias de pago completas, correos ni datos personales de pruebas.
 
-## 6. Siguiente punto aprobado
+## 6. Siguiente punto aprobado en aquel corte (histórico; no ejecutar)
 
 El siguiente tramo es **Comercial C2 · carrito autenticado persistente**:
 
@@ -96,7 +107,7 @@ La prueba real de cantidad `2` queda **opcional y solo puede ejecutarse con auto
 
 La apertura pública de cuentas continúa siendo un frente separado: Cuentas C2 está técnicamente cerrado en preapertura, con signup OFF y Google External/Testing hasta publicar políticas. No reabrir ese trabajo al construir el carrito.
 
-## 7. Orden al retomar
+## 7. Orden previsto en aquel corte (histórico; no ejecutar)
 
 1. Leer este relevo y no reconstruir C1.
 2. Confirmar que la tarea es Comercial C2 y mantenerla separada de Cuentas C3/C4 y Promocionar.
@@ -105,6 +116,6 @@ La apertura pública de cuentas continúa siendo un frente separado: Cuentas C2 
 5. Mantener el carrito apagable hasta que C3 complete intención y checkout multiproducto.
 6. Medir cada despliegue antes de cambiar su estado documental.
 
-## 8. Prompt de arranque para el próximo chat
+## 8. Prompt histórico (no usar para una sesión nueva)
 
 > Retomamos MAGANDHI después de Comercial C1. Lee `docs/RELEVO-COMERCIAL-C1-2026-10-16.md`, `CONTEXTO-MAGANDHI.md`, `docs/PLANO-FASE-COMERCIAL.md` y `supabase/INSTRUCCIONES.md`. C1 cantidad inmediata está desplegado y probado en estructura: backend #276 (`e75dc1cbd1643d3897e851cc2e06fe47f3b87ecc`), tienda #102 (`db56c4f64de9dc2af5ac77b3c444467e1a72cb0c`), migración máxima `20261102000000`, postflight 9/9 true, `crear-intencion-pago` desplegada y tienda publicada. Cantidad 1 dio HTTP 200 y persistencia 7/7 true sin pago/pedido/webhook; cantidad 2 excediendo max1 dio 409 `MAX_COMPRABLE`; con Grisi max2 y `max_comprable=2`, la intención qty2 dio HTTP 200 por 13.980.000 centavos (COP 139.800). El dueño confirmó selector, máximo, total, modal y compra invitada estructural. No hubo pago real de dos unidades ni se midieron webhook, pedido, baja2, asiento, correo o idempotencia para ese caso. No reconstruyas C1 ni afirmes cierre transaccional. Continúa con Comercial C2, carrito autenticado persistente. Una prueba real qty2 es opcional y requiere autorización expresa del dueño.

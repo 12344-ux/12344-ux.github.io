@@ -1,7 +1,7 @@
 # PLANO · Fase comercial: Carrito + Promocionar
 
 **Decisión del dueño:** 16 de octubre de 2026  
-**Estado por tramos:** **C1 desplegado y probado en estructura**; C2 siguiente; C3–C4 y P0–P5 pendientes. La fase completa no está cerrada.
+**Estado por tramos:** **C1 desplegado y probado en estructura**; **C2 desplegado y probado en estructura, apagado hasta C3**; C3 siguiente; C4 y P0–P5 pendientes. La fase completa no está cerrada.
 **Superficies:** back-office `montaguth.institute`, tienda `magandhi.com` y backend compartido en Supabase.
 
 Este plano reúne los dos frentes comerciales elegidos para la siguiente evolución de MAGANDHI:
@@ -203,6 +203,29 @@ Tienda:
 
 **Activación:** C2 puede desplegarse apagado, pero no se publica como promesa hasta C3.
 
+**Estado medido · 16-oct-2026: Comercial C2 desplegado y probado en estructura,
+apagado hasta C3.**
+
+- Backend/back-office PR #278 fusionado: implementación `f68fd24`, matriz
+  `8d4c64d` y merge a `main` `a811082cc585ad8d77a98aa346ffbd06ac2ac3f4`;
+  Pages terminó construido para ese merge.
+- Tienda PR #104 fusionado: implementación
+  `90dcb6d42eabd26935743b5bae4de9bba9692e39` y merge a `main`
+  `35a104a1c12b9b9276773bc7d7c082c0733c73a9`; Pages terminó construido.
+- Preflight de producción 3/3 `true`; migración `20261103000000` aplicada;
+  postflight 10/10 `true`.
+- El flag OFF se comprobó correcto. Durante una activación temporal, el dueño
+  probó agregar, consolidar, cambiar y retirar; persistencia entre navegadores;
+  aislamiento entre dos cuentas; conflicto entre pestañas; logout y compra
+  invitada.
+- Invariantes finales: `sin_doble_activo=true` y `sin_huerfanas=true`.
+- No hubo dinero, Wompi, pedido ni Inventario. El flag final quedó `false`.
+
+**Límite:** C2 entrega el carrito autenticado persistente y sus candados de
+propiedad, pero no checkout multiproducto, líneas congeladas, cobro, pedido,
+consumo postpago ni vínculo transaccional de cuenta. Eso comienza en C3/C4; el
+cierre final de la fase permanece pendiente.
+
 ### C3 · Intención y checkout multiproducto
 
 **Entrega:** pagar el carrito completo una sola vez.
@@ -338,18 +361,20 @@ Ventas muestra la procedencia validada. Los pedidos manuales pueden tener una fu
 
 ## 5. Orden de construcción
 
-Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual: C1 desplegado y probado en estructura, C2 siguiente; lo demás permanece pendiente.
+Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual: C1 y C2 están desplegados y probados en estructura; C2 permanece apagado hasta C3. C3 es el siguiente tramo aprobado; lo demás permanece pendiente.
 
 1. **Plano y arranque — cerrado.** Este documento y referencias de contexto.
 2. **C1 · cantidad inmediata — estructura lista.** Valor comercial rápido y cimiento de carrito; sin afirmar cierre transaccional de qty2.
-3. **C2 · carrito persistente — siguiente.** Datos/RLS/UI, todavía apagable.
-4. **C3–C4 · pago de carrito — pendiente.** Intención multiproducto, Wompi y cuenta.
-5. **P1 · producto compartible — pendiente.** También resuelve SEO/IA pendiente.
-6. **P2 · estudio Promocionar — pendiente.** Enlaces largos, textos, preview, QR y kit.
-7. **P3–P4 · enlace corto y atribución — pendiente.** Backend, routing y pago.
-8. **P5 · lectura comercial — pendiente.** Métricas sobre hechos ya capturados.
+3. **C2 · carrito persistente — estructura lista y flag OFF.** Datos/RLS/UI medidos; no cobra ni crea pedidos.
+4. **C3 · intención y checkout multiproducto — siguiente.** Líneas congeladas, total autoritativo y Wompi.
+5. **C4 · cuenta y ciclo del carrito — pendiente.** Vínculo de cuenta y postpago.
+6. **P0 · taxonomía y privacidad — pendiente.** Contrato de atribución, canales y retención antes de capturar datos.
+7. **P1 · producto compartible — pendiente.** También resuelve SEO/IA pendiente.
+8. **P2 · estudio Promocionar — pendiente.** Enlaces largos, textos, preview, QR y kit.
+9. **P3–P4 · enlace corto y atribución — pendiente.** Backend, routing y pago.
+10. **P5 · lectura comercial — pendiente.** Métricas sobre hechos ya capturados.
 
-P1/P2 pueden avanzar en paralelo con C2 si se mantienen en ramas/PR separados. No se mezclan carrito, redirector y metadata en una sola migración o despliegue.
+P1/P2 pueden avanzar en paralelo con C3 si se mantienen en ramas/PR separados. No se mezclan carrito, redirector y metadata en una sola migración o despliegue.
 
 ---
 
@@ -372,8 +397,16 @@ Nunca inferir “desplegado” porque el código esté fusionado.
 postflight 9/9 `true`, `crear-intencion-pago` desplegada, tienda publicada y
 pruebas controladas sin dinero. No se ejecutó el paso monetario opcional para
 cantidad 2; por tanto no se atribuyen a ese caso webhook, pedido, inventario,
-asiento, correo ni idempotencia. C2 continúa desde este punto sin reconstruir
-C1.
+asiento, correo ni idempotencia.
+
+**C2 siguió el orden hasta la medición estructural:** código fusionado y Pages
+construido en backend/back-office y tienda, preflight 3/3 `true`, migración
+`20261103000000` aplicada, postflight 10/10 `true`, flag OFF verificado,
+activación temporal y pruebas de carrito entre navegadores, cuentas y pestañas.
+No hubo dinero, Wompi, pedido ni Inventario; el flag final quedó `false`.
+
+C3 continúa desde este punto sin reconstruir C1/C2. Debe completar intención y
+checkout multiproducto antes de publicar el carrito como promesa.
 
 ---
 
