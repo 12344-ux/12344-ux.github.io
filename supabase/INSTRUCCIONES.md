@@ -1,18 +1,17 @@
 # Supabase · runbook operativo MAGANDHI / Impulse
 
 > **Estado al 16-oct-2026:** en producción están aplicadas todas las migraciones
-> hasta `20261101000000` (Cuentas C2), salvo `20261002000000`, que quedó
+> hasta `20261102000000` (Comercial C1), salvo `20261002000000`, que quedó
 > **SUPERADA y no debe aplicarse** (ver §0). Wompi F1–F4 y Dropshipping D2c
-> están operativos. C1 y el backend C2 están desplegados; SMTP/TokenHash y
-> recuperación cross-browser fueron medidos. Google Identity Services quedó
-> publicado y medido en External/Testing: `magandhi.com` visible, mismo UID,
-> identidad enlazada y una sola cuenta activa. Turnstile y CAPTCHA de Supabase
-> están activos y medidos: login/recuperación válidos, omisión rechazada y
-> renovación tras expiración. Un registro nuevo por correo y un usuario Google
-> realmente nuevo quedaron medidos con identidad única y una sola cuenta activa.
-> C2 está cerrado técnicamente en preapertura; CAPTCHA activo, signup OFF y
-> Google Testing hasta publicar políticas. Estado exacto: `docs/RELEVO-CUENTAS-C2-2026-10-16.md` y
-> `CONTEXTO-MAGANDHI.md` §9.
+> están operativos. Cuentas C1/C2 continúan desplegados y C2 está cerrado
+> técnicamente en preapertura; CAPTCHA activo, signup OFF y Google Testing hasta
+> publicar políticas. Comercial C1 está **desplegado y probado en estructura**:
+> postflight 9/9 `true`, `crear-intencion-pago` desplegada, cantidad 1 persistida
+> y cantidad 2 validada hasta intención por COP 139.800. No hubo pago real de dos
+> unidades ni se midió su cierre transaccional. Estado general exacto:
+> `docs/RELEVO-COMERCIAL-C1-2026-10-16.md` y `CONTEXTO-MAGANDHI.md` §9; para la
+> futura apertura de cuentas conserva vigencia temática
+> `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
 >
 > **Regla de migraciones:** los archivos ya aplicados son historia inmutable.
 > Nunca se reejecutan como arreglo o rollback sobre la base actual. Toda
@@ -5378,3 +5377,50 @@ técnicamente en preapertura. Continuar desde
 `docs/RELEVO-CUENTAS-C2-2026-10-16.md` solo cuando se retome la apertura:
 publicar políticas y avisos contextuales antes de Google Production y signup
 permanente.
+
+---
+
+# Comercial C1 · cantidad en compra inmediata
+
+> **Estado · 16-oct-2026:** desplegado y probado en estructura. Backend/back-office
+> #276 fusionado a `main` en `e75dc1cbd1643d3897e851cc2e06fe47f3b87ecc`;
+> tienda #102 fusionada en `db56c4f64de9dc2af5ac77b3c444467e1a72cb0c`.
+> Migración `20261102000000_comercial_c1_cantidad_inmediata.sql` aplicada;
+> postflight 9/9 `true`; `crear-intencion-pago` desplegada y tienda publicada.
+> Estado y límites exactos: `docs/RELEVO-COMERCIAL-C1-2026-10-16.md`.
+
+## Entrega acumulativa
+
+- `campana_producto.max_unidades_pedido` separa el máximo comercial por pedido de
+  `tope_escaparate`, con rango `1..20` y valor histórico inicial `1`.
+- `catalogo_publico` publica únicamente `max_comprable` (`0..20`). Stock, piso,
+  reservas, proveedor e ids externos siguen privados.
+- Campañas crea y edita el máximo; la tienda permite elegir cantidad también al
+  invitado y muestra máximo y total antes del modal.
+- `crear-intencion-pago` valida entero, máximo efectivo y monto autoritativo. La
+  persistencia de intención y `crear_pedido` repiten los candados server-side.
+- Producto propio respeta existencias; proveedor conserva el piso Dropi después
+  de restar la cantidad solicitada.
+
+## Evidencia de producción
+
+- Postflight: 9/9 comprobaciones `true`.
+- Cantidad 1: intención HTTP 200 y persistencia 7/7 `true`; la prueba terminó sin
+  pago, pedido ni webhook.
+- Cantidad 2 contra máximo 1: HTTP 409 `MAX_COMPRABLE`.
+- Grisi con máximo 2 y `max_comprable=2`: intención HTTP 200 por 13.980.000
+  centavos (COP 139.800).
+- El dueño confirmó selector, máximo, total, modal y compra invitada estructural
+  en la tienda publicada.
+
+## Límite y continuación
+
+No hubo pago real de dos unidades. Para cantidad 2 no están medidos webhook,
+pedido, baja2, asiento, correo ni repetición/idempotencia. No registrar ese caso
+como cierre transaccional ni como compra real. La prueba monetaria queda opcional
+y requiere autorización expresa del dueño.
+
+El siguiente tramo aprobado es **Comercial C2 · carrito autenticado persistente**.
+Debe empezar después de la migración máxima aplicada `20261102000000`, mantener
+precio/máximo server-side, usar RLS por UID y permanecer apagable hasta el
+checkout multiproducto de C3. No reconstruir C1.
