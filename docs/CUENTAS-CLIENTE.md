@@ -74,16 +74,16 @@ idempotencia por pedido. Así un cambio de campaña no reescribe la historia.
 | Tramo | Entrega | Estado |
 |---|---|---|
 | **C1** | puente de identidad, separación cliente/personal, guardia interna y actor cliente en la matriz | **Desplegado y verificado 15-oct-2026, PR #268** |
-| **C2** | registro, confirmación, login, recuperación, SMTP propio, Google, CAPTCHA y vínculo seguro | **Desplegado en preapertura 16-oct-2026, backend #270 / tienda #93, Google GIS #95 y Turnstile #97/#98; falta registro nuevo y apertura** |
+| **C2** | registro, confirmación, login, recuperación, SMTP propio, Google, CAPTCHA y vínculo seguro | **Infraestructura desplegada y verificada en preapertura 16-oct-2026; signup OFF y Google Testing hasta publicar políticas** |
 | **C3** | Mi cuenta: perfil, direcciones, pedidos, estado y opiniones | Pendiente |
 | **C4** | checkout con cuenta, rellenado y `customer_id` server-side; invitado intacto | Pendiente |
 
 C1 y el backend de C2 ya están aplicados. `disable_signup=true` continúa
 vigente: correo/contraseña, SMTP, TokenHash y recuperación fueron medidos;
-Google Identity Services también quedó medido en Testing con mismo UID,
-identidad enlazada y una sola cuenta activa. Turnstile y CAPTCHA de Supabase
-están activos y medidos; falta el registro nuevo controlado y la apertura. La
-apertura se hace solo después de verificar registro nuevo, redirects, RLS y
-políticas.
+Google Identity Services, Turnstile, CAPTCHA, un registro nuevo por correo y un
+usuario Google realmente nuevo quedaron medidos con identidades únicas y una
+sola cuenta activa. C2 queda cerrado técnicamente en preapertura. Signup sigue
+OFF y Google Testing hasta publicar políticas y avisos contextuales; solo después
+se prepara la apertura.
 
 **Próximo punto de entrada:** `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.

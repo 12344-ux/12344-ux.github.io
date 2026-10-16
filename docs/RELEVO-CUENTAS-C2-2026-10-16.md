@@ -6,10 +6,11 @@ tienda, `cuenta/CONFIGURACION.md`. No volver a construir C1 ni C2 desde cero.
 
 ## 1. Estado exacto
 
-**C2 está fusionado, publicado y desplegado, pero el registro público sigue
-apagado.** Google Identity Services y Cloudflare Turnstile ya fueron probados de
-extremo a extremo. La siguiente acción es un registro nuevo controlado por
-correo; solo después se continúa hacia la apertura.
+**C2 queda cerrado técnicamente en preapertura.** Correo/contraseña, Google GIS,
+Turnstile, CAPTCHA, confirmación, recuperación, inicialización e idempotencia
+fueron probados también con usuarios realmente nuevos. Por decisión del dueño,
+la apertura pública se aplaza hasta redactar, revisar y publicar políticas.
+Signup permanece OFF y Google External/Testing.
 
 Código fusionado el 16-oct-2026:
 
@@ -42,7 +43,11 @@ Producción medida por el dueño:
 - Turnstile está activo en frontend y Supabase: login y recuperación aceptaron
   token válido, una llamada sin token devolvió `captcha_failed`/400 y el widget
   renovó el token después de expirar.
-- `Allow new users to sign up` permanece **apagado**.
+- Un registro nuevo por correo completó CAPTCHA, entrega, confirmación TokenHash,
+  inicialización y segundo login con un solo UID y una sola fila activa.
+- Un usuario Google realmente nuevo completó el alta con una identidad Auth y
+  una sola fila activa.
+- `Allow new users to sign up` permanece **apagado** y Google sigue Testing.
 
 ## 2. Qué entrega C2
 
@@ -84,6 +89,12 @@ Con un usuario Auth creado manualmente y autoconfirmado:
 14. Login y recuperación con token válido: correctos.
 15. Solicitud sin token: rechazada por Supabase con `captcha_failed`/400.
 16. Widget dejado más de cinco minutos: renovó correctamente la validación.
+17. Registro nuevo por correo con signup abierto solo para el alta: CAPTCHA,
+    entrega, confirmación TokenHash, sesión e inicialización correctos.
+18. Segundo login de esa cuenta: mismo UID y una sola fila activa.
+19. Google con usuario realmente nuevo en Testing: sesión sin advertencias,
+    identidad Auth única y una sola fila activa.
+20. Estado final: signup OFF, CAPTCHA ON y Google External/Testing.
 
 No registrar en documentos el correo, contraseña, UID, TokenHash, API key de
 Resend ni secretos OAuth usados en estas pruebas.
@@ -129,6 +140,8 @@ Confirmado por el dueño y medido en producción:
 - Scopes limitados a identidad básica (`openid`, email y profile).
 - El selector identifica `magandhi.com`; mismo UID/identidad y una fila activa
   quedaron confirmados después del segundo acceso.
+- Un usuario Google realmente nuevo también completó el alta con identidad única
+  y una sola fila activa.
 - Signup público sigue apagado.
 
 ### Cloudflare Turnstile
@@ -140,45 +153,43 @@ Confirmado por el dueño y medido en producción:
 - Login, recuperación, omisión y renovación tras expiración medidos.
 - Signup público sigue apagado.
 
-## 5. Lo que NO está cerrado todavía
+## 5. Lo que queda pendiente para una apertura futura
 
-- No se ha probado un registro público nuevo por correo con CAPTCHA.
-- No se ha probado Google con un usuario realmente nuevo.
-- Google sigue en `Testing`; no publicar la app todavía.
-- Las políticas públicas siguen en versión borrador; cerrarlas antes de una
-  apertura comercial definitiva.
+- Redactar y revisar las políticas definitivas de datos, cookies, términos,
+  envíos y devoluciones; hoy siguen `borrador-0` y `noindex`.
+- Añadir avisos/enlaces contextuales de políticas en registro y checkout.
+- Definir y publicar el canal formal de PQRS.
+- Preparar Google para Production con branding y URLs definitivas; mientras
+  tanto continúa External/Testing.
+- Activar signup permanentemente solo después de los puntos anteriores.
 - No aumentar el límite Auth de 30 correos/hora antes de medir la apertura.
 
-## 6. Siguiente paso exacto
+## 6. Punto de cierre
 
-**Registro nuevo controlado por correo con CAPTCHA activo:**
+No hay una acción inmediata pendiente en C1/C2. La infraestructura queda montada
+y medida, pero deliberadamente cerrada al público:
 
-1. Elegir privadamente un correo real controlado que no exista en Auth ni
-   pertenezca a `perfiles`. No documentarlo.
-2. En una ventana privada dejar listo `https://magandhi.com/cuenta/` en la
-   pestaña Crear cuenta y comprobar que Turnstile está resuelto.
-3. En Supabase Auth activar `Allow new users to sign up` solo para esta prueba.
-   CAPTCHA debe permanecer activo.
-4. Enviar inmediatamente el registro con una contraseña fuerte.
-5. Cuando el alta sea aceptada, volver a apagar signup; la confirmación del
-   usuario ya creado puede continuar.
-6. Abrir el correo de confirmación, volver a MAGANDHI y comprobar sesión activa
-   sin advertencias.
-7. Medir en Supabase exactamente un usuario confirmado y una fila activa en
-   `cuentas_cliente`; `customer_id` nulo es válido.
-8. Cerrar sesión, iniciar otra vez con correo/contraseña y confirmar que continúa
-   existiendo una sola fila.
+- CAPTCHA de Supabase: ON.
+- Turnstile: ON.
+- Confirmación de correo: ON.
+- Signup: OFF.
+- Google: External/Testing.
+- Compra invitada: intacta.
 
-Si algo falla, apagar signup antes de investigar. Nunca eliminar, fusionar o
-reasignar identidades manualmente para forzar la prueba.
+La redacción de políticas requiere decisiones profundas del dueño y se realizará
+en otra sesión. Hasta entonces no cambiar estos interruptores ni repetir las
+pruebas ya cerradas.
 
-## 7. Después del registro por correo
+## 7. Orden al retomar la apertura
 
-1. Probar Google con un usuario realmente nuevo mientras continúa en Testing.
-2. Mantener compra invitada y consentimiento de marketing separados.
-3. Cerrar políticas antes de pasar Google a Production y anunciar registros.
-4. Revisar el límite Auth de 30 correos/hora solo después de medir apertura.
-5. Actualizar este relevo únicamente después de cada medición.
+1. Recoger las decisiones empresariales y comerciales necesarias.
+2. Redactar y someter las políticas a revisión legal independiente.
+3. Publicarlas con versión final, retirar `noindex` y añadir enlaces contextuales.
+4. Preparar el proyecto/cliente Google de producción y completar el proceso de
+   branding/verificación que corresponda.
+5. Probar una vez el cliente Google de producción.
+6. Pasar Google a Production y activar signup permanente.
+7. Ejecutar un smoke test final y medir límites antes de anunciar registros.
 
 ## 8. Reglas que no cambian
 
@@ -198,11 +209,10 @@ reasignar identidades manualmente para forzar la prueba.
 > `docs/CUENTAS-CLIENTE.md` y `magandhi/cuenta/CONFIGURACION.md`. C1 y el backend
 > C2 están desplegados; migración máxima `20261101000000`, preflight limpio,
 > `cuenta-inicializar` con JWT y SMTP/TokenHash verificados. Google Identity
-> Services está publicado y medido en External/Testing: `magandhi.com` visible,
-> mismo UID/identidad y una sola cuenta activa. Turnstile y CAPTCHA de Supabase
-> están activos y medidos: login/recuperación válidos, omisión rechazada con
-> `captcha_failed`/400 y renovación después de expirar. Signup sigue apagado.
-> Empieza directamente con un registro nuevo controlado por correo: deja el
-> formulario y Turnstile listos, abre signup solo para aceptar esa alta y vuelve
-> a apagarlo antes de confirmar e inicializar la cuenta. No repitas C1, C2,
-> SMTP, Google, recuperación ni Turnstile.
+> Services, Turnstile, CAPTCHA, registro nuevo por correo y Google con usuario
+> realmente nuevo están publicados y medidos: identidades únicas y una sola
+> cuenta activa. C2 queda cerrado técnicamente en preapertura. CAPTCHA sigue ON;
+> signup permanece OFF y Google External/Testing por decisión del dueño hasta
+> redactar, revisar y publicar políticas y avisos contextuales. No reabras C1/C2
+> ni repitas SMTP, recuperación, Google o Turnstile. Continúa con el nuevo frente
+> que indique el dueño; la apertura de cuentas se retoma después de políticas.

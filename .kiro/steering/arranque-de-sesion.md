@@ -8,8 +8,8 @@ Antes de proponer o tocar nada en una sesión nueva:
 
 1. Leer `CONTEXTO-MAGANDHI.md` (realidad operativa y pendientes vigentes).
 2. Leer `docs/RELEVO-CUENTAS-C2-2026-10-16.md`: es el relevo más reciente.
-   **C2 está desplegado en preapertura; Google GIS y Turnstile están medidos y
-   lo siguiente exacto es un registro nuevo controlado por correo.**
+   **C2 queda cerrado técnicamente en preapertura; signup está OFF y Google
+   Testing hasta que se redacten, revisen y publiquen las políticas.**
 3. Leer `docs/CUENTAS-CLIENTE.md` para las decisiones de identidad, compra como
    invitado y tramos C1–C4.
 4. Solo si la tarea vuelve a Dropshipping, leer además
@@ -26,16 +26,16 @@ Realidad de arranque al 16-oct-2026:
 - Google Identity Services está publicado desde la tienda PR #95 y medido en
   `External / Testing`: el selector muestra `magandhi.com`, conserva el mismo
   UID/identidad y una sola cuenta activa tras el segundo acceso.
-- Signup sigue apagado. Turnstile y CAPTCHA de Supabase están activos: login y
-  recuperación válidos, omisión rechazada con `captcha_failed`/400 y renovación
-  tras expiración están medidos.
+- Alta nueva por correo con CAPTCHA, confirmación e idempotencia: correcta.
+- Alta Google con usuario realmente nuevo: correcta, identidad única y una sola
+  cuenta activa.
+- CAPTCHA sigue activo; signup permanece OFF y Google External/Testing.
+- C2 está cerrado técnicamente. Cuando se retome la apertura, primero publicar
+  políticas y avisos contextuales; después preparar Google Production y activar
+  signup permanente.
 - `clientes.id` sigue siendo la identidad comercial; nunca reemplazarlo por el
   UID de Auth. `cuentas_cliente` es el puente.
 - La tienda conserva compra como invitado y cuenta opcional.
-- El próximo paso es abrir signup solo durante un registro nuevo controlado por
-  correo con CAPTCHA activo; cerrarlo tras aceptar el alta y completar
-  confirmación, inicialización e idempotencia. Después: Google con un usuario
-  realmente nuevo y políticas.
 
 Reglas que no cambian:
 
