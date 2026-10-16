@@ -8,8 +8,8 @@ Antes de proponer o tocar nada en una sesión nueva:
 
 1. Leer `CONTEXTO-MAGANDHI.md` (realidad operativa y pendientes vigentes).
 2. Leer `docs/RELEVO-CUENTAS-C2-2026-10-16.md`: es el relevo más reciente.
-   **C2 está desplegado en preapertura; Google GIS ya fue medido y lo siguiente
-   exacto es configurar Turnstile sin encender signup todavía.**
+   **C2 está desplegado en preapertura; Google GIS y Turnstile están medidos y
+   lo siguiente exacto es un registro nuevo controlado por correo.**
 3. Leer `docs/CUENTAS-CLIENTE.md` para las decisiones de identidad, compra como
    invitado y tramos C1–C4.
 4. Solo si la tarea vuelve a Dropshipping, leer además
@@ -26,15 +26,16 @@ Realidad de arranque al 16-oct-2026:
 - Google Identity Services está publicado desde la tienda PR #95 y medido en
   `External / Testing`: el selector muestra `magandhi.com`, conserva el mismo
   UID/identidad y una sola cuenta activa tras el segundo acceso.
-- El registro público y CAPTCHA siguen apagados; `TURNSTILE_SITE_KEY` está
-  vacía.
+- Signup sigue apagado. Turnstile y CAPTCHA de Supabase están activos: login y
+  recuperación válidos, omisión rechazada con `captcha_failed`/400 y renovación
+  tras expiración están medidos.
 - `clientes.id` sigue siendo la identidad comercial; nunca reemplazarlo por el
   UID de Auth. `cuentas_cliente` es el puente.
 - La tienda conserva compra como invitado y cuenta opcional.
-- El próximo paso es crear el widget Turnstile administrado para
-  `magandhi.com`, guardar el secret solo en Supabase y publicar primero la site
-  key sin encender CAPTCHA ni signup. Después: medir CAPTCHA, registro real
-  controlado y políticas.
+- El próximo paso es abrir signup solo durante un registro nuevo controlado por
+  correo con CAPTCHA activo; cerrarlo tras aceptar el alta y completar
+  confirmación, inicialización e idempotencia. Después: Google con un usuario
+  realmente nuevo y políticas.
 
 Reglas que no cambian:
 

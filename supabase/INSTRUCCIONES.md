@@ -6,8 +6,10 @@
 > están operativos. C1 y el backend C2 están desplegados; SMTP/TokenHash y
 > recuperación cross-browser fueron medidos. Google Identity Services quedó
 > publicado y medido en External/Testing: `magandhi.com` visible, mismo UID,
-> identidad enlazada y una sola cuenta activa. Signup y CAPTCHA siguen apagados;
-> el siguiente paso es Turnstile. Estado exacto: `docs/RELEVO-CUENTAS-C2-2026-10-16.md` y
+> identidad enlazada y una sola cuenta activa. Turnstile y CAPTCHA de Supabase
+> están activos y medidos: login/recuperación válidos, omisión rechazada y
+> renovación tras expiración. Signup sigue apagado; el siguiente paso es un
+> registro nuevo controlado. Estado exacto: `docs/RELEVO-CUENTAS-C2-2026-10-16.md` y
 > `CONTEXTO-MAGANDHI.md` §9.
 >
 > **Regla de migraciones:** los archivos ya aplicados son historia inmutable.
@@ -5352,8 +5354,9 @@ El plan C2–C4 y las decisiones de identidad están en
 > **Estado · 16-oct-2026:** backend #270 y tienda #93 fusionados; migración
 > `20261101000000` aplicada; `cuenta-inicializar` desplegada con Verify JWT;
 > preflight limpio; login password, idempotencia, SMTP, TokenHash, recuperación
-> en otro navegador y cambio de contraseña verificados. Google está configurado
-> External/Testing. Signup y CAPTCHA continúan apagados.
+> en otro navegador y cambio de contraseña verificados. Google Identity Services
+> está medido en External/Testing. Turnstile y CAPTCHA están activos y medidos;
+> signup continúa apagado.
 
 La RPC `cc_inicializar_cuenta()` no recibe UID, correo ni `customer_id`: deriva
 la identidad de `auth.uid()` y `auth.users`, exige correo confirmado y vincula
@@ -5363,8 +5366,9 @@ revela si había historial.
 
 La Edge Function `cuenta-inicializar` conserva el JWT del usuario, no usa
 `service_role`, limita CORS a la tienda y exige un body vacío. El flujo público
-está en `magandhi/cuenta/`; Google usa PKCE y los correos usan TokenHash.
+está en `magandhi/cuenta/`; Google usa GIS con ID token y nonce, y los correos
+usan TokenHash.
 
-No volver a aplicar C1/C2 ni repetir SMTP/Google. Continuar desde
-`docs/RELEVO-CUENTAS-C2-2026-10-16.md`: prueba controlada del botón Google con
-un usuario Auth manual y signup apagado; después Turnstile y apertura medida.
+No volver a aplicar C1/C2 ni repetir SMTP, Google o Turnstile. Continuar desde
+`docs/RELEVO-CUENTAS-C2-2026-10-16.md`: registro nuevo controlado por correo con
+CAPTCHA activo y signup abierto solo para aceptar esa alta.

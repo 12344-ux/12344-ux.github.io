@@ -84,14 +84,16 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > `External / Testing`; Google Identity Services se publicó mediante la tienda
 > PR #95 y la prueba controlada confirmó que el selector muestra `magandhi.com`,
 > conserva el mismo UID/identidad y una sola cuenta activa tras el segundo
-> acceso. **Signup público y CAPTCHA continúan apagados.**
-> `TURNSTILE_SITE_KEY` sigue vacía.
+> acceso. Turnstile quedó publicado mediante tienda #97/#98 y CAPTCHA está
+> activo en Supabase: login y recuperación con token válido fueron aceptados,
+> una llamada sin token fue rechazada con `captcha_failed`/400 y el widget se
+> renovó tras expirar. **Signup público continúa apagado.**
 >
-> **Lo siguiente exacto es crear un widget Turnstile administrado para
-> `magandhi.com`.** Guardar su secret solo en Supabase, mantener CAPTCHA apagado
-> y publicar primero la site key mediante rama + PR. Después: medir CAPTCHA,
-> prueba de registro real por correo, políticas y apertura controlada. Relevo
-> vigente: `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
+> **Lo siguiente exacto es un registro nuevo controlado por correo con CAPTCHA
+> activo.** Abrir signup solo el tiempo necesario para aceptar el alta, volver a
+> apagarlo y después completar confirmación, inicialización e idempotencia.
+> Luego: Google con un usuario realmente nuevo, políticas y apertura controlada.
+> Relevo vigente: `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
 
 ## 1. Separación de superficies
 
@@ -125,7 +127,7 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 - `cuentas_cliente` separa las cuentas públicas de los perfiles internos y las
   vincula sin reemplazar `clientes.id`.
 - C2 está desplegado en preapertura: correo/contraseña y Google convergen en
-  `cuenta-inicializar`; signup y CAPTCHA siguen apagados.
+  `cuenta-inicializar`; CAPTCHA está activo y signup sigue apagado.
 - Un mismo UID no puede existir como cliente y personal, incluso con altas
   concurrentes.
 - Las 30 páginas internas cargan la guardia.
@@ -351,11 +353,13 @@ Cuentas de cliente sigue siendo el frente prioritario, ahora en **preapertura**:
    TokenHash, recuperación cross-browser y vínculo idempotente están medidos.
    Google Identity Services se publicó en tienda #95 y quedó medido en
    External/Testing: `magandhi.com` visible, mismo UID/identidad y una sola
-   cuenta activa. Signup y CAPTCHA siguen apagados.
-3. **Siguiente exacto:** crear el widget Turnstile administrado para
-   `magandhi.com`, guardar el secret solo en Supabase y publicar primero la site
-   key sin encender CAPTCHA ni signup. Luego medir CAPTCHA, registro real
-   controlado por correo y cerrar políticas antes de abrir.
+   cuenta activa. Turnstile se publicó en tienda #97/#98 y CAPTCHA está activo
+   en Supabase: login/recuperación válidos, omisión rechazada y renovación tras
+   expiración están medidos. Signup sigue apagado.
+3. **Siguiente exacto:** registro nuevo controlado por correo con CAPTCHA activo.
+   Preparar formulario y Turnstile, abrir signup solo para aceptar esa alta,
+   volver a apagarlo y completar confirmación, inicialización e idempotencia.
+   Luego probar Google con un usuario nuevo y cerrar políticas antes de abrir.
    Ver `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
 4. Después: **C3** (Mi cuenta: perfil, direcciones, pedidos, estado y opiniones)
    y **C4** (checkout autenticado con `customer_id` derivado en servidor).

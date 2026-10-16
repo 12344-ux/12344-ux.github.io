@@ -7,9 +7,9 @@ tienda, `cuenta/CONFIGURACION.md`. No volver a construir C1 ni C2 desde cero.
 ## 1. Estado exacto
 
 **C2 está fusionado, publicado y desplegado, pero el registro público sigue
-apagado.** Google Identity Services ya fue probado de extremo a extremo en modo
-Testing. La siguiente acción es configurar Cloudflare Turnstile y solo al final
-se decide la apertura.
+apagado.** Google Identity Services y Cloudflare Turnstile ya fueron probados de
+extremo a extremo. La siguiente acción es un registro nuevo controlado por
+correo; solo después se continúa hacia la apertura.
 
 Código fusionado el 16-oct-2026:
 
@@ -19,9 +19,13 @@ Código fusionado el 16-oct-2026:
   `e17afa9eca01e79e4e109298f69aa4cb5d53e835`.
 - Google Identity Services: PR `12344-ux/magandhi#95`, merge
   `558ac97a002dff578954636d57ef49fb428d6329`.
-- Los workflows de backend C2, tienda C2 y Google GIS terminaron en verde.
-  El banco del backend ejecutó PostgreSQL 15 + Deno 2; la tienda pasó 17/17
-  contratos C2.
+- Turnstile, site key y render perezoso: PR `12344-ux/magandhi#97`, merge
+  `b330c41b0951389ef494c3db26e8eb7af0a97bc4`.
+- Turnstile obligatorio en formularios Auth: PR `12344-ux/magandhi#98`, merge
+  `aa89177b9d9e61d134dc33ee1d3d2205f1853e5a`.
+- Los workflows de backend C2 y de las entregas de tienda C2, Google GIS y
+  Turnstile terminaron en verde. El banco del backend ejecutó PostgreSQL 15 +
+  Deno 2; la tienda pasó 17/17 contratos C2.
 
 Producción medida por el dueño:
 
@@ -35,6 +39,9 @@ Producción medida por el dueño:
   en lugar del dominio técnico de Supabase.
 - La prueba controlada conservó el mismo UID e identidad Google y exactamente
   una fila activa después del segundo acceso.
+- Turnstile está activo en frontend y Supabase: login y recuperación aceptaron
+  token válido, una llamada sin token devolvió `captcha_failed`/400 y el widget
+  renovó el token después de expirar.
 - `Allow new users to sign up` permanece **apagado**.
 
 ## 2. Qué entrega C2
@@ -72,6 +79,11 @@ Con un usuario Auth creado manualmente y autoconfirmado:
     PR #95; el selector pasó a mostrar `magandhi.com`.
 12. Dos accesos GIS en ventanas privadas regresaron sin advertencias y
     mantuvieron el mismo UID, identidad enlazada y una sola fila activa.
+13. Widget Turnstile administrado medido en login, registro y recuperación, en
+    móvil y escritorio; ajustes visuales menores quedaron para otra tarea.
+14. Login y recuperación con token válido: correctos.
+15. Solicitud sin token: rechazada por Supabase con `captcha_failed`/400.
+16. Widget dejado más de cinco minutos: renovó correctamente la validación.
 
 No registrar en documentos el correo, contraseña, UID, TokenHash, API key de
 Resend ni secretos OAuth usados en estas pruebas.
@@ -119,42 +131,54 @@ Confirmado por el dueño y medido en producción:
   quedaron confirmados después del segundo acceso.
 - Signup público sigue apagado.
 
+### Cloudflare Turnstile
+
+- Widget administrado creado para `magandhi.com`.
+- Site key pública en `cuenta-config.js`; secret únicamente en Supabase Auth.
+- `TURNSTILE_REQUIRED=true`; CAPTCHA habilitado en Supabase.
+- Render perezoso por formulario visible y token nuevo después de cada intento.
+- Login, recuperación, omisión y renovación tras expiración medidos.
+- Signup público sigue apagado.
+
 ## 5. Lo que NO está cerrado todavía
 
-- `TURNSTILE_SITE_KEY` sigue vacía en `magandhi/cuenta/cuenta-config.js`.
-- Cloudflare Turnstile y CAPTCHA de Supabase siguen apagados.
 - No se ha probado un registro público nuevo por correo con CAPTCHA.
+- No se ha probado Google con un usuario realmente nuevo.
 - Google sigue en `Testing`; no publicar la app todavía.
 - Las políticas públicas siguen en versión borrador; cerrarlas antes de una
   apertura comercial definitiva.
-- No aumentar el límite Auth de 30 correos/hora antes de CAPTCHA y medición.
+- No aumentar el límite Auth de 30 correos/hora antes de medir la apertura.
 
 ## 6. Siguiente paso exacto
 
-**Configurar Cloudflare Turnstile sin encender CAPTCHA ni signup todavía:**
+**Registro nuevo controlado por correo con CAPTCHA activo:**
 
-1. En Cloudflare Turnstile, crear un widget administrado para
-   `magandhi.com`. Añadir únicamente otros hosts reales si después se necesitan.
-2. Guardar el secret exclusivamente en Supabase Auth CAPTCHA; nunca en Git,
-   documentación o chat. Si el panel exige habilitar CAPTCHA para guardarlo,
-   detenerse y publicar primero la site key.
-3. Compartir únicamente la site key pública para ponerla en
-   `magandhi/cuenta/cuenta-config.js` mediante rama + PR.
-4. Fusionar, esperar GitHub Pages y comprobar que el widget flexible carga en
-   móvil y escritorio mientras CAPTCHA y signup siguen apagados.
-5. Solo después de medir el frontend, encender CAPTCHA en Supabase y probar
-   token válido, ausente y vencido antes de abrir signup.
+1. Elegir privadamente un correo real controlado que no exista en Auth ni
+   pertenezca a `perfiles`. No documentarlo.
+2. En una ventana privada dejar listo `https://magandhi.com/cuenta/` en la
+   pestaña Crear cuenta y comprobar que Turnstile está resuelto.
+3. En Supabase Auth activar `Allow new users to sign up` solo para esta prueba.
+   CAPTCHA debe permanecer activo.
+4. Enviar inmediatamente el registro con una contraseña fuerte.
+5. Cuando el alta sea aceptada, volver a apagar signup; la confirmación del
+   usuario ya creado puede continuar.
+6. Abrir el correo de confirmación, volver a MAGANDHI y comprobar sesión activa
+   sin advertencias.
+7. Medir en Supabase exactamente un usuario confirmado y una fila activa en
+   `cuentas_cliente`; `customer_id` nulo es válido.
+8. Cerrar sesión, iniciar otra vez con correo/contraseña y confirmar que continúa
+   existiendo una sola fila.
 
-## 7. Después de Turnstile
+Si algo falla, apagar signup antes de investigar. Nunca eliminar, fusionar o
+reasignar identidades manualmente para forzar la prueba.
 
-1. Mantener signup apagado mientras se prueba CAPTCHA en login y recuperación.
-2. Abrir signup de forma controlada y probar un registro real por correo:
-   confirmación, inicialización, logout/login y una sola fila.
-3. Probar Google con un usuario realmente nuevo.
-4. Mantener compra invitada y consentimiento de marketing separados.
-5. Cerrar políticas antes de pasar Google a Production y anunciar registros.
-6. Revisar el límite Auth de 30 correos/hora solo después de CAPTCHA y medición.
-7. Actualizar este relevo únicamente después de medir la apertura.
+## 7. Después del registro por correo
+
+1. Probar Google con un usuario realmente nuevo mientras continúa en Testing.
+2. Mantener compra invitada y consentimiento de marketing separados.
+3. Cerrar políticas antes de pasar Google a Production y anunciar registros.
+4. Revisar el límite Auth de 30 correos/hora solo después de medir apertura.
+5. Actualizar este relevo únicamente después de cada medición.
 
 ## 8. Reglas que no cambian
 
@@ -175,8 +199,10 @@ Confirmado por el dueño y medido en producción:
 > C2 están desplegados; migración máxima `20261101000000`, preflight limpio,
 > `cuenta-inicializar` con JWT y SMTP/TokenHash verificados. Google Identity
 > Services está publicado y medido en External/Testing: `magandhi.com` visible,
-> mismo UID/identidad y una sola cuenta activa. Signup y CAPTCHA siguen apagados.
-> Empieza directamente creando el widget Turnstile administrado para
-> `magandhi.com`; guarda el secret solo en Supabase y publica primero la site key
-> mediante rama + PR antes de encender CAPTCHA. No repitas C1, C2, SMTP, Google
-> ni recuperación.
+> mismo UID/identidad y una sola cuenta activa. Turnstile y CAPTCHA de Supabase
+> están activos y medidos: login/recuperación válidos, omisión rechazada con
+> `captcha_failed`/400 y renovación después de expirar. Signup sigue apagado.
+> Empieza directamente con un registro nuevo controlado por correo: deja el
+> formulario y Turnstile listos, abre signup solo para aceptar esa alta y vuelve
+> a apagarlo antes de confirmar e inicializar la cuenta. No repitas C1, C2,
+> SMTP, Google, recuperación ni Turnstile.
