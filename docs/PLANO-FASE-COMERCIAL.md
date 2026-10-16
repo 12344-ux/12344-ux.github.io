@@ -1,0 +1,393 @@
+# PLANO · Fase comercial: Carrito + Promocionar
+
+**Decisión del dueño:** 16 de octubre de 2026  
+**Estado:** aprobado para construir por tramos; **nada de este plano está desplegado todavía**.  
+**Superficies:** back-office `montaguth.institute`, tienda `magandhi.com` y backend compartido en Supabase.
+
+Este plano reúne los dos frentes comerciales elegidos para la siguiente evolución de MAGANDHI:
+
+1. **Carrito autenticado y cantidades por pedido.**
+2. **Promocionar:** enlaces, piezas y atribución comercial propias, sin Meta Ads en esta fase.
+
+No reemplaza los planos de Pagos, Cuentas, Métricas ni Dropshipping. Los extiende sin romper sus decisiones vigentes: compra invitada, precio autoritativo server-side, idempotencia Wompi, inventario protegido, analítica consentida y proveedor privado.
+
+---
+
+## 0. Promesa de la fase
+
+> MAGANDHI podrá vender varias unidades y varios productos de forma segura, y podrá preparar, compartir y medir enlaces comerciales propios sin entregar a terceros el control de la tienda ni de sus datos.
+
+La fase no se cierra porque una interfaz se vea terminada. Se cierra cuando:
+
+- el total cobrado coincide con las líneas congeladas en la intención;
+- ningún pedido supera el stock ni el máximo comercial;
+- un evento repetido de Wompi no duplica pedido, inventario ni carrito;
+- una venta puede atribuirse a un enlace propio sin inventar personas;
+- los enlaces retirados no se reasignan ni se convierten en redirects abiertos;
+- invitado, compra inmediata y flujos históricos siguen funcionando.
+
+---
+
+## 1. Decisiones cerradas
+
+### 1.1 Cantidades y carrito
+
+1. **El límite es por pedido, no acumulado de por vida.** Una nueva compra puede volver a usar el máximo.
+2. Campañas tendrá un campo obligatorio **“Máximo de unidades por pedido”**, entero entre `1` y `20`. Las campañas existentes nacen con `1`.
+3. Elegir cantidad estará disponible también para invitados. **El carrito será exclusivo de cuentas autenticadas.**
+4. Se conservan los dos caminos: **Comprar ahora** y **Agregar al carrito**.
+5. El carrito se persiste en Supabase por `auth.uid()` y puede continuar en otro dispositivo. No guarda precio como verdad.
+6. El navegador nunca envía precio confiable, `customer_id`, UID, origen interno ni stock.
+7. El carrito no reserva inventario. Antes de cobrar se releen precio, publicación, máximo y disponibilidad; al aprobar el pago se validan otra vez bajo el candado de `crear_pedido`.
+8. El carrito solo elimina las líneas confirmadas después de un pago aprobado. Rechazo las deja editables; pendiente/revisión mantiene un bloqueo prudente.
+9. El checkout invitado permanece disponible y no se fuerza registro.
+
+### 1.2 Máximo comprable efectivo
+
+El valor público no es “cuántas existencias hay”, sino cuánto admite agregar MAGANDHI en ese pedido.
+
+**Producto propio:**
+
+```text
+max_comprable = max(0, min(max_campaña, existencias_disponibles))
+```
+
+**Producto de proveedor:**
+
+```text
+disponibilidad_vendible = stock_reportado − unidades_pagadas_pendientes − piso_dropi
+max_comprable = max(0, min(max_campaña, disponibilidad_vendible))
+```
+
+Con piso Dropi `20`, stock reportado `24`, cero pendientes y máximo de campaña `5`, el máximo comprable es `4`. Las 20 unidades del piso quedan protegidas también **después** de la compra.
+
+Reglas:
+
+- el catálogo puede exponer `max_comprable`, que ya viene limitado por Campañas; nunca stock total, piso, reservas, proveedor ni ids externos;
+- si `max_comprable = 0`, el producto se trata como agotado;
+- la ficha dice **“Máximo N unidades por pedido”**, no “quedan N”;
+- agregar repetidamente acumula hasta el máximo, no crea líneas para evadirlo;
+- si la disponibilidad baja, la tienda explica el nuevo máximo y exige ajustar; nunca reduce ni cobra silenciosamente.
+
+### 1.3 Promocionar
+
+1. Promocionar vive como pantalla propia desde Campañas; no infla el formulario de edición.
+2. En esta fase **no** se conecta Meta Ads, Pixel ni Conversions API y no se publica ni gasta dinero automáticamente.
+3. Se generan enlaces y piezas para WhatsApp, Instagram, Facebook, correo, QR, anuncios manuales y otros canales aprobados.
+4. Los enlaces usan dominio MAGANDHI, destinos internos de lista blanca y códigos no secuenciales. Nunca aceptan una URL arbitraria.
+5. Se distinguen hechos diferentes: clic aproximado, sesión consentida, checkout, pago aprobado e ingreso.
+6. `mg_vid` continúa existiendo solo con consentimiento. La atribución transaccional usa un código de promoción sin PII y no crea un perfil de navegación.
+7. Las campañas UTM existentes de Email Marketing siguen funcionando. La evolución es compatible y multicanal.
+8. El kit inicial tiene plantillas cerradas y de marca; no intenta reemplazar Canva ni inventa promesas comerciales.
+9. Los enlaces usados no se borran ni reasignan: se desactivan y conservan su historia.
+
+### 1.4 Decisiones descartadas o aplazadas
+
+- “Vendido por [proveedor]” y exposición pública automática del proveedor: descartados para esta fase. MAGANDHI vende, cobra y responde.
+- Ganchos ocultos para obligar a una IA a recomendar la tienda: descartados.
+- Meta Ads API y conversiones de terceros: aplazados hasta políticas, consentimiento y un plano propio.
+- Límite de unidades acumulado por persona o periodo: fuera de alcance; exigiría reservas de cupo e identidad fuerte.
+- Reserva temporal de stock al abrir Wompi: fuera de alcance; se conserva la regla “el stock baja al pagar” y la revisión visible si cambió mientras se pagaba.
+
+---
+
+## 2. Arquitectura común
+
+### 2.1 Fuentes de verdad
+
+| Hecho | Fuente |
+|---|---|
+| Presentación, precio y máximo comercial | `campana_producto` |
+| Stock propio | libro `movimientos_inventario` / `stock_actual` |
+| Stock proveedor | `producto_proveedor` + pendientes en `pedido_proveedor` + piso de `dropshipping_config` |
+| Carrito | cabecera/items ligados a `auth.uid()` |
+| Precio y líneas cobradas | snapshot de `pagos_intencion` + items |
+| Pago | webhook Wompi verificado |
+| Pedido | `pedidos` + `pedido_items` |
+| Enlace promocional | registro inmutable de atribución |
+| Venta atribuida | enlace validado congelado en intención y copiado al pedido aprobado |
+| Navegación | `tienda_eventos`, únicamente con consentimiento |
+
+### 2.2 Fronteras permanentes
+
+- RLS/RPC, no botones ocultos, protegen carrito y datos.
+- `catalogo_publico` continúa como lista blanca.
+- Precio, máximo efectivo y total se calculan server-side.
+- El token promocional se resuelve server-side; UTM queda descriptivo e interoperable, no autoritativo.
+- No se mezclan identidad Auth (`auth.users.id`) e identidad comercial (`clientes.id`).
+- Para checkout autenticado, el servidor deriva o completa el `customer_id`; nunca lo recibe del navegador.
+- Las migraciones desplegadas no se editan: toda corrección es forward.
+- Una función o SQL en Git no prueba despliegue.
+
+---
+
+## 3. Frente C · Cantidades y carrito
+
+### C0 · Contratos y compatibilidad
+
+**Entrega:** nombres, límites, estados, errores públicos y orden de despliegue cerrados.
+
+- techo técnico global inicial: `20` unidades por producto y pedido;
+- máximo por pedido de campaña, no `tope_escaparate`;
+- consolidación por campaña/producto;
+- máximo inicial de `20` líneas distintas por carrito;
+- comportamiento de producto retirado, precio cambiado, pago pendiente y revisión;
+- compatibilidad con intenciones históricas escalares.
+
+**Cierre:** el plano y las firmas futuras no dejan semánticas ambiguas.
+
+### C1 · Cantidad en compra inmediata
+
+**Entrega:** una ficha puede comprar `1..max_comprable` sin carrito.
+
+Backend:
+
+- nueva columna de Campañas con `default 1` y constraint;
+- alta/edición de Campañas y validación server-side;
+- cálculo único del máximo efectivo para propio/proveedor;
+- `catalogo_publico` expone solamente `max_comprable`;
+- `crear-intencion-pago` deja de forzar `1`, valida entero y máximo;
+- verificación Dropi exige que el remanente posterior conserve el piso;
+- `pw_registrar_intencion` repite las reglas antes de firmar;
+- `crear_pedido` impone el máximo final además del stock.
+
+Tienda:
+
+- selector accesible de cantidad;
+- copy “Máximo N unidades por pedido”;
+- total visible antes de continuar;
+- compra invitada y retorno Wompi intactos.
+
+**Cierre:** cantidad 1 no cambia; máximo, máximo+1, baja de stock y pago repetido se comportan con verdad y sin sobreventa.
+
+### C2 · Carrito autenticado persistente
+
+**Entrega:** guardar, editar y retirar productos sin tocar todavía Wompi multiproducto.
+
+Modelo conceptual:
+
+```text
+carritos
+  id · auth_user_id · estado · version · creado · actualizado
+
+carrito_items
+  carrito_id · campana_id · cantidad · creado · actualizado
+```
+
+Reglas:
+
+- una cesta activa por UID;
+- RLS de propietario y RPC transaccionales para agregar/cambiar/quitar;
+- no se persiste precio autoritativo;
+- agregar dos veces consolida cantidad;
+- salida/cambio de usuario retira inmediatamente la cesta visible;
+- una cuenta no disponible no puede usarla.
+
+Tienda:
+
+- icono junto a “Mi cuenta”, oculto hasta confirmar sesión;
+- badge accesible;
+- “Agregar al carrito” solo para cuenta válida;
+- `/carrito/` con líneas, cantidades, subtotal actual, retirar y mensajes de cambio.
+
+**Activación:** C2 puede desplegarse apagado, pero no se publica como promesa hasta C3.
+
+### C3 · Intención y checkout multiproducto
+
+**Entrega:** pagar el carrito completo una sola vez.
+
+- `pagos_intencion` pasa a cabecera compatible;
+- nueva tabla de líneas congeladas con campaña, producto, nombre, cantidad, precio y subtotal;
+- RPC recibe únicamente ids/cantidades, relee campañas y calcula `Σ(precio × cantidad) × 100` con enteros;
+- máximo de líneas, cantidad y monto total;
+- Dropi se consulta por producto con concurrencia baja para respetar el 429 medido;
+- firma Wompi sobre el total exacto persistido;
+- webhook compara monto, moneda y entorno, carga las líneas y reutiliza `crear_pedido`;
+- referencia/transacción/pedido quedan ligados de forma única e idempotente;
+- el monto del webhook no pasa por `Number` si puede perder precisión;
+- intenciones históricas de una línea continúan procesables.
+
+**Cierre:** carrito mixto propio/proveedor, cantidades, repetición de webhook y falta de stock terminan en un único resultado auditable.
+
+### C4 · Cuenta y ciclo del carrito
+
+**Entrega:** propiedad comercial y postpago coherentes.
+
+- JWT validado por servidor;
+- `customer_id` derivado desde `cuentas_cliente`;
+- si la cuenta todavía no tiene cliente comercial, se crea/vincula en la primera compra aprobada de forma transaccional;
+- dirección y destinatario siguen siendo snapshot del pedido;
+- rechazo desbloquea; aprobación consume solo las líneas congeladas; revisión conserva estado prudente;
+- regreso desde Wompi identifica el checkout, no una ficha aislada;
+- `Comprar ahora` continúa como camino independiente.
+
+**Relación con Cuentas:** este tramo materializa parte de C4 sin obligar a completar toda la futura pantalla C3 de perfil/pedidos.
+
+---
+
+## 4. Frente P · Promocionar
+
+### P0 · Taxonomía y privacidad
+
+**Entrega:** contrato de atribución antes de capturar datos.
+
+- canales cerrados: WhatsApp, Instagram, Facebook, email, QR, anuncio manual y otro controlado;
+- `source`, `medium`, `campaign`, `content` normalizados;
+- código propio autoritativo; UTM descriptivo;
+- modelo inicial de último enlace propio válido dentro de la visita;
+- clic agregado sin perfil individual;
+- `mg_vid` y eventos de navegación solo con consentimiento;
+- retención, desactivación y estados de enlaces definidos en políticas.
+
+### P1 · Producto compartible
+
+**Entrega:** la URL de cada producto genera confianza y una preview real.
+
+- URL canónica estable `/producto/<slug>/`;
+- HTML inicial por producto con título, description, canonical, Open Graph, Twitter Card y JSON-LD;
+- imagen social pública y estable;
+- sitemap;
+- compatibilidad con `/producto/?slug=` y UUID;
+- historial/alias si cambia un slug;
+- no imprimir precio/stock estático como autoridad si no puede mantenerse sincronizado;
+- quitar `noindex` solo después de comprobar el HTML sin JavaScript y publicar políticas.
+
+En la arquitectura GitHub Pages, la vía preferida es generar shells estáticos por producto; el cuerpo continúa leyendo datos vivos.
+
+### P2 · Estudio Promocionar
+
+**Entrega:** utilidad comercial completa aun sin medición.
+
+Nueva acción `Promocionar` desde una campaña guardada/publicada:
+
+- enlace oficial;
+- presets por canal;
+- generador UTM;
+- copiar y Web Share;
+- vista previa interna;
+- textos deterministas y editables a partir de contenido aprobado;
+- QR local, sin enviar la URL a un tercero;
+- kit inicial: cuadrado `1080×1080`, historia `1080×1920` y horizontal;
+- exportación local; sin publicación automática.
+
+### P3 · Registro y enlace corto
+
+**Entrega:** piezas versionadas y enlaces controlados.
+
+Modelo conceptual:
+
+```text
+atribucion_enlaces
+  id · codigo · campana_id · canal · source · medium · campaign · content
+  destino interno · receta/texto opcional · activo · auditoria
+
+atribucion_clics_dia
+  enlace_id · fecha_colombia · total_aproximado
+```
+
+- códigos aleatorios, no secretos ni secuenciales;
+- destino resuelto desde campaña, nunca desde `?url=`;
+- desactivar sin borrar/reasignar;
+- filtro de bots, previews, HEAD y prefetch;
+- conteo diario agregado, sin almacenar persona, IP, referrer o user-agent como historial;
+- rate limit con el patrón temporal ya usado en `tienda-eventos`.
+
+URL objetivo: `go.magandhi.com/<codigo>` si el routing/DNS se aprueba. Alternativa inicial: ruta de marca menos elegante sin mover el dominio principal.
+
+### P4 · Atribución exacta hasta la venta
+
+**Entrega:** saber qué enlace produjo qué resultado sin depender de una UTM inventada.
+
+- la tienda conserva el código propio separado de `mg_vid`;
+- la Edge Function lo valida y congela `atribucion_enlace_id` en la intención;
+- el webhook copia esa FK al pedido aprobado;
+- `utm_campaign` de Email se conserva durante la transición;
+- enlaces inventados no se atribuyen;
+- una caída del sistema promocional no debe impedir una compra normal;
+- compra exacta, atribución aproximada y sin atribuir se muestran separadas.
+
+### P5 · Lectura comercial
+
+**Entrega:** panel accionable en Campañas/Métricas/Ventas.
+
+Por enlace/pieza/producto/canal:
+
+- clics aproximados;
+- sesiones medidas con consentimiento;
+- producto visto;
+- checkout iniciado;
+- pagos aprobados;
+- pedidos no anulados;
+- ingresos;
+- conversión con denominador explícito.
+
+Ventas muestra la procedencia validada. Los pedidos manuales pueden tener una fuente declarada por el operador, rotulada como manual y distinta de la atribución exacta.
+
+---
+
+## 5. Orden de construcción
+
+Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo.
+
+1. **Plano y arranque** — este documento y referencias de contexto.
+2. **C1 · cantidad inmediata** — valor comercial rápido y cimiento de carrito.
+3. **C2 · carrito persistente** — datos/RLS/UI, todavía apagable.
+4. **C3–C4 · pago de carrito** — intención multiproducto, Wompi y cuenta.
+5. **P1 · producto compartible** — también resuelve SEO/IA pendiente.
+6. **P2 · estudio Promocionar** — enlaces largos, textos, preview, QR y kit.
+7. **P3–P4 · enlace corto y atribución** — backend, routing y pago.
+8. **P5 · lectura comercial** — métricas sobre hechos ya capturados.
+
+P1/P2 pueden avanzar en paralelo con C2 si se mantienen en ramas/PR separados. No se mezclan carrito, redirector y metadata en una sola migración o despliegue.
+
+---
+
+## 6. Orden de despliegue por tramo
+
+1. Migración forward compatible.
+2. Matriz de permisos y diagnósticos de solo lectura.
+3. Edge Functions compatibles con clientes viejos.
+4. Back-office.
+5. Tienda oculta o con feature flag.
+6. Prueba controlada sin dinero cuando sea posible.
+7. Prueba de dinero únicamente si el tramo toca Wompi y el dueño la autoriza.
+8. Activación.
+9. Medición de producción.
+10. Actualización de este plano y `CONTEXTO-MAGANDHI.md` con evidencia real.
+
+Nunca inferir “desplegado” porque el código esté fusionado.
+
+---
+
+## 7. Riesgos que gobiernan la implementación
+
+| Riesgo | Candado |
+|---|---|
+| Precio o máximo manipulado | relectura y cálculo server-side |
+| Dos líneas evaden máximo | consolidación y validación final |
+| Stock Dropi bajo el piso | validar remanente posterior a la cantidad |
+| 429 de Dropi en carrito | consultas secuenciales/concurrencia baja |
+| Pago duplicado | referencia, evento y pedido idempotentes |
+| Carrito perdido al volver | consumir solo tras aprobación |
+| Carrito de otro usuario | RLS por UID y limpieza al salir/cambiar cuenta |
+| UTM inventada | código propio resuelto server-side |
+| Link de phishing | destinos internos, sin open redirect |
+| Bot contado como persona | clic aproximado separado de sesión consentida |
+| Metadata social genérica | HTML inicial por producto, no meta tardía por JS |
+| Drift entre planes y producción | diagnóstico y evidencia antes de actualizar estado |
+
+---
+
+## 8. Definición de terminado de la fase
+
+- Cantidad `1` conserva exactamente el flujo vigente.
+- Propio y proveedor respetan máximo y disponibilidad efectiva.
+- Un carrito autenticado sobrevive otro dispositivo y nunca cruza usuarios.
+- Invitado puede seguir comprando sin cuenta.
+- Wompi cobra la suma exacta y un webhook repetido produce un pedido.
+- Pago aprobado vacía solo lo comprado; rechazo no destruye la cesta.
+- Producto compartido presenta nombre, imagen y marca correctos.
+- Promocionar genera piezas útiles sin Meta ni servicios externos obligatorios.
+- Un enlace propio no puede redirigir fuera de MAGANDHI.
+- Las métricas no presentan clics como personas ni sesiones sin consentimiento.
+- Documentación, permisos, diagnósticos y estado productivo quedan actualizados.
