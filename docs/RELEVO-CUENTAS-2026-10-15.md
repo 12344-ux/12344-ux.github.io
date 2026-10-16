@@ -1,5 +1,9 @@
 # Relevo de sesión · cuentas de cliente · 15 de octubre de 2026
 
+> **HISTÓRICO:** este relevo terminó su función. C2 ya está desplegado en
+> preapertura. Continuar desde `RELEVO-CUENTAS-C2-2026-10-16.md`; no ejecutar
+> otra vez los pasos de este archivo.
+
 Este es el punto exacto para continuar en un chat nuevo. Leer junto con
 `CONTEXTO-MAGANDHI.md` y `docs/CUENTAS-CLIENTE.md`. No volver a diseñar C1: ya
 está cerrado.

@@ -1,11 +1,12 @@
 # Supabase · runbook operativo MAGANDHI / Impulse
 
-> **Estado al 10-oct-2026:** en producción están aplicadas **todas** las
-> migraciones hasta `20261025000000` (Dropshipping **D2b**), salvo
-> **`20261002000000`, que quedó SUPERADA y no debe aplicarse** (ver §0). Las Edge
-> Functions del repo están desplegadas, y Wompi F1 a F4 quedó verificado con una
-> compra real (ver «Pagos F3» PF3.7). Lo siguiente es **Dropshipping D2c** (stock
-> vivo y venta de proveedor); el trabajo pendiente vive en
+> **Estado al 16-oct-2026:** en producción están aplicadas todas las migraciones
+> hasta `20261101000000` (Cuentas C2), salvo `20261002000000`, que quedó
+> **SUPERADA y no debe aplicarse** (ver §0). Wompi F1–F4 y Dropshipping D2c
+> están operativos. C1 y el backend C2 están desplegados; SMTP/TokenHash y
+> recuperación cross-browser fueron medidos. Google está configurado
+> External/Testing, pero falta probar el botón real. Signup y CAPTCHA siguen
+> apagados. Estado exacto: `docs/RELEVO-CUENTAS-C2-2026-10-16.md` y
 > `CONTEXTO-MAGANDHI.md` §9.
 >
 > **Regla de migraciones:** los archivos ya aplicados son historia inmutable.
@@ -5343,3 +5344,26 @@ obtiene cero filas internas.
 
 El plan C2–C4 y las decisiones de identidad están en
 `docs/CUENTAS-CLIENTE.md`.
+---
+
+# Cuentas de cliente C2 · alta confirmada y preapertura
+
+> **Estado · 16-oct-2026:** backend #270 y tienda #93 fusionados; migración
+> `20261101000000` aplicada; `cuenta-inicializar` desplegada con Verify JWT;
+> preflight limpio; login password, idempotencia, SMTP, TokenHash, recuperación
+> en otro navegador y cambio de contraseña verificados. Google está configurado
+> External/Testing. Signup y CAPTCHA continúan apagados.
+
+La RPC `cc_inicializar_cuenta()` no recibe UID, correo ni `customer_id`: deriva
+la identidad de `auth.uid()` y `auth.users`, exige correo confirmado y vincula
+historia solo ante una coincidencia única. Personal interno, bloqueada y cerrada
+reciben rechazo opaco. Los conflictos quedan privados y la respuesta nunca
+revela si había historial.
+
+La Edge Function `cuenta-inicializar` conserva el JWT del usuario, no usa
+`service_role`, limita CORS a la tienda y exige un body vacío. El flujo público
+está en `magandhi/cuenta/`; Google usa PKCE y los correos usan TokenHash.
+
+No volver a aplicar C1/C2 ni repetir SMTP/Google. Continuar desde
+`docs/RELEVO-CUENTAS-C2-2026-10-16.md`: prueba controlada del botón Google con
+un usuario Auth manual y signup apagado; después Turnstile y apertura medida.

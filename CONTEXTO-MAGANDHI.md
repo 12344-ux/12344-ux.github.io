@@ -1,6 +1,6 @@
 # MAGANDHI + Impulse · contexto operativo vigente
 
-**Corte:** 15 de octubre de 2026
+**Corte:** 16 de octubre de 2026
 **Producción interna:** `https://montaguth.institute`
 **Tienda pública:** `https://magandhi.com`
 
@@ -61,29 +61,35 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > nunca bloquea el asiento, al contrario que el costo y el flete. Banco SQL
 > **613/613**, matriz **170/170**, pantalla **70/70**.
 >
-> **El estado actual de producción llega hasta la migración `20261031000000`.**
+> **El estado actual de producción llega hasta la migración `20261101000000`.**
 >
 > **Cuentas de cliente C1 · DESPLEGADO · 15-oct-2026 (PR #268).** El dueño
 > decidió conservar compra como invitado y añadir inicio de sesión opcional en
-> `magandhi.com`, con beneficios futuros (puntos/cupones) pero sin frenar la
-> compra. C1 mantiene `clientes.id` como identidad comercial y crea
-> `cuentas_cliente` como puente hacia Auth; un mismo UID no puede ser cliente y
-> perfil interno, ni siquiera ante altas concurrentes. El guardia de
-> `montaguth.institute` exige sesión **y** fila en `perfiles`.
+> `magandhi.com`, con beneficios futuros sin frenar la compra. C1 mantiene
+> `clientes.id` como identidad comercial, crea `cuentas_cliente` como puente
+> hacia Auth y separa firmemente clientes de `perfiles` internos.
 >
-> Verificación de cierre: el dueño aplicó `20261031000000`; producción reconoce
-> la tabla y `es_cuenta_cliente()`, pero `anon` obtiene 401/42501 en ambas; el
-> guardia publicado coincide con el archivo fusionado; y `disable_signup=true`
-> mantiene apagadas las altas mientras se construye C2. Email Auth permanece
-> habilitado con confirmación obligatoria. C1 no cambió checkout, Wompi ni
-> opiniones. Banco SQL **641/641**, matriz **202/202**, C1 **28/28**,
-> concurrencia **2/2** y guardia/login **12/12**.
+> **Cuentas de cliente C2 · PREAPERTURA · 16-oct-2026 (PR de backend #270 y
+> tienda #93).** El código está fusionado y publicado; la migración
+> `20261101000000_cuentas_cliente_c2.sql` y la Edge Function
+> `cuenta-inicializar` están desplegadas. El preflight de producción dio C1 y C2
+> presentes y cero inconsistencias, ambigüedades o vínculos duplicados. Login,
+> inicialización idempotente, SMTP Resend, recuperación con TokenHash abierta en
+> otro navegador, cambio de contraseña y segundo login fueron probados con un
+> usuario controlado: una sola fila activa en `cuentas_cliente`.
 >
-> **Lo siguiente exacto es C2:** registro, confirmación, inicio de sesión y
-> recuperación en `magandhi.com`, manteniendo intacta la compra como invitado.
-> Relevo: `docs/RELEVO-CUENTAS-2026-10-15.md`. Diseño:
-> `docs/CUENTAS-CLIENTE.md`. Dropshipping D3/D4 queda aparcado y conserva su
-> propio relevo.
+> Supabase Auth tiene Site URL/redirects de `magandhi.com`, SMTP desde
+> `cuenta@auth.magandhi.com` (dominio Resend verificado en Porkbun), plantillas
+> de confirmación/recuperación y Google Provider configurado. Google está
+> `External / Testing`, con test user y callback correcto. **Signup público y
+> CAPTCHA continúan apagados.** Google todavía no se ha probado de extremo a
+> extremo y `TURNSTILE_SITE_KEY` sigue vacía.
+>
+> **Lo siguiente exacto es probar `Continuar con Google` de forma controlada,**
+> creando primero en Auth un usuario manual autoconfirmado con el mismo correo
+> del Google Test User. No encender signup para esa prueba. Después: Turnstile,
+> prueba de registro real por correo, políticas y apertura controlada. Relevo
+> vigente: `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
 
 ## 1. Separación de superficies
 
@@ -114,8 +120,10 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 - Guardia reutilizable en `auth-guard.js`: sesión Auth sola no basta; exige
   además una fila en `perfiles`.
 - `perfiles` define rol y módulos únicamente para personal interno.
-- `cuentas_cliente` separa las futuras cuentas públicas y las vincula sin
-  reemplazar `clientes.id`.
+- `cuentas_cliente` separa las cuentas públicas de los perfiles internos y las
+  vincula sin reemplazar `clientes.id`.
+- C2 está desplegado en preapertura: correo/contraseña y Google convergen en
+  `cuenta-inicializar`; signup y CAPTCHA siguen apagados.
 - Un mismo UID no puede existir como cliente y personal, incluso con altas
   concurrentes.
 - Las 30 páginas internas cargan la guardia.
@@ -313,8 +321,11 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 - `docs/MAPA-CONEXIONES-TANDA2.md`: mapa técnico de las conexiones ya implementadas.
 - `docs/CUENTAS-CLIENTE.md`: decisiones permanentes de identidad, compra como
   invitado y tramos C1–C4.
-- `docs/RELEVO-CUENTAS-2026-10-15.md`: relevo más reciente; C1 cerrado y punto
-  exacto de arranque de C2.
+- `docs/RELEVO-CUENTAS-C2-2026-10-16.md`: relevo más reciente; C2 está
+  desplegado en preapertura y el siguiente paso es la prueba controlada de
+  Google con signup apagado.
+- `docs/RELEVO-CUENTAS-2026-10-15.md`: relevo histórico de C1 y diseño de
+  entrada a C2; ya no gobierna el arranque.
 - `docs/dropshipping-envios/`: frente del 9–10-oct-2026 (productos de proveedor
   con Dropi y guías para los productos propios); su relevo queda como memoria de
   ese frente, no como prioridad actual.
@@ -322,20 +333,27 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 - `supabase/pruebas/local/herramientas/LEEME.md`: banco de pruebas local (también corre en GitHub Actions en cada rama).
 
 Los relevos antiguos y `ANDAMIOS.md` se retiraron el 9-oct porque su contenido
-vigente pasó a este archivo. El relevo actual de cuentas se conserva en
-`docs/RELEVO-CUENTAS-2026-10-15.md` para entrar a C2 sin redescubrir C1.
+vigente pasó a este archivo. El relevo vigente de cuentas es
+`docs/RELEVO-CUENTAS-C2-2026-10-16.md`; conserva la evidencia de C2 y evita
+repetir migración, SMTP, plantillas o configuración Google.
 
 ## 9. Pendientes vigentes
 
-No hay nada a medias. El frente prioritario es **Cuentas de cliente**:
+Cuentas de cliente sigue siendo el frente prioritario, ahora en **preapertura**:
 
 1. **C1 está desplegado y cerrado** (PR #268, migración `20261031000000`):
    puente Auth→cliente, separación firme del personal, guardia interna y actor
-   cliente en la matriz. Altas públicas apagadas.
-2. **C2 es lo siguiente:** registro, confirmación, login, recuperación, SMTP
-   propio, CAPTCHA y vínculo seguro en `magandhi.com`. Compra como invitado se
-   conserva. Ver `docs/RELEVO-CUENTAS-2026-10-15.md`.
-3. Después: **C3** (Mi cuenta: perfil, direcciones, pedidos, estado y opiniones)
+   cliente en la matriz.
+2. **C2 está construido y desplegado** (backend #270, tienda #93, migración
+   `20261101000000` y `cuenta-inicializar`). Correo/contraseña, SMTP,
+   TokenHash, recuperación cross-browser y vínculo idempotente están medidos.
+   Google está configurado External/Testing, pero falta probar el botón real.
+   Signup y CAPTCHA siguen apagados.
+3. **Siguiente exacto:** prueba controlada de Google con un usuario Auth manual
+   que use el correo del Google Test User, sin encender signup. Luego Turnstile,
+   registro real controlado por correo y cierre de políticas antes de abrir.
+   Ver `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
+4. Después: **C3** (Mi cuenta: perfil, direcciones, pedidos, estado y opiniones)
    y **C4** (checkout autenticado con `customer_id` derivado en servidor).
 
 **Contabilidad · cerrada el 14-oct-2026:** la liquidación de Wompi, el inventario
