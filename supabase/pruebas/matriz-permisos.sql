@@ -344,14 +344,18 @@ begin
       execute 'reset role';
     end loop;
 
-    -- ---------- EXECUTE: anon no ejecuta nada ----------
+    -- ---------- EXECUTE: anon solo el máximo público seguro de C1 ----------
+    -- catalogo_publico necesita ejecutar esta función y su retorno está acotado
+    -- a 0..20; no expone stock, piso, reservas, origen ni proveedor. Cualquier
+    -- otra función pública ejecutable por anon continúa siendo una falla.
     select string_agg(p.proname, ', ' order by p.proname) into v_extra
       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = 'public'
        and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
-       and has_function_privilege('anon', p.oid, 'execute');
+       and has_function_privilege('anon', p.oid, 'execute')
+       and p.proname <> 'ventas_max_comprable_campana';
     r_pers := r_pers || 'anon'::text;
-    r_obj  := r_obj  || 'EXECUTE sobre funciones de public'::text;
+    r_obj  := r_obj  || 'EXECUTE no permitido sobre funciones de public'::text;
     r_esp  := r_esp  || 'NINGUNA'::text;
     r_obt  := r_obt  || coalesce('PUEDE: ' || v_extra, 'NINGUNA');
 

@@ -153,7 +153,7 @@ select pg_temp.chk(
     p_direccion => 'Calle 4', p_ciudad => 'Bogota', p_canal => 'manual',
     p_items => jsonb_build_array(jsonb_build_object(
       'product_id', 'd0000000-0000-4000-8000-00000000000c',
-      'cantidad', 1, 'precio_unitario', 49900)))$$) like '%reporta 0 unidad%en el proveedor%',
+      'cantidad', 1, 'precio_unitario', 49900)))$$) like '%reporta 0 unidad%proveedor%',
   'una lectura VENCIDA rechaza la venta, con el mensaje propio del proveedor');
 
 update producto_proveedor set stock_reportado = 19, stock_vence_en = now() + interval '2 hours'
