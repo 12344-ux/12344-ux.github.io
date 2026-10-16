@@ -72,7 +72,17 @@ function igualesTiempoConstante(a: string, b: string) {
 }
 
 /** Resuelve "transaction.id" sobre el objeto data. Devuelve "" si no existe. */
-function porRuta(data: unknown, ruta: string): string {
+function porRuta(
+  data: unknown,
+  ruta: string,
+  lexemaMontoNumero: string | null,
+): string {
+  // JSON.parse redondea números grandes. Para este campo firmado se usa el
+  // lexema decimal extraído del cuerpo crudo antes del parseo.
+  if (ruta === "transaction.amount_in_cents" && lexemaMontoNumero !== null) {
+    return lexemaMontoNumero;
+  }
+
   let actual: unknown = data;
   for (const parte of ruta.split(".")) {
     if (actual === null || typeof actual !== "object") return "";
@@ -83,11 +93,114 @@ function porRuta(data: unknown, ruta: string): string {
   return String(actual);
 }
 
+/**
+ * Extrae el token numérico de data.transaction.amount_in_cents sin convertirlo
+ * a Number. El recorrido entiende objetos, arreglos y strings JSON, por lo que
+ * no confunde una clave o cifra escrita dentro de otro string.
+ */
+function extraerLexemaMontoNumero(texto: string): string | null {
+  let i = 0;
+  let encontrado: string | null = null;
+  const blancos = () => {
+    while (i < texto.length && /\s/.test(texto[i])) i++;
+  };
+  const cadena = (): string => {
+    blancos();
+    if (texto[i] !== '"') throw new Error("string JSON esperado");
+    const inicio = i++;
+    let escape = false;
+    while (i < texto.length) {
+      const c = texto[i++];
+      if (escape) {
+        escape = false;
+      } else if (c === "\\") {
+        escape = true;
+      } else if (c === '"') {
+        return JSON.parse(texto.slice(inicio, i));
+      }
+    }
+    throw new Error("string JSON incompleto");
+  };
+  const valor = (ruta: string[]) => {
+    blancos();
+    const c = texto[i];
+    if (c === "{") {
+      i++;
+      blancos();
+      if (texto[i] === "}") {
+        i++;
+        return;
+      }
+      const claves = new Set<string>();
+      while (i < texto.length) {
+        const clave = cadena();
+        if (claves.has(clave)) throw new Error("clave JSON duplicada");
+        claves.add(clave);
+        blancos();
+        if (texto[i++] !== ":") throw new Error("objeto JSON inválido");
+        valor([...ruta, clave]);
+        blancos();
+        if (texto[i] === "}") {
+          i++;
+          return;
+        }
+        if (texto[i++] !== ",") throw new Error("objeto JSON incompleto");
+      }
+      throw new Error("objeto JSON incompleto");
+    }
+    if (c === "[") {
+      i++;
+      blancos();
+      if (texto[i] === "]") {
+        i++;
+        return;
+      }
+      let indice = 0;
+      while (i < texto.length) {
+        valor([...ruta, String(indice++)]);
+        blancos();
+        if (texto[i] === "]") {
+          i++;
+          return;
+        }
+        if (texto[i++] !== ",") throw new Error("arreglo JSON incompleto");
+      }
+      throw new Error("arreglo JSON incompleto");
+    }
+    if (c === '"') {
+      cadena();
+      return;
+    }
+
+    const inicio = i;
+    while (i < texto.length && !/[\s,}\]]/.test(texto[i])) i++;
+    const token = texto.slice(inicio, i);
+    if (
+      ruta.length === 3 && ruta[0] === "data" && ruta[1] === "transaction" &&
+      ruta[2] === "amount_in_cents" &&
+      /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(token)
+    ) {
+      encontrado = token;
+    }
+  };
+
+  try {
+    valor([]);
+  } catch {
+    return null;
+  }
+  return encontrado;
+}
+
 /** Calcula el checksum segun la doc de Wompi. */
 async function calcularChecksum(
-  propiedades: string[], data: unknown, timestamp: unknown, secreto: string,
+  propiedades: string[],
+  data: unknown,
+  timestamp: unknown,
+  secreto: string,
+  lexemaMontoNumero: string | null,
 ): Promise<string> {
-  const valores = propiedades.map((p) => porRuta(data, p)).join("");
+  const valores = propiedades.map((p) => porRuta(data, p, lexemaMontoNumero)).join("");
   const cadena = `${valores}${String(timestamp)}${secreto}`;
   const hash = await crypto.subtle.digest("SHA-256", enc.encode(cadena));
   return hex(new Uint8Array(hash));
@@ -109,17 +222,39 @@ Deno.serve(async (req) => {
   const cuerpoTexto = await req.text();
   if (enc.encode(cuerpoTexto).length > MAX_BYTES) return json({ error: "Cuerpo demasiado grande." }, 413);
 
+  // Debe extraerse antes de JSON.parse: un number JSON grande ya llegaría
+  // redondeado al objeto JavaScript y alteraría tanto el monto como la firma.
+  const lexemaMontoNumero = extraerLexemaMontoNumero(cuerpoTexto);
+
   let evento: Record<string, unknown>;
   try { evento = JSON.parse(cuerpoTexto); } catch { return json({ error: "JSON inválido." }, 400); }
   if (!evento || typeof evento !== "object" || Array.isArray(evento)) {
     return json({ error: "Evento inválido." }, 400);
   }
+  const dataPrevia = (evento.data ?? null) as Record<string, unknown> | null;
+  const txPrevia = dataPrevia && typeof dataPrevia === "object"
+    ? (dataPrevia.transaction ?? null) as Record<string, unknown> | null
+    : null;
+  if (typeof txPrevia?.amount_in_cents === "number" && lexemaMontoNumero === null) {
+    return json({ error: "Monto inválido." }, 400);
+  }
 
   // --- Secreto segun el ambiente del evento ---------------------------------
-  // environment: "test" para Sandbox, "prod" para Produccion.
+  // Se falla cerrado: ningún valor desconocido puede caer por defecto al
+  // secreto de Sandbox.
   const ambiente = String(evento.environment ?? "").toLowerCase();
-  const esProd = ambiente === "prod" || ambiente === "production";
-  const nombreSecreto = esProd ? "WOMPI_EVENTS_PROD" : "WOMPI_EVENTS_SANDBOX";
+  const entornoNormalizado = ambiente === "test" || ambiente === "sandbox"
+    ? "sandbox"
+    : ambiente === "prod" || ambiente === "production"
+    ? "prod"
+    : null;
+  if (!entornoNormalizado) {
+    console.error("[wompi-webhook] Environment desconocido; evento rechazado.");
+    return json({ error: "Ambiente inválido." }, 400);
+  }
+  const nombreSecreto = entornoNormalizado === "prod"
+    ? "WOMPI_EVENTS_PROD"
+    : "WOMPI_EVENTS_SANDBOX";
   const secreto = Deno.env.get(nombreSecreto);
   if (!secreto) {
     console.error(`[wompi-webhook] Falta el secret ${nombreSecreto}.`);
@@ -141,7 +276,13 @@ Deno.serve(async (req) => {
     return json({ error: "Firma ausente." }, 401);
   }
 
-  const esperado = await calcularChecksum(propiedades, evento.data, evento.timestamp, secreto);
+  const esperado = await calcularChecksum(
+    propiedades,
+    evento.data,
+    evento.timestamp,
+    secreto,
+    lexemaMontoNumero,
+  );
   if (!igualesTiempoConstante(recibido, esperado)) {
     // No se loguea ningun checksum ni el secreto: solo el hecho.
     console.error("[wompi-webhook] Checksum inválido. Evento ignorado.");
@@ -164,11 +305,31 @@ Deno.serve(async (req) => {
   const estado = String(tx.status ?? "").trim().toUpperCase();
   const referencia = String(tx.reference ?? "").trim();
   const montoBruto = tx.amount_in_cents;
-  const monto = typeof montoBruto === "number"
-    ? Math.trunc(montoBruto)
-    : /^\d{1,18}$/.test(String(montoBruto ?? "")) ? Number(String(montoBruto)) : null;
+  let monto: string | null = null;
+  if (typeof montoBruto === "number") {
+    // Nunca se usa el number ya parseado: únicamente el token decimal crudo.
+    if (/^\d{1,18}$/.test(lexemaMontoNumero ?? "")) monto = lexemaMontoNumero;
+  } else if (typeof montoBruto === "string" && /^\d{1,18}$/.test(montoBruto)) {
+    monto = montoBruto;
+  }
+  if (monto !== null) {
+    try {
+      if (BigInt(monto) <= 0n) monto = null;
+    } catch {
+      monto = null;
+    }
+  }
 
-  if (!transaccionId || !estado) return json({ error: "Transacción incompleta." }, 400);
+  if (!transaccionId || !estado || monto === null) {
+    return json({ error: "Transacción incompleta." }, 400);
+  }
+
+  // El objeto auditado no conserva el Number redondeado por JSON.parse. Si
+  // Wompi envió un número, se reemplaza por su lexema decimal exacto ya usado
+  // para verificar la firma y validar el bigint.
+  if (typeof montoBruto === "number") {
+    tx.amount_in_cents = monto;
+  }
 
   // --- Delegar a la RPC (idempotente, transaccional) ------------------------
   const r = await fetch(`${supabaseUrl}/rest/v1/rpc/pw_procesar_pago`, {

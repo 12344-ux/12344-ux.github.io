@@ -183,32 +183,39 @@ function stockDeLaFicha(p: Obj, variacion: string | null): number | null {
   return sumarStockBodegas(p.warehouse_product);
 }
 
-async function verificarProveedorEnVivo(
+async function leerDatosVerificacion(
   // deno-lint-ignore no-explicit-any
   supabase: any,
   campanaId: string,
-  cantidad: number,
-  maxCatalogo: number,
-): Promise<{ rechazar: boolean; maxComprable: number; log: Obj }> {
-  let datos: Obj | null = null;
+): Promise<{ datos: Obj | null; error: Obj | null }> {
   try {
     const { data, error } = await supabase.rpc("ds_verificacion_checkout", {
       p_campana_id: campanaId,
     });
     if (error) {
       return {
-        rechazar: true,
-        maxComprable: 0,
-        log: { motivo: "fallo ds_verificacion_checkout", codigo: error.code ?? null },
+        datos: null,
+        error: { motivo: "fallo ds_verificacion_checkout", codigo: error.code ?? null },
       };
     }
-    datos = esObjeto(data) ? data : null;
+    const datos = esObjeto(data) ? data : null;
+    return {
+      datos,
+      error: datos ? null : { motivo: "sin datos de verificacion" },
+    };
   } catch (_) {
-    datos = null;
+    return { datos: null, error: { motivo: "fallo ds_verificacion_checkout" } };
   }
+}
 
-  // C1 depende de esta lectura autoritativa. Una RPC ausente o sin datos falla
-  // cerrada; no se firma una intención que omitió una de sus reglas.
+async function verificarProveedorEnVivo(
+  datos: Obj | null,
+  cantidad: number,
+  maxCatalogo: number,
+): Promise<{ rechazar: boolean; maxComprable: number; log: Obj }> {
+  // La lectura interna se hace antes y fuera del helper. Así la ruta de carrito
+  // puede agrupar por product_id y consultar Dropi una sola vez por producto.
+  // Una RPC ausente o sin datos falla cerrada.
   if (!datos) {
     return {
       rechazar: true,
@@ -343,6 +350,486 @@ function pareceUuid(valor: string): boolean {
     .test(valor);
 }
 
+function versionCarritoValida(valor: unknown): string | null {
+  if (typeof valor === "number") {
+    return Number.isSafeInteger(valor) && valor >= 0 ? String(valor) : null;
+  }
+  if (typeof valor !== "string" || !/^\d{1,18}$/.test(valor.trim())) return null;
+  try {
+    const version = BigInt(valor.trim());
+    return version <= 9223372036854775807n ? version.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function errorCarrito(
+  mensaje: string,
+  cors: Record<string, string>,
+): Response | null {
+  if (/PW_CARRITO_YA_PROCESADO/.test(mensaje)) {
+    return json(
+      {
+        error: "Esta versión del carrito ya fue procesada y no puede iniciar otro pago.",
+        codigo: "CARRITO_YA_PROCESADO",
+      },
+      409,
+      cors,
+    );
+  }
+
+  if (/PW_VERSION_DESACTUALIZADA|CO_VERSION_DESACTUALIZADA/.test(mensaje)) {
+    return json(
+      { error: "El carrito cambió; actualízalo antes de pagar.", codigo: "VERSION_DESACTUALIZADA" },
+      409,
+      cors,
+    );
+  }
+
+  const max = /(?:PW_|CO_)MAX_COMPRABLE:(\d{1,2})/.exec(mensaje);
+  if (max) {
+    const maxComprable = Math.max(0, Math.min(20, Number(max[1])));
+    return json(
+      {
+        error: "La disponibilidad cambió; ajusta el carrito e intenta de nuevo.",
+        codigo: "MAX_COMPRABLE",
+        max_comprable: maxComprable,
+      },
+      409,
+      cors,
+    );
+  }
+
+  const monto = /PW_MONTO_MAXIMO(?::(\d{1,18}))?/.exec(mensaje);
+  if (monto) {
+    return json(
+      {
+        error: "El total del carrito supera el máximo permitido para un pago.",
+        codigo: "MONTO_MAXIMO",
+        max_monto_centavos: monto[1] ?? null,
+      },
+      409,
+      cors,
+    );
+  }
+
+  if (
+    /PW_CARRITO_|PW_CAMPANA_NO_COMPRABLE|PW_MAX_LINEAS|PW_CANTIDAD_INVALIDA|CO_CARRITO_|CO_CAMPANA_|CO_MAX_LINEAS|CO_CUENTA_/.test(
+      mensaje,
+    )
+  ) {
+    return json(
+      { error: "El carrito no está disponible para pago.", codigo: "CARRITO_NO_DISPONIBLE" },
+      409,
+      cors,
+    );
+  }
+  return null;
+}
+
+async function procesarCarrito(
+  req: Request,
+  body: Record<string, unknown>,
+  cors: Record<string, string>,
+): Promise<Response> {
+  const carrito = esObjeto(body.carrito) ? body.carrito : null;
+  const idCarrito = typeof carrito?.id === "string" ? carrito.id.trim() : "";
+  const versionEsperada = versionCarritoValida(carrito?.version);
+  const clavesCarrito = carrito ? Object.keys(carrito) : [];
+  const compradorEntrada = body.comprador === undefined || body.comprador === null
+    ? null
+    : esObjeto(body.comprador) ? body.comprador : undefined;
+  const camposProhibidos = [
+    "items",
+    "precio",
+    "precio_venta",
+    "precio_unitario",
+    "total",
+    "monto",
+    "monto_centavos",
+    "monto_en_centavos",
+    "amount_in_cents",
+    "uid",
+    "user_id",
+    "auth_user_id",
+    "cliente_id",
+    "customer_id",
+    "producto",
+    "cantidad",
+    "moneda",
+  ];
+
+  if (
+    !carrito || !pareceUuid(idCarrito) || versionEsperada === null ||
+    compradorEntrada === undefined ||
+    clavesCarrito.some((k) => !["id", "version"].includes(k)) ||
+    camposProhibidos.some((k) =>
+      Object.prototype.hasOwnProperty.call(body, k) ||
+      (compradorEntrada !== null && Object.prototype.hasOwnProperty.call(compradorEntrada, k))
+    )
+  ) {
+    return json(
+      { error: "La solicitud de carrito es inválida.", codigo: "CARRITO_INVALIDO" },
+      400,
+      cors,
+    );
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const publicKey = Deno.env.get("SUPABASE_ANON_KEY") ??
+    Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ??
+    req.headers.get("apikey");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !publicKey || !serviceRoleKey) {
+    return json(
+      { error: "Configuracion del servidor incompleta (Supabase).", codigo: "ERROR_SERVIDOR" },
+      500,
+      cors,
+    );
+  }
+
+  const jwt = (req.headers.get("authorization") ?? "")
+    .replace(/^Bearer\s+/i, "")
+    .trim();
+  if (!jwt) {
+    return json(
+      { error: "Inicia sesión para pagar tu carrito.", codigo: "SESION_REQUERIDA" },
+      401,
+      cors,
+    );
+  }
+
+  // La identidad se deriva con la llave pública y el JWT real del request.
+  // Solo después se crea el cliente service_role que registra el snapshot.
+  const supabaseUsuario = createClient(supabaseUrl, publicKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${jwt}` } },
+  });
+  const { data: sesion, error: errorSesion } = await supabaseUsuario.auth.getUser(jwt);
+  if (errorSesion || !sesion?.user) {
+    return json(
+      { error: "Tu sesión no es válida. Vuelve a iniciar sesión.", codigo: "SESION_REQUERIDA" },
+      401,
+      cors,
+    );
+  }
+
+  const { data: snapshotBruto, error: errorSnapshot } = await supabaseUsuario.rpc(
+    "co_carrito_listar",
+  );
+  if (errorSnapshot) {
+    return errorCarrito(errorSnapshot.message ?? "", cors) ?? json(
+      { error: "No se pudo validar el carrito.", codigo: "ERROR_SERVIDOR" },
+      500,
+      cors,
+    );
+  }
+  const snapshot = esObjeto(snapshotBruto) ? snapshotBruto : null;
+  if (!snapshot || String(snapshot.carrito_id ?? "") !== idCarrito) {
+    return json(
+      { error: "El carrito no está disponible para pago.", codigo: "CARRITO_NO_DISPONIBLE" },
+      409,
+      cors,
+    );
+  }
+  if (String(snapshot.version ?? "") !== versionEsperada) {
+    return json(
+      { error: "El carrito cambió; actualízalo antes de pagar.", codigo: "VERSION_DESACTUALIZADA" },
+      409,
+      cors,
+    );
+  }
+
+  const items = Array.isArray(snapshot.items) ? snapshot.items : [];
+  if (items.length < 1 || items.length > 20) {
+    return json(
+      { error: "El carrito no está disponible para pago.", codigo: "CARRITO_NO_DISPONIBLE" },
+      409,
+      cors,
+    );
+  }
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${serviceRoleKey}` } },
+  });
+
+  // Valida primero cada línea pública. Las lecturas privadas se hacen de forma
+  // secuencial y se agrupan por producto/proveedor; product_id nunca sale en la
+  // respuesta al navegador.
+  const grupos = new Map<string, {
+    datos: Obj;
+    proveedor: string;
+    cantidad: number;
+    campanas: string[];
+  }>();
+
+  for (const bruto of items) {
+    const item = esObjeto(bruto) ? bruto : null;
+    const campanaId = typeof item?.campana_id === "string" ? item.campana_id : "";
+    const cantidad = Number(item?.cantidad);
+    const maxComprable = Number(item?.max_comprable);
+    if (
+      !pareceUuid(campanaId) || !Number.isSafeInteger(cantidad) || cantidad < 1 || cantidad > 20 ||
+      !Number.isInteger(maxComprable) || maxComprable < 0 || maxComprable > 20 ||
+      item?.requiere_ajuste === true || cantidad > maxComprable
+    ) {
+      return json(
+        {
+          error: "La disponibilidad cambió; ajusta el carrito e intenta de nuevo.",
+          codigo: "MAX_COMPRABLE",
+          max_comprable: Number.isInteger(maxComprable) ? Math.max(0, Math.min(20, maxComprable)) : 0,
+        },
+        409,
+        cors,
+      );
+    }
+
+    const lectura = await leerDatosVerificacion(supabase, campanaId);
+    if (!lectura.datos) {
+      console.error(
+        "[crear-intencion-pago] Fallo lectura privada de proveedor:",
+        JSON.stringify({ campana_id: campanaId, ...(lectura.error ?? {}) }),
+      );
+      return json(
+        { error: "No se pudo validar el carrito.", codigo: "ERROR_SERVIDOR" },
+        500,
+        cors,
+      );
+    }
+
+    const productId = typeof lectura.datos.product_id === "string"
+      ? lectura.datos.product_id
+      : "";
+    if (!pareceUuid(productId)) {
+      console.error("[crear-intencion-pago] ds_verificacion_checkout sin product_id válido.");
+      return json(
+        { error: "No se pudo validar el carrito.", codigo: "ERROR_SERVIDOR" },
+        500,
+        cors,
+      );
+    }
+
+    const proveedor = JSON.stringify([
+      lectura.datos.origen ?? null,
+      lectura.datos.dropi_id ?? null,
+      lectura.datos.variante ?? null,
+    ]);
+    const grupo = grupos.get(productId);
+    if (grupo && grupo.proveedor !== proveedor) {
+      console.error("[crear-intencion-pago] Proveedor inconsistente para un mismo producto.");
+      return json(
+        { error: "No se pudo validar el carrito.", codigo: "ERROR_SERVIDOR" },
+        500,
+        cors,
+      );
+    }
+    if (grupo) {
+      grupo.cantidad += cantidad;
+      grupo.campanas.push(campanaId);
+    } else {
+      grupos.set(productId, {
+        datos: lectura.datos,
+        proveedor,
+        cantidad,
+        campanas: [campanaId],
+      });
+    }
+  }
+
+  // Una única consulta viva por grupo, también secuencial para evitar ráfagas a
+  // Dropi. El techo de catálogo agregado sale de la disponibilidad del producto;
+  // los máximos particulares de cada campaña ya se validaron arriba.
+  for (const grupo of grupos.values()) {
+    const disponibleLocal = Number(grupo.datos.disponible_local);
+    const maxGrupo = Number.isFinite(disponibleLocal)
+      ? Math.max(0, Math.min(20, Math.floor(disponibleLocal)))
+      : 0;
+    const verificacion = await verificarProveedorEnVivo(
+      grupo.datos,
+      grupo.cantidad,
+      maxGrupo,
+    );
+    if (verificacion.rechazar) {
+      console.log(
+        "[crear-intencion-pago] grupo de proveedor rechazado en vivo:",
+        JSON.stringify({ campanas: grupo.campanas, ...verificacion.log }),
+      );
+      return json(
+        {
+          error: "La disponibilidad cambió; ajusta el carrito e intenta de nuevo.",
+          codigo: "MAX_COMPRABLE",
+          max_comprable: verificacion.maxComprable,
+        },
+        409,
+        cors,
+      );
+    }
+  }
+
+  const { data: configFilas, error: errorConfig } = await supabase.rpc(
+    "pagos_config_para_intencion",
+  );
+  const config = Array.isArray(configFilas) ? configFilas[0] : configFilas;
+  if (errorConfig || !config) {
+    console.error(
+      "[crear-intencion-pago] Fallo configuración de carrito:",
+      JSON.stringify({ code: errorConfig?.code ?? null }),
+    );
+    return json(
+      { error: "No se pudo leer la configuracion de pagos.", codigo: "CONFIGURACION_PAGO" },
+      500,
+      cors,
+    );
+  }
+
+  const entornoConfig = String(config.entorno ?? "");
+  if (!["sandbox", "prod"].includes(entornoConfig)) {
+    console.error("[crear-intencion-pago] Entorno de pagos inválido para carrito.");
+    return json(
+      { error: "La configuracion de pagos no es válida.", codigo: "CONFIGURACION_PAGO" },
+      500,
+      cors,
+    );
+  }
+  const entorno = entornoConfig;
+  const llavePublica = String(config.llave_publica ?? "");
+  if (!llavePublica) {
+    return json(
+      { error: "Llave publica no configurada para pagos.", codigo: "CONFIGURACION_PAGO" },
+      500,
+      cors,
+    );
+  }
+  const nombreSecreto = entorno === "prod"
+    ? "WOMPI_INTEGRITY_PROD"
+    : "WOMPI_INTEGRITY_SANDBOX";
+  const secretoIntegridad = Deno.env.get(nombreSecreto);
+  if (!secretoIntegridad) {
+    console.error("[crear-intencion-pago] Secreto de integridad ausente para carrito:", nombreSecreto);
+    return json(
+      { error: "Secreto de integridad no configurado en el servidor.", codigo: "CONFIGURACION_PAGO" },
+      500,
+      cors,
+    );
+  }
+
+  const texto = (v: unknown, max: number) =>
+    typeof v === "string" && v.trim() !== "" ? v.trim().slice(0, max) : null;
+  const c = esObjeto(body.comprador) ? body.comprador : {};
+  const comprador = {
+    nombre: texto(c.nombre, 120),
+    correo: texto(c.correo, 160),
+    telefono: texto(c.telefono, 40),
+    direccion: texto(c.direccion, 200),
+    ciudad: texto(c.ciudad, 80),
+    departamento: texto(c.departamento, 80),
+    pais: texto(c.pais, 60),
+  };
+  const utmBruto = texto(body.utm_campaign, 60);
+  const utm = utmBruto && /^[a-z0-9-]{1,60}$/.test(utmBruto) ? utmBruto : null;
+  const vidBruto = texto(body.mg_vid, 40);
+  const mgVid = vidBruto && /^[A-Za-z0-9_-]{16,40}$/.test(vidBruto) ? vidBruto : null;
+  const referencia = generarReferencia(idCarrito);
+
+  const { data: intencionBruta, error: errorIntencion } = await supabase.rpc(
+    "pw_registrar_intencion_carrito",
+    {
+      p_referencia: referencia,
+      p_auth_user_id: sesion.user.id,
+      p_carrito_id: idCarrito,
+      p_version_esperada: versionEsperada,
+      p_entorno: entorno,
+      p_comprador: comprador,
+      p_utm_campaign: utm,
+      p_mg_vid: mgVid,
+      p_moneda: "COP",
+    },
+  );
+  if (errorIntencion) {
+    const publico = errorCarrito(errorIntencion.message ?? "", cors);
+    if (publico) return publico;
+    console.error(
+      "[crear-intencion-pago] No se pudo congelar el carrito:",
+      JSON.stringify({ code: errorIntencion.code ?? null }),
+    );
+    return json(
+      { error: "No se pudo iniciar el pago. Intenta de nuevo.", codigo: "ERROR_SERVIDOR" },
+      500,
+      cors,
+    );
+  }
+
+  const intencion = esObjeto(intencionBruta) ? intencionBruta : null;
+  const referenciaFirmada = String(intencion?.referencia ?? "");
+  const entornoFirmado = String(intencion?.entorno ?? "");
+  const montoFirmado = String(intencion?.monto_centavos ?? "");
+  const monedaFirmada = String(intencion?.moneda ?? "");
+  const lineas = Array.isArray(intencion?.items) ? intencion.items : [];
+  if (
+    !/^[A-Za-z0-9_-]{6,64}$/.test(referenciaFirmada) ||
+    !/^\d{1,18}$/.test(montoFirmado) || montoFirmado === "0" ||
+    monedaFirmada !== "COP" || !lineas.length
+  ) {
+    console.error("[crear-intencion-pago] Snapshot autoritativo de carrito inconsistente.");
+    return json(
+      { error: "No se pudo confirmar el monto del pago.", codigo: "ERROR_SERVIDOR" },
+      500,
+      cors,
+    );
+  }
+  if (entornoFirmado !== entorno) {
+    console.error("[crear-intencion-pago] La intención congelada pertenece a otro entorno de pagos.");
+    return json(
+      { error: "La configuracion de pagos cambió; intenta más tarde.", codigo: "CONFIGURACION_PAGO" },
+      500,
+      cors,
+    );
+  }
+
+  const firmaIntegridad = await calcularFirmaIntegridad(
+    referenciaFirmada,
+    montoFirmado,
+    monedaFirmada,
+    secretoIntegridad,
+  );
+  const resumenItems = lineas.map((bruto) => {
+    const item = esObjeto(bruto) ? bruto : {};
+    return {
+      ordinal: item.ordinal ?? null,
+      campana_id: item.campana_id ?? null,
+      slug: item.slug ?? null,
+      nombre: item.nombre ?? null,
+      cantidad: item.cantidad ?? null,
+      precio_unitario: item.precio_unitario == null ? null : String(item.precio_unitario),
+      subtotal: item.subtotal == null ? null : String(item.subtotal),
+    };
+  });
+  const cantidadLineas = Number(intencion?.cantidad_lineas ?? lineas.length);
+  const nombreProducto = cantidadLineas === 1
+    ? String((esObjeto(lineas[0]) ? lineas[0].nombre : "") ?? "")
+    : `${cantidadLineas} productos`;
+
+  return json(
+    {
+      referencia: referenciaFirmada,
+      monto_en_centavos: montoFirmado,
+      moneda: monedaFirmada,
+      firma_integridad: firmaIntegridad,
+      llave_publica: llavePublica,
+      url_redireccion: `https://magandhi.com/carrito/?ref=${encodeURIComponent(referenciaFirmada)}`,
+      nombre_producto: nombreProducto,
+      resumen: {
+        cantidad_lineas: intencion?.cantidad_lineas ?? lineas.length,
+        cantidad_unidades: intencion?.cantidad_unidades ?? null,
+        items: resumenItems,
+      },
+    },
+    200,
+    cors,
+  );
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   const origin = req.headers.get("origin");
   const cors = cabecerasCors(origin);
@@ -363,6 +850,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
     body = await req.json();
   } catch {
     return json({ error: "Body invalido; se esperaba JSON." }, 400, cors);
+  }
+
+  // C3 agrega una ruta inequívoca sin tocar el contrato escalar histórico.
+  // Todo body con la clave `carrito` se procesa aquí y nunca puede caer a la
+  // compra inmediata por producto.
+  if (Object.prototype.hasOwnProperty.call(body, "carrito")) {
+    return await procesarCarrito(req, body, cors);
   }
 
   const producto = typeof body?.producto === "string"
@@ -536,14 +1030,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
   //
   // Va DESPUES del chequeo de agotado y ANTES de registrar la intencion: si
   // rechaza, no queda rastro de una intencion que nunca debio existir.
+  const lecturaProveedor = await leerDatosVerificacion(supabase, String(fila.id));
   const verificacion = await verificarProveedorEnVivo(
-    supabase,
-    String(fila.id),
+    lecturaProveedor.datos,
     cantidad,
     maxComprable,
   );
   if (verificacion.rechazar) {
-    console.log("[crear-intencion-pago] proveedor rechazado en vivo:", JSON.stringify(verificacion.log));
+    console.log(
+      "[crear-intencion-pago] proveedor rechazado en vivo:",
+      JSON.stringify({ ...(lecturaProveedor.error ?? {}), ...verificacion.log }),
+    );
     return json(
       {
         error: "La disponibilidad cambió; ajusta la cantidad e intenta de nuevo.",
