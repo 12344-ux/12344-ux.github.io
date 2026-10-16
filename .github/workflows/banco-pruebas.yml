@@ -66,10 +66,17 @@ jobs:
           P=$REPO/supabase/pruebas/local
           sudo bash "$AQUI/pg.sh" "$P/pagos-f2.sql" "$P/f3-asiento-automatico.sql" "$P/pagos-estado-publico.sql" \
             "$P/metricas-m1.sql" "$P/metricas-m2.sql" "$P/fechas-colombia.sql" "$P/dropshipping-cimientos.sql" "$P/dropshipping-d2a.sql" "$P/dropshipping-d2c1.sql" "$P/dropshipping-d2c2a.sql" "$P/dropshipping-d2c2b.sql" \
-            "$P/dropshipping-seguro.sql" "$P/cuentas-cliente-cimientos.sql" \
+            "$P/dropshipping-seguro.sql" "$P/cuentas-cliente-cimientos.sql" "$P/cuentas-cliente-c2.sql" \
+            "$REPO/supabase/pruebas/cuentas-cliente-c2-preflight.sql" \
             "$P/em5-resultados.sql" "$P/em5-1-respuesta-email.sql" "$P/em6-captura.sql" \
             "$P/cuadre-contable-2026-10-14.sql" "$P/cuadre-contable-aplicar.sql" 2>&1 | tee -a /tmp/banco.log
           sudo bash "$AQUI/probar-cuentas-concurrencia.sh" 2>&1 | tee -a /tmp/banco.log
+          sudo bash "$AQUI/probar-cuentas-c2-concurrencia.sh" 2>&1 | tee -a /tmp/banco.log
+          sudo -u pg pg_ctl -D /var/lib/pgdata stop -m fast >/dev/null || true
+
+      - name: Cuentas C2 · Edge autenticada sin service_role
+        run: |
+          sudo bash "$AQUI/correr-cuentas-c2-http.sh" 2>&1 | tee -a /tmp/banco.log
           sudo -u pg pg_ctl -D /var/lib/pgdata stop -m fast >/dev/null || true
 
       - name: Cuentas C1 · un cliente nunca entra al panel interno

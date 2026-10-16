@@ -136,6 +136,11 @@ begin
         'es_personal_interno', 'es_cuenta_cliente', 'mi_cliente_id'
       ];
     end if;
+    -- C2 agrega una sola puerta de alta para authenticated. La tabla privada
+    -- de conflictos no entra en v_obj: ningun rol API tiene acceso a ella.
+    if to_regprocedure('public.cc_inicializar_cuenta()') is not null then
+      v_lista_blanca := v_lista_blanca || array['cc_inicializar_cuenta'];
+    end if;
 
     -- D1 puede no existir a propósito cuando los scripts reproducen una foto
     -- histórica anterior al 10-oct. Si la tabla existe, la lista blanca exige
