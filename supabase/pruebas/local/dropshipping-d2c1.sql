@@ -161,8 +161,13 @@ select pg_temp.chk(
 
 select ds_registrar_lectura_stock('c0000000-0000-4000-8000-00000000000c'::uuid, 20);
 select pg_temp.chk(
+  (select agotado from catalogo_publico where slug = 'prov-flaco') is true,
+  'stock 20 con piso 20 ⇒ agotado=true: C1 preserva el piso después de comprar');
+
+select ds_registrar_lectura_stock('c0000000-0000-4000-8000-00000000000c'::uuid, 21);
+select pg_temp.chk(
   (select agotado from catalogo_publico where slug = 'prov-flaco') is false,
-  'stock 20 con piso 20 ⇒ disponible (el piso es el mínimo, no una frontera abierta)');
+  'stock 21 con piso 20 ⇒ queda una unidad comprable');
 
 -- El piso por producto manda sobre el global.
 update producto_proveedor set piso_vitrina = 50

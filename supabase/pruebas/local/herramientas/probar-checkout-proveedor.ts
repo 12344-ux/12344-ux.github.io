@@ -27,7 +27,9 @@ function reset(cfg: Obj = {}) {
     minutos_desde_lectura: 1,
     frescura_max_min: 10,
     disponible_local: 230,
-    // Dropi
+    max_comprable: 5,
+    precio_venta: "59900",
+    ultima_intencion: null,
     dropi_http: 200,
     dropi_stock_variante: 230,
     dropi_lento: false,
@@ -66,7 +68,9 @@ const servidor = Deno.serve({ port: PORT, onListen() {} }, async (req) => {
   if (ruta === "/rest/v1/catalogo_publico") {
     return Response.json({
       id: "cb000000-0000-4000-8000-00000000000b",
-      slug: "camp-serum", nombre: "Serum", precio_venta: 59900, agotado: false,
+      slug: "camp-serum", nombre: "Serum", precio_venta: E.precio_venta,
+      agotado: Number(E.max_comprable) === 0,
+      max_comprable: E.max_comprable,
     });
   }
   if (ruta === "/rest/v1/rpc/ds_verificacion_checkout") {
@@ -88,7 +92,21 @@ const servidor = Deno.serve({ port: PORT, onListen() {} }, async (req) => {
   }
   if (ruta === "/rest/v1/rpc/pw_registrar_intencion") {
     E.intenciones = Number(E.intenciones) + 1;
-    return Response.json(null);
+    const body = await req.json() as Obj;
+    E.ultima_intencion = body;
+    return Response.json({
+      referencia: body.p_referencia,
+      product_id: "db000000-0000-4000-8000-00000000000b",
+      ligado: true,
+      campana_id: body.p_campana_id,
+      slug: body.p_slug,
+      nombre: body.p_nombre,
+      cantidad: body.p_cantidad,
+      precio_unitario: String(body.p_precio_unitario),
+      monto_centavos: String(body.p_monto_centavos),
+      moneda: body.p_moneda,
+      max_comprable: E.max_comprable,
+    });
   }
   return Response.json({ message: "ruta no esperada: " + ruta }, { status: 404 });
 });
@@ -114,12 +132,12 @@ await import(`${repo}/supabase/functions/crear-intencion-pago/index.ts?d2c2c=${D
 const res: Array<{ ok: boolean; que: string }> = [];
 const chk = (ok: boolean, que: string) => res.push({ ok: !!ok, que });
 
-async function comprar() {
+async function comprar(cantidad = 1) {
   const r = await handler(new Request("https://magandhi.com/x", {
     method: "POST",
     headers: { origin: "https://magandhi.com", "content-type": "application/json" },
     body: JSON.stringify({
-      producto: "camp-serum", cantidad: 1,
+      producto: "camp-serum", cantidad,
       comprador: { nombre: "Dora Compradora", correo: "d@ejemplo.invalid",
                    telefono: "3000000000", direccion: "Calle 1", ciudad: "Leticia" },
     }),
@@ -143,8 +161,9 @@ async function comprar() {
   reset({ dropi_stock_variante: 0 });
   const r = await comprar();
   chk(r.status === 409, "si Dropi dice que no hay, se rechaza con 409");
-  chk(r.cuerpo.error === "Producto agotado.",
-    "con el MISMO mensaje que el agotado normal (un texto distinto delataría el dropshipping)");
+  chk(r.cuerpo.error === "La disponibilidad cambió; ajusta la cantidad e intenta de nuevo."
+    && r.cuerpo.codigo === "MAX_COMPRABLE",
+    "devuelve el contrato público de disponibilidad sin delatar el proveedor");
   chk(Number(E.intenciones) === 0, "y NO queda una intención de pago que nunca debió existir");
 }
 
@@ -227,13 +246,14 @@ async function comprar() {
     "y NO gasta una petición a Dropi: su candado es el libro de Inventario");
 }
 
-// --- Tolerancia: si la migración no está aplicada ----------------------
+// --- Fallo cerrado: C1 exige verificación autoritativa ------------------
 {
   reset({ sin_verificacion: true });
   const r = await comprar();
-  chk(r.status === 200,
-    "si D2c.2c no está aplicada, no se bloquea una venta que ya funcionaba");
-  chk(Number(E.llamadas_dropi) === 0, "y no se inventa una verificación");
+  chk(r.status === 409,
+    "si falta ds_verificacion_checkout, C1 falla cerrado");
+  chk(Number(E.llamadas_dropi) === 0, "sin datos autoritativos no consulta Dropi");
+  chk(Number(E.intenciones) === 0, "ni registra una intención incompleta");
 }
 
 // --- Sin ficha de proveedor --------------------------------------------
@@ -242,6 +262,26 @@ async function comprar() {
   const r = await comprar();
   chk(r.status === 409,
     "un producto de proveedor sin id de Dropi se rechaza: no hay a quién pedírselo");
+}
+
+// --- Bigint cruza PostgREST/JS como texto exacto -----------------------
+{
+  const precio = "90071992547410";
+  const monto = "9007199254741000"; // > Number.MAX_SAFE_INTEGER
+  reset({ precio_venta: precio });
+  const r = await comprar();
+  const referencia = String(r.cuerpo.referencia ?? "");
+  const material = `${referencia}${monto}COPsecreto-de-integridad-de-prueba`;
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(material));
+  const firmaEsperada = Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0")).join("");
+  const enviada = E.ultima_intencion as Obj | null;
+  chk(r.status === 200 && r.cuerpo.monto_en_centavos === monto,
+    "un monto mayor que 2^53 cruza y vuelve como texto exacto");
+  chk(enviada?.p_precio_unitario === precio && enviada?.p_monto_centavos === monto,
+    "precio y monto exactos se envían como texto a pw_registrar_intencion");
+  chk(r.cuerpo.firma_integridad === firmaEsperada,
+    "la firma usa exactamente el monto textual retornado por la RPC");
 }
 
 // --- Secretos -----------------------------------------------------------

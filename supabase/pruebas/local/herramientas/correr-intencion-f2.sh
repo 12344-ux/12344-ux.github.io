@@ -15,15 +15,15 @@ sudo rm -f /var/lib/pgdata/postmaster.pid 2>/dev/null
 $AQUI/pg.sh >/dev/null 2>&1 || { echo "fallo pg.sh"; exit 1; }
 export PGHOST=/var/lib/pgdata PGUSER=postgres
 
-# Semilla: producto con 3 unidades, campana publicada y ligada, Wompi en sandbox.
+# Semilla: producto con 3 unidades, campaña publicada/ligada y máximo C1 de 3.
 psql -v ON_ERROR_STOP=1 -q -d impulse_pruebas <<'SQL'
 insert into productos (id, sku, nombre, precio_venta, costo_unitario, activo)
   values ('b8000000-0000-4000-8000-000000000001', 'I-P1', 'Producto intencion', 30000, 10000, true);
 insert into movimientos_inventario (product_id, tipo, cantidad, motivo)
   values ('b8000000-0000-4000-8000-000000000001', 'entrada', 3, 'semilla intencion');
-insert into campana_producto (id, nombre, slug, precio_venta, product_id_ref, publicado, activo)
+insert into campana_producto (id, nombre, slug, precio_venta, product_id_ref, publicado, activo, max_unidades_pedido)
   values ('a8000000-0000-4000-8000-000000000001', 'Producto intencion', 'i-p1', 30000,
-          'b8000000-0000-4000-8000-000000000001', true, true);
+          'b8000000-0000-4000-8000-000000000001', true, true, 3);
 update pagos_config set entorno = 'sandbox', llave_publica_sandbox = 'pub_test_LLAVEPUBLICAFALSA' where id = 1;
 SQL
 

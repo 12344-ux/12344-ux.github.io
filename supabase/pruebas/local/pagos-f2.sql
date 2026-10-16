@@ -43,6 +43,12 @@ insert into campana_producto (id, nombre, slug, precio_venta, product_id_ref, pu
 select pg_temp.chk((pg_temp.srv($q$select pw_registrar_intencion('REF-F2-0001','a6000000-0000-4000-8000-000000000001','f2-p1','Producto F2',1,30000,3000000,'sandbox',
   '{"nombre":"Ana Compradora","correo":"ana@cliente.invalid","telefono":"3001112233","direccion":"Calle 1","ciudad":"Tunja","departamento":"Boyaca","pais":"CO"}'::jsonb,'camp-f2','vid-abc123')$q$)->>'ligado')::boolean,
   'intencion: se persiste antes de firmar y resuelve el producto de Inventario');
+select pg_temp.chk(
+  jsonb_typeof(pg_temp.srv($q$select pw_registrar_intencion('REF-F2-0001','a6000000-0000-4000-8000-000000000001','f2-p1','Producto F2',1,30000,3000000,'sandbox',
+    '{"nombre":"Ana Compradora","correo":"ana@cliente.invalid","telefono":"3001112233","direccion":"Calle 1","ciudad":"Tunja","departamento":"Boyaca","pais":"CO"}'::jsonb,'camp-f2','vid-abc123')$q$)->'monto_centavos') = 'string'
+  and jsonb_typeof(pg_temp.srv($q$select pw_registrar_intencion('REF-F2-0001','a6000000-0000-4000-8000-000000000001','f2-p1','Producto F2',1,30000,3000000,'sandbox',
+    '{"nombre":"Ana Compradora","correo":"ana@cliente.invalid","telefono":"3001112233","direccion":"Calle 1","ciudad":"Tunja","departamento":"Boyaca","pais":"CO"}'::jsonb,'camp-f2','vid-abc123')$q$)->'precio_unitario') = 'string',
+  'intencion: monto_centavos y precio_unitario vuelven como texto exacto en alta y retry');
 select pg_temp.chk((select estado = 'creada' and monto_centavos = 3000000 and utm_campaign = 'camp-f2' and mg_vid = 'vid-abc123'
    and comprador_nombre = 'Ana Compradora' from pagos_intencion where referencia = 'REF-F2-0001'),
   'intencion: guarda el monto firmado, el comprador de la TIENDA, utm y mg_vid');
@@ -101,8 +107,17 @@ select pg_temp.chk((select estado = 'requiere_revision' and revision_motivo like
 create temp table p5 as select pg_temp.srv($q$select pw_procesar_pago('TX-004','APPROVED','REF-NO-EXISTE',3000000,'COP','transaction.updated','chk4',null,null,null)$q$) v;
 select pg_temp.chk((select v->>'resultado' = 'sin_intencion' from p5), 'sin intencion: no se crea nada y queda el evento');
 
--- ---------- 7. CAMPANA SIN PRODUCTO LIGADO -> revision ----------
-select pg_temp.srv($q$select pw_registrar_intencion('REF-F2-0004','a6000000-0000-4000-8000-000000000002','f2-sin','Sin ligar',1,30000,3000000,'sandbox','{"nombre":"Dani"}'::jsonb)$q$);
+-- ---------- 7. INTENCION HISTORICA SIN PRODUCTO LIGADO -> revision ----------
+-- C1 ya no permite registrar una intención nueva no comprable; esta fila
+-- reproduce una intención F2 previa a C1 (version_checkout=0).
+insert into pagos_intencion (
+  referencia, campana_id, product_id, slug, nombre, cantidad,
+  precio_unitario, monto_centavos, moneda, entorno, version_checkout,
+  comprador_nombre
+) values (
+  'REF-F2-0004', 'a6000000-0000-4000-8000-000000000002', null,
+  'f2-sin', 'Sin ligar', 1, 30000, 3000000, 'COP', 'sandbox', 0, 'Dani'
+);
 create temp table p6 as select pg_temp.srv($q$select pw_procesar_pago('TX-005','APPROVED','REF-F2-0004',3000000,'COP','transaction.updated','chk5',null,null,null)$q$) v;
 select pg_temp.chk((select v->>'resultado' = 'sin_stock' from p6), 'sin producto ligado: no crea pedido, pide revision');
 
@@ -110,7 +125,18 @@ select pg_temp.chk((select v->>'resultado' = 'sin_stock' from p6), 'sin producto
 -- Agotar: salida de las 4 restantes
 insert into movimientos_inventario (product_id, tipo, cantidad, motivo) values
   ('b6000000-0000-4000-8000-000000000001', 'salida', 4, 'agotar para la prueba');
-select pg_temp.srv($q$select pw_registrar_intencion('REF-F2-0005','a6000000-0000-4000-8000-000000000001','f2-p1','Producto F2',1,30000,3000000,'sandbox','{"nombre":"Eva","correo":"eva@cliente.invalid","telefono":"3009998877"}'::jsonb)$q$);
+-- C1 impediría firmar una intención nueva sin disponibilidad. Se reproduce una
+-- intención histórica que ya estaba firmada cuando aún había stock.
+insert into pagos_intencion (
+  referencia, campana_id, product_id, slug, nombre, cantidad,
+  precio_unitario, monto_centavos, moneda, entorno, version_checkout,
+  comprador_nombre, comprador_correo, comprador_telefono
+) values (
+  'REF-F2-0005', 'a6000000-0000-4000-8000-000000000001',
+  'b6000000-0000-4000-8000-000000000001', 'f2-p1', 'Producto F2', 1,
+  30000, 3000000, 'COP', 'sandbox', 0,
+  'Eva', 'eva@cliente.invalid', '3009998877'
+);
 create temp table p7 as select pg_temp.srv($q$select pw_procesar_pago('TX-006','APPROVED','REF-F2-0005',3000000,'COP','transaction.updated','chk6',null,'PSE','eva@wompi.invalid')$q$) v;
 select pg_temp.chk((select v->>'resultado' = 'sin_stock' from p7), 'sin stock: el pago aprobado NO se convierte en pedido');
 select pg_temp.chk((select estado = 'requiere_revision' and pedido_id is null and revision_motivo is not null
@@ -169,6 +195,81 @@ select pg_temp.chk(pg_temp.err($q$select pg_temp.como('7e600000-0000-4000-8000-0
 select set_config('request.pago_servidor', 'on', true);
 select pg_temp.chk(not pw__contexto_servidor(),
   'compuerta: una variable request.* (la unica que un cliente podria inyectar) NO la abre');
+
+-- Las dos GUC privadas son necesarias: ninguna mitad abre el checkout legacy.
+-- Reponemos una unidad propia para que la primera mitad llegue hasta la regla
+-- de campana_id en vez de fallar antes por stock.
+insert into movimientos_inventario (product_id, tipo, cantidad, motivo) values
+  ('b6000000-0000-4000-8000-000000000001', 'entrada', 1, 'semilla compuerta C1');
+select set_config('impulse.pago_servidor', 'on', true);
+select set_config('impulse.checkout_legacy', 'off', true);
+select pg_temp.chk(
+  pg_temp.err($q$select pg_temp.srv($$select crear_pedido(
+    p_nombre => 'Mitad servidor', p_canal => 'web',
+    p_items => jsonb_build_array(jsonb_build_object(
+      'product_id','b6000000-0000-4000-8000-000000000001',
+      'cantidad',1,'precio_unitario',30000)))$$)$q$) like '%CM_CAMPANA_REQUERIDA%',
+  'compuerta: pago_servidor sin checkout_legacy no omite campana_id');
+select set_config('impulse.pago_servidor', 'off', true);
+select set_config('impulse.checkout_legacy', 'on', true);
+select pg_temp.chk(
+  pg_temp.err($q$select pg_temp.srv($$select crear_pedido(
+    p_nombre => 'Mitad legacy', p_canal => 'web',
+    p_items => jsonb_build_array(jsonb_build_object(
+      'product_id','b6000000-0000-4000-8000-000000000001',
+      'cantidad',1,'precio_unitario',30000)))$$)$q$) like '%Acceso denegado%',
+  'compuerta: checkout_legacy sin contexto servidor tampoco abre crear_pedido');
+select set_config('impulse.checkout_legacy', 'off', true);
+
+-- ---------- 12. Compatibilidad proveedor version 0, sin relajar C1 ----------
+insert into productos (id, sku, nombre, origen, activo) values
+  ('b6000000-0000-4000-8000-000000000009', 'F2-LEGACY-PROV', 'Proveedor historico', 'proveedor', true);
+insert into producto_proveedor (
+  product_id, producto_externo_id, stock_reportado, stock_leido_en, stock_vence_en, piso_vitrina
+) values (
+  'b6000000-0000-4000-8000-000000000009', '999001', 20, now(), now() + interval '2 hours', 20
+);
+select set_config('impulse.ds_importando', 'on', true);
+insert into campana_producto (
+  id, nombre, slug, precio_venta, product_id_ref, publicado, activo, max_unidades_pedido
+) values (
+  'a6000000-0000-4000-8000-000000000009', 'Proveedor historico', 'f2-legacy-prov', 45000,
+  'b6000000-0000-4000-8000-000000000009', true, true, 1
+);
+select set_config('impulse.ds_importando', 'off', true);
+update dropshipping_config set venta_proveedor_habilitada = true where id = 1;
+
+insert into pagos_intencion (
+  referencia, campana_id, product_id, slug, nombre, cantidad,
+  precio_unitario, monto_centavos, moneda, entorno, version_checkout
+) values (
+  'REF-F2-LEGACY0', 'a6000000-0000-4000-8000-000000000009',
+  'b6000000-0000-4000-8000-000000000009', 'f2-legacy-prov', 'Proveedor historico',
+  1, 45000, 4500000, 'COP', 'sandbox', 0
+);
+create temp table p_legacy as select pg_temp.srv($q$select pw_procesar_pago(
+  'TX-LEGACY-0','APPROVED','REF-F2-LEGACY0',4500000,'COP',
+  'transaction.updated','chk-legacy',null,'CARD',null)$q$) v;
+select pg_temp.chk(
+  (select v->>'resultado' = 'procesado' from p_legacy)
+  and exists (select 1 from pedido_proveedor
+               where product_id = 'b6000000-0000-4000-8000-000000000009'),
+  'legacy proveedor: version 0 con stock bruto=piso conserva la venta histórica');
+
+insert into pagos_intencion (
+  referencia, campana_id, product_id, slug, nombre, cantidad,
+  precio_unitario, monto_centavos, moneda, entorno, version_checkout
+) values (
+  'REF-F2-C1V1', 'a6000000-0000-4000-8000-000000000009',
+  'b6000000-0000-4000-8000-000000000009', 'f2-legacy-prov', 'Proveedor C1',
+  1, 45000, 4500000, 'COP', 'sandbox', 1
+);
+create temp table p_c1 as select pg_temp.srv($q$select pw_procesar_pago(
+  'TX-C1-V1','APPROVED','REF-F2-C1V1',4500000,'COP',
+  'transaction.updated','chk-c1',null,'CARD',null)$q$) v;
+select pg_temp.chk(
+  (select v->>'resultado' = 'sin_stock' from p_c1),
+  'C1 proveedor: version 1 conserva stock-pendientes-piso y no usa la excepción histórica');
 
 select case when ok then 'pasa' else 'FALLA' end || ' | ' || que from pg_temp.r order by n;
 select 'RESUMEN | ' || count(*) || ' comprobaciones · ' || count(*) filter (where not ok) || ' fallan' from pg_temp.r;

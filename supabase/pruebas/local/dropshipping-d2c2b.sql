@@ -99,7 +99,7 @@ select pg_temp.chk(
   pg_temp.err($$select crear_pedido(
     p_nombre => 'Cliente Real', p_correo => 'real@local.invalid',
     p_direccion => 'Calle 10 # 5-5', p_ciudad => 'Leticia',
-    p_departamento => 'Amazonas', p_canal => 'web',
+    p_departamento => 'Amazonas', p_canal => 'manual',
     p_items => jsonb_build_array(jsonb_build_object(
       'product_id', 'e0000000-0000-4000-8000-00000000000b',
       'cantidad', 1, 'precio_unitario', 59900)))$$) = 'SIN ERROR',
@@ -233,7 +233,7 @@ insert into movimientos_inventario (product_id, tipo, cantidad, fecha)
 
 select crear_pedido(
   p_nombre => 'Cliente Propio', p_correo => 'cp@local.invalid',
-  p_direccion => 'Calle 1', p_ciudad => 'Bogota', p_canal => 'web',
+  p_direccion => 'Calle 1', p_ciudad => 'Bogota', p_canal => 'manual',
   p_items => jsonb_build_array(jsonb_build_object(
     'product_id', 'e0000000-0000-4000-8000-00000000000a',
     'cantidad', 2, 'precio_unitario', 39900)));
