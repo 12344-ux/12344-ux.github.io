@@ -8,8 +8,10 @@
 > publicado y medido en External/Testing: `magandhi.com` visible, mismo UID,
 > identidad enlazada y una sola cuenta activa. Turnstile y CAPTCHA de Supabase
 > están activos y medidos: login/recuperación válidos, omisión rechazada y
-> renovación tras expiración. Signup sigue apagado; el siguiente paso es un
-> registro nuevo controlado. Estado exacto: `docs/RELEVO-CUENTAS-C2-2026-10-16.md` y
+> renovación tras expiración. Un registro nuevo por correo y un usuario Google
+> realmente nuevo quedaron medidos con identidad única y una sola cuenta activa.
+> C2 está cerrado técnicamente en preapertura; CAPTCHA activo, signup OFF y
+> Google Testing hasta publicar políticas. Estado exacto: `docs/RELEVO-CUENTAS-C2-2026-10-16.md` y
 > `CONTEXTO-MAGANDHI.md` §9.
 >
 > **Regla de migraciones:** los archivos ya aplicados son historia inmutable.
@@ -5355,8 +5357,10 @@ El plan C2–C4 y las decisiones de identidad están en
 > `20261101000000` aplicada; `cuenta-inicializar` desplegada con Verify JWT;
 > preflight limpio; login password, idempotencia, SMTP, TokenHash, recuperación
 > en otro navegador y cambio de contraseña verificados. Google Identity Services
-> está medido en External/Testing. Turnstile y CAPTCHA están activos y medidos;
-> signup continúa apagado.
+> está medido en External/Testing. Turnstile, CAPTCHA, un registro nuevo por
+> correo y un usuario Google realmente nuevo están medidos. C2 queda cerrado
+> técnicamente en preapertura; signup OFF y Google Testing hasta publicar
+> políticas.
 
 La RPC `cc_inicializar_cuenta()` no recibe UID, correo ni `customer_id`: deriva
 la identidad de `auth.uid()` y `auth.users`, exige correo confirmado y vincula
@@ -5369,6 +5373,8 @@ La Edge Function `cuenta-inicializar` conserva el JWT del usuario, no usa
 está en `magandhi/cuenta/`; Google usa GIS con ID token y nonce, y los correos
 usan TokenHash.
 
-No volver a aplicar C1/C2 ni repetir SMTP, Google o Turnstile. Continuar desde
-`docs/RELEVO-CUENTAS-C2-2026-10-16.md`: registro nuevo controlado por correo con
-CAPTCHA activo y signup abierto solo para aceptar esa alta.
+No volver a aplicar C1/C2 ni repetir SMTP, Google o Turnstile. C2 está cerrado
+técnicamente en preapertura. Continuar desde
+`docs/RELEVO-CUENTAS-C2-2026-10-16.md` solo cuando se retome la apertura:
+publicar políticas y avisos contextuales antes de Google Production y signup
+permanente.

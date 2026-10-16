@@ -87,13 +87,16 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > acceso. Turnstile quedó publicado mediante tienda #97/#98 y CAPTCHA está
 > activo en Supabase: login y recuperación con token válido fueron aceptados,
 > una llamada sin token fue rechazada con `captcha_failed`/400 y el widget se
-> renovó tras expirar. **Signup público continúa apagado.**
+> renovó tras expirar. La apertura controlada también midió un registro nuevo por
+> correo —confirmación, inicialización y segundo login— y Google con un usuario
+> realmente nuevo: identidades únicas y una sola cuenta activa. **C2 queda
+> cerrado técnicamente en preapertura. CAPTCHA sigue activo; signup permanece
+> OFF y Google External/Testing.**
 >
-> **Lo siguiente exacto es un registro nuevo controlado por correo con CAPTCHA
-> activo.** Abrir signup solo el tiempo necesario para aceptar el alta, volver a
-> apagarlo y después completar confirmación, inicialización e idempotencia.
-> Luego: Google con un usuario realmente nuevo, políticas y apertura controlada.
-> Relevo vigente: `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
+> La apertura pública se aplaza por decisión del dueño hasta redactar, revisar y
+> publicar políticas y avisos contextuales. Solo después se prepara Google
+> Production y se activa signup permanente. Relevo vigente:
+> `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
 
 ## 1. Separación de superficies
 
@@ -348,18 +351,14 @@ Cuentas de cliente sigue siendo el frente prioritario, ahora en **preapertura**:
 1. **C1 está desplegado y cerrado** (PR #268, migración `20261031000000`):
    puente Auth→cliente, separación firme del personal, guardia interna y actor
    cliente en la matriz.
-2. **C2 está construido y desplegado** (backend #270, tienda #93, migración
-   `20261101000000` y `cuenta-inicializar`). Correo/contraseña, SMTP,
-   TokenHash, recuperación cross-browser y vínculo idempotente están medidos.
-   Google Identity Services se publicó en tienda #95 y quedó medido en
-   External/Testing: `magandhi.com` visible, mismo UID/identidad y una sola
-   cuenta activa. Turnstile se publicó en tienda #97/#98 y CAPTCHA está activo
-   en Supabase: login/recuperación válidos, omisión rechazada y renovación tras
-   expiración están medidos. Signup sigue apagado.
-3. **Siguiente exacto:** registro nuevo controlado por correo con CAPTCHA activo.
-   Preparar formulario y Turnstile, abrir signup solo para aceptar esa alta,
-   volver a apagarlo y completar confirmación, inicialización e idempotencia.
-   Luego probar Google con un usuario nuevo y cerrar políticas antes de abrir.
+2. **C2 está cerrado técnicamente en preapertura** (backend #270, tienda #93,
+   Google GIS #95 y Turnstile #97/#98). Correo/contraseña, SMTP, TokenHash,
+   recuperación cross-browser, CAPTCHA, alta nueva por correo, alta Google con
+   usuario nuevo e idempotencia están medidos: identidades únicas y una sola
+   cuenta activa. CAPTCHA sigue activo; signup OFF y Google External/Testing.
+3. **Apertura diferida por decisión del dueño:** redactar, revisar y publicar
+   políticas y avisos contextuales. Solo después preparar Google Production y
+   activar signup permanente. No reabrir pruebas de C1/C2 al retomar.
    Ver `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
 4. Después: **C3** (Mi cuenta: perfil, direcciones, pedidos, estado y opiniones)
    y **C4** (checkout autenticado con `customer_id` derivado en servidor).
