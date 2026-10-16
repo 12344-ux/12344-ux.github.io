@@ -1,7 +1,7 @@
 # PLANO · Fase comercial: Carrito + Promocionar
 
 **Decisión del dueño:** 16 de octubre de 2026  
-**Estado:** aprobado para construir por tramos; **nada de este plano está desplegado todavía**.  
+**Estado por tramos:** **C1 desplegado y probado en estructura**; C2 siguiente; C3–C4 y P0–P5 pendientes. La fase completa no está cerrada.
 **Superficies:** back-office `montaguth.institute`, tienda `magandhi.com` y backend compartido en Supabase.
 
 Este plano reúne los dos frentes comerciales elegidos para la siguiente evolución de MAGANDHI:
@@ -158,7 +158,18 @@ Tienda:
 - total visible antes de continuar;
 - compra invitada y retorno Wompi intactos.
 
-**Cierre:** cantidad 1 no cambia; máximo, máximo+1, baja de stock y pago repetido se comportan con verdad y sin sobreventa.
+**Cierre final del contrato:** cantidad 1 no cambia; máximo, máximo+1, baja de stock y pago repetido se comportan con verdad y sin sobreventa.
+
+**Estado medido · 16-oct-2026: desplegado y probado en estructura.**
+
+- Backend/back-office #276 fusionado a `main` en `e75dc1cbd1643d3897e851cc2e06fe47f3b87ecc`; tienda #102 fusionada en `db56c4f64de9dc2af5ac77b3c444467e1a72cb0c`.
+- Migración `20261102000000_comercial_c1_cantidad_inmediata.sql` aplicada; postflight 9/9 `true`; `crear-intencion-pago` desplegada; tienda publicada.
+- Cantidad 1: HTTP 200 y persistencia 7/7 `true`, sin pago, pedido ni webhook.
+- Cantidad 2 con máximo 1: HTTP 409 `MAX_COMPRABLE`.
+- Grisi con máximo 2 y `max_comprable=2`: intención HTTP 200 por 13.980.000 centavos (COP 139.800).
+- El dueño confirmó selector, máximo, total, modal y compra invitada estructural.
+
+**Límite:** no hubo pago real de dos unidades. Para cantidad 2 no se midieron webhook, pedido, baja de dos unidades, asiento, correo ni repetición/idempotencia. Por eso C1 está listo en estructura, pero esta evidencia no satisface todavía la parte transaccional de su cierre final ni relaja la definición de terminado de la fase. Una prueba monetaria qty2 es opcional y requiere autorización expresa del dueño.
 
 ### C2 · Carrito autenticado persistente
 
@@ -327,16 +338,16 @@ Ventas muestra la procedencia validada. Los pedidos manuales pueden tener una fu
 
 ## 5. Orden de construcción
 
-Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo.
+Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual: C1 desplegado y probado en estructura, C2 siguiente; lo demás permanece pendiente.
 
-1. **Plano y arranque** — este documento y referencias de contexto.
-2. **C1 · cantidad inmediata** — valor comercial rápido y cimiento de carrito.
-3. **C2 · carrito persistente** — datos/RLS/UI, todavía apagable.
-4. **C3–C4 · pago de carrito** — intención multiproducto, Wompi y cuenta.
-5. **P1 · producto compartible** — también resuelve SEO/IA pendiente.
-6. **P2 · estudio Promocionar** — enlaces largos, textos, preview, QR y kit.
-7. **P3–P4 · enlace corto y atribución** — backend, routing y pago.
-8. **P5 · lectura comercial** — métricas sobre hechos ya capturados.
+1. **Plano y arranque — cerrado.** Este documento y referencias de contexto.
+2. **C1 · cantidad inmediata — estructura lista.** Valor comercial rápido y cimiento de carrito; sin afirmar cierre transaccional de qty2.
+3. **C2 · carrito persistente — siguiente.** Datos/RLS/UI, todavía apagable.
+4. **C3–C4 · pago de carrito — pendiente.** Intención multiproducto, Wompi y cuenta.
+5. **P1 · producto compartible — pendiente.** También resuelve SEO/IA pendiente.
+6. **P2 · estudio Promocionar — pendiente.** Enlaces largos, textos, preview, QR y kit.
+7. **P3–P4 · enlace corto y atribución — pendiente.** Backend, routing y pago.
+8. **P5 · lectura comercial — pendiente.** Métricas sobre hechos ya capturados.
 
 P1/P2 pueden avanzar en paralelo con C2 si se mantienen en ramas/PR separados. No se mezclan carrito, redirector y metadata en una sola migración o despliegue.
 
@@ -356,6 +367,13 @@ P1/P2 pueden avanzar en paralelo con C2 si se mantienen en ramas/PR separados. N
 10. Actualización de este plano y `CONTEXTO-MAGANDHI.md` con evidencia real.
 
 Nunca inferir “desplegado” porque el código esté fusionado.
+
+**C1 siguió este orden hasta la medición estructural:** migración aplicada,
+postflight 9/9 `true`, `crear-intencion-pago` desplegada, tienda publicada y
+pruebas controladas sin dinero. No se ejecutó el paso monetario opcional para
+cantidad 2; por tanto no se atribuyen a ese caso webhook, pedido, inventario,
+asiento, correo ni idempotencia. C2 continúa desde este punto sin reconstruir
+C1.
 
 ---
 

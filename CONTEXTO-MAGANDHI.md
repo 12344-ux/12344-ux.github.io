@@ -61,7 +61,7 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > nunca bloquea el asiento, al contrario que el costo y el flete. Banco SQL
 > **613/613**, matriz **170/170**, pantalla **70/70**.
 >
-> **El estado actual de producción llega hasta la migración `20261101000000`.**
+> **El estado actual de producción llega hasta la migración `20261102000000`.**
 >
 > **Cuentas de cliente C1 · DESPLEGADO · 15-oct-2026 (PR #268).** El dueño
 > decidió conservar compra como invitado y añadir inicio de sesión opcional en
@@ -95,8 +95,26 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 >
 > La apertura pública se aplaza por decisión del dueño hasta redactar, revisar y
 > publicar políticas y avisos contextuales. Solo después se prepara Google
-> Production y se activa signup permanente. Relevo vigente:
+> Production y se activa signup permanente. Relevo temático de cuentas:
 > `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
+>
+> **Comercial C1 · DESPLEGADO Y PROBADO EN ESTRUCTURA · 16-oct-2026.** Backend
+> PR #276 fusionado a `main` (`e75dc1cbd1643d3897e851cc2e06fe47f3b87ecc`) y
+> tienda #102 fusionada (`db56c4f64de9dc2af5ac77b3c444467e1a72cb0c`). La
+> migración `20261102000000_comercial_c1_cantidad_inmediata.sql` está aplicada,
+> el postflight dio 9/9 `true`, `crear-intencion-pago` está desplegada y la
+> tienda publicada.
+>
+> Cantidad 1 respondió HTTP 200 y persistió 7/7 comprobaciones, sin llegar a
+> pago, pedido o webhook. Cantidad 2 contra máximo 1 fue rechazada 409
+> `MAX_COMPRABLE`; después Grisi quedó con máximo 2 y `max_comprable=2`, y su
+> intención por dos unidades respondió HTTP 200 por 13.980.000 centavos (COP
+> 139.800). El dueño confirmó selector, máximo, total, modal y compra invitada
+> estructural. **No hubo compra real de dos unidades:** para ese caso no se
+> midieron webhook, pedido, baja de dos unidades, asiento, correo ni repetición o
+> idempotencia. El siguiente tramo aprobado es Comercial C2, carrito autenticado
+> persistente. Relevo general vigente:
+> `docs/RELEVO-COMERCIAL-C1-2026-10-16.md`.
 
 ## 1. Separación de superficies
 
@@ -255,7 +273,9 @@ Entrega del código: va en el correo de «Entregado», ya en producción. Opinio
 
 ### Catálogo público
 
-Expone datos necesarios para home/producto y el booleano `agotado`. Nunca expone:
+Expone datos necesarios para home/producto, el booleano `agotado` y
+`max_comprable` (`0..20`), ya limitado por el máximo de Campañas y la
+disponibilidad autoritativa. Nunca expone:
 
 - existencias exactas;
 - costo o proveedor;
@@ -286,6 +306,11 @@ Diseño completo en `docs/PLANO-PAGOS.md` y runbook en `supabase/INSTRUCCIONES.m
 | F3 | Asiento contable automático de la venta real contra 138095 y contraasiento al anular. Correo «Recibido» automático. Los pagos de prueba (sandbox) no tocan los libros |
 | F4 | URL de eventos de producción corregida, secretos y llave pública de producción cargados, interruptor `pagos_config.entorno` |
 | D0 | **La vuelta de Wompi ya dice en qué quedó el pago** y bloquea «Comprar ahora» mientras no haya veredicto, así que nadie paga dos veces. RPC `pw_estado_publico` + Edge Function `estado-pago`: la autorización es la posesión de la referencia (como el código de reseña) y la respuesta trae solo el estado, el nombre y el slug. **No abre nada para `anon`.** Desplegado el 10-oct-2026 |
+| Comercial C1 | Compra inmediata acepta la cantidad seleccionada `1..max_comprable`; servidor relee precio, máximo y disponibilidad y persiste el monto total. **Desplegado y probado en estructura:** qty1 sin pago y qty2 hasta intención; no hubo cierre transaccional real de dos unidades |
+
+**Comercial C1 no cambia la definición de pago aprobado.** Su evidencia actual
+termina en la intención; no autoriza a atribuir pedido, inventario, asiento,
+correo o idempotencia a la cantidad 2.
 
 **Verificado el 9-oct-2026 con una compra real** (el shampoo, $69.900, pagado con Nequi):
 - el pedido web y una unidad menos en Inventario;
@@ -328,12 +353,14 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 - `docs/MAPA-CONEXIONES-TANDA2.md`: mapa técnico de las conexiones ya implementadas.
 - `docs/CUENTAS-CLIENTE.md`: decisiones permanentes de identidad, compra como
   invitado y tramos C1–C4.
-- `docs/PLANO-FASE-COMERCIAL.md`: siguiente evolución aprobada —cantidades,
-  carrito autenticado y Promocionar— con fórmulas, contratos, orden de
-  despliegue y criterios de cierre. **Planificado; no desplegado.**
-- `docs/RELEVO-CUENTAS-C2-2026-10-16.md`: relevo más reciente; C2 está
-  desplegado en preapertura y el siguiente paso es la prueba controlada de
-  Google con signup apagado.
+- `docs/PLANO-FASE-COMERCIAL.md`: evolución aprobada —cantidades, carrito
+  autenticado y Promocionar— con fórmulas, contratos, orden de despliegue y
+  criterios de cierre. **C1 está desplegado y probado en estructura; C2 es el
+  siguiente tramo; C3–C4 y P0–P5 siguen pendientes.**
+- `docs/RELEVO-COMERCIAL-C1-2026-10-16.md`: relevo general más reciente; fija la
+  evidencia exacta de C1, su límite no transaccional y el arranque de C2.
+- `docs/RELEVO-CUENTAS-C2-2026-10-16.md`: relevo histórico temático de cuentas;
+  conserva la evidencia de preapertura y gobierna ese frente cuando se retome.
 - `docs/RELEVO-CUENTAS-2026-10-15.md`: relevo histórico de C1 y diseño de
   entrada a C2; ya no gobierna el arranque.
 - `docs/dropshipping-envios/`: frente del 9–10-oct-2026 (productos de proveedor
@@ -343,30 +370,43 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 - `supabase/pruebas/local/herramientas/LEEME.md`: banco de pruebas local (también corre en GitHub Actions en cada rama).
 
 Los relevos antiguos y `ANDAMIOS.md` se retiraron el 9-oct porque su contenido
-vigente pasó a este archivo. El relevo vigente de cuentas es
-`docs/RELEVO-CUENTAS-C2-2026-10-16.md`; conserva la evidencia de C2 y evita
-repetir migración, SMTP, plantillas o configuración Google.
+vigente pasó a este archivo. El relevo general vigente es
+`docs/RELEVO-COMERCIAL-C1-2026-10-16.md`; evita reconstruir C1 y fija Comercial
+C2 como siguiente tramo. El relevo temático de cuentas
+`docs/RELEVO-CUENTAS-C2-2026-10-16.md` conserva su evidencia histórica y evita
+repetir migración, SMTP, plantillas o configuración Google al retomar esa
+apertura.
 
 ## 9. Pendientes vigentes
 
-### Fase comercial aprobada · 16-oct-2026 · no desplegada
+### Fase comercial aprobada · 16-oct-2026 · estado por tramos
 
-El siguiente trabajo de producto se divide en dos frentes, gobernados por
-`docs/PLANO-FASE-COMERCIAL.md`:
+Gobierna `docs/PLANO-FASE-COMERCIAL.md`. No confundir la fase completa con el
+cierre estructural de su primer tramo:
 
-1. **Cantidades y carrito autenticado.** Campañas define un máximo por pedido;
-   la cantidad también funciona para invitado y el carrito solo para sesión
-   válida. El máximo efectivo de producto propio respeta Inventario; el de
-   proveedor es `min(máximo campaña, stock − pendientes − piso Dropi)`, de modo
-   que el remanente posterior conserva el piso. El checkout multiproducto debe
-   congelar líneas, precio y total antes de firmar Wompi.
-2. **Promocionar.** Estudio propio con URL canónica, enlaces por canal, previews,
-   textos, QR, kit visual, enlaces de marca y atribución hasta la venta. Meta
-   Ads, Pixel, Conversions API y publicación automática quedan fuera.
+1. **Comercial C1 · cantidad inmediata: desplegado y probado en estructura.**
+   Migración `20261102000000` aplicada, postflight 9/9 `true`, Edge Function y
+   tienda desplegadas. Cantidad 1 persistió correctamente sin pago; máximo+1
+   devolvió 409 `MAX_COMPRABLE`; cantidad 2 abrió una intención por COP 139.800.
+   El dueño confirmó selector, máximo, total, modal y compra invitada. **No hubo
+   pago real de dos unidades** ni se midieron para ese caso webhook, pedido,
+   baja2, asiento, correo o idempotencia.
+2. **Comercial C2 · carrito autenticado persistente: siguiente construcción
+   aprobada.** Debe guardar, consolidar, cambiar y retirar líneas bajo RLS por
+   UID, persistir entre dispositivos y permanecer apagable; todavía no toca el
+   pago multiproducto.
+3. **Comercial C3–C4:** intención/checkout multiproducto, Wompi, vínculo de
+   cuenta y ciclo postpago siguen pendientes.
+4. **Promocionar P0–P5:** producto compartible, estudio, enlace, atribución y
+   lectura comercial siguen pendientes. Meta Ads, Pixel, Conversions API y
+   publicación automática continúan fuera de alcance.
 
-Ambos se construyen y activan por tramos. No confundir la aprobación de este
-plano con código desplegado. La idea de mostrar proveedor público se descartó;
-MAGANDHI continúa siendo quien vende, cobra y responde.
+La definición final de la fase no se relaja: cuando un tramo llegue a pago real,
+debe demostrar monto exacto, un solo pedido, inventario correcto e idempotencia.
+Una prueba real de cantidad 2 es opcional y requiere autorización expresa del
+dueño; no bloquea C2. La idea de mostrar proveedor público se descartó;
+MAGANDHI continúa siendo quien vende, cobra y responde. Continuar desde
+`docs/RELEVO-COMERCIAL-C1-2026-10-16.md`.
 
 Cuentas de cliente sigue en **preapertura**:
 
