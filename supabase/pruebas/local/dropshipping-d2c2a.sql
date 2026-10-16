@@ -71,7 +71,7 @@ select pg_temp.chk(
 select pg_temp.chk(
   pg_temp.err($$select crear_pedido(
     p_nombre => 'Cliente Prueba', p_correo => 'cli@local.invalid',
-    p_direccion => 'Calle 1', p_ciudad => 'Bogota', p_canal => 'web',
+    p_direccion => 'Calle 1', p_ciudad => 'Bogota', p_canal => 'manual',
     p_items => jsonb_build_array(jsonb_build_object(
       'product_id', 'd0000000-0000-4000-8000-00000000000b',
       'cantidad', 1, 'precio_unitario', 59900)))$$) = 'SIN ERROR',
@@ -150,10 +150,10 @@ values ('d0000000-0000-4000-8000-00000000000c', '2296058', 200, now(), now())
 select pg_temp.chk(
   pg_temp.err($$select crear_pedido(
     p_nombre => 'Cliente X', p_correo => 'x@local.invalid',
-    p_direccion => 'Calle 4', p_ciudad => 'Bogota', p_canal => 'web',
+    p_direccion => 'Calle 4', p_ciudad => 'Bogota', p_canal => 'manual',
     p_items => jsonb_build_array(jsonb_build_object(
       'product_id', 'd0000000-0000-4000-8000-00000000000c',
-      'cantidad', 1, 'precio_unitario', 49900)))$$) like '%reporta 0 unidad%en el proveedor%',
+      'cantidad', 1, 'precio_unitario', 49900)))$$) like '%reporta 0 unidad%proveedor%',
   'una lectura VENCIDA rechaza la venta, con el mensaje propio del proveedor');
 
 update producto_proveedor set stock_reportado = 19, stock_vence_en = now() + interval '2 hours'
@@ -161,7 +161,7 @@ update producto_proveedor set stock_reportado = 19, stock_vence_en = now() + int
 select pg_temp.chk(
   pg_temp.err($$select crear_pedido(
     p_nombre => 'Cliente Y', p_correo => 'y@local.invalid',
-    p_direccion => 'Calle 5', p_ciudad => 'Bogota', p_canal => 'web',
+    p_direccion => 'Calle 5', p_ciudad => 'Bogota', p_canal => 'manual',
     p_items => jsonb_build_array(jsonb_build_object(
       'product_id', 'd0000000-0000-4000-8000-00000000000c',
       'cantidad', 1, 'precio_unitario', 49900)))$$) like '%STOCK_INSUFICIENTE%',
@@ -179,20 +179,20 @@ select pg_temp.chk(
 update producto_proveedor set stock_reportado = 22, stock_vence_en = now() + interval '2 hours'
   where product_id = 'd0000000-0000-4000-8000-00000000000b';
 select pg_temp.chk(
-  ventas_disponible_para_venta('d0000000-0000-4000-8000-00000000000b') = 21,
-  'con 22 reportadas y 1 pedido sin transcribir, disponibles = 21');
+  ventas_disponible_para_venta('d0000000-0000-4000-8000-00000000000b') = 1,
+  'con 22 reportadas, piso 20 y 1 pedido sin transcribir, disponible = 1');
 
 update pedido_proveedor set cantidad = 3
   where product_id = 'd0000000-0000-4000-8000-00000000000b';
 select pg_temp.chk(
-  ventas_disponible_para_venta('d0000000-0000-4000-8000-00000000000b') = 19,
-  'tres unidades sin transcribir restan tres');
+  ventas_disponible_para_venta('d0000000-0000-4000-8000-00000000000b') = 0,
+  'tres pendientes y piso 20 consumen el margen vendible');
 
 update pedido_proveedor set transcrito_en = now(), pedido_externo_id = 'DROPI-123'
   where product_id = 'd0000000-0000-4000-8000-00000000000b';
 select pg_temp.chk(
-  ventas_disponible_para_venta('d0000000-0000-4000-8000-00000000000b') = 22,
-  'al transcribir dejan de restar: ya es Dropi quien las descontó');
+  ventas_disponible_para_venta('d0000000-0000-4000-8000-00000000000b') = 2,
+  'al transcribir dejan de restar; el piso 20 sigue protegido');
 
 select pg_temp.chk(
   pg_temp.err($$update pedido_proveedor set transcrito_en = now(), pedido_externo_id = null
@@ -202,9 +202,9 @@ select pg_temp.chk(
 -- ------------------------------------------------------------
 -- (6) La vitrina y el checkout NO pueden discrepar
 -- ------------------------------------------------------------
--- La vista repite la condición en vez de llamar a la función, porque `anon`
--- necesitaría EXECUTE y la función devuelve existencias exactas. Esta prueba es
--- lo que impide que las dos versiones se separen con el tiempo.
+-- C1 expone max_comprable ya acotado y agotado deriva exactamente de él.
+-- Esta prueba compara la vista con la única regla de campaña, sin volver a
+-- inferir el contrato público desde existencias exactas.
 select set_config('impulse.ds_importando', 'on', true);
 insert into campana_producto (id, nombre, slug, product_id_ref, precio_venta, publicado, activo)
 values
@@ -223,18 +223,19 @@ select pg_temp.chk(
     join campana_producto cp on cp.id = c.id
     join productos p on p.id = cp.product_id_ref
     where p.origen = 'proveedor'
-      and c.agotado <> (coalesce(ventas_disponible_para_venta(cp.product_id_ref), 0) <= 0)
+      and (c.max_comprable is distinct from ventas_max_comprable_campana(cp.id)
+           or c.agotado is distinct from (ventas_max_comprable_campana(cp.id) = 0))
   ),
-  'la vista y ventas_disponible_para_venta COINCIDEN para todo producto proveedor');
+  'la vista coincide con la regla única de máximo comprable para proveedor');
 
 update pedido_proveedor set transcrito_en = null, pedido_externo_id = null
   where product_id = 'd0000000-0000-4000-8000-00000000000b';
 update producto_proveedor set stock_reportado = 21
   where product_id = 'd0000000-0000-4000-8000-00000000000b';
 select pg_temp.chk(
-  (select agotado from catalogo_publico where slug = 'camp-prov') is false
-  and ventas_disponible_para_venta('d0000000-0000-4000-8000-00000000000b') = 18,
-  'con 21 reportadas y 3 reservadas sigue en vitrina (18 disponibles)');
+  (select agotado from catalogo_publico where slug = 'camp-prov') is true
+  and ventas_disponible_para_venta('d0000000-0000-4000-8000-00000000000b') = 0,
+  'con 21 reportadas, piso 20 y 3 reservadas queda agotado');
 
 update producto_proveedor set stock_reportado = 22
   where product_id = 'd0000000-0000-4000-8000-00000000000b';
@@ -267,8 +268,8 @@ select pg_temp.chk(
   'anular proveedor no inventa una entrada de inventario');
 
 select pg_temp.chk(
-  ventas_disponible_para_venta('d0000000-0000-4000-8000-00000000000b') = 22,
-  'un pedido anulado deja de reservar unidades');
+  ventas_disponible_para_venta('d0000000-0000-4000-8000-00000000000b') = 2,
+  'un pedido anulado deja de reservar; el piso 20 permanece protegido');
 
 -- Y anular un pedido PROPIO sigue devolviendo stock.
 select pg_temp.chk(
@@ -317,8 +318,9 @@ select pg_temp.chk(
 -- (9) Permisos
 -- ------------------------------------------------------------
 select pg_temp.chk(
-  not has_function_privilege('anon', 'public.ventas_disponible_para_venta(uuid)', 'execute'),
-  'anon NO puede ejecutar ventas_disponible_para_venta (devuelve existencias exactas)');
+  not has_function_privilege('anon', 'public.ventas_disponible_para_venta(uuid)', 'execute')
+  and not has_function_privilege('authenticated', 'public.ventas_disponible_para_venta(uuid)', 'execute'),
+  'solo el servidor puede ejecutar ventas_disponible_para_venta (devuelve existencias exactas)');
 
 select pg_temp.chk(
   not has_table_privilege('anon', 'pedido_proveedor', 'select'),

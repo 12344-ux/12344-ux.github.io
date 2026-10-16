@@ -85,11 +85,22 @@ chk(basura.split("|")[0] === "-", "saneado: un utm_campaign con formato inválid
 chk(basura.split("|")[1] === "-", "saneado: un mg_vid con formato inválido no entra");
 chk(Number(basura.split("|")[2]) <= 120, "saneado: el nombre se recorta a una longitud sana");
 
-// ---------- 4. Cantidad distinta de 1 sigue rechazada (y no persiste) ----------
-const r4 = await pedir({ producto: "i-p1", cantidad: 1000 });
-chk(r4.status === 400, "seguridad: cantidad distinta de 1 se rechaza con 400");
-chk((await sql("select count(*) from pagos_intencion where cantidad <> 1")) === "0",
-  "seguridad: no queda ninguna intención con cantidad distinta de 1");
+// ---------- 4. C1 admite más de una unidad hasta el máximo comercial ----------
+const r4 = await pedir({ producto: "i-p1", cantidad: 2 });
+const ref4 = String(r4.cuerpo.referencia ?? "");
+chk(r4.status === 200 && r4.cuerpo.monto_en_centavos === "6000000",
+  "cantidad: dos unidades dentro del máximo se firman por el monto exacto");
+chk((await sql(`select cantidad || '|' || monto_centavos from pagos_intencion where referencia = '${ref4}'`)) === "2|6000000",
+  "cantidad: la intención persiste dos unidades y su monto autoritativo");
+
+const r4Max = await pedir({ producto: "i-p1", cantidad: 4 });
+chk(r4Max.status === 409 && r4Max.cuerpo.codigo === "MAX_COMPRABLE",
+  "cantidad: max+1 se rechaza con el contrato público de disponibilidad");
+
+const r4Techo = await pedir({ producto: "i-p1", cantidad: 1000 });
+chk(r4Techo.status === 400, "seguridad: cantidad fuera de 1..20 se rechaza con 400");
+chk((await sql("select count(*) from pagos_intencion where cantidad not between 1 and 20")) === "0",
+  "seguridad: no queda ninguna intención fuera del rango 1..20");
 
 // ---------- 5. Producto inexistente: ni firma ni intención ----------
 const antes = await sql("select count(*) from pagos_intencion");

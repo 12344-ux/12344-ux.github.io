@@ -187,42 +187,79 @@ async function verificarProveedorEnVivo(
   // deno-lint-ignore no-explicit-any
   supabase: any,
   campanaId: string,
-): Promise<{ rechazar: boolean; log: Obj }> {
+  cantidad: number,
+  maxCatalogo: number,
+): Promise<{ rechazar: boolean; maxComprable: number; log: Obj }> {
   let datos: Obj | null = null;
   try {
-    const { data } = await supabase.rpc("ds_verificacion_checkout", { p_campana_id: campanaId });
+    const { data, error } = await supabase.rpc("ds_verificacion_checkout", {
+      p_campana_id: campanaId,
+    });
+    if (error) {
+      return {
+        rechazar: true,
+        maxComprable: 0,
+        log: { motivo: "fallo ds_verificacion_checkout", codigo: error.code ?? null },
+      };
+    }
     datos = esObjeto(data) ? data : null;
   } catch (_) {
     datos = null;
   }
 
-  // Sin datos (migracion D2c.2c no aplicada, o campania sin producto): no se
-  // inventa una verificacion ni se bloquea una venta que hoy ya funciona. El
-  // candado de crear_pedido sigue detras.
-  if (!datos) return { rechazar: false, log: { motivo: "sin datos de verificacion" } };
-  if (datos.origen !== "proveedor") return { rechazar: false, log: { origen: datos.origen } };
+  // C1 depende de esta lectura autoritativa. Una RPC ausente o sin datos falla
+  // cerrada; no se firma una intención que omitió una de sus reglas.
+  if (!datos) {
+    return {
+      rechazar: true,
+      maxComprable: 0,
+      log: { motivo: "sin datos de verificacion" },
+    };
+  }
+  if (datos.origen !== "proveedor") {
+    return {
+      rechazar: false,
+      maxComprable: maxCatalogo,
+      log: { origen: datos.origen },
+    };
+  }
 
   const dropiId = String(datos.dropi_id ?? "");
   const variante = datos.variante == null ? null : String(datos.variante);
   const piso = Number(datos.piso ?? 20);
   const reservadas = Number(datos.reservadas ?? 0);
+  const disponibleLocal = Number(datos.disponible_local ?? 0);
   const minutos = datos.minutos_desde_lectura == null ? null : Number(datos.minutos_desde_lectura);
   const frescuraMax = Number(datos.frescura_max_min ?? 10);
   const token = (Deno.env.get("DROPI_TOKEN") ?? "").trim();
+  const maxCache = Number.isFinite(disponibleLocal)
+    ? Math.max(0, Math.min(20, maxCatalogo, Math.floor(disponibleLocal)))
+    : 0;
 
-  // Sin id externo no hay a quien preguntarle, y tampoco a quien pedirle: un
-  // producto proveedor sin ficha no se puede despachar.
+  // Sin id externo no hay a quien preguntarle, y tampoco a quien pedirle.
   if (!/^\d{1,12}$/.test(dropiId)) {
-    return { rechazar: true, log: { motivo: "producto proveedor sin id de Dropi" } };
+    return {
+      rechazar: true,
+      maxComprable: 0,
+      log: { motivo: "producto proveedor sin id de Dropi" },
+    };
   }
 
   const lecturaFresca = minutos !== null && minutos <= frescuraMax;
+  const cacheAlcanza = maxCache >= cantidad;
 
   if (!token) {
-    // Falta el secreto: es un problema NUESTRO de configuracion, no del stock.
+    const permitido = lecturaFresca && cacheAlcanza;
     return {
-      rechazar: !lecturaFresca,
-      log: { motivo: "falta DROPI_TOKEN", lectura_min: minutos, permitido: lecturaFresca },
+      rechazar: !permitido,
+      maxComprable: permitido ? maxCache : 0,
+      log: {
+        motivo: "falta DROPI_TOKEN",
+        lectura_min: minutos,
+        disponible_local: disponibleLocal,
+        cantidad,
+        permitido,
+      },
     };
   }
 
@@ -230,8 +267,6 @@ async function verificarProveedorEnVivo(
   let cuerpo: Obj | null = null;
   try {
     const ctrl = new AbortController();
-    // Corto a proposito: hay una persona esperando para pagar. Si Dropi tarda
-    // mas que esto, se decide con la lectura en cache.
     const t = setTimeout(() => ctrl.abort(), 6000);
     try {
       const r = await fetch(`${DROPI_BASE}products/v2/${encodeURIComponent(dropiId)}`, {
@@ -258,33 +293,48 @@ async function verificarProveedorEnVivo(
   }
 
   if (http !== 200 || !cuerpo) {
-    // Dropi no confirmo. Decide la EDAD de la evidencia.
+    const permitido = lecturaFresca && cacheAlcanza;
     return {
-      rechazar: !lecturaFresca,
+      rechazar: !permitido,
+      maxComprable: permitido ? maxCache : 0,
       log: {
         motivo: "Dropi no confirmo",
         http,
         lectura_min: minutos,
         frescura_max: frescuraMax,
-        permitido: lecturaFresca,
+        disponible_local: disponibleLocal,
+        cantidad,
+        permitido,
       },
     };
   }
 
   const stock = stockDeLaFicha(cuerpo, variante);
   if (stock === null) {
+    const permitido = lecturaFresca && cacheAlcanza;
     return {
-      rechazar: !lecturaFresca,
-      log: { motivo: "ficha sin stock reconocible", permitido: lecturaFresca },
+      rechazar: !permitido,
+      maxComprable: permitido ? maxCache : 0,
+      log: {
+        motivo: "ficha sin stock reconocible",
+        disponible_local: disponibleLocal,
+        cantidad,
+        permitido,
+      },
     };
   }
 
-  // Dropi hablo: su numero manda, menos lo que ya nos llevamos sin transcribir.
-  const disponible = stock - reservadas;
-  const alcanza = disponible >= Math.max(piso, 1);
+  // Dropi habló: stock - reservas - cantidad debe seguir por encima del piso.
+  const maxVivo = Math.max(
+    0,
+    Math.min(20, maxCatalogo, Math.floor(stock - reservadas - piso)),
+  );
+  const remanente = stock - reservadas - cantidad;
+  const alcanza = cantidad <= maxVivo && remanente >= piso;
   return {
     rechazar: !alcanza,
-    log: { http, stock, reservadas, disponible, piso, alcanza },
+    maxComprable: maxVivo,
+    log: { http, stock, reservadas, cantidad, remanente, piso, max_vivo: maxVivo, alcanza },
   };
 }
 
@@ -326,22 +376,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
     );
   }
 
-  // Cantidad: EXACTAMENTE 1 (Tramo 0). Por defecto 1 si falta.
-  // POR QUE: esta funcion solo conoce el booleano `agotado`, no cuantas
-  // unidades hay. Antes aceptaba cualquier entero >= 1, asi que una llamada
-  // directa (sin pasar por la tienda) podia obtener una firma VALIDA para 1.000
-  // unidades con una sola en bodega. CORS no lo impide: no es autorizacion.
-  // La tienda solo vende de a una unidad por compra en esta fase, asi que el
-  // servidor exige lo mismo. Cuando exista selector de cantidad, este limite se
-  // reemplaza por una validacion real contra el stock (en F2, al persistir la
-  // intencion), nunca se quita sin esa validacion.
-  const CANTIDAD_PERMITIDA = 1;
-  let cantidad = CANTIDAD_PERMITIDA;
+  // C1 comercial: por defecto 1 para clientes existentes; si se envía, debe
+  // ser un entero seguro dentro del techo técnico global 1..20. El máximo
+  // efectivo de la campaña se valida después contra catalogo_publico y otra
+  // vez dentro de pw_registrar_intencion.
+  let cantidad = 1;
   if (body?.cantidad !== undefined && body?.cantidad !== null) {
-    const n = Number(body.cantidad);
-    if (n !== CANTIDAD_PERMITIDA) {
+    const n = body.cantidad;
+    if (typeof n !== "number" || !Number.isSafeInteger(n) || n < 1 || n > 20) {
       return json(
-        { error: "Por ahora cada compra es de una unidad ('cantidad' debe ser 1)." },
+        { error: "'cantidad' debe ser un entero entre 1 y 20." },
         400,
         cors,
       );
@@ -411,13 +455,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
   });
 
   // --- (1) Releer el producto de catalogo_publico server-side ---------------
-  // catalogo_publico expone id, slug, nombre, precio_venta (pesos enteros) y
-  // agotado (booleano derivado del stock real; NUNCA numeros). Se filtra por id
-  // si parece UUID, si no por slug.
+  // catalogo_publico expone únicamente el máximo ya acotado por Campañas y
+  // disponibilidad. Nunca revela stock, piso, reservas ni proveedor.
   const columna = pareceUuid(producto) ? "id" : "slug";
   const { data: fila, error: errorCatalogo } = await supabase
     .from("catalogo_publico")
-    .select("id, slug, nombre, precio_venta, agotado")
+    .select("id, slug, nombre, precio_venta, agotado, max_comprable")
     .eq(columna, producto)
     .maybeSingle();
 
@@ -448,10 +491,38 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ error: "Producto no encontrado." }, 404, cors);
   }
 
-  // --- (2) Rechazar producto agotado ----------------------------------------
-  // Coherente con el boton Comprar deshabilitado en la tienda cuando agotado.
-  if (fila.agotado === true) {
-    return json({ error: "Producto agotado." }, 409, cors);
+  // --- (2) Validar el máximo público efectivo ------------------------------
+  const maxComprable = Number(fila.max_comprable);
+  if (!Number.isInteger(maxComprable) || maxComprable < 0 || maxComprable > 20) {
+    console.error(
+      "[crear-intencion-pago] max_comprable invalido:",
+      JSON.stringify({ campana_id: fila.id ?? null, max_comprable: fila.max_comprable ?? null }),
+    );
+    return json({ error: "No se pudo validar la disponibilidad." }, 500, cors);
+  }
+  if (cantidad > maxComprable) {
+    return json(
+      {
+        error: "La cantidad solicitada supera el máximo disponible para este pedido.",
+        codigo: "MAX_COMPRABLE",
+        max_comprable: maxComprable,
+      },
+      409,
+      cors,
+    );
+  }
+
+  // Coherencia defensiva: agotado debe equivaler a max_comprable=0.
+  if (fila.agotado === true || maxComprable === 0) {
+    return json(
+      {
+        error: "Producto agotado.",
+        codigo: "MAX_COMPRABLE",
+        max_comprable: 0,
+      },
+      409,
+      cors,
+    );
   }
 
   // --- (2 bis) D2c.2c · VERIFICACION EN VIVO del producto de proveedor ------
@@ -465,13 +536,23 @@ Deno.serve(async (req: Request): Promise<Response> => {
   //
   // Va DESPUES del chequeo de agotado y ANTES de registrar la intencion: si
   // rechaza, no queda rastro de una intencion que nunca debio existir.
-  const verificacion = await verificarProveedorEnVivo(supabase, String(fila.id));
+  const verificacion = await verificarProveedorEnVivo(
+    supabase,
+    String(fila.id),
+    cantidad,
+    maxComprable,
+  );
   if (verificacion.rechazar) {
     console.log("[crear-intencion-pago] proveedor rechazado en vivo:", JSON.stringify(verificacion.log));
-    // MISMO mensaje que el agotado normal, a proposito: la tienda ya sabe
-    // traducirlo («se agotó mientras llenabas tus datos») y un texto distinto
-    // delataria cuales productos son de proveedor.
-    return json({ error: "Producto agotado." }, 409, cors);
+    return json(
+      {
+        error: "La disponibilidad cambió; ajusta la cantidad e intenta de nuevo.",
+        codigo: "MAX_COMPRABLE",
+        max_comprable: verificacion.maxComprable,
+      },
+      409,
+      cors,
+    );
   }
 
   // --- Validar el precio (entero positivo) ----------------------------------
@@ -590,22 +671,40 @@ Deno.serve(async (req: Request): Promise<Response> => {
   //
   // Si esto falla, NO se firma: es preferible que el comprador reintente que
   // cobrarle sin poder convertirlo en pedido.
-  const { error: errorIntencion } = await supabase.rpc("pw_registrar_intencion", {
-    p_referencia: referencia,
-    p_campana_id: fila.id ?? null,
-    p_slug: fila.slug ?? null,
-    p_nombre: fila.nombre ?? null,
-    p_cantidad: cantidad,
-    p_precio_unitario: precioTexto,
-    p_monto_centavos: montoEnCentavos,
-    p_entorno: entorno === "prod" ? "prod" : "sandbox",
-    p_comprador: comprador,
-    p_utm_campaign: utm,
-    p_mg_vid: mgVid,
-    p_moneda: moneda,
-  });
+  const { data: intencion, error: errorIntencion } = await supabase.rpc(
+    "pw_registrar_intencion",
+    {
+      p_referencia: referencia,
+      p_campana_id: fila.id ?? null,
+      p_slug: fila.slug ?? null,
+      p_nombre: fila.nombre ?? null,
+      p_cantidad: cantidad,
+      p_precio_unitario: precioTexto,
+      p_monto_centavos: montoEnCentavos,
+      p_entorno: entorno === "prod" ? "prod" : "sandbox",
+      p_comprador: comprador,
+      p_utm_campaign: utm,
+      p_mg_vid: mgVid,
+      p_moneda: moneda,
+    },
+  );
   if (errorIntencion) {
-    // Se loguea el motivo REAL de PostgREST (leccion de F1: no depurar a ciegas).
+    // Una baja entre la lectura pública y el lock autoritativo se informa con el
+    // mismo contrato público 409, sin filtrar detalles internos.
+    const maxEnError = /PW_MAX_COMPRABLE:(\d{1,2})/.exec(errorIntencion.message ?? "");
+    if (maxEnError) {
+      const maxActual = Math.max(0, Math.min(20, Number(maxEnError[1])));
+      return json(
+        {
+          error: "La disponibilidad cambió; ajusta la cantidad e intenta de nuevo.",
+          codigo: "MAX_COMPRABLE",
+          max_comprable: maxActual,
+        },
+        409,
+        cors,
+      );
+    }
+    // Se loguea el motivo REAL de PostgREST (sin secretos).
     console.error(
       "[crear-intencion-pago] No se pudo persistir la intencion:",
       JSON.stringify({
@@ -622,11 +721,21 @@ Deno.serve(async (req: Request): Promise<Response> => {
     );
   }
 
+  const intencionRegistrada = esObjeto(intencion) ? intencion : null;
+  const montoFirmado = String(intencionRegistrada?.monto_centavos ?? "");
+  const monedaFirmada = String(intencionRegistrada?.moneda ?? "");
+  if (!/^\d+$/.test(montoFirmado) || montoFirmado !== montoEnCentavos || monedaFirmada !== moneda) {
+    console.error("[crear-intencion-pago] Snapshot autoritativo inconsistente.");
+    return json({ error: "No se pudo confirmar el monto del pago." }, 500, cors);
+  }
+
   // --- Calcular la firma de integridad (server-side) ------------------------
+  // Se firma el monto que devolvió la RPC después de repetir las reglas bajo
+  // lock; nunca una cifra calculada solo desde la primera lectura pública.
   const firmaIntegridad = await calcularFirmaIntegridad(
     referencia,
-    montoEnCentavos,
-    moneda,
+    montoFirmado,
+    monedaFirmada,
     secretoIntegridad,
   );
 
@@ -652,8 +761,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
   return json(
     {
       referencia,
-      monto_en_centavos: montoEnCentavos,
-      moneda,
+      monto_en_centavos: montoFirmado,
+      moneda: monedaFirmada,
       firma_integridad: firmaIntegridad,
       llave_publica: llavePublica,
       url_redireccion: urlRedireccion,

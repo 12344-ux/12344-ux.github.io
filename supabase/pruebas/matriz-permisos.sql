@@ -164,13 +164,14 @@ begin
     if to_regprocedure('public.ds_estado_stock()') is not null then
       v_lista_blanca := v_lista_blanca || array['ds_estado_stock'];
     end if;
-    -- D2c.2a (20261027000000): la puerta unica de disponibilidad. La usa
-    -- crear_pedido y la pueden leer las pantallas internas de Ventas.
-    -- OJO: catalogo_publico NO la llama. Si la llamara, `anon` necesitaria
-    -- EXECUTE y esta funcion devuelve EXISTENCIAS EXACTAS, que la lista blanca
-    -- publica no puede exponer. Por eso la vista repite la condicion.
-    if to_regprocedure('public.ventas_disponible_para_venta(uuid)') is not null then
-      v_lista_blanca := v_lista_blanca || array['ventas_disponible_para_venta'];
+    -- D2c.2a (20261027000000) creó la puerta exacta de disponibilidad para
+    -- pantallas internas de Ventas. C1 la vuelve helper privado de servidor:
+    -- devuelve existencias exactas y ya no pertenece a la lista blanca de
+    -- authenticated; catalogo_publico solo expone max_comprable acotado.
+    -- C1 comercial: el máximo seguro (0..20) es parte del contrato público y
+    -- catalogo_publico necesita poder ejecutarlo bajo anon/authenticated.
+    if to_regprocedure('public.ventas_max_comprable_campana(uuid)') is not null then
+      v_lista_blanca := v_lista_blanca || array['ventas_max_comprable_campana'];
     end if;
     -- D2c.2b (20261028000000): las dos puertas del despacho manual. Ventas las
     -- necesita para ver qué falta transcribir a Dropi y para anotar el número
@@ -343,14 +344,18 @@ begin
       execute 'reset role';
     end loop;
 
-    -- ---------- EXECUTE: anon no ejecuta nada ----------
+    -- ---------- EXECUTE: anon solo el máximo público seguro de C1 ----------
+    -- catalogo_publico necesita ejecutar esta función y su retorno está acotado
+    -- a 0..20; no expone stock, piso, reservas, origen ni proveedor. Cualquier
+    -- otra función pública ejecutable por anon continúa siendo una falla.
     select string_agg(p.proname, ', ' order by p.proname) into v_extra
       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = 'public'
        and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
-       and has_function_privilege('anon', p.oid, 'execute');
+       and has_function_privilege('anon', p.oid, 'execute')
+       and p.proname <> 'ventas_max_comprable_campana';
     r_pers := r_pers || 'anon'::text;
-    r_obj  := r_obj  || 'EXECUTE sobre funciones de public'::text;
+    r_obj  := r_obj  || 'EXECUTE no permitido sobre funciones de public'::text;
     r_esp  := r_esp  || 'NINGUNA'::text;
     r_obt  := r_obt  || coalesce('PUEDE: ' || v_extra, 'NINGUNA');
 

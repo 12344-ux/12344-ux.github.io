@@ -136,7 +136,7 @@ select pg_temp.chk(
 select crear_pedido(
   p_nombre => 'Cliente Dos', p_correo => 'dos@local.invalid',
   p_direccion => 'Calle 2 # 2-2', p_ciudad => 'Pasto',
-  p_departamento => 'Narino', p_canal => 'web',
+  p_departamento => 'Narino', p_canal => 'manual',
   p_items => jsonb_build_array(jsonb_build_object(
     'product_id', 'e1000000-0000-4000-8000-0000000000a2',
     'cantidad', 1, 'precio_unitario', 29999)));
@@ -179,7 +179,7 @@ select pg_temp.chk(
 select crear_pedido(
   p_nombre => 'Cliente Uno', p_correo => 'uno@local.invalid',
   p_direccion => 'Calle 1 # 1-1', p_ciudad => 'Pasto',
-  p_departamento => 'Narino', p_canal => 'web',
+  p_departamento => 'Narino', p_canal => 'manual',
   p_items => jsonb_build_array(jsonb_build_object(
     'product_id', 'e1000000-0000-4000-8000-0000000000a1',
     'cantidad', 1, 'precio_unitario', 29999)));
@@ -284,7 +284,7 @@ select set_config('impulse.ds_importando', 'off', true);
 select crear_pedido(
   p_nombre => 'Cliente Tres', p_correo => 'tres@local.invalid',
   p_direccion => 'Calle 3 # 3-3', p_ciudad => 'Pasto',
-  p_departamento => 'Narino', p_canal => 'web',
+  p_departamento => 'Narino', p_canal => 'manual',
   p_items => jsonb_build_array(jsonb_build_object(
     'product_id', 'e1000000-0000-4000-8000-0000000000a3',
     'cantidad', 1, 'precio_unitario', 29999)));
@@ -308,7 +308,7 @@ insert into movimientos_inventario (product_id, tipo, cantidad, fecha)
 select crear_pedido(
   p_nombre => 'Cliente Propio', p_correo => 'propio@local.invalid',
   p_direccion => 'Calle 4 # 4-4', p_ciudad => 'Pasto',
-  p_departamento => 'Narino', p_canal => 'web',
+  p_departamento => 'Narino', p_canal => 'manual',
   p_items => jsonb_build_array(jsonb_build_object(
     'product_id', 'e1000000-0000-4000-8000-0000000000b1',
     'cantidad', 1, 'precio_unitario', 30000)));
