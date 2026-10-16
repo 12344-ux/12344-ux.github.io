@@ -653,9 +653,10 @@ $$;
 comment on function ventas_max_comprable_campana(uuid) is
   'C1 comercial · única regla del máximo comprable por campaña: 0 si no está publicable/comprable o tope_escaparate=0; si no, min(max_unidades_pedido, disponibilidad), acotado 0..20. Un tope_escaparate positivo NO limita este máximo. No revela stock, piso, reservas, origen ni proveedor.';
 
--- La vista pública del dueño puede invocarla, pero no se abre una RPC anónima.
-revoke all on function ventas_max_comprable_campana(uuid) from public, anon, authenticated;
-grant execute on function ventas_max_comprable_campana(uuid) to service_role;
+-- Esta función solo devuelve el máximo público acotado 0..20, por eso puede
+-- ejecutarla el catálogo anónimo sin abrir stock, piso, reservas ni proveedor.
+revoke all on function ventas_max_comprable_campana(uuid) from public;
+grant execute on function ventas_max_comprable_campana(uuid) to anon, authenticated, service_role;
 
 -- ----------------------------------------------------------------------------
 -- (D) Catálogo público: mismo shape y filtros; se agrega SOLO max_comprable al

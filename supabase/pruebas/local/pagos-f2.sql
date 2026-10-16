@@ -217,8 +217,8 @@ select pg_temp.chk(
     p_nombre => 'Mitad legacy', p_canal => 'web',
     p_items => jsonb_build_array(jsonb_build_object(
       'product_id','b6000000-0000-4000-8000-000000000001',
-      'cantidad',1,'precio_unitario',30000)))$$)$q$) like '%Acceso denegado%',
-  'compuerta: checkout_legacy sin contexto servidor tampoco abre crear_pedido');
+      'cantidad',1,'precio_unitario',30000)))$$)$q$) like '%CM_CAMPANA_REQUERIDA%',
+  'compuerta: checkout_legacy sin contexto servidor tampoco omite campana_id');
 select set_config('impulse.checkout_legacy', 'off', true);
 
 -- ---------- 12. Compatibilidad proveedor version 0, sin relajar C1 ----------

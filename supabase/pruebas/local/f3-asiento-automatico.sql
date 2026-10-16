@@ -29,11 +29,16 @@ exception when others then execute 'reset role'; raise; end $$;
 -- Una compra completa: intencion firmada + aviso APPROVED de Wompi.
 create or replace function pg_temp.pagar(ref text, campana uuid, precio bigint, entorno text, tx text)
 returns jsonb language plpgsql as $$
+declare
+  v_slug text;
+  v_nombre text;
 begin
-  perform pg_temp.srv(format($q$select pw_registrar_intencion(%L, %L::uuid, 'slug-f3', 'Producto F3', 1,
+  select slug, nombre into v_slug, v_nombre
+    from campana_producto where id = campana;
+  perform pg_temp.srv(format($q$select pw_registrar_intencion(%L, %L::uuid, %L, %L, 1,
     %s::bigint, %s::bigint, %L,
     '{"nombre":"Compradora F3","correo":"f3@cliente.invalid","telefono":"3001112233","ciudad":"Tunja"}'::jsonb)$q$,
-    ref, campana, precio, precio * 100, entorno));
+    ref, campana, v_slug, v_nombre, precio, precio * 100, entorno));
   return pg_temp.srv(format($q$select pw_procesar_pago(%L, 'APPROVED', %L, %s::bigint, 'COP',
     'transaction.updated', 'chk', null, 'CARD', 'pagador@wompi.invalid')$q$, tx, ref, precio * 100));
 end $$;

@@ -168,6 +168,11 @@ begin
     -- pantallas internas de Ventas. C1 la vuelve helper privado de servidor:
     -- devuelve existencias exactas y ya no pertenece a la lista blanca de
     -- authenticated; catalogo_publico solo expone max_comprable acotado.
+    -- C1 comercial: el máximo seguro (0..20) es parte del contrato público y
+    -- catalogo_publico necesita poder ejecutarlo bajo anon/authenticated.
+    if to_regprocedure('public.ventas_max_comprable_campana(uuid)') is not null then
+      v_lista_blanca := v_lista_blanca || array['ventas_max_comprable_campana'];
+    end if;
     -- D2c.2b (20261028000000): las dos puertas del despacho manual. Ventas las
     -- necesita para ver qué falta transcribir a Dropi y para anotar el número
     -- externo, el costo real y el flete.
