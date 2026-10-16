@@ -142,6 +142,16 @@ begin
       v_lista_blanca := v_lista_blanca || array['cc_inicializar_cuenta'];
     end if;
 
+    -- Comercial C2 añade exactamente cuatro puertas autenticadas de carrito.
+    -- Sus helpers, triggers y configuración permanecen fuera de la superficie
+    -- API. La condición conserva las fotos históricas anteriores a C2.
+    if to_regprocedure('public.co_carrito_listar()') is not null then
+      v_lista_blanca := v_lista_blanca || array[
+        'co_carrito_listar', 'co_carrito_agregar',
+        'co_carrito_cambiar', 'co_carrito_quitar'
+      ];
+    end if;
+
     -- D1 puede no existir a propósito cuando los scripts reproducen una foto
     -- histórica anterior al 10-oct. Si la tabla existe, la lista blanca exige
     -- sus tres puertas; si no existe, exigirlas sería pedir funciones futuras
