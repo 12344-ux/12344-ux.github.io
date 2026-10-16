@@ -76,12 +76,14 @@ idempotencia por pedido. Así un cambio de campaña no reescribe la historia.
 | **C1** | puente de identidad, separación cliente/personal, guardia interna y actor cliente en la matriz | **Desplegado y verificado 15-oct-2026, PR #268** |
 | **C2** | registro, confirmación, login, recuperación, SMTP propio, Google, CAPTCHA y vínculo seguro | **Infraestructura desplegada y verificada en preapertura 16-oct-2026; signup OFF y Google Testing hasta publicar políticas** |
 | **C3** | Mi cuenta: perfil, direcciones, pedidos, estado y opiniones | Pendiente |
-| **C4** | checkout con cuenta, carrito persistente/multiproducto y `customer_id` server-side; invitado intacto | **Pendiente; se materializa por C2–C4 de `PLANO-FASE-COMERCIAL.md`** |
+| **C4** | checkout con cuenta y `customer_id` server-side; carrito persistente ya estructural en Comercial C2, checkout multiproducto pendiente en Comercial C3/C4; invitado intacto | **Pendiente; se materializa por C2–C4 de `PLANO-FASE-COMERCIAL.md`** |
 
 La cantidad inmediata para invitado ya quedó entregada por **Comercial C1**:
 selector `1..max_comprable`, máximo y total visibles, con validación server-side.
-Eso no adelanta el resto de C4 de Cuentas: carrito autenticado/multiproducto y
-`customer_id` derivado en servidor siguen pendientes en Comercial C2–C4.
+El carrito autenticado persistente quedó desplegado y probado en estructura por
+**Comercial C2**, apagado hasta C3. Eso no adelanta el resto de C4 de Cuentas:
+checkout multiproducto y `customer_id` derivado en servidor siguen pendientes en
+Comercial C3/C4.
 
 C1 y el backend de C2 de Cuentas ya están aplicados. `disable_signup=true` continúa
 vigente: correo/contraseña, SMTP, TokenHash y recuperación fueron medidos;
@@ -91,6 +93,6 @@ sola cuenta activa. C2 queda cerrado técnicamente en preapertura. Signup sigue
 OFF y Google Testing hasta publicar políticas y avisos contextuales; solo después
 se prepara la apertura.
 
-**Punto global de entrada:** `docs/RELEVO-COMERCIAL-C1-2026-10-16.md`.
+**Punto global de entrada:** `docs/RELEVO-COMERCIAL-C2-2026-10-16.md`.
 Para retomar específicamente la apertura de cuentas, usar el relevo histórico
 temático `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.

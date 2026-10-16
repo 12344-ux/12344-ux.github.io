@@ -61,7 +61,7 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > nunca bloquea el asiento, al contrario que el costo y el flete. Banco SQL
 > **613/613**, matriz **170/170**, pantalla **70/70**.
 >
-> **El estado actual de producción llega hasta la migración `20261102000000`.**
+> **El estado actual de producción llega hasta la migración `20261103000000`.**
 >
 > **Cuentas de cliente C1 · DESPLEGADO · 15-oct-2026 (PR #268).** El dueño
 > decidió conservar compra como invitado y añadir inicio de sesión opcional en
@@ -112,9 +112,25 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > 139.800). El dueño confirmó selector, máximo, total, modal y compra invitada
 > estructural. **No hubo compra real de dos unidades:** para ese caso no se
 > midieron webhook, pedido, baja de dos unidades, asiento, correo ni repetición o
-> idempotencia. El siguiente tramo aprobado es Comercial C2, carrito autenticado
-> persistente. Relevo general vigente:
-> `docs/RELEVO-COMERCIAL-C1-2026-10-16.md`.
+> idempotencia. C1 conserva ese límite propio.
+>
+> **Hito · Comercial C2 · 16-oct-2026.** **Comercial C2 desplegado y probado en
+> estructura, apagado hasta C3**. Backend PR #278 fusionado: implementación
+> `f68fd24`, matriz `8d4c64d` y merge a `main`
+> `a811082cc585ad8d77a98aa346ffbd06ac2ac3f4`; Pages terminó construido para ese
+> merge. Tienda PR #104 fusionado: implementación
+> `90dcb6d42eabd26935743b5bae4de9bba9692e39` y merge a `main`
+> `35a104a1c12b9b9276773bc7d7c082c0733c73a9`; Pages terminó construido.
+>
+> El dueño confirmó preflight 3/3 `true`, migración
+> `20261103000000` aplicada y postflight 10/10 `true`. Con el flag inicialmente
+> OFF se comprobó el estado apagado; durante una activación temporal se probaron
+> agregar, consolidar, cambiar y retirar, persistencia entre navegadores,
+> aislamiento entre dos cuentas, conflicto entre pestañas, logout y compra
+> invitada. Las comprobaciones finales dieron `sin_doble_activo=true` y
+> `sin_huerfanas=true`. No hubo dinero, Wompi, pedido ni Inventario. El flag
+> final quedó `false`. C3 es el siguiente tramo aprobado. Relevo general
+> vigente: `docs/RELEVO-COMERCIAL-C2-2026-10-16.md`.
 
 ## 1. Separación de superficies
 
@@ -355,10 +371,14 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
   invitado y tramos C1–C4.
 - `docs/PLANO-FASE-COMERCIAL.md`: evolución aprobada —cantidades, carrito
   autenticado y Promocionar— con fórmulas, contratos, orden de despliegue y
-  criterios de cierre. **C1 está desplegado y probado en estructura; C2 es el
-  siguiente tramo; C3–C4 y P0–P5 siguen pendientes.**
-- `docs/RELEVO-COMERCIAL-C1-2026-10-16.md`: relevo general más reciente; fija la
-  evidencia exacta de C1, su límite no transaccional y el arranque de C2.
+  criterios de cierre. **C1 está desplegado y probado en estructura; Comercial
+  C2 está desplegado y probado en estructura, apagado hasta C3; C3 es el
+  siguiente tramo aprobado y C4/P0–P5 siguen pendientes.**
+- `docs/RELEVO-COMERCIAL-C2-2026-10-16.md`: relevo general más reciente; fija la
+  evidencia estructural de C2, el flag final `false`, sus límites y el arranque
+  de C3.
+- `docs/RELEVO-COMERCIAL-C1-2026-10-16.md`: relevo histórico de C1; conserva su
+  evidencia y el límite de no pago real de cantidad 2.
 - `docs/RELEVO-CUENTAS-C2-2026-10-16.md`: relevo histórico temático de cuentas;
   conserva la evidencia de preapertura y gobierna ese frente cuando se retome.
 - `docs/RELEVO-CUENTAS-2026-10-15.md`: relevo histórico de C1 y diseño de
@@ -371,8 +391,8 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 
 Los relevos antiguos y `ANDAMIOS.md` se retiraron el 9-oct porque su contenido
 vigente pasó a este archivo. El relevo general vigente es
-`docs/RELEVO-COMERCIAL-C1-2026-10-16.md`; evita reconstruir C1 y fija Comercial
-C2 como siguiente tramo. El relevo temático de cuentas
+`docs/RELEVO-COMERCIAL-C2-2026-10-16.md`; evita reconstruir C1/C2 y fija
+Comercial C3 como siguiente tramo. El relevo temático de cuentas
 `docs/RELEVO-CUENTAS-C2-2026-10-16.md` conserva su evidencia histórica y evita
 repetir migración, SMTP, plantillas o configuración Google al retomar esa
 apertura.
@@ -381,8 +401,8 @@ apertura.
 
 ### Fase comercial aprobada · 16-oct-2026 · estado por tramos
 
-Gobierna `docs/PLANO-FASE-COMERCIAL.md`. No confundir la fase completa con el
-cierre estructural de su primer tramo:
+Gobierna `docs/PLANO-FASE-COMERCIAL.md`. No confundir la fase completa con los
+cierres estructurales de sus primeros tramos:
 
 1. **Comercial C1 · cantidad inmediata: desplegado y probado en estructura.**
    Migración `20261102000000` aplicada, postflight 9/9 `true`, Edge Function y
@@ -391,12 +411,18 @@ cierre estructural de su primer tramo:
    El dueño confirmó selector, máximo, total, modal y compra invitada. **No hubo
    pago real de dos unidades** ni se midieron para ese caso webhook, pedido,
    baja2, asiento, correo o idempotencia.
-2. **Comercial C2 · carrito autenticado persistente: siguiente construcción
-   aprobada.** Debe guardar, consolidar, cambiar y retirar líneas bajo RLS por
-   UID, persistir entre dispositivos y permanecer apagable; todavía no toca el
-   pago multiproducto.
-3. **Comercial C3–C4:** intención/checkout multiproducto, Wompi, vínculo de
-   cuenta y ciclo postpago siguen pendientes.
+2. **Comercial C2 · carrito autenticado persistente: cerrado
+   estructuralmente.** Backend #278 y tienda #104 están fusionados y Pages fue
+   construido para ambos merges. Preflight 3/3 `true`, migración
+   `20261103000000` aplicada y postflight 10/10 `true`. El dueño probó el flag
+   OFF correcto, una activación temporal, agregar/consolidar/cambiar/retirar,
+   persistencia entre navegadores, aislamiento entre dos cuentas, conflicto
+   entre pestañas, logout/compra invitada, `sin_doble_activo=true` y
+   `sin_huerfanas=true`. No hubo dinero, Wompi, pedido ni Inventario. Estado
+   exacto: **Comercial C2 desplegado y probado en estructura, apagado hasta C3**;
+   flag final `false`.
+3. **Comercial C3 · siguiente tramo aprobado:** intención y checkout
+   multiproducto. C4, vínculo de cuenta y ciclo postpago siguen pendientes.
 4. **Promocionar P0–P5:** producto compartible, estudio, enlace, atribución y
    lectura comercial siguen pendientes. Meta Ads, Pixel, Conversions API y
    publicación automática continúan fuera de alcance.
@@ -404,9 +430,9 @@ cierre estructural de su primer tramo:
 La definición final de la fase no se relaja: cuando un tramo llegue a pago real,
 debe demostrar monto exacto, un solo pedido, inventario correcto e idempotencia.
 Una prueba real de cantidad 2 es opcional y requiere autorización expresa del
-dueño; no bloquea C2. La idea de mostrar proveedor público se descartó;
+dueño; no bloquea C3. La idea de mostrar proveedor público se descartó;
 MAGANDHI continúa siendo quien vende, cobra y responde. Continuar desde
-`docs/RELEVO-COMERCIAL-C1-2026-10-16.md`.
+`docs/RELEVO-COMERCIAL-C2-2026-10-16.md`.
 
 Cuentas de cliente sigue en **preapertura**:
 
@@ -441,7 +467,7 @@ Wompi por liquidar está en cero; el detalle del cuadre está arriba y en
 - `20261026000000` + Edge Function **`dropi-refrescar-stock`** + `pg_cron`/`pg_net` + el secreto `DROPI_REFRESCO_SECRETO` (D2c.1, PR #264, runbook «Dropshipping D2c.1»).
 - `20261027000000`, `20261028000000`, `20261029000000` + redespliegue de `crear-intencion-pago` + la pantalla de Despachos (D2c.2, PR #265). **Aquí se habilitó la venta de proveedor.**
 
-**Otras decisiones del dueño aún abiertas (no bloquean C2):**
+**Otras decisiones del dueño aún abiertas (no bloquean C3):**
 1. Los **detalles cosméticos** que mencionó al cerrar la sesión del 10-oct y no detalló. Hay que preguntárselos.
 2. **¿En qué momento se debita el saldo de Dropi?** Al crear el pedido, al despacharlo o al entregarlo. Ya es medible sin riesgo leyendo `walletAmount` antes y después; puede que ya tenga el dato de la venta de prueba.
 3. **Política ante una entrega fallida** (devolución total, reenvío, o según el motivo). Es más caro para nosotros que para un vendedor de contraentrega, porque la plata del cliente ya se cobró.

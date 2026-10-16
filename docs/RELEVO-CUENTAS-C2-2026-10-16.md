@@ -2,7 +2,7 @@
 
 > **HISTÓRICO TEMÁTICO · CUENTAS:** este archivo conserva sin cambios el corte y
 > la evidencia de Cuentas C2. Para el estado general y el siguiente trabajo
-> comercial, continuar en `docs/RELEVO-COMERCIAL-C1-2026-10-16.md`.
+> comercial, continuar en `docs/RELEVO-COMERCIAL-C2-2026-10-16.md`.
 
 Este es el punto exacto para retomar **específicamente la apertura de cuentas** en un chat nuevo. Para el estado general manda el relevo comercial indicado arriba. Leer este archivo junto con
 `CONTEXTO-MAGANDHI.md`, `docs/CUENTAS-CLIENTE.md` y, en el repositorio de la
@@ -209,7 +209,7 @@ pruebas ya cerradas.
 ## 9. Prompt histórico para retomar específicamente Cuentas C2
 
 > Este prompt no es el arranque general vigente. Para trabajo comercial usar
-> `docs/RELEVO-COMERCIAL-C1-2026-10-16.md`. Si el dueño retoma la apertura de
+> `docs/RELEVO-COMERCIAL-C2-2026-10-16.md`. Si el dueño retoma la apertura de
 > cuentas, entonces: Retomamos MAGANDHI en C2 preapertura. Lee
 > `docs/RELEVO-CUENTAS-C2-2026-10-16.md`, `CONTEXTO-MAGANDHI.md`,
 > `docs/CUENTAS-CLIENTE.md` y `magandhi/cuenta/CONFIGURACION.md`. C1 y el backend
