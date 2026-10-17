@@ -1,6 +1,6 @@
 # MAGANDHI + Impulse · contexto operativo vigente
 
-**Corte:** 16 de octubre de 2026
+**Corte:** 17 de octubre de 2026
 **Producción interna:** `https://montaguth.institute`
 **Tienda pública:** `https://magandhi.com`
 
@@ -114,23 +114,29 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > midieron webhook, pedido, baja de dos unidades, asiento, correo ni repetición o
 > idempotencia. C1 conserva ese límite propio.
 >
-> **Hito · Comercial C2 · 16-oct-2026.** **Comercial C2 desplegado y probado en
-> estructura, apagado hasta C3**. Backend PR #278 fusionado: implementación
-> `f68fd24`, matriz `8d4c64d` y merge a `main`
-> `a811082cc585ad8d77a98aa346ffbd06ac2ac3f4`; Pages terminó construido para ese
-> merge. Tienda PR #104 fusionado: implementación
-> `90dcb6d42eabd26935743b5bae4de9bba9692e39` y merge a `main`
-> `35a104a1c12b9b9276773bc7d7c082c0733c73a9`; Pages terminó construido.
+> **Hito · Comercial C2 · 16-oct-2026.** Comercial C2 quedó desplegado y
+> probado en estructura. Backend PR #278 y tienda PR #104 están fusionados;
+> migración `20261103000000`, preflight 3/3 y postflight 10/10 correctos. Se
+> midieron agregar/consolidar/cambiar/retirar, persistencia, aislamiento,
+> conflicto entre pestañas, logout y compra invitada, sin dinero ni inventario.
 >
-> El dueño confirmó preflight 3/3 `true`, migración
-> `20261103000000` aplicada y postflight 10/10 `true`. Con el flag inicialmente
-> OFF se comprobó el estado apagado; durante una activación temporal se probaron
-> agregar, consolidar, cambiar y retirar, persistencia entre navegadores,
-> aislamiento entre dos cuentas, conflicto entre pestañas, logout y compra
-> invitada. Las comprobaciones finales dieron `sin_doble_activo=true` y
-> `sin_huerfanas=true`. No hubo dinero, Wompi, pedido ni Inventario. El flag
-> final quedó `false`. C3 es el siguiente tramo aprobado. Relevo general
-> vigente: `docs/RELEVO-COMERCIAL-C2-2026-10-16.md`.
+> **Hito · Comercial C3 · 17-oct-2026.** **Desplegado y probado en estructura;
+> flag productivo final `false`; C4 es el siguiente tramo.** Backend PR #280:
+> implementación `424e7632d214a90afdb7c9265fbe758bfa3fc580`, merge
+> `275c0dd4548937075770ddd6dace1801c013c929`. Tienda PR #106: implementación
+> `c87934cd6034677be1c1888b8eadce95dcc348a4`, merge
+> `b18c1ed4f075241a066048b0bfbe1b19d0eb96c9`, Pages construido.
+>
+> El dueño confirmó preflight limpio, migración `20261104000000` aplicada,
+> postflight C3 correcto, Edge Functions redesplegadas y sondas de CORS/sesión/
+> firma correctas. Con activaciones temporales se midieron UI, cantidades,
+> subtotales, persistencia, formulario y una intención v2 productiva sin pago:
+> Wompi abrió por el total exacto, el snapshot congeló líneas correctas y un
+> reintento desde otra sesión conservó una sola intención por versión. No hubo
+> aprobación, pedido, movimientos de Inventario, asiento, correo ni repetición
+> real del webhook. La intención queda en `creada`, sin pedido/evento, y no se
+> borra. Relevo vigente:
+> `docs/RELEVO-COMERCIAL-C3-2026-10-17.md`.
 
 ## 1. Separación de superficies
 
@@ -371,12 +377,14 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
   invitado y tramos C1–C4.
 - `docs/PLANO-FASE-COMERCIAL.md`: evolución aprobada —cantidades, carrito
   autenticado y Promocionar— con fórmulas, contratos, orden de despliegue y
-  criterios de cierre. **C1 está desplegado y probado en estructura; Comercial
-  C2 está desplegado y probado en estructura, apagado hasta C3; C3 es el
-  siguiente tramo aprobado y C4/P0–P5 siguen pendientes.**
-- `docs/RELEVO-COMERCIAL-C2-2026-10-16.md`: relevo general más reciente; fija la
-  evidencia estructural de C2, el flag final `false`, sus límites y el arranque
-  de C3.
+  criterios de cierre. **C1, C2 y C3 están desplegados y probados en estructura;
+  C3 conserva pendiente su pago aprobado end-to-end; C4 es el siguiente tramo y
+  P0–P5 siguen pendientes.**
+- `docs/RELEVO-COMERCIAL-C3-2026-10-17.md`: relevo general más reciente; fija la
+  evidencia estructural de C3, la intención v2 sin pago, el flag final `false`,
+  sus límites y el arranque de C4.
+- `docs/RELEVO-COMERCIAL-C2-2026-10-16.md`: relevo histórico de C2; conserva su
+  evidencia y ya no gobierna el arranque.
 - `docs/RELEVO-COMERCIAL-C1-2026-10-16.md`: relevo histórico de C1; conserva su
   evidencia y el límite de no pago real de cantidad 2.
 - `docs/RELEVO-CUENTAS-C2-2026-10-16.md`: relevo histórico temático de cuentas;
@@ -391,11 +399,11 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 
 Los relevos antiguos y `ANDAMIOS.md` se retiraron el 9-oct porque su contenido
 vigente pasó a este archivo. El relevo general vigente es
-`docs/RELEVO-COMERCIAL-C2-2026-10-16.md`; evita reconstruir C1/C2 y fija
-Comercial C3 como siguiente tramo. El relevo temático de cuentas
-`docs/RELEVO-CUENTAS-C2-2026-10-16.md` conserva su evidencia histórica y evita
-repetir migración, SMTP, plantillas o configuración Google al retomar esa
-apertura.
+`docs/RELEVO-COMERCIAL-C3-2026-10-17.md`; evita reconstruir C1–C3, conserva el
+límite de no pago aprobado y fija Comercial C4 como siguiente tramo. El relevo
+temático de cuentas `docs/RELEVO-CUENTAS-C2-2026-10-16.md` conserva su evidencia
+histórica y evita repetir migración, SMTP, plantillas o configuración Google al
+retomar esa apertura.
 
 ## 9. Pendientes vigentes
 
@@ -412,27 +420,31 @@ cierres estructurales de sus primeros tramos:
    pago real de dos unidades** ni se midieron para ese caso webhook, pedido,
    baja2, asiento, correo o idempotencia.
 2. **Comercial C2 · carrito autenticado persistente: cerrado
-   estructuralmente.** Backend #278 y tienda #104 están fusionados y Pages fue
-   construido para ambos merges. Preflight 3/3 `true`, migración
-   `20261103000000` aplicada y postflight 10/10 `true`. El dueño probó el flag
-   OFF correcto, una activación temporal, agregar/consolidar/cambiar/retirar,
-   persistencia entre navegadores, aislamiento entre dos cuentas, conflicto
-   entre pestañas, logout/compra invitada, `sin_doble_activo=true` y
-   `sin_huerfanas=true`. No hubo dinero, Wompi, pedido ni Inventario. Estado
-   exacto: **Comercial C2 desplegado y probado en estructura, apagado hasta C3**;
-   flag final `false`.
-3. **Comercial C3 · siguiente tramo aprobado:** intención y checkout
-   multiproducto. C4, vínculo de cuenta y ciclo postpago siguen pendientes.
-4. **Promocionar P0–P5:** producto compartible, estudio, enlace, atribución y
+   estructuralmente.** Backend #278 y tienda #104 están fusionados; migración
+   `20261103000000`, preflight 3/3 y postflight 10/10 correctos. Se midieron
+   propiedad, persistencia, concurrencia y compra invitada sin dinero ni
+   inventario.
+3. **Comercial C3 · checkout multiproducto: desplegado y probado en
+   estructura.** Backend #280 y tienda #106 están fusionados; migración
+   `20261104000000` aplicada; postflight, grants/RLS y Edge Functions correctos.
+   Las sondas de CORS/sesión/firma y las pruebas OFF/ON pasaron. Una intención v2
+   productiva sin pago abrió Wompi con el total exacto, congeló líneas válidas y
+   conservó una sola intención al reintentar desde otra sesión. El flag final es
+   `false`. No hubo aprobación, pedido, inventario, asiento, correo ni repetición
+   real del webhook; C3 no está cerrado end-to-end.
+4. **Comercial C4 · siguiente tramo aprobado:** derivar/vincular `customer_id`
+   en servidor y resolver el ciclo postpago del carrito. Se construye con el
+   flag OFF y conserva compra inmediata e invitada.
+5. **Promocionar P0–P5:** producto compartible, estudio, enlace, atribución y
    lectura comercial siguen pendientes. Meta Ads, Pixel, Conversions API y
    publicación automática continúan fuera de alcance.
 
-La definición final de la fase no se relaja: cuando un tramo llegue a pago real,
+La definición final de la fase no se relaja: cuando se autorice un pago C3/C4,
 debe demostrar monto exacto, un solo pedido, inventario correcto e idempotencia.
-Una prueba real de cantidad 2 es opcional y requiere autorización expresa del
-dueño; no bloquea C3. La idea de mostrar proveedor público se descartó;
-MAGANDHI continúa siendo quien vende, cobra y responde. Continuar desde
-`docs/RELEVO-COMERCIAL-C2-2026-10-16.md`.
+La prueba real queda pendiente por decisión del dueño para no modificar
+inventario. La idea de mostrar proveedor público se descartó; MAGANDHI continúa
+siendo quien vende, cobra y responde. Continuar desde
+`docs/RELEVO-COMERCIAL-C3-2026-10-17.md`.
 
 Cuentas de cliente sigue en **preapertura**:
 
