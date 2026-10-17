@@ -1,12 +1,16 @@
 # Relevo de sesión · Comercial C2 · carrito autenticado persistente · 16 de octubre de 2026
 
-Este es el punto general vigente para continuar el frente comercial en un chat
-nuevo. Leer junto con `CONTEXTO-MAGANDHI.md`,
+> **Relevo histórico.** C3 ya quedó desplegado y probado en estructura el
+> 17-oct-2026. El punto vigente es
+> `docs/RELEVO-COMERCIAL-C3-2026-10-17.md`; las instrucciones siguientes
+> conservan la evidencia de C2 en su fecha y no gobiernan el arranque actual.
+
+Este fue el punto general vigente para continuar el frente comercial después de
+C2. Leer hoy solo como memoria histórica junto con
 `docs/PLANO-FASE-COMERCIAL.md` y `supabase/INSTRUCCIONES.md`.
-`docs/RELEVO-COMERCIAL-C1-2026-10-16.md` queda como relevo histórico de C1 y
-`docs/RELEVO-CUENTAS-C2-2026-10-16.md` como relevo histórico temático de
-cuentas. **No reconstruir Comercial C1/C2 ni confundir Comercial C2 con Cuentas
-C2.**
+`docs/RELEVO-COMERCIAL-C1-2026-10-16.md` conserva C1 y
+`docs/RELEVO-CUENTAS-C2-2026-10-16.md` el frente temático de cuentas.
+**No reconstruir Comercial C1/C2 ni confundir Comercial C2 con Cuentas C2.**
 
 ## 1. Estado exacto
 

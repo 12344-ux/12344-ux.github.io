@@ -1,7 +1,7 @@
 # PLANO · Fase comercial: Carrito + Promocionar
 
 **Decisión del dueño:** 16 de octubre de 2026  
-**Estado por tramos:** **C1 desplegado y probado en estructura**; **C2 desplegado y probado en estructura, apagado hasta C3**; C3 siguiente; C4 y P0–P5 pendientes. La fase completa no está cerrada.
+**Estado por tramos:** **C1, C2 y C3 desplegados y probados en estructura**; C3 conserva pendiente la aprobación end-to-end; C4 es el siguiente tramo; P0–P5 pendientes. La fase completa no está cerrada.
 **Superficies:** back-office `montaguth.institute`, tienda `magandhi.com` y backend compartido en Supabase.
 
 Este plano reúne los dos frentes comerciales elegidos para la siguiente evolución de MAGANDHI:
@@ -203,8 +203,8 @@ Tienda:
 
 **Activación:** C2 puede desplegarse apagado, pero no se publica como promesa hasta C3.
 
-**Estado medido · 16-oct-2026: Comercial C2 desplegado y probado en estructura,
-apagado hasta C3.**
+**Estado medido · 16-oct-2026: Comercial C2 desplegado y probado en
+estructura; dejó el flag final apagado para construir C3.**
 
 - Backend/back-office PR #278 fusionado: implementación `f68fd24`, matriz
   `8d4c64d` y merge a `main` `a811082cc585ad8d77a98aa346ffbd06ac2ac3f4`;
@@ -242,6 +242,28 @@ cierre final de la fase permanece pendiente.
 - intenciones históricas de una línea continúan procesables.
 
 **Cierre:** carrito mixto propio/proveedor, cantidades, repetición de webhook y falta de stock terminan en un único resultado auditable.
+
+**Estado medido · 17-oct-2026: desplegado y probado en estructura; flag final
+`false`.**
+
+- Backend #280 y tienda #106 fusionados; Pages construido para la tienda.
+- Migración `20261104000000` aplicada; postflight de objetos, firmas, índice,
+  RLS, grants e invariantes correcto.
+- `crear-intencion-pago` y `wompi-webhook` redesplegadas. CORS, sesión requerida,
+  ambiente desconocido y firma ausente fallaron de la forma esperada.
+- Con activaciones temporales se verificaron carrito multiproducto, cantidades,
+  subtotales, persistencia, formulario y retorno.
+- Una intención v2 en `prod`, sin pago, congeló líneas y total exactos; Wompi
+  abrió por ese total y un reintento desde otra sesión conservó una sola
+  intención por UID/carrito/versión.
+- No hubo aprobación, pedido, inventario, asiento, correo, webhook repetido ni
+  falta de stock post-intención. Esos criterios del cierre final siguen sin
+  medirse por decisión del dueño para no modificar inventario.
+
+**Límite:** C3 está correcto en estructura, no end-to-end. La intención de prueba
+permanece en `creada`, sin pedido/evento, como evidencia histórica. No se borra
+ni se presenta como venta. El ciclo de consumo/desbloqueo y `customer_id`
+pertenece a C4.
 
 ### C4 · Cuenta y ciclo del carrito
 
@@ -361,20 +383,20 @@ Ventas muestra la procedencia validada. Los pedidos manuales pueden tener una fu
 
 ## 5. Orden de construcción
 
-Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual: C1 y C2 están desplegados y probados en estructura; C2 permanece apagado hasta C3. C3 es el siguiente tramo aprobado; lo demás permanece pendiente.
+Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual: C1, C2 y C3 están desplegados y probados en estructura; C3 conserva pendiente el pago aprobado end-to-end. C4 es el siguiente tramo aprobado; lo demás permanece pendiente.
 
 1. **Plano y arranque — cerrado.** Este documento y referencias de contexto.
 2. **C1 · cantidad inmediata — estructura lista.** Valor comercial rápido y cimiento de carrito; sin afirmar cierre transaccional de qty2.
-3. **C2 · carrito persistente — estructura lista y flag OFF.** Datos/RLS/UI medidos; no cobra ni crea pedidos.
-4. **C3 · intención y checkout multiproducto — siguiente.** Líneas congeladas, total autoritativo y Wompi.
-5. **C4 · cuenta y ciclo del carrito — pendiente.** Vínculo de cuenta y postpago.
+3. **C2 · carrito persistente — estructura lista y flag OFF.** Datos/RLS/UI medidos.
+4. **C3 · intención y checkout multiproducto — estructura lista y flag OFF.** Líneas congeladas, total autoritativo, Wompi abierto sin pago e idempotencia de intención medida.
+5. **C4 · cuenta y ciclo del carrito — siguiente.** Vínculo server-side de cliente y postpago.
 6. **P0 · taxonomía y privacidad — pendiente.** Contrato de atribución, canales y retención antes de capturar datos.
 7. **P1 · producto compartible — pendiente.** También resuelve SEO/IA pendiente.
 8. **P2 · estudio Promocionar — pendiente.** Enlaces largos, textos, preview, QR y kit.
 9. **P3–P4 · enlace corto y atribución — pendiente.** Backend, routing y pago.
 10. **P5 · lectura comercial — pendiente.** Métricas sobre hechos ya capturados.
 
-P1/P2 pueden avanzar en paralelo con C3 si se mantienen en ramas/PR separados. No se mezclan carrito, redirector y metadata en una sola migración o despliegue.
+P1/P2 pueden avanzar en paralelo con C4 si se mantienen en ramas/PR separados. No se mezclan carrito, redirector y metadata en una sola migración o despliegue.
 
 ---
 
@@ -405,8 +427,18 @@ construido en backend/back-office y tienda, preflight 3/3 `true`, migración
 activación temporal y pruebas de carrito entre navegadores, cuentas y pestañas.
 No hubo dinero, Wompi, pedido ni Inventario; el flag final quedó `false`.
 
-C3 continúa desde este punto sin reconstruir C1/C2. Debe completar intención y
-checkout multiproducto antes de publicar el carrito como promesa.
+**C3 siguió este orden hasta la medición estructural:** preflight limpio,
+migración `20261104000000` aplicada, postflight correcto, Edge Functions
+redesplegadas, sondas técnicas y regresión con flag OFF. Dos activaciones
+temporales midieron UI y una intención v2 sin pago: total/líneas exactos,
+retorno pendiente y una sola intención al reintentar entre sesiones. No hubo
+aprobación, pedido, inventario, asiento, correo ni repetición real del webhook;
+el flag final quedó `false`.
+
+C4 continúa desde este punto sin reconstruir C1–C3. Debe derivar el cliente y
+resolver el ciclo postpago manteniendo compra inmediata/invitada y el flag OFF
+durante construcción. La prueba aprobada end-to-end de C3 permanece pendiente
+y solo se atribuirá cuando exista evidencia real.
 
 ---
 

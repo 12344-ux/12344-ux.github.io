@@ -1,18 +1,19 @@
 # Supabase · runbook operativo MAGANDHI / Impulse
 
-> **Estado al 16-oct-2026:** en producción están aplicadas todas las migraciones
-> hasta `20261103000000` (Comercial C2), salvo `20261002000000`, que quedó
+> **Estado al 17-oct-2026:** en producción están aplicadas todas las migraciones
+> hasta `20261104000000` (Comercial C3), salvo `20261002000000`, que quedó
 > **SUPERADA y no debe aplicarse** (ver §0). Wompi F1–F4 y Dropshipping D2c
 > están operativos. Cuentas C1/C2 continúan desplegados y Cuentas C2 está
 > cerrado técnicamente en preapertura; CAPTCHA activo, signup OFF y Google
 > Testing hasta publicar políticas. Comercial C1 conserva su límite propio: no
-> hubo pago real de dos unidades ni se midió su cierre transaccional. Estado
-> comercial exacto: **Comercial C2 desplegado y probado en estructura, apagado
-> hasta C3**. Preflight 3/3 `true`, migración `20261103000000` aplicada,
-> postflight 10/10 `true`, operación temporal del carrito medida y flag final
-> `false`; no hubo dinero, Wompi, pedido ni Inventario. El siguiente tramo
-> aprobado es Comercial C3. Estado general exacto:
-> `docs/RELEVO-COMERCIAL-C2-2026-10-16.md` y `CONTEXTO-MAGANDHI.md` §9; para la
+> hubo pago real de dos unidades. Estado comercial exacto: **Comercial C3
+> desplegado y probado en estructura; flag final `false`; C4 es el siguiente
+> tramo aprobado.** El preflight fue limpio, la migración C3 y el postflight
+> fueron correctos, las Edge Functions se redesplegaron y se midió una intención
+> v2 productiva sin pagar con líneas/total exactos y una sola intención al
+> reintentar. No hubo aprobación, pedido, inventario, asiento, correo ni webhook
+> repetido; C3 no está cerrado end-to-end. Estado general exacto:
+> `docs/RELEVO-COMERCIAL-C3-2026-10-17.md` y `CONTEXTO-MAGANDHI.md` §9; para la
 > futura apertura de cuentas conserva vigencia temática
 > `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
 >
@@ -5433,11 +5434,10 @@ avance la fase comercial.
 
 # Comercial C2 · carrito autenticado persistente
 
-> **Estado · 16-oct-2026:** **Comercial C2 desplegado y probado en estructura,
-> apagado hasta C3**. Backend/back-office PR #278 fusionado; tienda PR #104
-> fusionado; migración `20261103000000` aplicada; preflight 3/3 `true` y
-> postflight 10/10 `true`. El flag final quedó `false`. Estado y límites exactos:
-> `docs/RELEVO-COMERCIAL-C2-2026-10-16.md`.
+> **Estado histórico · 16-oct-2026:** Comercial C2 quedó desplegado y probado
+> en estructura y dejó el flag apagado para C3. Este bloque conserva su
+> evidencia; el estado vigente está en
+> `docs/RELEVO-COMERCIAL-C3-2026-10-17.md`.
 
 ## Contrato acumulativo
 
@@ -5488,3 +5488,54 @@ multiproducto**. Debe empezar después de la migración máxima aplicada
 `20261103000000`, conservar precio/máximo server-side, congelar líneas y total,
 y mantener compatibilidad con compra inmediata e invitada. No reconstruir C1 ni
 C2.
+
+---
+
+# Comercial C3 · checkout multiproducto
+
+> **Estado · 17-oct-2026:** desplegado y probado en estructura; flag final
+> `false`. Relevo vigente:
+> `docs/RELEVO-COMERCIAL-C3-2026-10-17.md`. C4 es el siguiente tramo.
+
+## Despliegue medido
+
+- Backend #280 (`424e763`, merge `275c0dd`) y tienda #106 (`c87934c`, merge
+  `b18c1ed`) fusionados.
+- Migración `20261104000000_comercial_c3_checkout_multiproducto.sql` aplicada
+  una sola vez. **No reaplicar**; toda corrección futura es forward.
+- Postflight de cabecera v2, `pagos_intencion_items`, máximo monetario, índice
+  único, firmas, RLS y grants: correcto. Máximo vigente comprobado:
+  `1000000000` centavos.
+- `crear-intencion-pago` y `wompi-webhook` redesplegadas. `estado-pago` no cambió.
+- Wompi permaneció en `prod`; secrets requeridos verificados sin copiar valores.
+- Sondas: CORS 204 desde `magandhi.com`; carrito sin sesión 401; ambiente de
+  webhook desconocido 400; evento `prod` sin firma 401.
+
+## Evidencia estructural
+
+Con activaciones temporales se comprobaron UI, dos productos/cantidades,
+subtotales, total, persistencia, cambio/retiro, formulario y retorno. Una
+intención v2 productiva sin pago:
+
+- abrió Wompi por el total exacto;
+- congeló líneas, cantidades, precios y subtotales exactos;
+- dejó ordinales continuos y cabecera igual a `sum(subtotal) * 100`;
+- no creó pedido ni evento;
+- conservó una sola intención por UID/carrito/versión al reintentar desde otra
+  sesión.
+
+El flag volvió a `false`. La intención queda en `creada` como evidencia; no
+borrar, editar ni registrar su referencia/UID/PII en documentación.
+
+## Límite y continuación
+
+Por decisión del dueño no se aprobó el pago para no modificar inventario. No
+están medidos todavía webhook válido/repetido, pedido multiproducto, bajas,
+proveedor, asiento, correo ni falta de stock posterior a la intención. No
+presentar C3 como cierre end-to-end.
+
+Continuar con **Comercial C4**: derivar/vincular `customer_id` server-side y
+resolver consumo/desbloqueo/revisión del carrito después del pago. Mantener
+`carrito_habilitado=false` durante construcción y despliegue; conservar compra
+inmediata e invitada. Un pago productivo futuro requiere autorización expresa y
+su evidencia debe añadirse al relevo antes de atribuir cierre transaccional.
