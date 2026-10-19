@@ -1290,6 +1290,19 @@ grant execute on function co_carrito_agregar(uuid, integer) to authenticated, se
 grant execute on function co_carrito_cambiar(uuid, integer, bigint) to authenticated, service_role;
 grant execute on function co_carrito_quitar(uuid, bigint) to authenticated, service_role;
 
+-- Convención nominal del proyecto: service_role puede ejecutar toda función de
+-- public; los helpers siguen cerrados para public/anon/authenticated y ninguna
+-- identidad cliente gana superficie nueva.
+grant execute on function co__proteger_lineas_checkout() to service_role;
+grant execute on function co__resolver_customer_checkout(text, text, text, text, text) to service_role;
+grant execute on function co__crear_pedido_c3(uuid, text, text, text, text, text, text, text, text, text, date, text, jsonb) to service_role;
+grant execute on function co__pw_registrar_intencion_carrito_c3(text, uuid, uuid, bigint, text, jsonb, text, text, text) to service_role;
+grant execute on function co__pw_procesar_pago_c3(text, text, text, bigint, text, text, text, jsonb, text, text) to service_role;
+grant execute on function co__carrito_agregar_c2(uuid, integer) to service_role;
+grant execute on function co__carrito_cambiar_c2(uuid, integer, bigint) to service_role;
+grant execute on function co__carrito_quitar_c2(uuid, bigint) to service_role;
+grant execute on function co__exigir_carrito_editable() to service_role;
+
 -- Las tablas privadas no ganan grants por C4.
 revoke all on table pagos_intencion_items from public, anon, authenticated;
 revoke all on table comercial_config from public, anon, authenticated;
