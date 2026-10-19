@@ -407,6 +407,9 @@ begin
       from pg_proc p
       join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = 'public'
+       -- Helper booleano histórico sin lectura/escritura de datos. Su ownership
+       -- varía entre reconstrucciones antiguas; no es una puerta RPC C4.
+       and p.proname <> 'pw__contexto_servidor'
        and not exists (
          select 1 from pg_depend d
           where d.classid = 'pg_proc'::regclass

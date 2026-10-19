@@ -296,8 +296,9 @@ pertenece a C4.
   propietario y devuelve estado/descriptor del checkout sin PII, monto, ids
   privados, pedido, transacción, motivo ni entorno; `pw_estado_publico` queda
   para v0/v1;
-- los helpers internos no tienen `EXECUTE` de API; las Edge usan las puertas
-  nominales;
+- los helpers propios de C4 no tienen `EXECUTE` de API; el helper booleano
+  histórico `pw__contexto_servidor()` no expone ni muta datos y se excluye de
+  esa auditoría por variaciones de ownership; las Edge usan puertas nominales;
 - `Comprar ahora` e invitado continúan como caminos independientes.
 
 **Relación con Cuentas:** este tramo materializa parte de C4 sin obligar a completar toda la futura pantalla C3 de perfil/pedidos.
