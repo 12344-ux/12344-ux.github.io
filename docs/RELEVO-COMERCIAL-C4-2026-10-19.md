@@ -7,36 +7,34 @@ histórica. No reconstruir esos tramos ni confundir Comercial C4 con Cuentas C4.
 
 ## 1. Estado exacto
 
-**Comercial C4 está construido, pero NO está aplicado, NO está desplegado y NO
-está medido en producción.**
+**Comercial C4 está construido, fusionado y publicado en Pages, pero NO está
+aplicado en Supabase ni medido en producción.**
 
-- Backend/back-office: rama `feat/comercial-c4-ciclo-carrito`, PR #283 abierto
-  y fusionable contra `main`; commit de implementación/relevo validado `90fbdf2`.
-- Tienda `12344-ux/magandhi`: misma rama, PR #108 abierto y fusionable contra
-  `main`; commit validado `2483bb2`. La tienda C4 está implementada; su
-  publicación y medición están pendientes, no su construcción.
-- Migración candidata:
+- Backend/back-office: PR #283 fusionado a `main` en `0d35d8f`; Pages run
+  `39321890522` terminó `SUCCESS`.
+- Tienda `12344-ux/magandhi`: PR #108 fusionado a `main` en `55e0187`; Pages run
+  `39321900476` terminó `SUCCESS`.
+- Migración pendiente:
   `20261105000000_comercial_c4_cuenta_ciclo_carrito.sql`.
-- Las Edge Functions `crear-intencion-pago` y `estado-pago` cambiaron y deben
-  redesplegarse junto con este corte.
-- El back-office de Ventas cambió para atender la revisión C4 y también debe
-  publicarse.
+- Las Edge Functions `crear-intencion-pago` y `estado-pago` todavía deben
+  redesplegarse y medirse junto con este cierre.
 - Producción sigue llegando únicamente a
   `20261104000000_comercial_c3_checkout_multiproducto.sql` (Comercial C3), con
-  `carrito_habilitado=false`.
-- No se aplicó `20261105000000`; no se redesplegaron las Edge C4; no se
-  publicaron el back-office ni la tienda C4; no existe evidencia productiva de
-  sus objetos, permisos, invariantes ni recorridos.
-- **Evidencia nueva local/CI:** el workflow [Banco de pruebas · run
+  `carrito_habilitado=false`, según la última evidencia y la confirmación del
+  dueño.
+- No se aplicó `20261105000000`; no existen preflight/postflight productivos ni
+  evidencia de recorridos C4. Ventas/tienda están publicadas, pero contenidas por
+  el flag OFF.
+- El workflow [Banco de pruebas · run
   39320288166](https://github.com/12344-ux/12344-ux.github.io/actions/runs/39320288166)
-  terminó `SUCCESS` sobre el commit `90fbdf2` de
-  `feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y Deno. Pasaron las
-  migraciones y el banco CI, además de los checks de Node, el diff y la revisión.
-  `90fbdf2` es el commit backend validado y `2483bb2` el commit de tienda
-  validado; este relevo posterior es exclusivamente documental.
+  terminó `SUCCESS` sobre `90fbdf2`, con PostgreSQL 15 y Deno. Este gate no
+  equivale a producción.
+- El paquete autoritativo para continuar es
+  `supabase/operacion/COMERCIAL-C4-CIERRE.md`; incluye pre/postflight, estado,
+  activación/desactivación y un puente de retorno C3→C4.
 
-No inferir aplicación, despliegue o prueba por la presencia del código, por el
-estado abierto de los PR ni por una interfaz construida.
+No inferir aplicación de base, despliegue de Edge o prueba por el merge, Pages o
+la presencia del código.
 
 ## 2. Contrato implementado
 
@@ -77,8 +75,8 @@ estado abierto de los PR ni por una interfaz construida.
 - El retorno v2 pasa por la Edge Function `estado-pago`. Requiere un JWT válido
   del propietario y consulta `pw_estado_checkout_publico`; una referencia v2
   sin JWT, con JWT inválido o de otra cuenta no revela su existencia.
-- La respuesta v2 devuelve el estado saneado y el descriptor de checkout
-  necesario para recargar el carrito, sin PII, monto, ids privados, pedido,
+- La respuesta v2 devuelve el estado saneado y el descriptor necesario para
+  recargar —ID del carrito propio y versión incluidos—, sin PII, monto, pedido,
   transacción, motivo ni entorno. `pw_estado_publico` conserva solo los caminos
   históricos v0/v1.
 
@@ -114,24 +112,17 @@ entre reconstrucciones. La Edge accede por puertas nominales.
 
 ## 3. Validación disponible y límite de evidencia
 
-La validación local/CI de este corte está cumplida. El workflow [Banco de
-pruebas · run
+La implementación inicial quedó validada por el workflow [Banco de pruebas · run
 39320288166](https://github.com/12344-ux/12344-ux.github.io/actions/runs/39320288166)
-terminó `SUCCESS` sobre el commit `90fbdf2` de
-`feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y Deno. Pasaron:
+sobre `90fbdf2`/`2483bb2`. El paquete operativo actual obtuvo su propio [run
+39326788045](https://github.com/12344-ux/12344-ux.github.io/actions/runs/39326788045)
+en `SUCCESS` sobre `efa253f`, con PostgreSQL 15/Deno; los seis SQL operativos y
+la migración pasaron además parser PostgreSQL.
 
-- las migraciones y el banco CI;
-- los checks de Node;
-- el diff;
-- la revisión.
-
-`90fbdf2` es el commit backend validado por ese run y `2483bb2` el commit de tienda validado; los cambios posteriores de este relevo son exclusivamente documentales.
-
-**Este resultado no constituye aplicación ni evidencia productiva.** La
-migración `20261105000000` NO está aplicada en producción; no hay preflight ni
-postflight productivos de C4; las Edge Functions no están redesplegadas; la
-tienda y el back-office no están publicados; no hubo dinero ni medición
-productiva.
+**Ese resultado no constituye aplicación ni evidencia productiva.** La
+migración `20261105000000` NO está aplicada; no hay pre/postflight productivos;
+las Edge no están redesplegadas y no hubo dinero ni medición. Tienda y
+back-office sí están publicados en Pages, contenidos por el flag OFF.
 
 Por tanto, todavía no están demostrados en producción:
 
@@ -148,42 +139,31 @@ presentar ninguno de los dos tramos como cierre transaccional.
 
 ## 4. Plan de despliegue controlado
 
-El banco local/CI con PostgreSQL 15 y Deno ya es un gate cumplido por el run
-`39320288166`. Todavía deben ejecutarse el preflight, la migración y el
-postflight productivos, además de las pruebas controladas de producción.
-Respetar este orden; no publicar las superficies antes de que su dependencia
-anterior esté aplicada:
+El banco local/CI y los merges/Pages están cumplidos. El procedimiento
+operativo exacto y los resultados esperados viven en
+`supabase/operacion/COMERCIAL-C4-CIERRE.md`. Orden obligatorio:
 
-1. **Revalidar el corte Git.** Confirmar que PR #283 y PR #108 siguen abiertos
-   y fusionables, que no apareció trabajo nuevo y que el banco del backend sigue
-   verde. No mezclar cambios ajenos en C4.
-2. **Fusionar backend/back-office.** Fusionar PR #283 a `main` y esperar la
-   publicación de Pages. El flag OFF evita tráfico C4; no usar todavía la acción
-   de revisión nueva.
-3. **Preflight productivo de solo lectura.** Confirmar migración máxima
-   `20261104000000`, historia C3 coherente, intención estructural preservada y
-   `carrito_habilitado=false`.
-4. **Migración y postflight.** Aplicar una sola vez
-   `20261105000000_comercial_c4_cuenta_ciclo_carrito.sql` con el flag OFF.
-   Verificar objetos, firmas, constraints, índices, grants, RLS, historia v2,
-   sucesión e invariantes. El flag debe seguir OFF.
-5. **Ambas Edge Functions.** Redesplegar `crear-intencion-pago` y `estado-pago`;
-   comprobar CORS, JWT, expiración/firma Wompi y retorno v2 sin filtrar datos.
-6. **Regresión sin dinero con flag OFF.** Confirmar compra inmediata/invitada,
-   sesión, carrito oculto y back-office; no abrir cobros.
-7. **Fusionar y publicar tienda.** Solo después del backend, fusionar PR #108 a
-   `main`, esperar Pages y comprobar assets/versiones cargados.
-8. **Prueba controlada sin dinero.** Activar temporalmente el flag y medir
-   propiedad, sucesión de la intención C3, expiración, `bloqueo_pago`, PENDING,
-   rechazo, retorno cross-tab/sin memoria y resolución prudente. Volver a OFF
-   ante cualquier duda y registrar resultados exactos.
-9. **Dinero solo con autorización expresa.** Medir aprobación, rechazo o
-   aprobación tardía, reembolso/liberación, pedido único, `customer_id`,
-   snapshots, consumo/preservación de líneas, versión, inventario/proveedor,
-   asiento, correo e idempotencia.
-10. **Cerrar C4 con evidencia.** Actualizar relevo, plano, runbook, contexto y
-    estado de tienda con lo realmente observado; decidir entonces el valor final
-    de `carrito_habilitado` y no antes.
+1. ejecutar `comercial-c4-preflight.sql` sobre C3 con flag OFF;
+2. instalar `comercial-c4-puente-estado.sql` y desplegar primero `estado-pago`
+   C4; el puente conserva simultáneamente el retorno antiguo y el nuevo;
+3. aplicar una sola vez `20261105000000_comercial_c4_cuenta_ciclo_carrito.sql`;
+   su `CREATE OR REPLACE` sustituye el puente por la versión autoritativa sin
+   cortar la Edge;
+4. ejecutar `comercial-c4-postflight.sql`; mantener OFF ante cualquier falla;
+5. desplegar `crear-intencion-pago`, verificar ambas Edge y hacer regresión de
+   compra inmediata/invitada, sesión, Ventas y tienda con OFF;
+6. abrir una ventana temporal solo con `comercial-c4-activar.sql`, medir los
+   recorridos sin dinero y cerrarla siempre con
+   `comercial-c4-desactivar.sql`; usar `comercial-c4-estado.sql` para evidencia;
+7. dinero únicamente con autorización expresa y observación de pedido único,
+   identidad, snapshots, consumo/preservación, inventario/proveedor, asiento,
+   correo e idempotencia;
+8. actualizar documentos y decidir el flag final solo después de medir.
+
+La ejecución manual en SQL Editor puede no registrar la versión en
+`supabase_migrations.schema_migrations`; documentar la aplicación y no usar
+`supabase db push` hasta reconciliar el historial por el procedimiento aprobado.
+No editar a mano las tablas internas de historial durante este cierre.
 
 ## 5. Reglas para continuar
 
@@ -195,28 +175,23 @@ anterior esté aplicada:
 - No liberar una revisión sin la acción explícita `reembolsado_liberar` y la
   evidencia de reembolso exigida por la operación.
 - No borrar ni editar la intención estructural C3 ni fabricar eventos.
-- No declarar merge, despliegue, prueba o medición que no exista. PR #283 y PR
-  #108 siguen abiertos.
+- No declarar aplicación de base, despliegue de Edge, prueba o medición que no
+  exista. PR #283 y PR #108 sí están fusionados y Pages terminó `SUCCESS`; esos
+  hechos no cierran producción.
 - Wompi permanece en `prod`; cualquier prueba con dinero requiere autorización
   expresa.
 
 ## 6. Prompt de arranque para el próximo chat
 
-> Retomamos MAGANDHI para **terminar y cerrar Comercial C4**. Empieza leyendo
-> `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`, después
-> `CONTEXTO-MAGANDHI.md`, `docs/PLANO-FASE-COMERCIAL.md`,
-> `supabase/INSTRUCCIONES.md` y `docs/CUENTAS-CLIENTE.md`. Estado exacto:
-> backend/back-office está en `feat/comercial-c4-ciclo-carrito`, PR #283 abierto
-> y fusionable; tienda está en la rama homónima de `12344-ux/magandhi`, PR #108
-> abierto y fusionable. El banco final PostgreSQL 15/Deno run `39320288166`
-> terminó `SUCCESS`; commits validados: backend `90fbdf2`, tienda `2483bb2`.
-> Los cambios posteriores son solo este relevo documental. C4 está construida,
-> pero NO aplicada, desplegada ni medida: producción sigue en
-> `20261104000000`/C3 y `carrito_habilitado=false`; las Edge
-> `crear-intencion-pago` y `estado-pago` no están redesplegadas, y tienda/Ventas
-> C4 no están publicados. No reconstruyas C1–C4 ni modifiques la intención C3.
-> Continúa exactamente por §4: revalidar PRs; fusionar backend #283; preflight;
-> aplicar una vez `20261105000000` y postflight con flag OFF; redesplegar ambas
-> Edge; regresión OFF; fusionar/publicar tienda #108; prueba temporal sin dinero;
-> dinero solo con autorización expresa; finalmente documentar evidencia y decidir
-> el flag. No afirmes producción ni cierre end-to-end antes de medir.
+> Retomamos MAGANDHI para **terminar y cerrar Comercial C4**. Lee primero
+> `supabase/operacion/COMERCIAL-C4-CIERRE.md` y después este relevo,
+> `CONTEXTO-MAGANDHI.md`, `docs/PLANO-FASE-COMERCIAL.md` y
+> `supabase/INSTRUCCIONES.md`. Backend PR #283 y tienda PR #108 están
+> fusionados; Pages terminó `SUCCESS`. El banco PostgreSQL 15/Deno run
+> `39320288166` también terminó `SUCCESS`. Eso no acredita Supabase: según la
+> última evidencia, producción sigue en `20261104000000`/C3, flag OFF, sin Edge
+> C4 ni medición. Continúa exactamente por el paquete operativo: preflight;
+> puente C3→C4; desplegar primero `estado-pago`; aplicar una vez `20261105000000`;
+> postflight; desplegar `crear-intencion-pago`; regresión OFF; ventana temporal
+> con activar/estado/desactivar; dinero solo con autorización. No edites la
+> intención C3 ni afirmes cierre end-to-end antes de observarlo.
