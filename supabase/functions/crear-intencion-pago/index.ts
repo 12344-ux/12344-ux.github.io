@@ -29,15 +29,10 @@
 //   AL PAGAR".
 //
 // ============================================================================
-// FIRMA DE INTEGRIDAD (confirmada con la doc oficial vigente de Wompi Colombia,
-// docs.wompi.co/docs/colombia/widget-checkout-web):
-//   firma = SHA-256 (hex, minusculas) de la concatenacion SIN separadores, en
-//   este orden EXACTO:  <Referencia><MontoEnCentavos><Moneda><SecretoIntegridad>
-//   Ejemplo oficial: 'sk8-438k4-xmxm392-sn2m' + '2490000' + 'COP' +
-//                    'prod_integrity_...'  ->  sha256 hex.
-//   Moneda = 'COP'. Monto en CENTAVOS (pesos x100).
-//   DECISION F1 (documentada): NO se usa expiration-time en F1 (formula de 4
-//   campos, sin fecha de expiracion; la verdad del pago llega por webhook en F2).
+// FIRMA DE INTEGRIDAD C4 (documentación oficial Wompi, contenido resumido):
+//   expiration-time es ISO8601 y, cuando se usa, la integridad concatena sin
+//   separadores <Referencia><Monto><Moneda><ExpirationTime><Secreto>.
+//   El servidor persiste y devuelve el mismo valor exacto que se firma.
 // ============================================================================
 
 // supabase-js pineado a la version EXACTA del proyecto (@2.116.0), importado por
@@ -96,8 +91,11 @@ async function calcularFirmaIntegridad(
   montoEnCentavos: string,
   moneda: string,
   secretoIntegridad: string,
+  expirationTime?: string,
 ): Promise<string> {
-  const cadena = `${referencia}${montoEnCentavos}${moneda}${secretoIntegridad}`;
+  const cadena = `${referencia}${montoEnCentavos}${moneda}${
+    expirationTime ?? ""
+  }${secretoIntegridad}`;
   const datos = new TextEncoder().encode(cadena);
   const hash = await crypto.subtle.digest("SHA-256", datos);
   // Convertir el ArrayBuffer a hex en minusculas.
@@ -141,17 +139,23 @@ function generarReferencia(idProducto: string): string {
 //
 // El umbral de frescura vive en dropshipping_config, no aqui.
 // ----------------------------------------------------------------------------
-const DROPI_BASE = (Deno.env.get("DROPI_API_BASE") ?? "https://api.dropi.co/integrations/")
-  .replace(/\/*$/, "/");
+const DROPI_BASE =
+  (Deno.env.get("DROPI_API_BASE") ?? "https://api.dropi.co/integrations/")
+    .replace(/\/*$/, "/");
 const DROPI_UA = () =>
-  (Deno.env.get("DROPI_USER_AGENT") ?? "MAGANDHI-Impulse/1.0 (+https://magandhi.com)").trim();
+  (Deno.env.get("DROPI_USER_AGENT") ??
+    "MAGANDHI-Impulse/1.0 (+https://magandhi.com)").trim();
 
 type Obj = Record<string, unknown>;
-const esObjeto = (v: unknown): v is Obj => !!v && typeof v === "object" && !Array.isArray(v);
+const esObjeto = (v: unknown): v is Obj =>
+  !!v && typeof v === "object" && !Array.isArray(v);
 
 const sumarStockBodegas = (filas: unknown): number | null =>
   Array.isArray(filas)
-    ? filas.reduce((s: number, w) => s + (esObjeto(w) ? Number(w.stock) || 0 : 0), 0)
+    ? filas.reduce(
+      (s: number, w) => s + (esObjeto(w) ? Number(w.stock) || 0 : 0),
+      0,
+    )
     : null;
 
 function stockDeVariacion(v: Obj): number | null {
@@ -168,7 +172,9 @@ function stockDeVariacion(v: Obj): number | null {
 function stockDeLaFicha(p: Obj, variacion: string | null): number | null {
   const variaciones = Array.isArray(p.variations) ? p.variations : [];
   if (variacion) {
-    const v = variaciones.find((x) => esObjeto(x) && String(x.id) === variacion);
+    const v = variaciones.find((x) =>
+      esObjeto(x) && String(x.id) === variacion
+    );
     // La variante desaparecio del catalogo: es exactamente «no hay».
     if (!esObjeto(v)) return 0;
     return stockDeVariacion(v) ?? 0;
@@ -195,7 +201,10 @@ async function leerDatosVerificacion(
     if (error) {
       return {
         datos: null,
-        error: { motivo: "fallo ds_verificacion_checkout", codigo: error.code ?? null },
+        error: {
+          motivo: "fallo ds_verificacion_checkout",
+          codigo: error.code ?? null,
+        },
       };
     }
     const datos = esObjeto(data) ? data : null;
@@ -236,7 +245,9 @@ async function verificarProveedorEnVivo(
   const piso = Number(datos.piso ?? 20);
   const reservadas = Number(datos.reservadas ?? 0);
   const disponibleLocal = Number(datos.disponible_local ?? 0);
-  const minutos = datos.minutos_desde_lectura == null ? null : Number(datos.minutos_desde_lectura);
+  const minutos = datos.minutos_desde_lectura == null
+    ? null
+    : Number(datos.minutos_desde_lectura);
   const frescuraMax = Number(datos.frescura_max_min ?? 10);
   const token = (Deno.env.get("DROPI_TOKEN") ?? "").trim();
   const maxCache = Number.isFinite(disponibleLocal)
@@ -276,16 +287,19 @@ async function verificarProveedorEnVivo(
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 6000);
     try {
-      const r = await fetch(`${DROPI_BASE}products/v2/${encodeURIComponent(dropiId)}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json;charset=UTF-8",
-          "dropi-integration-key": token,
-          Accept: "application/json",
-          "User-Agent": DROPI_UA(),
+      const r = await fetch(
+        `${DROPI_BASE}products/v2/${encodeURIComponent(dropiId)}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json;charset=UTF-8",
+            "dropi-integration-key": token,
+            Accept: "application/json",
+            "User-Agent": DROPI_UA(),
+          },
+          signal: ctrl.signal,
         },
-        signal: ctrl.signal,
-      });
+      );
       http = r.status;
       const texto = await r.text();
       try {
@@ -341,7 +355,16 @@ async function verificarProveedorEnVivo(
   return {
     rechazar: !alcanza,
     maxComprable: maxVivo,
-    log: { http, stock, reservadas, cantidad, remanente, piso, max_vivo: maxVivo, alcanza },
+    log: {
+      http,
+      stock,
+      reservadas,
+      cantidad,
+      remanente,
+      piso,
+      max_vivo: maxVivo,
+      alcanza,
+    },
   };
 }
 
@@ -354,7 +377,9 @@ function versionCarritoValida(valor: unknown): string | null {
   if (typeof valor === "number") {
     return Number.isSafeInteger(valor) && valor >= 0 ? String(valor) : null;
   }
-  if (typeof valor !== "string" || !/^\d{1,18}$/.test(valor.trim())) return null;
+  if (typeof valor !== "string" || !/^\d{1,18}$/.test(valor.trim())) {
+    return null;
+  }
   try {
     const version = BigInt(valor.trim());
     return version <= 9223372036854775807n ? version.toString() : null;
@@ -370,7 +395,8 @@ function errorCarrito(
   if (/PW_CARRITO_YA_PROCESADO/.test(mensaje)) {
     return json(
       {
-        error: "Esta versión del carrito ya fue procesada y no puede iniciar otro pago.",
+        error:
+          "Esta versión del carrito ya fue procesada y no puede iniciar otro pago.",
         codigo: "CARRITO_YA_PROCESADO",
       },
       409,
@@ -380,7 +406,10 @@ function errorCarrito(
 
   if (/PW_VERSION_DESACTUALIZADA|CO_VERSION_DESACTUALIZADA/.test(mensaje)) {
     return json(
-      { error: "El carrito cambió; actualízalo antes de pagar.", codigo: "VERSION_DESACTUALIZADA" },
+      {
+        error: "El carrito cambió; actualízalo antes de pagar.",
+        codigo: "VERSION_DESACTUALIZADA",
+      },
       409,
       cors,
     );
@@ -391,7 +420,8 @@ function errorCarrito(
     const maxComprable = Math.max(0, Math.min(20, Number(max[1])));
     return json(
       {
-        error: "La disponibilidad cambió; ajusta el carrito e intenta de nuevo.",
+        error:
+          "La disponibilidad cambió; ajusta el carrito e intenta de nuevo.",
         codigo: "MAX_COMPRABLE",
         max_comprable: maxComprable,
       },
@@ -414,12 +444,16 @@ function errorCarrito(
   }
 
   if (
-    /PW_CARRITO_|PW_CAMPANA_NO_COMPRABLE|PW_MAX_LINEAS|PW_CANTIDAD_INVALIDA|CO_CARRITO_|CO_CAMPANA_|CO_MAX_LINEAS|CO_CUENTA_/.test(
-      mensaje,
-    )
+    /PW_CARRITO_|PW_CAMPANA_NO_COMPRABLE|PW_MAX_LINEAS|PW_CANTIDAD_INVALIDA|CO_CARRITO_|CO_CAMPANA_|CO_MAX_LINEAS|CO_CUENTA_/
+      .test(
+        mensaje,
+      )
   ) {
     return json(
-      { error: "El carrito no está disponible para pago.", codigo: "CARRITO_NO_DISPONIBLE" },
+      {
+        error: "El carrito no está disponible para pago.",
+        codigo: "CARRITO_NO_DISPONIBLE",
+      },
       409,
       cors,
     );
@@ -436,9 +470,12 @@ async function procesarCarrito(
   const idCarrito = typeof carrito?.id === "string" ? carrito.id.trim() : "";
   const versionEsperada = versionCarritoValida(carrito?.version);
   const clavesCarrito = carrito ? Object.keys(carrito) : [];
-  const compradorEntrada = body.comprador === undefined || body.comprador === null
-    ? null
-    : esObjeto(body.comprador) ? body.comprador : undefined;
+  const compradorEntrada =
+    body.comprador === undefined || body.comprador === null
+      ? null
+      : esObjeto(body.comprador)
+      ? body.comprador
+      : undefined;
   const camposProhibidos = [
     "items",
     "precio",
@@ -465,11 +502,15 @@ async function procesarCarrito(
     clavesCarrito.some((k) => !["id", "version"].includes(k)) ||
     camposProhibidos.some((k) =>
       Object.prototype.hasOwnProperty.call(body, k) ||
-      (compradorEntrada !== null && Object.prototype.hasOwnProperty.call(compradorEntrada, k))
+      (compradorEntrada !== null &&
+        Object.prototype.hasOwnProperty.call(compradorEntrada, k))
     )
   ) {
     return json(
-      { error: "La solicitud de carrito es inválida.", codigo: "CARRITO_INVALIDO" },
+      {
+        error: "La solicitud de carrito es inválida.",
+        codigo: "CARRITO_INVALIDO",
+      },
       400,
       cors,
     );
@@ -482,7 +523,10 @@ async function procesarCarrito(
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !publicKey || !serviceRoleKey) {
     return json(
-      { error: "Configuracion del servidor incompleta (Supabase).", codigo: "ERROR_SERVIDOR" },
+      {
+        error: "Configuracion del servidor incompleta (Supabase).",
+        codigo: "ERROR_SERVIDOR",
+      },
       500,
       cors,
     );
@@ -493,7 +537,10 @@ async function procesarCarrito(
     .trim();
   if (!jwt) {
     return json(
-      { error: "Inicia sesión para pagar tu carrito.", codigo: "SESION_REQUERIDA" },
+      {
+        error: "Inicia sesión para pagar tu carrito.",
+        codigo: "SESION_REQUERIDA",
+      },
       401,
       cors,
     );
@@ -505,18 +552,23 @@ async function procesarCarrito(
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${jwt}` } },
   });
-  const { data: sesion, error: errorSesion } = await supabaseUsuario.auth.getUser(jwt);
+  const { data: sesion, error: errorSesion } = await supabaseUsuario.auth
+    .getUser(jwt);
   if (errorSesion || !sesion?.user) {
     return json(
-      { error: "Tu sesión no es válida. Vuelve a iniciar sesión.", codigo: "SESION_REQUERIDA" },
+      {
+        error: "Tu sesión no es válida. Vuelve a iniciar sesión.",
+        codigo: "SESION_REQUERIDA",
+      },
       401,
       cors,
     );
   }
 
-  const { data: snapshotBruto, error: errorSnapshot } = await supabaseUsuario.rpc(
-    "co_carrito_listar",
-  );
+  const { data: snapshotBruto, error: errorSnapshot } = await supabaseUsuario
+    .rpc(
+      "co_carrito_listar",
+    );
   if (errorSnapshot) {
     return errorCarrito(errorSnapshot.message ?? "", cors) ?? json(
       { error: "No se pudo validar el carrito.", codigo: "ERROR_SERVIDOR" },
@@ -527,14 +579,20 @@ async function procesarCarrito(
   const snapshot = esObjeto(snapshotBruto) ? snapshotBruto : null;
   if (!snapshot || String(snapshot.carrito_id ?? "") !== idCarrito) {
     return json(
-      { error: "El carrito no está disponible para pago.", codigo: "CARRITO_NO_DISPONIBLE" },
+      {
+        error: "El carrito no está disponible para pago.",
+        codigo: "CARRITO_NO_DISPONIBLE",
+      },
       409,
       cors,
     );
   }
   if (String(snapshot.version ?? "") !== versionEsperada) {
     return json(
-      { error: "El carrito cambió; actualízalo antes de pagar.", codigo: "VERSION_DESACTUALIZADA" },
+      {
+        error: "El carrito cambió; actualízalo antes de pagar.",
+        codigo: "VERSION_DESACTUALIZADA",
+      },
       409,
       cors,
     );
@@ -543,7 +601,10 @@ async function procesarCarrito(
   const items = Array.isArray(snapshot.items) ? snapshot.items : [];
   if (items.length < 1 || items.length > 20) {
     return json(
-      { error: "El carrito no está disponible para pago.", codigo: "CARRITO_NO_DISPONIBLE" },
+      {
+        error: "El carrito no está disponible para pago.",
+        codigo: "CARRITO_NO_DISPONIBLE",
+      },
       409,
       cors,
     );
@@ -566,19 +627,26 @@ async function procesarCarrito(
 
   for (const bruto of items) {
     const item = esObjeto(bruto) ? bruto : null;
-    const campanaId = typeof item?.campana_id === "string" ? item.campana_id : "";
+    const campanaId = typeof item?.campana_id === "string"
+      ? item.campana_id
+      : "";
     const cantidad = Number(item?.cantidad);
     const maxComprable = Number(item?.max_comprable);
     if (
-      !pareceUuid(campanaId) || !Number.isSafeInteger(cantidad) || cantidad < 1 || cantidad > 20 ||
-      !Number.isInteger(maxComprable) || maxComprable < 0 || maxComprable > 20 ||
+      !pareceUuid(campanaId) || !Number.isSafeInteger(cantidad) ||
+      cantidad < 1 || cantidad > 20 ||
+      !Number.isInteger(maxComprable) || maxComprable < 0 ||
+      maxComprable > 20 ||
       item?.requiere_ajuste === true || cantidad > maxComprable
     ) {
       return json(
         {
-          error: "La disponibilidad cambió; ajusta el carrito e intenta de nuevo.",
+          error:
+            "La disponibilidad cambió; ajusta el carrito e intenta de nuevo.",
           codigo: "MAX_COMPRABLE",
-          max_comprable: Number.isInteger(maxComprable) ? Math.max(0, Math.min(20, maxComprable)) : 0,
+          max_comprable: Number.isInteger(maxComprable)
+            ? Math.max(0, Math.min(20, maxComprable))
+            : 0,
         },
         409,
         cors,
@@ -602,7 +670,9 @@ async function procesarCarrito(
       ? lectura.datos.product_id
       : "";
     if (!pareceUuid(productId)) {
-      console.error("[crear-intencion-pago] ds_verificacion_checkout sin product_id válido.");
+      console.error(
+        "[crear-intencion-pago] ds_verificacion_checkout sin product_id válido.",
+      );
       return json(
         { error: "No se pudo validar el carrito.", codigo: "ERROR_SERVIDOR" },
         500,
@@ -617,7 +687,9 @@ async function procesarCarrito(
     ]);
     const grupo = grupos.get(productId);
     if (grupo && grupo.proveedor !== proveedor) {
-      console.error("[crear-intencion-pago] Proveedor inconsistente para un mismo producto.");
+      console.error(
+        "[crear-intencion-pago] Proveedor inconsistente para un mismo producto.",
+      );
       return json(
         { error: "No se pudo validar el carrito.", codigo: "ERROR_SERVIDOR" },
         500,
@@ -657,7 +729,8 @@ async function procesarCarrito(
       );
       return json(
         {
-          error: "La disponibilidad cambió; ajusta el carrito e intenta de nuevo.",
+          error:
+            "La disponibilidad cambió; ajusta el carrito e intenta de nuevo.",
           codigo: "MAX_COMPRABLE",
           max_comprable: verificacion.maxComprable,
         },
@@ -677,7 +750,10 @@ async function procesarCarrito(
       JSON.stringify({ code: errorConfig?.code ?? null }),
     );
     return json(
-      { error: "No se pudo leer la configuracion de pagos.", codigo: "CONFIGURACION_PAGO" },
+      {
+        error: "No se pudo leer la configuracion de pagos.",
+        codigo: "CONFIGURACION_PAGO",
+      },
       500,
       cors,
     );
@@ -685,9 +761,14 @@ async function procesarCarrito(
 
   const entornoConfig = String(config.entorno ?? "");
   if (!["sandbox", "prod"].includes(entornoConfig)) {
-    console.error("[crear-intencion-pago] Entorno de pagos inválido para carrito.");
+    console.error(
+      "[crear-intencion-pago] Entorno de pagos inválido para carrito.",
+    );
     return json(
-      { error: "La configuracion de pagos no es válida.", codigo: "CONFIGURACION_PAGO" },
+      {
+        error: "La configuracion de pagos no es válida.",
+        codigo: "CONFIGURACION_PAGO",
+      },
       500,
       cors,
     );
@@ -696,7 +777,10 @@ async function procesarCarrito(
   const llavePublica = String(config.llave_publica ?? "");
   if (!llavePublica) {
     return json(
-      { error: "Llave publica no configurada para pagos.", codigo: "CONFIGURACION_PAGO" },
+      {
+        error: "Llave publica no configurada para pagos.",
+        codigo: "CONFIGURACION_PAGO",
+      },
       500,
       cors,
     );
@@ -706,9 +790,15 @@ async function procesarCarrito(
     : "WOMPI_INTEGRITY_SANDBOX";
   const secretoIntegridad = Deno.env.get(nombreSecreto);
   if (!secretoIntegridad) {
-    console.error("[crear-intencion-pago] Secreto de integridad ausente para carrito:", nombreSecreto);
+    console.error(
+      "[crear-intencion-pago] Secreto de integridad ausente para carrito:",
+      nombreSecreto,
+    );
     return json(
-      { error: "Secreto de integridad no configurado en el servidor.", codigo: "CONFIGURACION_PAGO" },
+      {
+        error: "Secreto de integridad no configurado en el servidor.",
+        codigo: "CONFIGURACION_PAGO",
+      },
       500,
       cors,
     );
@@ -729,23 +819,41 @@ async function procesarCarrito(
   const utmBruto = texto(body.utm_campaign, 60);
   const utm = utmBruto && /^[a-z0-9-]{1,60}$/.test(utmBruto) ? utmBruto : null;
   const vidBruto = texto(body.mg_vid, 40);
-  const mgVid = vidBruto && /^[A-Za-z0-9_-]{16,40}$/.test(vidBruto) ? vidBruto : null;
+  const mgVid = vidBruto && /^[A-Za-z0-9_-]{16,40}$/.test(vidBruto)
+    ? vidBruto
+    : null;
   const referencia = generarReferencia(idCarrito);
 
-  const { data: intencionBruta, error: errorIntencion } = await supabase.rpc(
-    "pw_registrar_intencion_carrito",
-    {
-      p_referencia: referencia,
-      p_auth_user_id: sesion.user.id,
-      p_carrito_id: idCarrito,
-      p_version_esperada: versionEsperada,
-      p_entorno: entorno,
-      p_comprador: comprador,
-      p_utm_campaign: utm,
-      p_mg_vid: mgVid,
-      p_moneda: "COP",
-    },
-  );
+  let intencionBruta: unknown = null;
+  let errorIntencion: { message?: string; code?: string } | null = null;
+  let versionRegistro = versionEsperada;
+  for (let intento = 0; intento < 2; intento += 1) {
+    const respuesta = await supabase.rpc(
+      "pw_registrar_intencion_carrito",
+      {
+        p_referencia: referencia,
+        p_auth_user_id: sesion.user.id,
+        p_carrito_id: idCarrito,
+        p_version_esperada: versionRegistro,
+        p_entorno: entorno,
+        p_comprador: comprador,
+        p_utm_campaign: utm,
+        p_mg_vid: mgVid,
+        p_moneda: "COP",
+      },
+    );
+    errorIntencion = respuesta.error;
+    if (errorIntencion) break;
+
+    const resultado = esObjeto(respuesta.data) ? respuesta.data : null;
+    const siguiente = versionCarritoValida(resultado?.reintentar_version);
+    if (siguiente !== null && intento === 0) {
+      versionRegistro = siguiente;
+      continue;
+    }
+    intencionBruta = respuesta.data;
+    break;
+  }
   if (errorIntencion) {
     const publico = errorCarrito(errorIntencion.message ?? "", cors);
     if (publico) return publico;
@@ -754,7 +862,10 @@ async function procesarCarrito(
       JSON.stringify({ code: errorIntencion.code ?? null }),
     );
     return json(
-      { error: "No se pudo iniciar el pago. Intenta de nuevo.", codigo: "ERROR_SERVIDOR" },
+      {
+        error: "No se pudo iniciar el pago. Intenta de nuevo.",
+        codigo: "ERROR_SERVIDOR",
+      },
       500,
       cors,
     );
@@ -765,23 +876,41 @@ async function procesarCarrito(
   const entornoFirmado = String(intencion?.entorno ?? "");
   const montoFirmado = String(intencion?.monto_centavos ?? "");
   const monedaFirmada = String(intencion?.moneda ?? "");
+  const carritoIdFirmado = String(intencion?.carrito_id ?? "");
+  const carritoVersionFirmada = Number(intencion?.carrito_version);
+  const expiraEn = String(intencion?.expira_en ?? "");
+  const expiraEnMs = Date.parse(expiraEn);
   const lineas = Array.isArray(intencion?.items) ? intencion.items : [];
   if (
     !/^[A-Za-z0-9_-]{6,64}$/.test(referenciaFirmada) ||
     !/^\d{1,18}$/.test(montoFirmado) || montoFirmado === "0" ||
-    monedaFirmada !== "COP" || !lineas.length
+    monedaFirmada !== "COP" || carritoIdFirmado !== idCarrito ||
+    !Number.isSafeInteger(carritoVersionFirmada) || carritoVersionFirmada < 0 ||
+    String(carritoVersionFirmada) !== versionRegistro ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(expiraEn) ||
+    !Number.isFinite(expiraEnMs) || expiraEnMs <= Date.now() || !lineas.length
   ) {
-    console.error("[crear-intencion-pago] Snapshot autoritativo de carrito inconsistente.");
+    console.error(
+      "[crear-intencion-pago] Snapshot autoritativo de carrito inconsistente.",
+    );
     return json(
-      { error: "No se pudo confirmar el monto del pago.", codigo: "ERROR_SERVIDOR" },
+      {
+        error: "No se pudo confirmar el monto del pago.",
+        codigo: "ERROR_SERVIDOR",
+      },
       500,
       cors,
     );
   }
   if (entornoFirmado !== entorno) {
-    console.error("[crear-intencion-pago] La intención congelada pertenece a otro entorno de pagos.");
+    console.error(
+      "[crear-intencion-pago] La intención congelada pertenece a otro entorno de pagos.",
+    );
     return json(
-      { error: "La configuracion de pagos cambió; intenta más tarde.", codigo: "CONFIGURACION_PAGO" },
+      {
+        error: "La configuracion de pagos cambió; intenta más tarde.",
+        codigo: "CONFIGURACION_PAGO",
+      },
       500,
       cors,
     );
@@ -792,6 +921,7 @@ async function procesarCarrito(
     montoFirmado,
     monedaFirmada,
     secretoIntegridad,
+    expiraEn,
   );
   const resumenItems = lineas.map((bruto) => {
     const item = esObjeto(bruto) ? bruto : {};
@@ -801,7 +931,9 @@ async function procesarCarrito(
       slug: item.slug ?? null,
       nombre: item.nombre ?? null,
       cantidad: item.cantidad ?? null,
-      precio_unitario: item.precio_unitario == null ? null : String(item.precio_unitario),
+      precio_unitario: item.precio_unitario == null
+        ? null
+        : String(item.precio_unitario),
       subtotal: item.subtotal == null ? null : String(item.subtotal),
     };
   });
@@ -816,9 +948,18 @@ async function procesarCarrito(
       monto_en_centavos: montoFirmado,
       moneda: monedaFirmada,
       firma_integridad: firmaIntegridad,
+      expira_en: expiraEn,
       llave_publica: llavePublica,
-      url_redireccion: `https://magandhi.com/carrito/?ref=${encodeURIComponent(referenciaFirmada)}`,
+      url_redireccion: `https://magandhi.com/carrito/?ref=${
+        encodeURIComponent(referenciaFirmada)
+      }`,
       nombre_producto: nombreProducto,
+      checkout: {
+        tipo: "carrito",
+        id: carritoIdFirmado,
+        version: carritoVersionFirmada,
+        recargar: true,
+      },
       resumen: {
         cantidad_lineas: intencion?.cantidad_lineas ?? lineas.length,
         cantidad_unidades: intencion?.cantidad_unidades ?? null,
@@ -917,7 +1058,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const utmBruto = texto(body?.utm_campaign, 60);
   const utm = utmBruto && /^[a-z0-9-]{1,60}$/.test(utmBruto) ? utmBruto : null;
   const vidBruto = texto(body?.mg_vid, 40);
-  const mgVid = vidBruto && /^[A-Za-z0-9_-]{16,40}$/.test(vidBruto) ? vidBruto : null;
+  const mgVid = vidBruto && /^[A-Za-z0-9_-]{16,40}$/.test(vidBruto)
+    ? vidBruto
+    : null;
 
   // DIAGNOSTICO: marca de entrada para correlacionar la invocacion en los logs.
   // Solo datos no sensibles (que producto se pidio y cuantas unidades).
@@ -965,7 +1108,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
       JSON.stringify({
         message: errorCatalogo?.message ?? null,
         code: (errorCatalogo as { code?: string } | null)?.code ?? null,
-        details: (errorCatalogo as { details?: string } | null)?.details ?? null,
+        details: (errorCatalogo as { details?: string } | null)?.details ??
+          null,
         hint: (errorCatalogo as { hint?: string } | null)?.hint ?? null,
         columna,
       }),
@@ -987,17 +1131,23 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   // --- (2) Validar el máximo público efectivo ------------------------------
   const maxComprable = Number(fila.max_comprable);
-  if (!Number.isInteger(maxComprable) || maxComprable < 0 || maxComprable > 20) {
+  if (
+    !Number.isInteger(maxComprable) || maxComprable < 0 || maxComprable > 20
+  ) {
     console.error(
       "[crear-intencion-pago] max_comprable invalido:",
-      JSON.stringify({ campana_id: fila.id ?? null, max_comprable: fila.max_comprable ?? null }),
+      JSON.stringify({
+        campana_id: fila.id ?? null,
+        max_comprable: fila.max_comprable ?? null,
+      }),
     );
     return json({ error: "No se pudo validar la disponibilidad." }, 500, cors);
   }
   if (cantidad > maxComprable) {
     return json(
       {
-        error: "La cantidad solicitada supera el máximo disponible para este pedido.",
+        error:
+          "La cantidad solicitada supera el máximo disponible para este pedido.",
         codigo: "MAX_COMPRABLE",
         max_comprable: maxComprable,
       },
@@ -1030,7 +1180,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
   //
   // Va DESPUES del chequeo de agotado y ANTES de registrar la intencion: si
   // rechaza, no queda rastro de una intencion que nunca debio existir.
-  const lecturaProveedor = await leerDatosVerificacion(supabase, String(fila.id));
+  const lecturaProveedor = await leerDatosVerificacion(
+    supabase,
+    String(fila.id),
+  );
   const verificacion = await verificarProveedorEnVivo(
     lecturaProveedor.datos,
     cantidad,
@@ -1039,11 +1192,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (verificacion.rechazar) {
     console.log(
       "[crear-intencion-pago] proveedor rechazado en vivo:",
-      JSON.stringify({ ...(lecturaProveedor.error ?? {}), ...verificacion.log }),
+      JSON.stringify({
+        ...(lecturaProveedor.error ?? {}),
+        ...verificacion.log,
+      }),
     );
     return json(
       {
-        error: "La disponibilidad cambió; ajusta la cantidad e intenta de nuevo.",
+        error:
+          "La disponibilidad cambió; ajusta la cantidad e intenta de nuevo.",
         codigo: "MAX_COMPRABLE",
         max_comprable: verificacion.maxComprable,
       },
@@ -1111,8 +1268,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (!llavePublica) {
     return json(
       {
-        error:
-          `Llave publica no configurada para el entorno '${entorno}'. ` +
+        error: `Llave publica no configurada para el entorno '${entorno}'. ` +
           `Pega la llave publica en pagos_config.`,
       },
       500,
@@ -1188,12 +1344,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (errorIntencion) {
     // Una baja entre la lectura pública y el lock autoritativo se informa con el
     // mismo contrato público 409, sin filtrar detalles internos.
-    const maxEnError = /PW_MAX_COMPRABLE:(\d{1,2})/.exec(errorIntencion.message ?? "");
+    const maxEnError = /PW_MAX_COMPRABLE:(\d{1,2})/.exec(
+      errorIntencion.message ?? "",
+    );
     if (maxEnError) {
       const maxActual = Math.max(0, Math.min(20, Number(maxEnError[1])));
       return json(
         {
-          error: "La disponibilidad cambió; ajusta la cantidad e intenta de nuevo.",
+          error:
+            "La disponibilidad cambió; ajusta la cantidad e intenta de nuevo.",
           codigo: "MAX_COMPRABLE",
           max_comprable: maxActual,
         },
@@ -1221,9 +1380,18 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const intencionRegistrada = esObjeto(intencion) ? intencion : null;
   const montoFirmado = String(intencionRegistrada?.monto_centavos ?? "");
   const monedaFirmada = String(intencionRegistrada?.moneda ?? "");
-  if (!/^\d+$/.test(montoFirmado) || montoFirmado !== montoEnCentavos || monedaFirmada !== moneda) {
-    console.error("[crear-intencion-pago] Snapshot autoritativo inconsistente.");
-    return json({ error: "No se pudo confirmar el monto del pago." }, 500, cors);
+  if (
+    !/^\d+$/.test(montoFirmado) || montoFirmado !== montoEnCentavos ||
+    monedaFirmada !== moneda
+  ) {
+    console.error(
+      "[crear-intencion-pago] Snapshot autoritativo inconsistente.",
+    );
+    return json(
+      { error: "No se pudo confirmar el monto del pago." },
+      500,
+      cors,
+    );
   }
 
   // --- Calcular la firma de integridad (server-side) ------------------------
@@ -1243,8 +1411,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const destinoProducto = fila.slug
     ? `slug=${encodeURIComponent(String(fila.slug))}`
     : `id=${encodeURIComponent(String(fila.id ?? ""))}`;
-  const urlRedireccion =
-    `https://magandhi.com/producto/?${destinoProducto}` +
+  const urlRedireccion = `https://magandhi.com/producto/?${destinoProducto}` +
     `&ref=${encodeURIComponent(referencia)}`;
 
   // --- Respuesta 200: SOLO datos publicos -----------------------------------

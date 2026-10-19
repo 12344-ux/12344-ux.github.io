@@ -200,6 +200,11 @@ begin
         'tiene_acceso_pagos', 'pw_revisiones', 'pw_resolver_revision'
       ];
     end if;
+    -- Comercial C4 añade una acción explícita de panel para confirmar un
+    -- reembolso y liberar el carrito. Los helpers de ciclo siguen privados.
+    if to_regprocedure('public.pw_resolver_revision_c4(text,text,text)') is not null then
+      v_lista_blanca := v_lista_blanca || array['pw_resolver_revision_c4'];
+    end if;
 
     -- F3 solo existe desde 202610200. Sus constructores internos siguen fuera
     -- de la lista; estas dos son las únicas puertas de panel.
