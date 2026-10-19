@@ -1,6 +1,6 @@
 # MAGANDHI + Impulse · contexto operativo vigente
 
-**Corte:** 17 de octubre de 2026
+**Corte:** 19 de octubre de 2026
 **Producción interna:** `https://montaguth.institute`
 **Tienda pública:** `https://magandhi.com`
 
@@ -61,7 +61,7 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > nunca bloquea el asiento, al contrario que el costo y el flete. Banco SQL
 > **613/613**, matriz **170/170**, pantalla **70/70**.
 >
-> **El estado actual de producción llega hasta la migración `20261103000000`.**
+> **El estado actual de producción llega hasta la migración `20261104000000` (Comercial C3). `20261105000000`/Comercial C4 no está aplicada.**
 >
 > **Cuentas de cliente C1 · DESPLEGADO · 15-oct-2026 (PR #268).** El dueño
 > decidió conservar compra como invitado y añadir inicio de sesión opcional en
@@ -121,7 +121,7 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > conflicto entre pestañas, logout y compra invitada, sin dinero ni inventario.
 >
 > **Hito · Comercial C3 · 17-oct-2026.** **Desplegado y probado en estructura;
-> flag productivo final `false`; C4 es el siguiente tramo.** Backend PR #280:
+> flag productivo final `false`; C4 era el siguiente tramo.** Backend PR #280:
 > implementación `424e7632d214a90afdb7c9265fbe758bfa3fc580`, merge
 > `275c0dd4548937075770ddd6dace1801c013c929`. Tienda PR #106: implementación
 > `c87934cd6034677be1c1888b8eadce95dcc348a4`, merge
@@ -135,8 +135,31 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > reintento desde otra sesión conservó una sola intención por versión. No hubo
 > aprobación, pedido, movimientos de Inventario, asiento, correo ni repetición
 > real del webhook. La intención queda en `creada`, sin pedido/evento, y no se
-> borra. Relevo vigente:
+> borra. Relevo histórico de ese corte:
 > `docs/RELEVO-COMERCIAL-C3-2026-10-17.md`.
+>
+> **Avance de implementación · Comercial C4 · 19-oct-2026.** C4 está
+> construido en `feat/comercial-c4-ciclo-carrito`: backend/back-office PR #283
+> abierto y tienda PR #108 abierta. La migración candidata es
+> `20261105000000_comercial_c4_cuenta_ciclo_carrito.sql`, pero **NO está
+> aplicada, NO está desplegada y NO está medida en producción**. Producción
+> continúa en `20261104000000`/C3 con `carrito_habilitado=false`. La tienda C4
+> está implementada, no pendiente de construcción; faltan publicación y
+> medición.
+>
+> El contrato fija una expiración autoritativa de 30 minutos firmada para Wompi,
+> conserva la intención C3 `ciclo=0` y registra su sucesión con avance de versión
+> en el siguiente checkout. El snapshot expone `bloqueo_pago` (`pendiente` o
+> `revision`); el retorno v2 exige JWT del propietario mediante `estado-pago`.
+> `customer_id` deriva de cuenta/Auth y el destinatario queda separado. Una
+> aprobación normal consume las cantidades congeladas preservando extras;
+> rechazo o expiración libera y avanza versión, PENDING no libera y APPROVED
+> tardío pasa a revisión. La revisión solo se libera con la acción explícita
+> `reembolsado_liberar`. Cambiaron `crear-intencion-pago`, `estado-pago` y Ventas;
+> los helpers internos quedan sin `EXECUTE` de API. La validación disponible es
+> `node --check`, `git diff --check` y revisión semántica; PostgreSQL 15, banco,
+> aplicación y despliegue siguen pendientes. Relevo vigente:
+> `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`.
 
 ## 1. Separación de superficies
 
@@ -378,11 +401,17 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 - `docs/PLANO-FASE-COMERCIAL.md`: evolución aprobada —cantidades, carrito
   autenticado y Promocionar— con fórmulas, contratos, orden de despliegue y
   criterios de cierre. **C1, C2 y C3 están desplegados y probados en estructura;
-  C3 conserva pendiente su pago aprobado end-to-end; C4 es el siguiente tramo y
-  P0–P5 siguen pendientes.**
-- `docs/RELEVO-COMERCIAL-C3-2026-10-17.md`: relevo general más reciente; fija la
-  evidencia estructural de C3, la intención v2 sin pago, el flag final `false`,
-  sus límites y el arranque de C4.
+  C3 conserva pendiente su pago aprobado end-to-end. C4 está construido en
+  `feat/comercial-c4-ciclo-carrito`, con backend/back-office PR #283 y tienda PR
+  #108 abiertos, pero no aplicado, desplegado ni medido; producción sigue en
+  `20261104000000` con flag `false`. La tienda está implementada; publicación y
+  medición siguen pendientes, y P0–P5 continúan pendientes.**
+- `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`: relevo general más reciente; fija
+  el contrato implementado de C4, el estado productivo todavía en C3, la
+  validación limitada a `node --check`, `git diff --check` y revisión semántica,
+  y el plan de despliegue controlado con PostgreSQL 15/banco pendientes.
+- `docs/RELEVO-COMERCIAL-C3-2026-10-17.md`: relevo histórico de C3; conserva la
+  evidencia de su intención v2 sin pago, el flag final `false` y sus límites.
 - `docs/RELEVO-COMERCIAL-C2-2026-10-16.md`: relevo histórico de C2; conserva su
   evidencia y ya no gobierna el arranque.
 - `docs/RELEVO-COMERCIAL-C1-2026-10-16.md`: relevo histórico de C1; conserva su
@@ -399,8 +428,10 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 
 Los relevos antiguos y `ANDAMIOS.md` se retiraron el 9-oct porque su contenido
 vigente pasó a este archivo. El relevo general vigente es
-`docs/RELEVO-COMERCIAL-C3-2026-10-17.md`; evita reconstruir C1–C3, conserva el
-límite de no pago aprobado y fija Comercial C4 como siguiente tramo. El relevo
+`docs/RELEVO-COMERCIAL-C4-2026-10-19.md`: fija C4 construido en
+`feat/comercial-c4-ciclo-carrito`, PR #283/#108 abiertos, pero no aplicado,
+desplegado ni medido. Producción continúa en C3 con el flag `false`; la tienda
+está implementada y pendiente únicamente de publicación y medición. El relevo
 temático de cuentas `docs/RELEVO-CUENTAS-C2-2026-10-16.md` conserva su evidencia
 histórica y evita repetir migración, SMTP, plantillas o configuración Google al
 retomar esa apertura.
@@ -432,19 +463,37 @@ cierres estructurales de sus primeros tramos:
    conservó una sola intención al reintentar desde otra sesión. El flag final es
    `false`. No hubo aprobación, pedido, inventario, asiento, correo ni repetición
    real del webhook; C3 no está cerrado end-to-end.
-4. **Comercial C4 · siguiente tramo aprobado:** derivar/vincular `customer_id`
-   en servidor y resolver el ciclo postpago del carrito. Se construye con el
-   flag OFF y conserva compra inmediata e invitada.
+4. **Comercial C4 · construido, no desplegado:** backend/back-office PR #283 y
+   tienda PR #108 siguen abiertos en `feat/comercial-c4-ciclo-carrito`. La
+   migración `20261105000000_comercial_c4_cuenta_ciclo_carrito.sql` implementa
+   expiración firmada de 30 minutos, sucesión de la intención C3 `ciclo=0`,
+   `customer_id` desde cuenta/Auth, destinatario separado y `bloqueo_pago` para
+   pendiente/revisión. Aprobación consume cantidades congeladas preservando
+   extras; rechazo o expiración libera y versiona; PENDING no libera; APPROVED
+   tardío pasa a revisión y solo `reembolsado_liberar` la resuelve. El retorno v2
+   exige JWT del propietario. Deben redesplegarse `crear-intencion-pago` y
+   `estado-pago` y publicarse Ventas y la tienda ya implementada. Los helpers
+   internos no tienen `EXECUTE` de API. Falta aplicar, desplegar y medir;
+   producción sigue en `20261104000000`, flag `false`.
 5. **Promocionar P0–P5:** producto compartible, estudio, enlace, atribución y
    lectura comercial siguen pendientes. Meta Ads, Pixel, Conversions API y
    publicación automática continúan fuera de alcance.
 
-La definición final de la fase no se relaja: cuando se autorice un pago C3/C4,
-debe demostrar monto exacto, un solo pedido, inventario correcto e idempotencia.
-La prueba real queda pendiente por decisión del dueño para no modificar
-inventario. La idea de mostrar proveedor público se descartó; MAGANDHI continúa
-siendo quien vende, cobra y responde. Continuar desde
-`docs/RELEVO-COMERCIAL-C3-2026-10-17.md`.
+La definición final de la fase no se relaja. El despliegue C4 debe respetar el
+orden: preflight de solo lectura; migración `20261105000000` una sola vez con
+flag OFF y postflight; redespliegue de `crear-intencion-pago` y `estado-pago`;
+publicación de back-office/tienda; banco PostgreSQL 15 y pruebas controladas.
+Dinero únicamente con autorización expresa; después se mide y solo entonces se
+actualiza el estado. La validación disponible (`node --check`,
+`git diff --check` y revisión semántica) no sustituye PostgreSQL 15, banco,
+aplicación, postflight, despliegue ni evidencia productiva.
+
+Cuando se autorice un pago C3/C4, debe demostrar monto exacto, un solo pedido,
+`customer_id` correcto, snapshots, ciclo de líneas/versión, inventario y
+idempotencia. La prueba real queda pendiente por decisión del dueño para no
+modificar inventario. La idea de mostrar proveedor público se descartó;
+MAGANDHI continúa siendo quien vende, cobra y responde. Continuar desde
+`docs/RELEVO-COMERCIAL-C4-2026-10-19.md`.
 
 Cuentas de cliente sigue en **preapertura**:
 

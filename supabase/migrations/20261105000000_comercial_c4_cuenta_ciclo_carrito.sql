@@ -8,6 +8,27 @@
 
 begin;
 
+-- Precondición operativa: C4 solo se instala con el carrito apagado. El lock
+-- compartido se conserva hasta el COMMIT e impide activar el flag a mitad de
+-- la migración; esta migración nunca cambia su valor.
+do $$
+declare
+  v_carrito_habilitado boolean;
+begin
+  select cfg.carrito_habilitado
+    into v_carrito_habilitado
+    from comercial_config cfg
+   where cfg.id = 1
+   for share;
+
+  if not found or v_carrito_habilitado is distinct from false then
+    raise exception using
+      errcode = 'P0001',
+      message = 'C4_REQUIERE_CARRITO_DESHABILITADO';
+  end if;
+end;
+$$;
+
 -- ----------------------------------------------------------------------------
 -- (A) Evidencia durable del destinatario y del ciclo v2.
 -- ----------------------------------------------------------------------------
@@ -86,6 +107,16 @@ comment on column pagos_intencion.carrito_consumo_resultado is
 comment on column pagos_intencion.carrito_consumo_detalle is
   'C4 · auditoría privada agregada del consumo; no contiene PII, monto ni pedido.';
 
+-- Los estados no terminales del proveedor se auditan como pendientes. Solo
+-- DECLINED/VOIDED/ERROR deben quedar clasificados como rechazo.
+alter table pagos_eventos
+  drop constraint if exists pagos_eventos_resultado_check;
+alter table pagos_eventos
+  add constraint pagos_eventos_resultado_check
+  check (resultado in ('procesado','repetido','rechazado','pendiente','sin_intencion',
+                       'sin_stock','monto_no_coincide','datos_no_coinciden',
+                       'ignorado','ya_procesada'));
+
 create table pw_sucesiones_c4 (
   referencia_predecesora text primary key references pagos_intencion(referencia) on delete restrict,
   carrito_id uuid not null references carritos(id) on delete restrict,
@@ -118,8 +149,8 @@ begin
 end;
 $$;
 
-revoke execute on function pw__marcar_ciclo_carrito_c4() from public, anon, authenticated;
-grant execute on function pw__marcar_ciclo_carrito_c4() to service_role;
+revoke all on function pw__marcar_ciclo_carrito_c4()
+  from public, anon, authenticated, service_role;
 
 create trigger trg_pw_marcar_ciclo_carrito_c4
   before insert on pagos_intencion
@@ -347,8 +378,8 @@ $$;
 
 comment on function co__bloqueo_pago(uuid) is
   'Interna C4 · devuelve pendiente/revision cuando una intención v2 mantiene bloqueado el carrito; no expone la referencia.';
-revoke all on function co__bloqueo_pago(uuid) from public, anon, authenticated, service_role;
-grant execute on function co__bloqueo_pago(uuid) to service_role;
+revoke all on function co__bloqueo_pago(uuid)
+  from public, anon, authenticated, service_role;
 
 create or replace function co__carrito_snapshot()
 returns jsonb
@@ -376,7 +407,8 @@ begin
     into v_carrito_id, v_version
     from carritos c
    where c.auth_user_id = v_uid
-     and c.estado = 'activa';
+     and c.estado = 'activa'
+   for update;
 
   if v_carrito_id is not null then
     perform co__liberar_expiradas_c4(v_carrito_id);
@@ -435,8 +467,8 @@ $$;
 
 comment on function co__carrito_snapshot() is
   'Interna C2+C4 · snapshot canónico desde catalogo_publico y bloqueo_pago null|pendiente|revision, sin exponer referencia ni datos privados.';
-revoke execute on function co__carrito_snapshot() from public, anon, authenticated;
-grant execute on function co__carrito_snapshot() to service_role;
+revoke all on function co__carrito_snapshot()
+  from public, anon, authenticated, service_role;
 
 -- Los cuerpos C2 quedan literales y privados. Los wrappers conservan firmas,
 -- errores normales y grants, pero toman cuenta/cabecera antes de comprobar C4.
@@ -865,6 +897,8 @@ declare
   v_uid_pre uuid;
   v_carrito_pre uuid;
   v_ins bigint;
+  v_referencia_evento text;
+  v_pedido_evento uuid;
   v_i pagos_intencion;
   v_auth_ok boolean;
   v_auth_correo text;
@@ -893,8 +927,34 @@ declare
   v_consumidas integer := 0;
   v_resultado_consumo text;
 begin
-  -- Prelectura sin lock: solo decide el protocolo. v0/v1 y referencias ausentes
-  -- ejecutan sin cambios el cuerpo C3 que quedó renombrado.
+  if coalesce(btrim(p_transaccion_id), '') = '' or v_estado_evento = '' then
+    raise exception 'PW_EVENTO_INVALIDO';
+  end if;
+
+  -- Serializa la llave idempotente antes de decidir v0/v1/v2. Un duplicado
+  -- siempre se resuelve con la referencia durable del primer pagos_eventos,
+  -- nunca con la referencia (posiblemente distinta) del reintento.
+  perform pg_advisory_xact_lock(hashtextextended(
+    'pw-evento:' || p_transaccion_id || ':' || v_estado_evento,
+    0
+  ));
+
+  select pe.referencia, pi.pedido_id
+    into v_referencia_evento, v_pedido_evento
+    from pagos_eventos pe
+    left join pagos_intencion pi on pi.referencia = pe.referencia
+   where pe.transaccion_id = p_transaccion_id
+     and pe.estado_wompi = v_estado_evento;
+
+  if found then
+    return jsonb_build_object(
+      'resultado', 'repetido',
+      'pedido_id', v_pedido_evento
+    );
+  end if;
+
+  -- Prelectura sin lock: solo decide el protocolo después de serializar el
+  -- evento. v0/v1 y referencias ausentes conservan el cuerpo literal C3.
   select pi.version_checkout, pi.auth_user_id, pi.carrito_id
     into v_version_pre, v_uid_pre, v_carrito_pre
     from pagos_intencion pi
@@ -907,10 +967,6 @@ begin
     );
   end if;
 
-  if coalesce(btrim(p_transaccion_id), '') = '' or v_estado_evento = '' then
-    raise exception 'PW_EVENTO_INVALIDO';
-  end if;
-
   insert into pagos_eventos (
     transaccion_id, estado_wompi, referencia, evento, checksum, cuerpo, resultado
   ) values (
@@ -921,9 +977,15 @@ begin
   returning id into v_ins;
 
   if v_ins is null then
+    select pe.referencia, pi.pedido_id
+      into v_referencia_evento, v_pedido_evento
+      from pagos_eventos pe
+      left join pagos_intencion pi on pi.referencia = pe.referencia
+     where pe.transaccion_id = p_transaccion_id
+       and pe.estado_wompi = v_estado_evento;
     return jsonb_build_object(
       'resultado', 'repetido',
-      'pedido_id', (select pedido_id from pagos_intencion where referencia = p_referencia)
+      'pedido_id', v_pedido_evento
     );
   end if;
 
@@ -1031,16 +1093,20 @@ begin
              correo_pagador = coalesce(p_correo_pagador, correo_pagador),
              actualizado = now()
        where referencia = p_referencia;
-    else
-      update pagos_intencion
-         set transaccion_id = p_transaccion_id, estado_wompi = v_estado_evento,
-             metodo_pago = coalesce(p_metodo_pago, metodo_pago),
-             correo_pagador = coalesce(p_correo_pagador, correo_pagador),
-             actualizado = now()
-       where referencia = p_referencia;
+      update pagos_eventos set resultado = 'rechazado' where id = v_ins;
+      return jsonb_build_object('resultado', 'rechazado', 'estado', v_estado_evento);
     end if;
-    update pagos_eventos set resultado = 'rechazado' where id = v_ins;
-    return jsonb_build_object('resultado', 'rechazado', 'estado', v_estado_evento);
+
+    -- PENDING y cualquier estado desconocido no terminal conservan la intención
+    -- creada y, por tanto, el bloqueo del carrito hasta terminal o expiración.
+    update pagos_intencion
+       set transaccion_id = p_transaccion_id, estado_wompi = v_estado_evento,
+           metodo_pago = coalesce(p_metodo_pago, metodo_pago),
+           correo_pagador = coalesce(p_correo_pagador, correo_pagador),
+           actualizado = now()
+     where referencia = p_referencia;
+    update pagos_eventos set resultado = 'pendiente' where id = v_ins;
+    return jsonb_build_object('resultado', 'pendiente', 'estado', v_estado_evento);
   end if;
 
   if not v_auth_ok or not v_cuenta_ok or not v_carrito_ok then
@@ -1621,18 +1687,41 @@ grant execute on function pw_registrar_intencion_carrito(text, uuid, uuid, bigin
 revoke all on function co_carrito_listar() from public, anon, authenticated, service_role;
 grant execute on function co_carrito_listar() to authenticated, service_role;
 
--- service_role es la identidad privilegiada de las Edge Functions y la matriz
--- histórica exige que pueda ejecutar toda función de public. Los helpers siguen
--- cerrados a public/anon/authenticated y solo se alcanzan desde puertas C4.
-grant execute on function co__carrito_agregar_c3(uuid, integer) to service_role;
-grant execute on function co__carrito_cambiar_c3(uuid, integer, bigint) to service_role;
-grant execute on function co__carrito_quitar_c3(uuid, bigint) to service_role;
-grant execute on function co__liberar_expiradas_c4(uuid) to service_role;
-grant execute on function crear_pedido_c3_base(uuid, text, text, text, text, text, text, text, text, text, date, text, jsonb) to service_role;
-grant execute on function crear_pedido_c4(uuid, text, text, text, text, text, text, text, text, text, date, text, jsonb) to service_role;
-grant execute on function pw__procesar_pago_c3(text, text, text, bigint, text, text, text, jsonb, text, text) to service_role;
-grant execute on function pw__registrar_intencion_carrito_c3(text, uuid, uuid, bigint, text, jsonb, text, text, text) to service_role;
-grant execute on function pw__resolver_revision_historica(text, text) to service_role;
-grant execute on function pw__revisiones_c3() to service_role;
+-- Los helpers internos no son puertas RPC, ni siquiera para service_role. Las
+-- funciones SECURITY DEFINER y los triggers los ejecutan como propietario.
+revoke all on function co__proteger_version_monotona()
+  from public, anon, authenticated, service_role;
+revoke all on function co__limitar_lineas_carrito()
+  from public, anon, authenticated, service_role;
+revoke all on function co__validar_max_lineas_config()
+  from public, anon, authenticated, service_role;
+revoke all on function co__carrito_snapshot()
+  from public, anon, authenticated, service_role;
+revoke all on function co__carrito_agregar_c3(uuid, integer)
+  from public, anon, authenticated, service_role;
+revoke all on function co__carrito_cambiar_c3(uuid, integer, bigint)
+  from public, anon, authenticated, service_role;
+revoke all on function co__carrito_quitar_c3(uuid, bigint)
+  from public, anon, authenticated, service_role;
+revoke all on function co__liberar_expiradas_c4(uuid)
+  from public, anon, authenticated, service_role;
+revoke all on function co__bloqueo_pago(uuid)
+  from public, anon, authenticated, service_role;
+revoke all on function pw__contexto_servidor()
+  from public, anon, authenticated, service_role;
+revoke all on function pw__marcar_ciclo_carrito_c4()
+  from public, anon, authenticated, service_role;
+revoke all on function pw__procesar_pago_c3(text, text, text, bigint, text, text, text, jsonb, text, text)
+  from public, anon, authenticated, service_role;
+revoke all on function pw__registrar_intencion_carrito_c3(text, uuid, uuid, bigint, text, jsonb, text, text, text)
+  from public, anon, authenticated, service_role;
+revoke all on function pw__resolver_revision_historica(text, text)
+  from public, anon, authenticated, service_role;
+revoke all on function pw__revisiones_c3()
+  from public, anon, authenticated, service_role;
+revoke all on function crear_pedido_c3_base(uuid, text, text, text, text, text, text, text, text, text, date, text, jsonb)
+  from public, anon, authenticated, service_role;
+revoke all on function crear_pedido_c4(uuid, text, text, text, text, text, text, text, text, text, date, text, jsonb)
+  from public, anon, authenticated, service_role;
 
 commit;
