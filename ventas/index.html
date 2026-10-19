@@ -104,6 +104,7 @@
           'Resuélvelo con el cliente (repón el producto y entrégalo, o devuelve el dinero) y déjalo anotado aquí.</p></div></div>' +
         '<ul class="vt-rev-lista">' + data.lista.map((x) => {
           const ref = escaparHTML(x.referencia);
+          const esC4 = Number(x.ciclo_carrito_version) === 4;
           const contacto = [
             x.comprador ? '<span><b>' + escaparHTML(x.comprador) + '</b></span>' : '',
             x.correo ? '<span>' + escaparHTML(x.correo) + '</span>' : '',
@@ -122,7 +123,8 @@
               '<label class="sr-only" for="nota-' + ref + '">Qué hiciste para resolverlo</label>' +
               '<textarea class="vt-rev-nota" id="nota-' + ref + '" maxlength="300" ' +
                 'placeholder="¿Qué hiciste? Ej.: devolví el dinero por Nequi"></textarea>' +
-              '<button class="vt-rev-btn" type="button" data-resolver="' + ref + '">Marcar como resuelto</button>' +
+              '<button class="vt-rev-btn" type="button" data-resolver="' + ref + '" data-c4="' + (esC4 ? '1' : '0') + '">' +
+                (esC4 ? 'Confirmar reembolso y liberar carrito' : 'Marcar como resuelto') + '</button>' +
               '<p class="vt-rev-msg" data-msg="' + ref + '"></p>' +
             '</div></li>';
         }).join('') + '</ul></section>';
@@ -134,10 +136,16 @@
         const msg = caja.querySelector('[data-msg="' + ref + '"]');
         if (!nota) { msg.className = 'vt-rev-msg err'; msg.textContent = 'Escribe qué hiciste para resolverlo.'; return; }
         b.disabled = true; msg.className = 'vt-rev-msg'; msg.textContent = 'Guardando…';
-        const { error: e2 } = await supabase.rpc('pw_resolver_revision', { p_referencia: ref, p_nota: nota });
+        const esC4 = b.dataset.c4 === '1';
+        const { error: e2 } = esC4
+          ? await supabase.rpc('pw_resolver_revision_c4', {
+              p_referencia: ref, p_accion: 'reembolsado_liberar', p_nota: nota
+            })
+          : await supabase.rpc('pw_resolver_revision', { p_referencia: ref, p_nota: nota });
         if (e2) {
           b.disabled = false; msg.className = 'vt-rev-msg err';
           msg.textContent = /PW_NOTA_OBLIGATORIA/.test(e2.message) ? 'Escribe qué hiciste para resolverlo.'
+            : /PW_REVISION_C4_REQUIERE_ACCION/.test(e2.message) ? 'Esta revisión exige confirmar el reembolso y liberar el carrito.'
             : /PW_SIN_ACCESO/.test(e2.message) ? 'Tu usuario no puede resolver pagos.'
             : 'No se pudo guardar: ' + e2.message;
           return;

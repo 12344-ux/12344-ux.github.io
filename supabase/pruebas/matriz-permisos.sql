@@ -200,6 +200,11 @@ begin
         'tiene_acceso_pagos', 'pw_revisiones', 'pw_resolver_revision'
       ];
     end if;
+    -- Comercial C4 añade una acción explícita de panel para confirmar un
+    -- reembolso y liberar el carrito. Los helpers de ciclo siguen privados.
+    if to_regprocedure('public.pw_resolver_revision_c4(text,text,text)') is not null then
+      v_lista_blanca := v_lista_blanca || array['pw_resolver_revision_c4'];
+    end if;
 
     -- F3 solo existe desde 202610200. Sus constructores internos siguen fuera
     -- de la lista; estas dos son las únicas puertas de panel.
@@ -386,16 +391,41 @@ begin
         || ' · Faltan: ' || coalesce((select string_agg(x, ', ') from unnest(v_lista_blanca) x where x <> all (coalesce(v_funcs_auth, '{}'))), '-')
     end;
 
-    -- ---------- EXECUTE: service_role ejecuta todas ----------
-    select string_agg(p.proname, ', ' order by p.proname) into v_extra
-      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    -- ---------- EXECUTE: service_role solo puertas, nunca helpers internos ----------
+    -- Los helpers co__*/pw__* y los dos núcleos de pedido se alcanzan como
+    -- propietario desde SECURITY DEFINER o triggers; no son RPC de la Edge.
+    select string_agg(
+             case
+               when left(p.proname, 4) in ('co__','pw__')
+                 or p.proname in ('crear_pedido_c3_base','crear_pedido_c4')
+                 then 'SOBRA helper: '
+               else 'FALTA puerta: '
+             end || p.proname,
+             ', ' order by p.proname
+           )
+      into v_extra
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = 'public'
-       and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
-       and not has_function_privilege('service_role', p.oid, 'execute');
+       -- Helper booleano histórico sin lectura/escritura de datos. Su ownership
+       -- varía entre reconstrucciones antiguas; no es una puerta RPC C4.
+       and p.proname <> 'pw__contexto_servidor'
+       and not exists (
+         select 1 from pg_depend d
+          where d.classid = 'pg_proc'::regclass
+            and d.objid = p.oid
+            and d.deptype = 'e'
+       )
+       and (
+         (
+           left(p.proname, 4) in ('co__','pw__')
+           or p.proname in ('crear_pedido_c3_base','crear_pedido_c4')
+         ) = has_function_privilege('service_role', p.oid, 'execute')
+       );
     r_pers := r_pers || 'service_role'::text;
-    r_obj  := r_obj  || 'EXECUTE sobre funciones de public'::text;
-    r_esp  := r_esp  || 'TODAS'::text;
-    r_obt  := r_obt  || coalesce('LE FALTAN: ' || v_extra, 'TODAS');
+    r_obj  := r_obj  || 'EXECUTE sobre puertas de public, sin helpers internos'::text;
+    r_esp  := r_esp  || 'PUERTAS OK'::text;
+    r_obt  := r_obt  || coalesce('DESAJUSTE: ' || v_extra, 'PUERTAS OK');
 
     -- ---------- Comportamiento: el candado de las RPC sigue vivo ----------
     -- Una cuenta de cliente es authenticated, pero no tiene perfil ni modulo.

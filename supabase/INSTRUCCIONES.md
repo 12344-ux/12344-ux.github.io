@@ -1,19 +1,30 @@
 # Supabase · runbook operativo MAGANDHI / Impulse
 
-> **Estado al 17-oct-2026:** en producción están aplicadas todas las migraciones
+> **Estado al 19-oct-2026:** en producción están aplicadas todas las migraciones
 > hasta `20261104000000` (Comercial C3), salvo `20261002000000`, que quedó
 > **SUPERADA y no debe aplicarse** (ver §0). Wompi F1–F4 y Dropshipping D2c
 > están operativos. Cuentas C1/C2 continúan desplegados y Cuentas C2 está
 > cerrado técnicamente en preapertura; CAPTCHA activo, signup OFF y Google
 > Testing hasta publicar políticas. Comercial C1 conserva su límite propio: no
-> hubo pago real de dos unidades. Estado comercial exacto: **Comercial C3
-> desplegado y probado en estructura; flag final `false`; C4 es el siguiente
-> tramo aprobado.** El preflight fue limpio, la migración C3 y el postflight
-> fueron correctos, las Edge Functions se redesplegaron y se midió una intención
-> v2 productiva sin pagar con líneas/total exactos y una sola intención al
-> reintentar. No hubo aprobación, pedido, inventario, asiento, correo ni webhook
-> repetido; C3 no está cerrado end-to-end. Estado general exacto:
-> `docs/RELEVO-COMERCIAL-C3-2026-10-17.md` y `CONTEXTO-MAGANDHI.md` §9; para la
+> hubo pago real de dos unidades. Comercial C4 está construido en
+> `feat/comercial-c4-ciclo-carrito`: backend/back-office PR #283 y tienda PR
+> #108 están abiertos. **No está aplicado, desplegado ni medido.** Producción
+> sigue en C3 con `carrito_habilitado=false`; la tienda C4 está implementada, no
+> pendiente de construcción. La migración candidata es
+> `20261105000000_comercial_c4_cuenta_ciclo_carrito.sql`. Cambiaron
+> `crear-intencion-pago`, `estado-pago` y Ventas. El workflow «Banco de
+> pruebas» de GitHub Actions, run `39320288166`, terminó `SUCCESS` sobre el
+> commit `90fbdf2` de `feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y
+> Deno: pasaron las migraciones y el banco CI, además de los checks de Node, el
+> diff y la revisión. `90fbdf2` es el commit backend validado y `2483bb2` el
+> commit de tienda validado; este relevo posterior es exclusivamente documental.
+> Este gate local/CI
+> cumplido no cambia producción: la migración C4 NO está aplicada, no hay
+> preflight ni postflight productivos, las Edge C4 no están desplegadas, la
+> tienda y el back-office no están publicados, y no hubo dinero ni medición
+> productiva. C3 tampoco está cerrado end-to-end: no hubo aprobación, pedido,
+> inventario, asiento, correo ni webhook repetido. Estado general exacto:
+> `docs/RELEVO-COMERCIAL-C4-2026-10-19.md` y `CONTEXTO-MAGANDHI.md` §9; para la
 > futura apertura de cuentas conserva vigencia temática
 > `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
 >
@@ -5493,9 +5504,9 @@ C2.
 
 # Comercial C3 · checkout multiproducto
 
-> **Estado · 17-oct-2026:** desplegado y probado en estructura; flag final
-> `false`. Relevo vigente:
-> `docs/RELEVO-COMERCIAL-C3-2026-10-17.md`. C4 es el siguiente tramo.
+> **Estado histórico · 17-oct-2026:** desplegado y probado en estructura; flag
+> final `false`. Relevo de ese corte:
+> `docs/RELEVO-COMERCIAL-C3-2026-10-17.md`. C4 era el siguiente tramo.
 
 ## Despliegue medido
 
@@ -5534,8 +5545,119 @@ están medidos todavía webhook válido/repetido, pedido multiproducto, bajas,
 proveedor, asiento, correo ni falta de stock posterior a la intención. No
 presentar C3 como cierre end-to-end.
 
-Continuar con **Comercial C4**: derivar/vincular `customer_id` server-side y
-resolver consumo/desbloqueo/revisión del carrito después del pago. Mantener
-`carrito_habilitado=false` durante construcción y despliegue; conservar compra
-inmediata e invitada. Un pago productivo futuro requiere autorización expresa y
-su evidencia debe añadirse al relevo antes de atribuir cierre transaccional.
+Ese siguiente tramo quedó implementado en rama como **Comercial C4**, pero no
+aplicado, desplegado ni medido. Su estado vigente y el procedimiento futuro
+están en el capítulo siguiente y en
+`docs/RELEVO-COMERCIAL-C4-2026-10-19.md`. Hasta entonces, mantener
+`carrito_habilitado=false`, conservar compra inmediata e invitada y exigir
+autorización expresa para cualquier pago productivo. La evidencia debe añadirse
+al relevo antes de atribuir cierre transaccional.
+
+---
+
+# Comercial C4 · cuenta y ciclo del carrito
+
+> **Estado documental · 19-oct-2026:** backend/back-office PR #283 y tienda PR
+> #108 están abiertos en `feat/comercial-c4-ciclo-carrito`. C4 está construido,
+> pero **NO aplicado, NO desplegado y NO medido en producción**. Producción
+> sigue en `20261104000000`/Comercial C3 con
+> `carrito_habilitado=false`. La tienda está implementada; publicación y
+> medición están pendientes. Relevo vigente:
+> `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`.
+
+## Contrato de `20261105000000`
+
+La migración forward
+`supabase/migrations/20261105000000_comercial_c4_cuenta_ciclo_carrito.sql`:
+
+- exige flag OFF, bloquea su configuración hasta el commit y nunca activa el
+  carrito;
+- fija en servidor una expiración autoritativa de 30 minutos y devuelve el mismo
+  instante ISO que `crear-intencion-pago` incorpora a la firma de Wompi;
+- conserva intacta la intención C3 `ciclo=0`; en el siguiente checkout registra
+  su sucesión, avanza una vez la versión y permite el retry técnico sobre la
+  versión nueva;
+- deriva `customer_id` desde cuenta activa/Auth; el navegador no decide UID,
+  correo Auth ni identidad comercial;
+- reutiliza el lock `cc-correo:` de Cuentas C2 para crear o vincular cliente y
+  falla cerrado ante ambigüedad, vínculo ajeno o carrera;
+- separa el destinatario de la identidad comercial y guarda sus datos/dirección
+  como snapshot del pedido;
+- expone en el snapshot `bloqueo_pago` con `null`, `pendiente` o `revision`, sin
+  filtrar la referencia ni presentar un booleano;
+- en APPROVED normal crea un pedido y sustrae las cantidades congeladas,
+  preservando unidades extra y líneas nuevas; un drift histórico puede quedar
+  registrado como consumo parcial;
+- en `DECLINED`, `VOIDED`, `ERROR` o expiración conserva líneas, libera y avanza
+  una vez la versión; `PENDING` y estados no terminales conservan intención,
+  líneas, versión y bloqueo;
+- lleva un APPROVED tardío —posterior a rechazo/expiración o con sucesora— a
+  `requiere_revision`, sin crear automáticamente otro pedido;
+- permite resolver revisión únicamente desde Ventas, tras confirmar reembolso,
+  mediante `pw_resolver_revision_c4(..., 'reembolsado_liberar', nota)`;
+- deja el retorno v2 en `pw_estado_checkout_publico`, mediado por
+  `estado-pago` y protegido por JWT coincidente con la cuenta; una referencia
+  ausente, inválida o ajena no revela su existencia;
+- devuelve para v2 solo estado y descriptor de checkout saneados; reserva
+  `pw_estado_publico` para v0/v1 y no expone PII, monto, ids privados, pedido,
+  transacción, motivo ni entorno;
+- revoca `EXECUTE` de API a los helpers propios de C4 `co__*`, `pw__*`,
+  `crear_pedido_c3_base` y `crear_pedido_c4`; el helper booleano histórico
+  `pw__contexto_servidor()` no expone ni muta datos y se excluye de esa auditoría
+  por variaciones de ownership; las Edge llaman puertas nominales;
+- conserva compra inmediata e invitada como caminos históricos independientes.
+
+También cambiaron las Edge Functions `crear-intencion-pago` y `estado-pago`, que
+deben redesplegarse, y el back-office de Ventas, que incorpora la acción C4 de
+reembolso/liberación. La tienda de PR #108 ya está implementada.
+
+## Validación disponible antes del despliegue
+
+El gate local/CI está cumplido. El workflow «Banco de pruebas» de GitHub
+Actions, run `39320288166`, terminó `SUCCESS` sobre el commit `90fbdf2` de
+`feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y Deno. Pasaron las
+migraciones y el banco CI, además de los checks de Node, el diff y la revisión.
+`90fbdf2` es el commit backend validado por ese run y `2483bb2` el commit de tienda validado; los cambios posteriores de este relevo son exclusivamente documentales.
+
+Esta evidencia no equivale a producción. La migración C4 NO está aplicada en
+producción; no hay preflight ni postflight productivos; las Edge Functions no
+están redesplegadas; la tienda y el back-office no están publicados; no hubo
+dinero ni medición productiva. No registrar el banco CI como migración aplicada,
+despliegue o evidencia productiva, ni inventar recorridos C4.
+
+## Procedimiento futuro de despliegue · aún no ejecutado
+
+1. **Preflight de solo lectura.** Confirmar migración máxima
+   `20261104000000`, `carrito_habilitado=false`, historia C3 coherente y ausencia
+   de contradicciones para las invariantes C4. No corregir datos ni reconstruir
+   historia dentro del preflight.
+2. **Migración.** Aplicar una sola vez
+   `20261105000000_comercial_c4_cuenta_ciclo_carrito.sql` con flag OFF y ejecutar
+   el postflight de objetos, columnas, constraints, índices, firmas,
+   ownership/RLS/grants, historia v2, identidad, snapshots, sucesión, bloqueo y
+   versiones. Confirmar que el flag continúa OFF.
+3. **Ambas Edge Functions.** Redesplegar `crear-intencion-pago` y `estado-pago` y
+   comprobar JWT, expiración/firma Wompi y retorno v2 sin filtraciones.
+4. **Back-office y tienda.** Publicar Ventas y la tienda implementada en PR #108,
+   conservando compra inmediata e invitada y sin anunciar disponibilidad antes
+   de las verificaciones.
+5. **Pruebas controladas de producción.** Con el gate local/CI ya aprobado,
+   probar sin dinero sobre OFF/ON propiedad, sucesión C3, expiración,
+   `bloqueo_pago`, retry, PENDING, APPROVED tardío, retorno v2 y resolución
+   explícita de revisión. Volver a OFF ante cualquier duda.
+6. **Dinero solo con autorización.** Medir, sin inferencias, aprobación,
+   rechazo/revisión, reembolso/liberación, un solo pedido, `customer_id`,
+   snapshots, consumo/preservación de extras, versión, inventario/proveedor,
+   asiento, correo e idempotencia.
+7. **Actualizar después de medir.** Solo con esos resultados modificar relevo,
+   plano, runbook y contexto y documentar el valor final del flag.
+
+## Falla segura y operación
+
+Mantener `carrito_habilitado=false` es el mecanismo de contención; no existe
+rollback por reejecución de C3 ni por edición de una migración aplicada. Una
+intención en `requiere_revision` permanece bloqueada hasta la acción explícita
+`reembolsado_liberar` ejecutada por la operación después del reembolso. No
+liberar cabeceras, borrar líneas ni fabricar webhooks para forzar un cierre. PR
+#283 y PR #108 siguen abiertos; no declararlos fusionados, desplegados o
+probados.

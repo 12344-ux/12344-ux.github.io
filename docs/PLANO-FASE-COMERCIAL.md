@@ -1,7 +1,7 @@
 # PLANO · Fase comercial: Carrito + Promocionar
 
 **Decisión del dueño:** 16 de octubre de 2026  
-**Estado por tramos:** **C1, C2 y C3 desplegados y probados en estructura**; C3 conserva pendiente la aprobación end-to-end; C4 es el siguiente tramo; P0–P5 pendientes. La fase completa no está cerrada.
+**Estado por tramos:** **C1, C2 y C3 desplegados y probados en estructura**; C3 conserva pendiente la aprobación end-to-end. C4 está construido en `feat/comercial-c4-ciclo-carrito`: backend/back-office PR #283 y tienda PR #108 están abiertos. No está aplicado, desplegado ni medido; producción sigue en `20261104000000`/C3 con `carrito_habilitado=false`. La tienda C4 está implementada, no pendiente de construcción. P0–P5 siguen pendientes. La fase completa no está cerrada.
 **Superficies:** back-office `montaguth.institute`, tienda `magandhi.com` y backend compartido en Supabase.
 
 Este plano reúne los dos frentes comerciales elegidos para la siguiente evolución de MAGANDHI:
@@ -267,17 +267,62 @@ pertenece a C4.
 
 ### C4 · Cuenta y ciclo del carrito
 
-**Entrega:** propiedad comercial y postpago coherentes.
+**Entrega:** propiedad comercial, expiración y ciclo del carrito coherentes.
 
-- JWT validado por servidor;
-- `customer_id` derivado desde `cuentas_cliente`;
-- si la cuenta todavía no tiene cliente comercial, se crea/vincula en la primera compra aprobada de forma transaccional;
-- dirección y destinatario siguen siendo snapshot del pedido;
-- rechazo desbloquea; aprobación consume solo las líneas congeladas; revisión conserva estado prudente;
-- regreso desde Wompi identifica el checkout, no una ficha aislada;
-- `Comprar ahora` continúa como camino independiente.
+- `crear-intencion-pago` valida el JWT y deriva el UID; `customer_id` se resuelve
+  desde la cuenta activa y Auth, nunca desde el navegador;
+- si la cuenta aún no tiene cliente comercial, se crea o vincula en la primera
+  aprobación dentro de la transacción del pedido y bajo el advisory lock
+  `cc-correo:` compartido con Cuentas C2;
+- el destinatario y su dirección quedan como snapshot de la orden, separados de
+  la identidad comercial que determina `customer_id`;
+- cada intención C4 expira autoritativamente a los 30 minutos y el mismo instante
+  persistido forma parte de la firma enviada a Wompi;
+- la intención C3 existente conserva `ciclo=0`; el siguiente checkout registra
+  su sucesión, avanza una vez la versión y reintenta sobre la versión nueva;
+- el snapshot expone `bloqueo_pago: null | pendiente | revision`, sin revelar la
+  referencia; pendiente y revisión impiden mutar el carrito;
+- aprobación normal valida el snapshot y sustrae las cantidades congeladas,
+  preservando unidades extra y líneas nuevas; un drift histórico puede dejar
+  consumo parcial auditable;
+- `DECLINED`, `VOIDED`, `ERROR` y la expiración conservan líneas, liberan y
+  avanzan una vez la versión; `PENDING` o un estado no terminal conserva líneas,
+  versión y bloqueo;
+- un `APPROVED` tardío, posterior a rechazo/expiración o con sucesora, pasa a
+  `requiere_revision` sin crear automáticamente otro pedido;
+- la revisión solo se resuelve desde Ventas mediante la acción explícita
+  `reembolsado_liberar`, después de confirmar el reembolso;
+- el retorno v2 usa `estado-pago` y `pw_estado_checkout_publico`, exige JWT del
+  propietario y devuelve estado/descriptor del checkout sin PII, monto, ids
+  privados, pedido, transacción, motivo ni entorno; `pw_estado_publico` queda
+  para v0/v1;
+- los helpers propios de C4 no tienen `EXECUTE` de API; el helper booleano
+  histórico `pw__contexto_servidor()` no expone ni muta datos y se excluye de
+  esa auditoría por variaciones de ownership; las Edge usan puertas nominales;
+- `Comprar ahora` e invitado continúan como caminos independientes.
 
 **Relación con Cuentas:** este tramo materializa parte de C4 sin obligar a completar toda la futura pantalla C3 de perfil/pedidos.
+
+**Estado de implementación · 19-oct-2026:** backend/back-office PR #283 y tienda
+PR #108 están abiertos en `feat/comercial-c4-ciclo-carrito`. La migración
+forward `20261105000000_comercial_c4_cuenta_ciclo_carrito.sql`, ambas Edge
+Functions (`crear-intencion-pago`, `estado-pago`), Ventas y la tienda están
+construidos. **Nada de C4 está aplicado, desplegado ni medido en producción.**
+Producción continúa en `20261104000000`/C3 con
+`carrito_habilitado=false`.
+
+**Evidencia de validación:** el workflow «Banco de pruebas» de GitHub Actions,
+run `39320288166`, terminó `SUCCESS` sobre el commit `90fbdf2` de
+`feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y Deno. Pasaron las
+migraciones y el banco CI, además de los checks de Node, el diff y la revisión.
+`90fbdf2` es el commit backend validado por ese run y `2483bb2` el commit de tienda validado; los cambios posteriores de este relevo son exclusivamente documentales.
+
+Este gate local/CI está cumplido, pero **no es evidencia productiva**. La
+migración C4 NO está aplicada en producción; no hay preflight ni postflight
+productivos; las Edge Functions no están redesplegadas; la tienda y el
+back-office no están publicados; no hubo dinero ni medición productiva. No
+atribuir a C4 pedidos, inventario, proveedor, asiento, correo, webhook repetido
+ni ningún resultado end-to-end hasta medirlos.
 
 ---
 
@@ -383,13 +428,19 @@ Ventas muestra la procedencia validada. Los pedidos manuales pueden tener una fu
 
 ## 5. Orden de construcción
 
-Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual: C1, C2 y C3 están desplegados y probados en estructura; C3 conserva pendiente el pago aprobado end-to-end. C4 es el siguiente tramo aprobado; lo demás permanece pendiente.
+Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual: C1, C2 y C3 están desplegados y probados en estructura; C3 conserva pendiente el pago aprobado end-to-end. C4 está construido en `feat/comercial-c4-ciclo-carrito`: backend/back-office PR #283 y tienda PR #108 siguen abiertos. No está aplicado, publicado ni medido; producción continúa en `20261104000000`/C3 con `carrito_habilitado=false`. Lo demás permanece pendiente.
 
 1. **Plano y arranque — cerrado.** Este documento y referencias de contexto.
 2. **C1 · cantidad inmediata — estructura lista.** Valor comercial rápido y cimiento de carrito; sin afirmar cierre transaccional de qty2.
 3. **C2 · carrito persistente — estructura lista y flag OFF.** Datos/RLS/UI medidos.
 4. **C3 · intención y checkout multiproducto — estructura lista y flag OFF.** Líneas congeladas, total autoritativo, Wompi abierto sin pago e idempotencia de intención medida.
-5. **C4 · cuenta y ciclo del carrito — siguiente.** Vínculo server-side de cliente y postpago.
+5. **C4 · cuenta y ciclo del carrito — construido, gate local/CI cumplido y
+   despliegue pendiente.** Migración, `crear-intencion-pago`, `estado-pago`,
+   Ventas y tienda están implementados. El run `39320288166` pasó las
+   migraciones y el banco CI con PostgreSQL 15 y Deno, además de checks de Node,
+   diff y revisión. Falta ejecutar preflight productivo, aplicar la migración,
+   ejecutar postflight productivo, redesplegar/publicar y medir con pruebas
+   controladas de producción.
 6. **P0 · taxonomía y privacidad — pendiente.** Contrato de atribución, canales y retención antes de capturar datos.
 7. **P1 · producto compartible — pendiente.** También resuelve SEO/IA pendiente.
 8. **P2 · estudio Promocionar — pendiente.** Enlaces largos, textos, preview, QR y kit.
@@ -435,10 +486,42 @@ retorno pendiente y una sola intención al reintentar entre sesiones. No hubo
 aprobación, pedido, inventario, asiento, correo ni repetición real del webhook;
 el flag final quedó `false`.
 
-C4 continúa desde este punto sin reconstruir C1–C3. Debe derivar el cliente y
-resolver el ciclo postpago manteniendo compra inmediata/invitada y el flag OFF
-durante construcción. La prueba aprobada end-to-end de C3 permanece pendiente
-y solo se atribuirá cuando exista evidencia real.
+El gate local/CI de C4 ya está cumplido: el workflow «Banco de pruebas» run
+`39320288166` terminó `SUCCESS` sobre `90fbdf2` de
+`feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y Deno; pasaron las
+migraciones y el banco CI, además de los checks de Node, el diff y la revisión.
+`90fbdf2` es el commit backend validado por ese run y `2483bb2` el commit de tienda validado; los cambios posteriores de este relevo son exclusivamente documentales. Este resultado no modifica producción.
+
+**C4 todavía no ha recorrido el despliegue productivo.** El orden aprobado es:
+
+1. ejecutar un preflight de solo lectura que confirme producción en
+   `20261104000000`, historia C3 coherente y `carrito_habilitado=false`;
+2. aplicar una sola vez
+   `20261105000000_comercial_c4_cuenta_ciclo_carrito.sql` con el flag OFF y
+   ejecutar el postflight de objetos, firmas, constraints, índices, grants,
+   RLS, historia v2 e invariantes; el flag debe seguir OFF;
+3. redesplegar **ambas Edge Functions cambiadas**, `crear-intencion-pago` y
+   `estado-pago`, y comprobar autenticación, expiración/firma Wompi y retorno v2;
+4. publicar el back-office de Ventas y la tienda ya implementada en PR #108,
+   conservando compra inmediata e invitada y sin anunciar C4 todavía;
+5. con el gate local/CI ya aprobado, ejecutar las pruebas controladas de
+   producción sin dinero sobre flag OFF/ON: propiedad, sucesión C3, expiración,
+   `bloqueo_pago`, retry, PENDING, APPROVED tardío, retorno v2 y resolución
+   explícita de revisión; volver a OFF ante cualquier duda;
+6. usar dinero solo con autorización expresa del dueño y medir aprobación,
+   rechazo/revisión, reembolso/liberación, pedido único, `customer_id`,
+   snapshots, consumo y preservación de extras, versión, inventario/proveedor,
+   asiento, correo e idempotencia;
+7. solo entonces actualizar el estado documental y decidir el flag final.
+
+Hasta completar esos pasos, producción continúa en C3 y el flag `false`. El
+run `39320288166` acredita el gate local/CI con PostgreSQL 15 y Deno, las
+migraciones, el banco CI, los checks de Node, el diff y la revisión; no acredita
+producción. Siguen pendientes el preflight productivo, la aplicación de la
+migración C4, el postflight productivo, el redespliegue de las Edge Functions,
+la publicación de tienda/back-office y las pruebas controladas de producción.
+No hubo dinero ni medición productiva. La prueba aprobada end-to-end de C3
+permanece pendiente y solo se atribuirá cuando exista evidencia real.
 
 ---
 

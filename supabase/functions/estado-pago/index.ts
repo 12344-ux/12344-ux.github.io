@@ -1,48 +1,15 @@
-// MAGANDHI · Edge Function · estado-pago (Pagos web · D0)
+// MAGANDHI · Edge Function · estado-pago (Pagos web · D0 + Comercial C4)
 // ----------------------------------------------------------------------------
-// Recibe del navegador (tienda magandhi.com)  { referencia }  y responde en que
-// quedo ESE pago:
-//   { estado: 'pendiente' | 'aprobado' | 'revision' | 'rechazado',
-//     nombre_producto, slug }
+// Recibe { referencia }. v0/v1 conservan autorización por posesión y respuesta
+// histórica. Para v2 valida, cuando exista, el JWT de usuario y la RPC exige que
+// su UID sea el mismo que quedó congelado en pagos_intencion.auth_user_id.
 //
-// PARA QUE EXISTE
-//   Al volver de Wompi, la ficha del producto se veia igual que antes y el boton
-//   'Comprar ahora' seguia activo: la persona podia pagar dos veces. Ahora la
-//   tienda pregunta por la referencia que trae en la URL y muestra la verdad,
-//   sin inventarsela.
-//
-// ============================================================================
-// LINEA ROJA DE SEGURIDAD
-//   - La autorizacion es la POSESION de la referencia, igual que la posesion del
-//     codigo_resena autoriza a opinar. La genera el servidor como
-//     MAG-<idcorto>-<epochms>-<aleatorio>: no se adivina.
-//   - La tabla pagos_intencion NO es legible por anon y asi se queda. Esta
-//     funcion es la unica puerta, y solo puede llamar al RPC porque corre con
-//     service_role: pw_estado_publico no tiene grant para anon ni authenticated.
-//   - Responde el MINIMO. Nunca monto, correo, telefono, direccion, pedido_id,
-//     transaccion_id, metodo de pago, motivo de revision ni entorno.
-//   - La referencia NO se escribe en los logs: es la llave de consulta.
-//   - La SERVICE_ROLE_KEY la inyecta el runtime en Deno.env; jamas se devuelve.
-//
-// SOLO LECTURA: no escribe en ninguna tabla. Si falla, la tienda degrada sola y
-// muestra el mensaje prudente de 'seguimos confirmando tu pago'.
-//
-// Verify JWT: ENCENDIDO (la tienda llama con supabase.functions.invoke, que
-// adjunta la publishable key; el candado real es que el RPC solo lo ejecuta
-// service_role).
-// Runbook: supabase/INSTRUCCIONES.md §D0
-// Migracion: supabase/migrations/20261021000000_pagos_estado_publico.sql
+// Línea roja: nunca devuelve monto, PII, pedido_id, transacción, método, motivo
+// de revisión ni entorno. La referencia tampoco se escribe en logs.
 // ============================================================================
 
-// supabase-js pineado a la version EXACTA del proyecto (@2.116.0), por URL desde
-// esm.sh (regla B2: version fija, nunca flotante).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.116.0";
 
-// ----------------------------------------------------------------------------
-// CORS: misma lista blanca que crear-intencion-pago y enviar-opinion (tienda con
-// y sin www + el subdominio de GitHub Pages de desarrollo). No se usa '*' porque
-// la tienda llama con la apikey en las cabeceras.
-// ----------------------------------------------------------------------------
 const ORIGENES_PERMITIDOS = new Set<string>([
   "https://magandhi.com",
   "https://www.magandhi.com",
@@ -72,21 +39,16 @@ function json(
     headers: {
       ...cors,
       "Content-Type": "application/json; charset=utf-8",
-      // El estado de un pago cambia en segundos (lo mueve el webhook): ninguna
-      // capa intermedia debe guardar esta respuesta.
       "Cache-Control": "no-store",
     },
   });
 }
 
-// Mismo formato que el check de pagos_intencion.referencia. Se valida aqui y
-// otra vez dentro del RPC.
 const FORMATO_REFERENCIA = /^[A-Za-z0-9_-]{6,64}$/;
+const FORMATO_UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const VERSION_CARRITO = /^(0|[1-9][0-9]*)$/;
 
-// Vocabulario publico permitido. Si el RPC devolviera algo fuera de esta lista
-// (porque alguien agrego un estado nuevo a pagos_intencion y olvido traducirlo),
-// se responde 'pendiente': el caso prudente es decir que seguimos confirmando,
-// nunca afirmar que el pago quedo listo.
 const ESTADOS_PUBLICOS = new Set<string>([
   "pendiente",
   "aprobado",
@@ -94,23 +56,54 @@ const ESTADOS_PUBLICOS = new Set<string>([
   "rechazado",
 ]);
 
-Deno.serve(async (req: Request): Promise<Response> => {
-  const origin = req.headers.get("origin");
-  const cors = cabecerasCors(origin);
+type FilaEstado = {
+  estado?: unknown;
+  nombre_producto?: unknown;
+  slug?: unknown;
+  checkout?: unknown;
+};
 
-  // --- CORS preflight -------------------------------------------------------
+type CheckoutPublico = {
+  tipo: "carrito";
+  id: string;
+  version: number;
+  recargar: boolean;
+};
+
+function checkoutSeguro(valor: unknown): CheckoutPublico | null {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return null;
+  const bruto = valor as Record<string, unknown>;
+  if (
+    bruto.tipo !== "carrito" || typeof bruto.id !== "string" ||
+    !FORMATO_UUID.test(bruto.id) || typeof bruto.recargar !== "boolean"
+  ) return null;
+
+  const version = bruto.version;
+  const versionNumero = typeof version === "number"
+    ? version
+    : typeof version === "string" && VERSION_CARRITO.test(version)
+    ? Number(version)
+    : NaN;
+  if (!Number.isSafeInteger(versionNumero) || versionNumero < 0) return null;
+
+  return {
+    tipo: "carrito",
+    id: bruto.id,
+    version: versionNumero,
+    recargar: bruto.recargar,
+  };
+}
+
+Deno.serve(async (req: Request): Promise<Response> => {
+  const cors = cabecerasCors(req.headers.get("origin"));
+
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: cors });
   }
-
-  // --- Solo POST ------------------------------------------------------------
-  // POST aunque sea una lectura: asi la referencia viaja en el cuerpo y no en la
-  // URL, donde quedaria en los logs de la plataforma.
   if (req.method !== "POST") {
     return json({ error: "Metodo no permitido; usa POST." }, 405, cors);
   }
 
-  // --- Leer y validar el body ----------------------------------------------
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -121,15 +114,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const referencia = typeof body?.referencia === "string"
     ? body.referencia.trim()
     : "";
-
   if (!referencia || !FORMATO_REFERENCIA.test(referencia)) {
-    // Mismo 404 que una referencia inexistente: no se confirma si existe o no.
     return json({ error: "Referencia no encontrada." }, 404, cors);
   }
 
-  // --- Cliente Supabase server-side (SERVICE_ROLE, inyectada por el runtime) -
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const publicKey = Deno.env.get("SUPABASE_ANON_KEY") ??
+    Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? req.headers.get("apikey");
   if (!supabaseUrl || !serviceRoleKey) {
     return json(
       { error: "Configuracion del servidor incompleta (Supabase)." },
@@ -137,49 +129,70 @@ Deno.serve(async (req: Request): Promise<Response> => {
       cors,
     );
   }
-  // Se fuerza la SERVICE_ROLE en Authorization: sin esto supabase-js heredaria
-  // el JWT anon del navegador y pw_estado_publico -cerrada a anon- fallaria.
+
+  // JWT opcional: una publishable/anon key no se interpreta como usuario. Un
+  // access token válido aporta exclusivamente su UID; nunca correo ni metadata.
+  let authUserId: string | null = null;
+  const jwt = (req.headers.get("authorization") ?? "")
+    .replace(/^Bearer\s+/i, "")
+    .trim();
+  if (jwt && publicKey) {
+    const supabaseUsuario = createClient(supabaseUrl, publicKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: `Bearer ${jwt}` } },
+    });
+    const { data: sesion, error: errorSesion } = await supabaseUsuario.auth
+      .getUser(jwt);
+    if (!errorSesion && sesion?.user?.id && FORMATO_UUID.test(sesion.user.id)) {
+      authUserId = sesion.user.id;
+    }
+  }
+
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${serviceRoleKey}` } },
   });
 
-  // --- Consultar por RPC (unica puerta) ------------------------------------
-  const { data, error } = await supabase.rpc("pw_estado_publico", {
+  const { data, error } = await supabase.rpc("pw_estado_checkout_publico", {
     p_referencia: referencia,
+    p_auth_user_id: authUserId,
   });
 
   if (error) {
-    // DIAGNOSTICO sin la referencia (es la llave) y sin secretos.
     console.error(
-      "[estado-pago] Fallo pw_estado_publico:",
+      "[estado-pago] Fallo pw_estado_checkout_publico:",
       JSON.stringify({
         message: error?.message ?? null,
         code: (error as { code?: string } | null)?.code ?? null,
         details: (error as { details?: string } | null)?.details ?? null,
       }),
     );
-    return json({ error: "No se pudo consultar el estado del pago." }, 500, cors);
+    return json(
+      { error: "No se pudo consultar el estado del pago." },
+      500,
+      cors,
+    );
   }
 
-  // El RPC devuelve 0 filas cuando la referencia no existe (o esta mal formada).
-  const fila = Array.isArray(data) ? data[0] : data;
+  const fila = (Array.isArray(data) ? data[0] : data) as FilaEstado | null;
   if (!fila) {
+    // En v2 también cubre JWT ausente/no válido o UID distinto, sin confirmar
+    // hacia fuera que la referencia existe.
     return json({ error: "Referencia no encontrada." }, 404, cors);
   }
 
   const bruto = typeof fila.estado === "string" ? fila.estado : "";
   const estado = ESTADOS_PUBLICOS.has(bruto) ? bruto : "pendiente";
+  const respuesta: Record<string, unknown> = {
+    estado,
+    nombre_producto: typeof fila.nombre_producto === "string"
+      ? fila.nombre_producto
+      : "",
+    slug: typeof fila.slug === "string" ? fila.slug : "",
+  };
 
-  return json(
-    {
-      estado,
-      nombre_producto: typeof fila.nombre_producto === "string"
-        ? fila.nombre_producto
-        : "",
-      slug: typeof fila.slug === "string" ? fila.slug : "",
-    },
-    200,
-    cors,
-  );
+  const checkout = checkoutSeguro(fila.checkout);
+  if (checkout) respuesta.checkout = checkout;
+
+  return json(respuesta, 200, cors);
 });
