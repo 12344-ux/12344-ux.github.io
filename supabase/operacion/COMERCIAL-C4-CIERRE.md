@@ -1,6 +1,11 @@
 # Comercial C4 · cierre operativo
 
-**Estado al preparar este paquete (19-oct-2026):** C4 está fusionado en ambos `main`; GitHub Pages publicó backend/back-office y tienda. El banco PostgreSQL 15/Deno run `39326788045` terminó `SUCCESS` sobre el commit `efa253f` de este paquete; además, el parser PostgreSQL aceptó los seis SQL operativos y la migración. Según la última evidencia y la confirmación del dueño, producción todavía necesita preflight, puente de retorno, Edge `estado-pago`, migración C4, postflight, Edge `crear-intencion-pago` y pruebas controladas. Esto no declara C4 cerrado.
+**Ejecución · 19-oct-2026:** las fases A, B y C están **ejecutadas** en producción, y la fase D se abrió: **el carrito quedó ENCENDIDO**. Valores observados que difieren de lo esperado abajo:
+
+- preflight `v2_total=0` (no existía la intención C3), por lo que `c3_preservadas=0` y la sucesión C3 no aplica;
+- regresión OFF sin registro casilla por casilla.
+
+Pendientes: expiración 9D registrada, fase E (dinero) y el valor final del flag. Evidencia y decisiones abiertas en `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`. No volver a ejecutar puente ni migración.
 
 ## Archivos y orden
 

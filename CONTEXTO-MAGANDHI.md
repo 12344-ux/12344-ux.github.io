@@ -61,7 +61,7 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > nunca bloquea el asiento, al contrario que el costo y el flete. Banco SQL
 > **613/613**, matriz **170/170**, pantalla **70/70**.
 >
-> **El estado actual de producción llega hasta la migración `20261104000000` (Comercial C3). `20261105000000`/Comercial C4 no está aplicada.**
+> **El estado actual de producción llega hasta la migración `20261105000000` (Comercial C4), aplicada el 19-oct-2026 por SQL Editor. El carrito quedó ENCENDIDO (`carrito_habilitado=true`) al cierre de esa sesión.**
 >
 > **Cuentas de cliente C1 · DESPLEGADO · 15-oct-2026 (PR #268).** El dueño
 > decidió conservar compra como invitado y añadir inicio de sesión opcional en
@@ -138,18 +138,22 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > borra. Relevo histórico de ese corte:
 > `docs/RELEVO-COMERCIAL-C3-2026-10-17.md`.
 >
-> **Avance de implementación · Comercial C4 · 19-oct-2026.** C4 está
-> construido y fusionado: backend/back-office PR #283 y tienda PR #108 llegaron
-> a `main`, y ambos despliegues de Pages terminaron `SUCCESS`. La migración
-> `20261105000000_comercial_c4_cuenta_ciclo_carrito.sql` **NO está aplicada**;
-> las Edge C4 no están redesplegadas y no existe medición productiva. Producción
-> continúa en `20261104000000`/C3 con `carrito_habilitado=false`. El cierre
-> controlado está preparado en `supabase/operacion/COMERCIAL-C4-CIERRE.md`, con
-> pre/postflight, estado, activación/desactivación y puente de retorno C3→C4.
+> **Hito · Comercial C4 · 19-oct-2026 · aplicado, desplegado y probado sin
+> dinero.** PR #283, #108, #284, #109 y #285 están fusionados y Pages publicó.
+> En producción ya corrieron el preflight (sin la intención C3 documentada:
+> `v2_total=0`), el puente de estado, la Edge `estado-pago`, la migración
+> `20261105000000` (una vez), el postflight (30/30 funciones) y la Edge
+> `crear-intencion-pago`. **El carrito quedó ENCENDIDO** porque el dueño sigue de
+> inmediato en otro chat. Las pruebas ON sin dinero funcionan, incluido el
+> temporizador en Wompi, tras corregir dos defectos: ids de campaña rechazados
+> (PR #109) y el Rubik publicado sin slug (dato corregido). Siguen abiertas las
+> decisiones de slug automático, el bloqueo de 30 minutos (botón cancelar o
+> carrito libre + "Mis compras") y el valor del flag. Punto de arranque:
+> `docs/RELEVO-COMERCIAL-C4-2026-10-19.md` §4 y §8.
 >
-> El contrato fija una expiración autoritativa de 30 minutos firmada para Wompi,
-> conserva la intención C3 `ciclo=0` y registra su sucesión con avance de versión
-> en el siguiente checkout. El snapshot expone `bloqueo_pago` (`pendiente` o
+> El contrato fija una expiración autoritativa de 30 minutos firmada para Wompi.
+> Si hubiera una intención C3 previa (`ciclo=0`), la conserva y registra su
+> sucesión; en producción no había ninguna. El snapshot expone `bloqueo_pago` (`pendiente` o
 > `revision`); el retorno v2 exige JWT del propietario mediante `estado-pago`.
 > `customer_id` deriva de cuenta/Auth y el destinatario queda separado. Una
 > aprobación normal consume las cantidades congeladas preservando extras;
@@ -160,16 +164,10 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > histórico `pw__contexto_servidor()` no expone ni muta datos y se excluye de esa
 > auditoría porque su ownership varía entre reconstrucciones.
 >
-> **Evidencia nueva de banco · GitHub Actions run `39320288166`: `SUCCESS`.** El
-> workflow «Banco de pruebas» pasó sobre el commit `90fbdf2` de
-> `feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y Deno: pasaron las
-> migraciones y el banco CI, además de los checks de Node, el diff y la revisión.
-> `90fbdf2` es el commit backend validado por ese run y `2483bb2` el commit de
-> tienda validado. Este gate local/CI cumplido **no es despliegue de Supabase ni
-> evidencia productiva**: la migración C4 NO se aplicó, no existen preflight ni
-> postflight productivos, las Edge Functions no se redesplegaron y no hubo dinero
-> ni medición. Tienda y back-office sí están publicados en Pages, contenidos por
-> el flag OFF. Relevo vigente:
+> **Bancos:** run `39320288166` (implementación) y run `39326788045` (paquete
+> operativo), ambos `SUCCESS` con PostgreSQL 15/Deno. **Límite:** no hubo pago
+> con dinero; aprobación, pedido, inventario, asiento, correo e idempotencia de
+> C4 siguen sin medirse en producción. Relevo vigente:
 > `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`.
 
 ## 1. Separación de superficies
@@ -412,19 +410,18 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 - `docs/PLANO-FASE-COMERCIAL.md`: evolución aprobada —cantidades, carrito
   autenticado y Promocionar— con fórmulas, contratos, orden de despliegue y
   criterios de cierre. **C1, C2 y C3 están desplegados y probados en estructura;
-  C3 conserva pendiente su pago aprobado end-to-end. C4 está construido,
-  fusionado y publicado en Pages; la base/Edge y la medición siguen pendientes,
-  producción continúa en `20261104000000` con flag `false`, y P0–P5 permanecen
-  pendientes. El cierre se ejecuta desde
-  `supabase/operacion/COMERCIAL-C4-CIERRE.md`.**
-- `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`: relevo general más reciente; fija
-  contrato C4, merges/Pages cumplidos y producción todavía en C3. El run
-  `39326788045` terminó `SUCCESS` sobre `efa253f`: valida migraciones y banco
-  PostgreSQL 15/Deno del paquete; sus seis SQL operativos también pasaron parser
-  PostgreSQL. Preflight, puente/Edge de estado, migración, postflight, Edge de
-  intención y medición productivos siguen pendientes.
-- `docs/RELEVO-COMERCIAL-C3-2026-10-17.md`: relevo histórico de C3; conserva la
-  evidencia de su intención v2 sin pago, el flag final `false` y sus límites.
+  C3 conserva pendiente su pago aprobado end-to-end. C4 está aplicado,
+  desplegado y probado sin dinero, con el carrito encendido; queda abierto su
+  cierre formal. P0–P5 permanecen pendientes.**
+- `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`: **relevo general vigente y punto de
+  arranque**. Registra la ejecución productiva de hoy, los defectos corregidos
+  y las decisiones abiertas (§4) con sus propuestas.
+- `supabase/operacion/COMERCIAL-C4-CIERRE.md` y `comercial-c4-*.sql`: paquete
+  operativo de C4. Para reactivar, usar siempre el `comercial-c4-activar.sql`
+  actual.
+- `docs/RELEVO-COMERCIAL-C3-2026-10-17.md`: relevo histórico de C3. **Aviso:**
+  la intención v2 que describe no existe en producción (preflight C4:
+  `v2_total=0`).
 - `docs/RELEVO-COMERCIAL-C2-2026-10-16.md`: relevo histórico de C2; conserva su
   evidencia y ya no gobierna el arranque.
 - `docs/RELEVO-COMERCIAL-C1-2026-10-16.md`: relevo histórico de C1; conserva su
@@ -441,9 +438,8 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 
 Los relevos antiguos y `ANDAMIOS.md` se retiraron el 9-oct porque su contenido
 vigente pasó a este archivo. El relevo general vigente es
-`docs/RELEVO-COMERCIAL-C4-2026-10-19.md`: C4 está fusionado y publicado en
-Pages, pero no aplicado en Supabase ni medido. Producción continúa en C3 con el
-flag `false`; manda el paquete `supabase/operacion/COMERCIAL-C4-CIERRE.md`. El
+`docs/RELEVO-COMERCIAL-C4-2026-10-19.md`: C4 está aplicado en producción y el
+carrito quedó encendido; sus §4 y §8 indican cómo continuar. El
 relevo temático de cuentas `docs/RELEVO-CUENTAS-C2-2026-10-16.md` conserva su
 evidencia histórica y evita repetir migración, SMTP, plantillas o configuración
 Google al retomar esa apertura.
@@ -475,30 +471,25 @@ cierres estructurales de sus primeros tramos:
    conservó una sola intención al reintentar desde otra sesión. El flag final es
    `false`. No hubo aprobación, pedido, inventario, asiento, correo ni repetición
    real del webhook; C3 no está cerrado end-to-end.
-4. **Comercial C4 · código/Pages listos; operación productiva pendiente:** PR
-   #283 y PR #108 están fusionados. La migración
-   `20261105000000_comercial_c4_cuenta_ciclo_carrito.sql` implementa expiración
-   firmada, sucesión C3, identidad desde cuenta/Auth, destinatario separado y
-   bloqueo de pago. El retorno v2 exige JWT; rechazo/expiración libera, PENDING
-   bloquea y APPROVED tardío pasa a revisión. Falta ejecutar, en este orden, el
-   paquete `supabase/operacion/COMERCIAL-C4-CIERRE.md`: preflight, puente,
-   `estado-pago`, migración, postflight, `crear-intencion-pago`, regresión OFF y
-   mediciones. Producción sigue en `20261104000000`, flag `false`.
+4. **Comercial C4 · aplicado, desplegado y probado sin dinero; cierre formal
+   pendiente.** Migración `20261105000000`, puente, postflight 30/30 y ambas
+   Edge en producción. **Carrito ENCENDIDO** al cierre del 19-oct. Corregidos en
+   producción: ids de campaña (PR #109), slug faltante del Rubik (dato) y
+   reactivación con vencidas (PR #285). Abierto (relevo C4 §4):
+   - **A:** slug automático en servidor;
+   - **B:** bloqueo de 30 minutos → B1 botón "Cancelar este pago" o B2 carrito
+     libre + "Mis compras" (preferida por el dueño, candidata a C5);
+   - **C:** valor del flag mientras se decide;
+   - **D:** registrar expiración 9D, aislamiento y regresión OFF; pago real
+     solo con autorización.
 5. **Promocionar P0–P5:** producto compartible, estudio, enlace, atribución y
    lectura comercial siguen pendientes. Meta Ads, Pixel, Conversions API y
    publicación automática continúan fuera de alcance.
 
-La definición final de la fase no se relaja. El banco PostgreSQL 15/Deno run
-`39326788045` terminó `SUCCESS` sobre `efa253f`, commit del paquete operativo;
-los seis SQL operativos también pasaron parser PostgreSQL. Esto valida el corte
-local/CI, no producción.
-
-El despliegue C4 debe seguir exclusivamente
-`supabase/operacion/COMERCIAL-C4-CIERRE.md`: preflight; puente C3→C4; despliegue
-de `estado-pago`; migración; postflight; despliegue de
-`crear-intencion-pago`; regresión OFF; y ventana controlada. Dinero solo con
-autorización expresa. La migración C4 y las Edge siguen pendientes en
-producción; tienda/back-office sí están en Pages, contenidos por el flag OFF.
+La definición final de la fase no se relaja. C4 está operativo en producción,
+pero sin pago aprobado no hay cierre transaccional. Cualquier cambio nuevo (slug
+automático, cancelación o C5) va en una migración forward. Dinero solo con
+autorización expresa.
 
 Cuando se autorice un pago C3/C4, debe demostrar monto exacto, un solo pedido,
 `customer_id` correcto, snapshots, ciclo de líneas/versión, inventario y

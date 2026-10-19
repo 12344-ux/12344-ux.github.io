@@ -1,24 +1,19 @@
 # Supabase · runbook operativo MAGANDHI / Impulse
 
-> **Estado al 19-oct-2026:** en producción están aplicadas todas las migraciones
-> hasta `20261104000000` (Comercial C3), salvo `20261002000000`, que quedó
-> **SUPERADA y no debe aplicarse** (ver §0). Wompi F1–F4 y Dropshipping D2c
-> están operativos. Cuentas C1/C2 continúan desplegados y Cuentas C2 está
-> cerrado técnicamente en preapertura; CAPTCHA activo, signup OFF y Google
-> Testing hasta publicar políticas. Comercial C1 conserva su límite propio: no
-> hubo pago real de dos unidades. Comercial C4 está construido y fusionado:
-> backend/back-office PR #283 quedó en `main` (`0d35d8f`) y tienda PR #108 en
-> `main` (`55e0187`); ambos despliegues de Pages terminaron `SUCCESS`. Esto no
-> acredita Supabase ni recorridos: según la última evidencia y la confirmación
-> del dueño, `20261105000000` no está aplicada, las Edge C4 no se han
-> redesplegado y no hubo medición productiva. Producción continúa en C3 con
-> `carrito_habilitado=false`. El workflow «Banco de pruebas», run `39320288166`,
-> terminó `SUCCESS` sobre `90fbdf2`, con PostgreSQL 15 y Deno; `2483bb2` es el
-> commit de tienda validado. C3 tampoco está cerrado end-to-end: no hubo
-> aprobación, pedido, inventario, asiento, correo ni webhook repetido. Para el
-> cierre usar exclusivamente `supabase/operacion/COMERCIAL-C4-CIERRE.md` y sus
-> SQL; ese paquete añade un puente C3→C4 para desplegar `estado-pago` antes de
-> la migración sin romper el retorno histórico. Estado general:
+> **Estado al 19-oct-2026 (noche):** en producción están aplicadas todas las
+> migraciones hasta **`20261105000000` (Comercial C4)**, salvo `20261002000000`,
+> que quedó **SUPERADA y no debe aplicarse** (ver §0). C4 se aplicó por SQL
+> Editor y probablemente no figura en `supabase_migrations.schema_migrations`:
+> no usar `supabase db push` hasta reconciliar el historial. Wompi F1–F4 y
+> Dropshipping D2c están operativos. Cuentas C1/C2 continúan desplegados y
+> Cuentas C2 está cerrado técnicamente en preapertura; CAPTCHA activo, signup
+> OFF y Google Testing hasta publicar políticas. Comercial C1 conserva su límite
+> propio: no hubo pago real de dos unidades. Comercial C4: preflight, puente,
+> Edge `estado-pago`, migración, postflight 30/30 y Edge
+> `crear-intencion-pago` ejecutados, más una ventana ON sin dinero. **El carrito
+> quedó ENCENDIDO (`carrito_habilitado=true`).** C3 y C4 siguen sin cierre
+> end-to-end: no hubo aprobación, pedido, inventario, asiento, correo ni webhook
+> repetido. Estado general:
 > `docs/RELEVO-COMERCIAL-C4-2026-10-19.md` y `CONTEXTO-MAGANDHI.md` §9; para la
 > futura apertura de cuentas conserva vigencia temática
 > `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
@@ -5540,25 +5535,23 @@ están medidos todavía webhook válido/repetido, pedido multiproducto, bajas,
 proveedor, asiento, correo ni falta de stock posterior a la intención. No
 presentar C3 como cierre end-to-end.
 
-Ese siguiente tramo quedó implementado en rama como **Comercial C4**, pero no
-aplicado, desplegado ni medido. Su estado vigente y el procedimiento futuro
-están en el capítulo siguiente y en
-`docs/RELEVO-COMERCIAL-C4-2026-10-19.md`. Hasta entonces, mantener
-`carrito_habilitado=false`, conservar compra inmediata e invitada y exigir
-autorización expresa para cualquier pago productivo. La evidencia debe añadirse
-al relevo antes de atribuir cierre transaccional.
+Ese siguiente tramo es **Comercial C4**, aplicado en producción el
+19-oct-2026; ver el capítulo siguiente y
+`docs/RELEVO-COMERCIAL-C4-2026-10-19.md`. La intención v2 que este capítulo
+describe no existe en producción: el preflight C4 dio `v2_total=0`.
 
 ---
 
 # Comercial C4 · cuenta y ciclo del carrito
 
-> **Estado documental · 19-oct-2026:** backend/back-office PR #283 y tienda PR
-> #108 están fusionados en `main`; ambos despliegues de Pages terminaron
-> `SUCCESS`. C4 sigue **NO aplicado en Supabase y NO medido en producción**:
-> producción está en `20261104000000`/C3, `carrito_habilitado=false`, y las Edge
-> C4 no se han redesplegado. El cierre manda desde
-> `supabase/operacion/COMERCIAL-C4-CIERRE.md`. Relevo vigente:
-> `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`.
+> **Estado · 19-oct-2026 (noche):** **aplicado, desplegado y probado sin
+> dinero.** El paquete `supabase/operacion/COMERCIAL-C4-CIERRE.md` se ejecutó
+> en orden: preflight, puente, `estado-pago`, migración, postflight 30/30,
+> `crear-intencion-pago` y activación. **El carrito quedó ENCENDIDO.** No hubo
+> pago real. Evidencia, defectos corregidos y decisiones abiertas:
+> `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`. Las secciones de validación y
+> procedimiento de abajo describen la ejecución ya realizada; no repetir la
+> migración ni el puente (el puente falla a propósito después de C4).
 
 ## Contrato de `20261105000000`
 
@@ -5615,12 +5608,10 @@ sobre `90fbdf2`/`2483bb2`. El paquete operativo actual terminó también
 los seis SQL operativos y la migración pasaron parser PostgreSQL. Esto valida el
 corte local/CI, no producción.
 
-La evidencia histórica no equivale a producción. La migración C4 NO está
-aplicada; no hay preflight ni postflight productivos; las Edge no están
-redesplegadas y no hubo dinero ni medición. Tienda y back-office sí están en
-Pages, contenidos por el flag OFF. No inventar recorridos C4.
+La evidencia productiva del 19-oct está en el relevo C4 §2. No hubo dinero; no
+inventar recorridos que no se observaron.
 
-## Procedimiento de cierre · aún no ejecutado en producción
+## Procedimiento de cierre · ejecutado en producción el 19-oct-2026 hasta la ventana ON
 
 La secuencia autoritativa, consultas y valores esperados están en
 `supabase/operacion/COMERCIAL-C4-CIERRE.md`. Resumen obligatorio:
@@ -5653,6 +5644,6 @@ Mantener `carrito_habilitado=false` es el mecanismo de contención; no existe
 rollback por reejecución de C3 ni por edición de una migración aplicada. Una
 intención en `requiere_revision` permanece bloqueada hasta la acción explícita
 `reembolsado_liberar` ejecutada por la operación después del reembolso. No
-liberar cabeceras, borrar líneas ni fabricar webhooks para forzar un cierre. PR
-#283 y PR #108 están fusionados y Pages fue publicado; eso no acredita la base,
-las Edge ni las pruebas productivas.
+liberar cabeceras, borrar líneas ni fabricar webhooks para forzar un cierre.
+Para reactivar usar siempre el `comercial-c4-activar.sql` actual (PR #285): una
+intención ya vencida no bloquea la reactivación.
