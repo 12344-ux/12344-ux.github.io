@@ -160,12 +160,13 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > histórico `pw__contexto_servidor()` no expone ni muta datos y se excluye de esa
 > auditoría porque su ownership varía entre reconstrucciones.
 >
-> **Evidencia nueva de banco · GitHub Actions run `39319540269`: `SUCCESS`.** El
-> workflow «Banco de pruebas» pasó sobre el commit `1afc029` de
+> **Evidencia nueva de banco · GitHub Actions run `39320288166`: `SUCCESS`.** El
+> workflow «Banco de pruebas» pasó sobre el commit `90fbdf2` de
 > `feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y Deno: pasaron las
 > migraciones y el banco CI, además de los checks de Node, el diff y la revisión.
-> Después solo hubo ajustes documentales/de matriz; el estado final del código
-> permanece en la misma rama. Este gate local/CI cumplido **no es despliegue ni
+> `90fbdf2` es el commit backend validado por ese run y `2483bb2` el commit de
+> tienda validado; los cambios posteriores de este relevo son exclusivamente
+> documentales. Este gate local/CI cumplido **no es despliegue ni
 > evidencia productiva**: la migración C4 NO se aplicó en producción, no existen
 > preflight ni postflight productivos de C4, las Edge Functions no se
 > redesplegaron, la tienda y el back-office no se publicaron, y no hubo dinero ni
@@ -419,7 +420,7 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
   medición siguen pendientes, y P0–P5 continúan pendientes.**
 - `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`: relevo general más reciente; fija
   el contrato implementado de C4, el estado productivo todavía en C3 y la
-  evidencia del banco CI: run `39319540269` en `SUCCESS` sobre `1afc029` de
+  evidencia del banco CI: run `39320288166` en `SUCCESS` sobre `90fbdf2` de
   `feat/comercial-c4-ciclo-carrito`, con PostgreSQL 15, Deno, migraciones,
   checks de Node, diff y revisión aprobados. El gate local/CI está cumplido; el
   preflight, la migración y el postflight productivos, los despliegues, la
@@ -494,10 +495,11 @@ cierres estructurales de sus primeros tramos:
    publicación automática continúan fuera de alcance.
 
 La definición final de la fase no se relaja. El banco local/CI ya es un gate
-cumplido: el run `39319540269` terminó `SUCCESS` sobre `1afc029` en
+cumplido: el run `39320288166` terminó `SUCCESS` sobre `90fbdf2` en
 `feat/comercial-c4-ciclo-carrito`, con PostgreSQL 15 y Deno; pasaron
-migraciones, banco CI, checks de Node, diff y revisión. Después solo hubo ajustes
-documentales/de matriz y el estado final del código permanece en esa rama.
+migraciones, banco CI, checks de Node, diff y revisión. `90fbdf2` es el commit
+backend validado y `2483bb2` el commit de tienda validado; este relevo posterior
+es exclusivamente documental.
 
 El despliegue C4 todavía debe respetar el orden productivo: preflight de solo
 lectura; migración `20261105000000` una sola vez con flag OFF y postflight;

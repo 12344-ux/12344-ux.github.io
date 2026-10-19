@@ -312,11 +312,10 @@ Producción continúa en `20261104000000`/C3 con
 `carrito_habilitado=false`.
 
 **Evidencia de validación:** el workflow «Banco de pruebas» de GitHub Actions,
-run `39319540269`, terminó `SUCCESS` sobre el commit `1afc029` de
+run `39320288166`, terminó `SUCCESS` sobre el commit `90fbdf2` de
 `feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y Deno. Pasaron las
 migraciones y el banco CI, además de los checks de Node, el diff y la revisión.
-Después de ese commit solo hubo ajustes documentales/de matriz; el estado final
-del código permanece en la misma rama.
+`90fbdf2` es el commit backend validado por ese run y `2483bb2` el commit de tienda validado; los cambios posteriores de este relevo son exclusivamente documentales.
 
 Este gate local/CI está cumplido, pero **no es evidencia productiva**. La
 migración C4 NO está aplicada en producción; no hay preflight ni postflight
@@ -437,7 +436,7 @@ Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato est
 4. **C3 · intención y checkout multiproducto — estructura lista y flag OFF.** Líneas congeladas, total autoritativo, Wompi abierto sin pago e idempotencia de intención medida.
 5. **C4 · cuenta y ciclo del carrito — construido, gate local/CI cumplido y
    despliegue pendiente.** Migración, `crear-intencion-pago`, `estado-pago`,
-   Ventas y tienda están implementados. El run `39319540269` pasó las
+   Ventas y tienda están implementados. El run `39320288166` pasó las
    migraciones y el banco CI con PostgreSQL 15 y Deno, además de checks de Node,
    diff y revisión. Falta ejecutar preflight productivo, aplicar la migración,
    ejecutar postflight productivo, redesplegar/publicar y medir con pruebas
@@ -488,11 +487,10 @@ aprobación, pedido, inventario, asiento, correo ni repetición real del webhook
 el flag final quedó `false`.
 
 El gate local/CI de C4 ya está cumplido: el workflow «Banco de pruebas» run
-`39319540269` terminó `SUCCESS` sobre `1afc029` de
+`39320288166` terminó `SUCCESS` sobre `90fbdf2` de
 `feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y Deno; pasaron las
 migraciones y el banco CI, además de los checks de Node, el diff y la revisión.
-Después solo hubo ajustes documentales/de matriz y el estado final del código
-permanece en la misma rama. Este resultado no modifica producción.
+`90fbdf2` es el commit backend validado por ese run y `2483bb2` el commit de tienda validado; los cambios posteriores de este relevo son exclusivamente documentales. Este resultado no modifica producción.
 
 **C4 todavía no ha recorrido el despliegue productivo.** El orden aprobado es:
 
@@ -517,7 +515,7 @@ permanece en la misma rama. Este resultado no modifica producción.
 7. solo entonces actualizar el estado documental y decidir el flag final.
 
 Hasta completar esos pasos, producción continúa en C3 y el flag `false`. El
-run `39319540269` acredita el gate local/CI con PostgreSQL 15 y Deno, las
+run `39320288166` acredita el gate local/CI con PostgreSQL 15 y Deno, las
 migraciones, el banco CI, los checks de Node, el diff y la revisión; no acredita
 producción. Siguen pendientes el preflight productivo, la aplicación de la
 migración C4, el postflight productivo, el redespliegue de las Edge Functions,

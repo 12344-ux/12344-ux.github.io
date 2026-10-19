@@ -13,11 +13,12 @@
 > pendiente de construcción. La migración candidata es
 > `20261105000000_comercial_c4_cuenta_ciclo_carrito.sql`. Cambiaron
 > `crear-intencion-pago`, `estado-pago` y Ventas. El workflow «Banco de
-> pruebas» de GitHub Actions, run `39319540269`, terminó `SUCCESS` sobre el
-> commit `1afc029` de `feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y
+> pruebas» de GitHub Actions, run `39320288166`, terminó `SUCCESS` sobre el
+> commit `90fbdf2` de `feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y
 > Deno: pasaron las migraciones y el banco CI, además de los checks de Node, el
-> diff y la revisión. Después solo hubo ajustes documentales/de matriz; el
-> estado final del código permanece en la misma rama. Este gate local/CI
+> diff y la revisión. `90fbdf2` es el commit backend validado y `2483bb2` el
+> commit de tienda validado; este relevo posterior es exclusivamente documental.
+> Este gate local/CI
 > cumplido no cambia producción: la migración C4 NO está aplicada, no hay
 > preflight ni postflight productivos, las Edge C4 no están desplegadas, la
 > tienda y el back-office no están publicados, y no hubo dinero ni medición
@@ -5613,11 +5614,10 @@ reembolso/liberación. La tienda de PR #108 ya está implementada.
 ## Validación disponible antes del despliegue
 
 El gate local/CI está cumplido. El workflow «Banco de pruebas» de GitHub
-Actions, run `39319540269`, terminó `SUCCESS` sobre el commit `1afc029` de
+Actions, run `39320288166`, terminó `SUCCESS` sobre el commit `90fbdf2` de
 `feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y Deno. Pasaron las
 migraciones y el banco CI, además de los checks de Node, el diff y la revisión.
-Después solo hubo ajustes documentales/de matriz; el estado final del código
-permanece en la misma rama.
+`90fbdf2` es el commit backend validado por ese run y `2483bb2` el commit de tienda validado; los cambios posteriores de este relevo son exclusivamente documentales.
 
 Esta evidencia no equivale a producción. La migración C4 NO está aplicada en
 producción; no hay preflight ni postflight productivos; las Edge Functions no

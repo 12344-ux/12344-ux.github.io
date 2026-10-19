@@ -22,9 +22,9 @@ se comparten automáticamente entre los dos dominios porque cada origen guarda
 su propia sesión; el candado definitivo sigue siendo RLS/RPC en la base.
 
 Una cuenta puede nacer sin `customer_id`: registrarse no inventa una compra ni
-convierte un prospecto en cliente. Después de confirmar el correo, C2 podrá
-vincularla con un cliente histórico; si no existe, el vínculo se completa al
-primer pago aprobado.
+convierte un prospecto en cliente. Después de confirmar el correo, C2 intenta
+vincularla únicamente si existe una coincidencia histórica única; si no existe,
+el vínculo se completa en C4 al primer pago aprobado.
 
 ## 2. Los dos modos
 
@@ -36,10 +36,12 @@ el código de reseña sigue habilitando opiniones.
 
 ### Con cuenta
 
-La Edge Function valida el JWT, obtiene el `customer_id` desde el servidor y lo
-guarda en la intención antes de abrir Wompi. Nunca acepta un `customer_id`
-arbitrario del navegador. El checkout puede rellenar datos, pero cada pedido
-conserva su snapshot de destinatario y dirección.
+La Edge Function valida el JWT y congela el UID del propietario en la intención.
+`customer_id` no se acepta del navegador ni se inventa al abrir Wompi: durante
+la primera aprobación C4, el servidor lo deriva desde `cuentas_cliente` y el
+correo Auth confirmado, y crea o vincula el cliente comercial dentro de la misma
+transacción del pedido. Cada pedido conserva por separado el snapshot de
+nombre, correo, teléfono y dirección del destinatario.
 
 ## 3. Qué entregará Mi cuenta v1
 
@@ -76,15 +78,18 @@ idempotencia por pedido. Así un cambio de campaña no reescribe la historia.
 | **C1** | puente de identidad, separación cliente/personal, guardia interna y actor cliente en la matriz | **Desplegado y verificado 15-oct-2026, PR #268** |
 | **C2** | registro, confirmación, login, recuperación, SMTP propio, Google, CAPTCHA y vínculo seguro | **Infraestructura desplegada y verificada en preapertura 16-oct-2026; signup OFF y Google Testing hasta publicar políticas** |
 | **C3** | Mi cuenta: perfil, direcciones, pedidos, estado y opiniones | Pendiente |
-| **C4** | checkout con cuenta y `customer_id` server-side; carrito y checkout multiproducto ya estructurales en Comercial C2/C3; ciclo postpago pendiente | **Siguiente tramo comercial; se materializa en Comercial C4 de `PLANO-FASE-COMERCIAL.md`** |
+| **C4** | checkout con cuenta y `customer_id` server-side; expiración firmada, retorno JWT y ciclo postpago del carrito | **Construido en PR backend #283 y tienda #108; banco PostgreSQL 15/Deno aprobado; pendiente de merge, despliegue y medición productiva** |
 
 La cantidad inmediata para invitado ya quedó entregada por **Comercial C1**:
 selector `1..max_comprable`, máximo y total visibles, con validación server-side.
 El carrito autenticado y el checkout multiproducto quedaron desplegados y
-probados en estructura por **Comercial C2/C3**, con flag final `false`. Eso no
-adelanta el resto de C4 de Cuentas: `customer_id` derivado/vinculado en servidor
-y el ciclo postpago siguen pendientes en Comercial C4. C3 no tuvo pago aprobado,
-por lo que tampoco prueba pedido, inventario, asiento o correo end-to-end.
+probados en estructura por **Comercial C2/C3**, con flag final `false`.
+**Comercial C4 ya está construido en rama**: deriva/vincula `customer_id` en la
+primera aprobación, separa destinatario, expira la ventana Wompi, bloquea
+pendiente/revisión y consume o libera el carrito según el resultado. Los PR #283
+(backend) y #108 (tienda) siguen abiertos; el banco PostgreSQL 15/Deno pasó,
+pero C4 no está aplicado, publicado ni medido. C3 no tuvo pago aprobado, por lo
+que tampoco prueba pedido, inventario, asiento o correo end-to-end.
 
 C1 y el backend de C2 de Cuentas ya están aplicados. `disable_signup=true` continúa
 vigente: correo/contraseña, SMTP, TokenHash y recuperación fueron medidos;
@@ -94,6 +99,6 @@ sola cuenta activa. C2 queda cerrado técnicamente en preapertura. Signup sigue
 OFF y Google Testing hasta publicar políticas y avisos contextuales; solo después
 se prepara la apertura.
 
-**Punto global de entrada:** `docs/RELEVO-COMERCIAL-C3-2026-10-17.md`.
+**Punto global de entrada:** `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`.
 Para retomar específicamente la apertura de cuentas, usar el relevo histórico
 temático `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
