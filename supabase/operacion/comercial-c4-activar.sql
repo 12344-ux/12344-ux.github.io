@@ -174,15 +174,18 @@ begin
       message = 'C4_INVARIANTES_NO_AUTORIZAN_ACTIVACION';
   end if;
 
-  -- No reabrir mientras haya una intención creada sin liberación (aunque ya
-  -- haya alcanzado su hora) o una revisión pendiente. Primero debe observarse
-  -- y resolver/liberar por el camino autoritativo correspondiente.
+  -- No reabrir mientras una intención siga vigente o haya una revisión
+  -- pendiente. Una intención creada YA VENCIDA no bloquea: co__bloqueo_pago
+  -- solo la considera pendiente antes de expira_en, y la liberación perezosa
+  -- ocurre al siguiente acceso al carrito, que exige el flag encendido.
   if exists (
        select 1
          from pagos_intencion
         where ciclo_carrito_version = 4
           and (
-            (estado = 'creada' and carrito_liberado_en is null)
+            (estado = 'creada'
+             and carrito_liberado_en is null
+             and expira_en > statement_timestamp())
             or (estado = 'requiere_revision' and resuelta_en is null)
           )
      ) then

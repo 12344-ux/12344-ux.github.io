@@ -124,6 +124,8 @@ Pages ya reportó éxito; validar la superficie real con flag OFF:
 
 Solo con A–C aprobadas, ejecutar `comercial-c4-activar.sql`. Debe devolver `carrito_habilitado=true` y `activado_confirmado=true`. El script comprueba artefactos críticos, estructura, RLS de sucesiones, contradicciones y pagos C4 bloqueantes; el postflight completo y los despliegues externos siguen siendo precondiciones humanas obligatorias.
 
+Una intención C4 `creada` ya vencida no impide reactivar: no bloquea el carrito y se libera de forma perezosa en el siguiente acceso, que solo es posible con el flag encendido. Sí bloquean una intención vigente y una revisión abierta.
+
 ### D2. Recorridos manuales
 
 Usar una cuenta propia confirmada y una segunda cuenta propia de prueba:
