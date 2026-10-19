@@ -1621,4 +1621,18 @@ grant execute on function pw_registrar_intencion_carrito(text, uuid, uuid, bigin
 revoke all on function co_carrito_listar() from public, anon, authenticated, service_role;
 grant execute on function co_carrito_listar() to authenticated, service_role;
 
+-- service_role es la identidad privilegiada de las Edge Functions y la matriz
+-- histórica exige que pueda ejecutar toda función de public. Los helpers siguen
+-- cerrados a public/anon/authenticated y solo se alcanzan desde puertas C4.
+grant execute on function co__carrito_agregar_c3(uuid, integer) to service_role;
+grant execute on function co__carrito_cambiar_c3(uuid, integer, bigint) to service_role;
+grant execute on function co__carrito_quitar_c3(uuid, bigint) to service_role;
+grant execute on function co__liberar_expiradas_c4(uuid) to service_role;
+grant execute on function crear_pedido_c3_base(uuid, text, text, text, text, text, text, text, text, text, date, text, jsonb) to service_role;
+grant execute on function crear_pedido_c4(uuid, text, text, text, text, text, text, text, text, text, date, text, jsonb) to service_role;
+grant execute on function pw__procesar_pago_c3(text, text, text, bigint, text, text, text, jsonb, text, text) to service_role;
+grant execute on function pw__registrar_intencion_carrito_c3(text, uuid, uuid, bigint, text, jsonb, text, text, text) to service_role;
+grant execute on function pw__resolver_revision_historica(text, text) to service_role;
+grant execute on function pw__revisiones_c3() to service_role;
+
 commit;
