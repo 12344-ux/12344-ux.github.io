@@ -311,11 +311,19 @@ construidos. **Nada de C4 está aplicado, desplegado ni medido en producción.**
 Producción continúa en `20261104000000`/C3 con
 `carrito_habilitado=false`.
 
-**Límite de validación:** solo constan `node --check`, `git diff --check` y
-revisión semántica. PostgreSQL 15, el banco SQL, la aplicación, los postflights,
-el despliegue y las pruebas productivas siguen pendientes. No atribuir a C4
-pedidos, inventario, proveedor, asiento, correo, webhook repetido ni ningún
-resultado end-to-end hasta medirlos.
+**Evidencia de validación:** el workflow «Banco de pruebas» de GitHub Actions,
+run `39319540269`, terminó `SUCCESS` sobre el commit `1afc029` de
+`feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y Deno. Pasaron las
+migraciones y el banco CI, además de los checks de Node, el diff y la revisión.
+Después de ese commit solo hubo ajustes documentales/de matriz; el estado final
+del código permanece en la misma rama.
+
+Este gate local/CI está cumplido, pero **no es evidencia productiva**. La
+migración C4 NO está aplicada en producción; no hay preflight ni postflight
+productivos; las Edge Functions no están redesplegadas; la tienda y el
+back-office no están publicados; no hubo dinero ni medición productiva. No
+atribuir a C4 pedidos, inventario, proveedor, asiento, correo, webhook repetido
+ni ningún resultado end-to-end hasta medirlos.
 
 ---
 
@@ -427,7 +435,13 @@ Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato est
 2. **C1 · cantidad inmediata — estructura lista.** Valor comercial rápido y cimiento de carrito; sin afirmar cierre transaccional de qty2.
 3. **C2 · carrito persistente — estructura lista y flag OFF.** Datos/RLS/UI medidos.
 4. **C3 · intención y checkout multiproducto — estructura lista y flag OFF.** Líneas congeladas, total autoritativo, Wompi abierto sin pago e idempotencia de intención medida.
-5. **C4 · cuenta y ciclo del carrito — construido, despliegue pendiente.** Migración, `crear-intencion-pago`, `estado-pago`, Ventas y tienda están implementados; falta aplicar, redesplegar/publicar y ejecutar PostgreSQL 15, banco y medición.
+5. **C4 · cuenta y ciclo del carrito — construido, gate local/CI cumplido y
+   despliegue pendiente.** Migración, `crear-intencion-pago`, `estado-pago`,
+   Ventas y tienda están implementados. El run `39319540269` pasó las
+   migraciones y el banco CI con PostgreSQL 15 y Deno, además de checks de Node,
+   diff y revisión. Falta ejecutar preflight productivo, aplicar la migración,
+   ejecutar postflight productivo, redesplegar/publicar y medir con pruebas
+   controladas de producción.
 6. **P0 · taxonomía y privacidad — pendiente.** Contrato de atribución, canales y retención antes de capturar datos.
 7. **P1 · producto compartible — pendiente.** También resuelve SEO/IA pendiente.
 8. **P2 · estudio Promocionar — pendiente.** Enlaces largos, textos, preview, QR y kit.
@@ -473,7 +487,14 @@ retorno pendiente y una sola intención al reintentar entre sesiones. No hubo
 aprobación, pedido, inventario, asiento, correo ni repetición real del webhook;
 el flag final quedó `false`.
 
-**C4 todavía no ha recorrido el despliegue.** El orden aprobado es:
+El gate local/CI de C4 ya está cumplido: el workflow «Banco de pruebas» run
+`39319540269` terminó `SUCCESS` sobre `1afc029` de
+`feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y Deno; pasaron las
+migraciones y el banco CI, además de los checks de Node, el diff y la revisión.
+Después solo hubo ajustes documentales/de matriz y el estado final del código
+permanece en la misma rama. Este resultado no modifica producción.
+
+**C4 todavía no ha recorrido el despliegue productivo.** El orden aprobado es:
 
 1. ejecutar un preflight de solo lectura que confirme producción en
    `20261104000000`, historia C3 coherente y `carrito_habilitado=false`;
@@ -485,20 +506,24 @@ el flag final quedó `false`.
    `estado-pago`, y comprobar autenticación, expiración/firma Wompi y retorno v2;
 4. publicar el back-office de Ventas y la tienda ya implementada en PR #108,
    conservando compra inmediata e invitada y sin anunciar C4 todavía;
-5. ejecutar PostgreSQL 15, banco SQL y pruebas controladas sin dinero sobre flag
-   OFF/ON, propiedad, sucesión C3, expiración, `bloqueo_pago`, retry, PENDING,
-   APPROVED tardío, retorno v2 y resolución explícita de revisión;
+5. con el gate local/CI ya aprobado, ejecutar las pruebas controladas de
+   producción sin dinero sobre flag OFF/ON: propiedad, sucesión C3, expiración,
+   `bloqueo_pago`, retry, PENDING, APPROVED tardío, retorno v2 y resolución
+   explícita de revisión; volver a OFF ante cualquier duda;
 6. usar dinero solo con autorización expresa del dueño y medir aprobación,
    rechazo/revisión, reembolso/liberación, pedido único, `customer_id`,
    snapshots, consumo y preservación de extras, versión, inventario/proveedor,
    asiento, correo e idempotencia;
 7. solo entonces actualizar el estado documental y decidir el flag final.
 
-Hasta completar esos pasos, producción continúa en C3 y el flag `false`. La
-validación disponible es `node --check`, `git diff --check` y revisión semántica;
-PostgreSQL 15, banco, aplicación, postflight, despliegue y medición productiva
-siguen pendientes. La prueba aprobada end-to-end de C3 permanece pendiente y
-solo se atribuirá cuando exista evidencia real.
+Hasta completar esos pasos, producción continúa en C3 y el flag `false`. El
+run `39319540269` acredita el gate local/CI con PostgreSQL 15 y Deno, las
+migraciones, el banco CI, los checks de Node, el diff y la revisión; no acredita
+producción. Siguen pendientes el preflight productivo, la aplicación de la
+migración C4, el postflight productivo, el redespliegue de las Edge Functions,
+la publicación de tienda/back-office y las pruebas controladas de producción.
+No hubo dinero ni medición productiva. La prueba aprobada end-to-end de C3
+permanece pendiente y solo se atribuirá cuando exista evidencia real.
 
 ---
 

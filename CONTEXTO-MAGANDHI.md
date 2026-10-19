@@ -158,9 +158,18 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > `reembolsado_liberar`. Cambiaron `crear-intencion-pago`, `estado-pago` y Ventas;
 > los helpers propios de C4 quedan sin `EXECUTE` de API; el helper booleano
 > histórico `pw__contexto_servidor()` no expone ni muta datos y se excluye de esa
-> auditoría porque su ownership varía entre reconstrucciones. La validación disponible es
-> `node --check`, `git diff --check` y revisión semántica; PostgreSQL 15, banco,
-> aplicación y despliegue siguen pendientes. Relevo vigente:
+> auditoría porque su ownership varía entre reconstrucciones.
+>
+> **Evidencia nueva de banco · GitHub Actions run `39319540269`: `SUCCESS`.** El
+> workflow «Banco de pruebas» pasó sobre el commit `1afc029` de
+> `feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y Deno: pasaron las
+> migraciones y el banco CI, además de los checks de Node, el diff y la revisión.
+> Después solo hubo ajustes documentales/de matriz; el estado final del código
+> permanece en la misma rama. Este gate local/CI cumplido **no es despliegue ni
+> evidencia productiva**: la migración C4 NO se aplicó en producción, no existen
+> preflight ni postflight productivos de C4, las Edge Functions no se
+> redesplegaron, la tienda y el back-office no se publicaron, y no hubo dinero ni
+> medición productiva. Relevo vigente:
 > `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`.
 
 ## 1. Separación de superficies
@@ -409,9 +418,12 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
   `20261104000000` con flag `false`. La tienda está implementada; publicación y
   medición siguen pendientes, y P0–P5 continúan pendientes.**
 - `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`: relevo general más reciente; fija
-  el contrato implementado de C4, el estado productivo todavía en C3, la
-  validación limitada a `node --check`, `git diff --check` y revisión semántica,
-  y el plan de despliegue controlado con PostgreSQL 15/banco pendientes.
+  el contrato implementado de C4, el estado productivo todavía en C3 y la
+  evidencia del banco CI: run `39319540269` en `SUCCESS` sobre `1afc029` de
+  `feat/comercial-c4-ciclo-carrito`, con PostgreSQL 15, Deno, migraciones,
+  checks de Node, diff y revisión aprobados. El gate local/CI está cumplido; el
+  preflight, la migración y el postflight productivos, los despliegues, la
+  publicación y la medición siguen pendientes.
 - `docs/RELEVO-COMERCIAL-C3-2026-10-17.md`: relevo histórico de C3; conserva la
   evidencia de su intención v2 sin pago, el flag final `false` y sus límites.
 - `docs/RELEVO-COMERCIAL-C2-2026-10-16.md`: relevo histórico de C2; conserva su
@@ -481,14 +493,22 @@ cierres estructurales de sus primeros tramos:
    lectura comercial siguen pendientes. Meta Ads, Pixel, Conversions API y
    publicación automática continúan fuera de alcance.
 
-La definición final de la fase no se relaja. El despliegue C4 debe respetar el
-orden: preflight de solo lectura; migración `20261105000000` una sola vez con
-flag OFF y postflight; redespliegue de `crear-intencion-pago` y `estado-pago`;
-publicación de back-office/tienda; banco PostgreSQL 15 y pruebas controladas.
-Dinero únicamente con autorización expresa; después se mide y solo entonces se
-actualiza el estado. La validación disponible (`node --check`,
-`git diff --check` y revisión semántica) no sustituye PostgreSQL 15, banco,
-aplicación, postflight, despliegue ni evidencia productiva.
+La definición final de la fase no se relaja. El banco local/CI ya es un gate
+cumplido: el run `39319540269` terminó `SUCCESS` sobre `1afc029` en
+`feat/comercial-c4-ciclo-carrito`, con PostgreSQL 15 y Deno; pasaron
+migraciones, banco CI, checks de Node, diff y revisión. Después solo hubo ajustes
+documentales/de matriz y el estado final del código permanece en esa rama.
+
+El despliegue C4 todavía debe respetar el orden productivo: preflight de solo
+lectura; migración `20261105000000` una sola vez con flag OFF y postflight;
+redespliegue de `crear-intencion-pago` y `estado-pago`; publicación de
+back-office/tienda; y pruebas controladas de producción. Dinero únicamente con
+autorización expresa; después se mide y solo entonces se actualiza el estado.
+La evidencia local/CI no sustituye el preflight, la aplicación ni el postflight
+productivos, el despliegue, la publicación o la medición. La migración C4 NO
+está aplicada en producción, no hay pre/postflight productivo, las Edge no están
+desplegadas, la tienda y el back-office no están publicados, y no hubo dinero ni
+medición.
 
 Cuando se autorice un pago C3/C4, debe demostrar monto exacto, un solo pedido,
 `customer_id` correcto, snapshots, ciclo de líneas/versión, inventario y

@@ -12,11 +12,17 @@
 > sigue en C3 con `carrito_habilitado=false`; la tienda C4 está implementada, no
 > pendiente de construcción. La migración candidata es
 > `20261105000000_comercial_c4_cuenta_ciclo_carrito.sql`. Cambiaron
-> `crear-intencion-pago`, `estado-pago` y Ventas. La validación disponible es
-> `node --check`, `git diff --check` y revisión semántica; PostgreSQL 15, banco,
-> aplicación y despliegue siguen pendientes. C3 tampoco está cerrado
-> end-to-end: no hubo aprobación, pedido, inventario, asiento, correo ni webhook
-> repetido. Estado general exacto:
+> `crear-intencion-pago`, `estado-pago` y Ventas. El workflow «Banco de
+> pruebas» de GitHub Actions, run `39319540269`, terminó `SUCCESS` sobre el
+> commit `1afc029` de `feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y
+> Deno: pasaron las migraciones y el banco CI, además de los checks de Node, el
+> diff y la revisión. Después solo hubo ajustes documentales/de matriz; el
+> estado final del código permanece en la misma rama. Este gate local/CI
+> cumplido no cambia producción: la migración C4 NO está aplicada, no hay
+> preflight ni postflight productivos, las Edge C4 no están desplegadas, la
+> tienda y el back-office no están publicados, y no hubo dinero ni medición
+> productiva. C3 tampoco está cerrado end-to-end: no hubo aprobación, pedido,
+> inventario, asiento, correo ni webhook repetido. Estado general exacto:
 > `docs/RELEVO-COMERCIAL-C4-2026-10-19.md` y `CONTEXTO-MAGANDHI.md` §9; para la
 > futura apertura de cuentas conserva vigencia temática
 > `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
@@ -5606,15 +5612,18 @@ reembolso/liberación. La tienda de PR #108 ya está implementada.
 
 ## Validación disponible antes del despliegue
 
-Solo constan:
+El gate local/CI está cumplido. El workflow «Banco de pruebas» de GitHub
+Actions, run `39319540269`, terminó `SUCCESS` sobre el commit `1afc029` de
+`feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y Deno. Pasaron las
+migraciones y el banco CI, además de los checks de Node, el diff y la revisión.
+Después solo hubo ajustes documentales/de matriz; el estado final del código
+permanece en la misma rama.
 
-- `node --check` sobre el JavaScript modificado;
-- `git diff --check`;
-- revisión semántica del cambio y del contrato.
-
-PostgreSQL 15 y el banco SQL siguen pendientes. Tampoco se han aplicado la
-migración, los postflights ni el despliegue. No registrar estas validaciones como
-banco SQL, migración aplicada o evidencia productiva, ni inventar recorridos C4.
+Esta evidencia no equivale a producción. La migración C4 NO está aplicada en
+producción; no hay preflight ni postflight productivos; las Edge Functions no
+están redesplegadas; la tienda y el back-office no están publicados; no hubo
+dinero ni medición productiva. No registrar el banco CI como migración aplicada,
+despliegue o evidencia productiva, ni inventar recorridos C4.
 
 ## Procedimiento futuro de despliegue · aún no ejecutado
 
@@ -5632,10 +5641,10 @@ banco SQL, migración aplicada o evidencia productiva, ni inventar recorridos C4
 4. **Back-office y tienda.** Publicar Ventas y la tienda implementada en PR #108,
    conservando compra inmediata e invitada y sin anunciar disponibilidad antes
    de las verificaciones.
-5. **Pruebas.** Ejecutar PostgreSQL 15, banco SQL y pruebas controladas sin
-   dinero sobre OFF/ON, propiedad, sucesión C3, expiración, `bloqueo_pago`,
-   retry, PENDING, APPROVED tardío, retorno v2 y resolución explícita de
-   revisión. Volver a OFF ante cualquier duda.
+5. **Pruebas controladas de producción.** Con el gate local/CI ya aprobado,
+   probar sin dinero sobre OFF/ON propiedad, sucesión C3, expiración,
+   `bloqueo_pago`, retry, PENDING, APPROVED tardío, retorno v2 y resolución
+   explícita de revisión. Volver a OFF ante cualquier duda.
 6. **Dinero solo con autorización.** Medir, sin inferencias, aprobación,
    rechazo/revisión, reembolso/liberación, un solo pedido, `customer_id`,
    snapshots, consumo/preservación de extras, versión, inventario/proveedor,
