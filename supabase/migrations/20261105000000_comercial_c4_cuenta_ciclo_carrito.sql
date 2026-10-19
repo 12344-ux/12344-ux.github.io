@@ -1627,7 +1627,9 @@ revoke all on function pw_estado_publico(text) from authenticated;
 grant execute on function pw_estado_publico(text) to service_role;
 
 -- La nueva RPC mantiene v0/v1 por posesión y exige UID coincidente para v2.
-create function pw_estado_checkout_publico(p_referencia text, p_auth_user_id uuid default null)
+-- CREATE OR REPLACE permite sustituir sin ventana rota el puente operativo
+-- C3→C4 instalado antes de desplegar la Edge nueva.
+create or replace function pw_estado_checkout_publico(p_referencia text, p_auth_user_id uuid default null)
 returns table (
   estado text,
   nombre_producto text,
