@@ -391,17 +391,13 @@ begin
         || ' · Faltan: ' || coalesce((select string_agg(x, ', ') from unnest(v_lista_blanca) x where x <> all (coalesce(v_funcs_auth, '{}'))), '-')
     end;
 
-    -- ---------- EXECUTE: service_role solo puertas, nunca núcleos internos ----------
+    -- ---------- EXECUTE: service_role solo puertas, nunca helpers internos ----------
     -- Los helpers co__*/pw__* y los dos núcleos de pedido se alcanzan como
-    -- propietario desde SECURITY DEFINER o triggers. La única excepción
-    -- histórica es pw__contexto_servidor(): no expone ni muta datos y el rol
-    -- service_role conserva EXECUTE por ownership en algunos cortes.
+    -- propietario desde SECURITY DEFINER o triggers; no son RPC de la Edge.
     select string_agg(
              case
-               when (
-                 left(p.proname, 4) in ('co__','pw__')
+               when left(p.proname, 4) in ('co__','pw__')
                  or p.proname in ('crear_pedido_c3_base','crear_pedido_c4')
-               ) and p.proname <> 'pw__contexto_servidor'
                  then 'SOBRA helper: '
                else 'FALTA puerta: '
              end || p.proname,
@@ -419,14 +415,12 @@ begin
        )
        and (
          (
-           (
-             left(p.proname, 4) in ('co__','pw__')
-             or p.proname in ('crear_pedido_c3_base','crear_pedido_c4')
-           ) and p.proname <> 'pw__contexto_servidor'
+           left(p.proname, 4) in ('co__','pw__')
+           or p.proname in ('crear_pedido_c3_base','crear_pedido_c4')
          ) = has_function_privilege('service_role', p.oid, 'execute')
        );
     r_pers := r_pers || 'service_role'::text;
-    r_obj  := r_obj  || 'EXECUTE sobre puertas de public, sin núcleos internos'::text;
+    r_obj  := r_obj  || 'EXECUTE sobre puertas de public, sin helpers internos'::text;
     r_esp  := r_esp  || 'PUERTAS OK'::text;
     r_obt  := r_obt  || coalesce('DESAJUSTE: ' || v_extra, 'PUERTAS OK');
 

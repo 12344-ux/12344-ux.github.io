@@ -156,9 +156,7 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > rechazo o expiración libera y avanza versión, PENDING no libera y APPROVED
 > tardío pasa a revisión. La revisión solo se libera con la acción explícita
 > `reembolsado_liberar`. Cambiaron `crear-intencion-pago`, `estado-pago` y Ventas;
-> los núcleos internos quedan sin `EXECUTE` de API; la excepción histórica
-> `pw__contexto_servidor()` no expone ni muta datos y puede conservar EXECUTE de
-> `service_role` por ownership. La validación disponible es
+> los helpers internos quedan sin `EXECUTE` de API. La validación disponible es
 > `node --check`, `git diff --check` y revisión semántica; PostgreSQL 15, banco,
 > aplicación y despliegue siguen pendientes. Relevo vigente:
 > `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`.

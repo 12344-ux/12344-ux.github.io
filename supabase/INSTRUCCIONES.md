@@ -5594,10 +5594,9 @@ La migración forward
 - devuelve para v2 solo estado y descriptor de checkout saneados; reserva
   `pw_estado_publico` para v0/v1 y no expone PII, monto, ids privados, pedido,
   transacción, motivo ni entorno;
-- revoca `EXECUTE` de API a núcleos internos `co__*`, `pw__*`,
-  `crear_pedido_c3_base` y `crear_pedido_c4`; la excepción histórica
-  `pw__contexto_servidor()` no expone ni muta datos y puede conservar EXECUTE de
-  `service_role` por ownership; las Edge llaman puertas nominales;
+- revoca `EXECUTE` de API, incluido `service_role`, a helpers internos `co__*`,
+  `pw__*`, `crear_pedido_c3_base` y `crear_pedido_c4`; las Edge llaman puertas
+  nominales;
 - conserva compra inmediata e invitada como caminos históricos independientes.
 
 También cambiaron las Edge Functions `crear-intencion-pago` y `estado-pago`, que
