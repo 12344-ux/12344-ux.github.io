@@ -1707,6 +1707,10 @@ revoke all on function co__liberar_expiradas_c4(uuid)
   from public, anon, authenticated, service_role;
 revoke all on function co__bloqueo_pago(uuid)
   from public, anon, authenticated, service_role;
+-- Este helper histórico puede conservar ownership de service_role en bases
+-- reconstruidas desde cortes antiguos; el propietario siempre posee EXECUTE
+-- aunque el ACL se revoque. C4 normaliza ownership antes de cerrar la puerta.
+alter function pw__contexto_servidor() owner to postgres;
 revoke all on function pw__contexto_servidor()
   from public, anon, authenticated, service_role;
 revoke all on function pw__marcar_ciclo_carrito_c4()
