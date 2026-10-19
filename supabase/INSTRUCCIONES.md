@@ -5609,11 +5609,11 @@ reembolso/liberación. La tienda de PR #108 ya está implementada.
 
 ## Validación disponible antes del despliegue
 
-El gate histórico de implementación terminó `SUCCESS` en el workflow «Banco de
-pruebas», run `39320288166`, sobre `90fbdf2`/`2483bb2`. Ese run antecede al
-paquete operativo y al cambio `CREATE OR REPLACE` del puente; el corte actual
-debe obtener su propio banco PostgreSQL 15/Deno verde antes de usarlo en
-producción.
+El gate histórico de implementación terminó `SUCCESS` en el run `39320288166`
+sobre `90fbdf2`/`2483bb2`. El paquete operativo actual terminó también
+`SUCCESS` en el banco PostgreSQL 15/Deno run `39326788045`, sobre `efa253f`;
+los seis SQL operativos y la migración pasaron parser PostgreSQL. Esto valida el
+corte local/CI, no producción.
 
 La evidencia histórica no equivale a producción. La migración C4 NO está
 aplicada; no hay preflight ni postflight productivos; las Edge no están

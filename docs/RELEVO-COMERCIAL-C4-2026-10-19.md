@@ -112,12 +112,12 @@ entre reconstrucciones. La Edge accede por puertas nominales.
 
 ## 3. Validación disponible y límite de evidencia
 
-La validación histórica del corte de implementación terminó `SUCCESS` en el
-workflow [Banco de pruebas · run
+La implementación inicial quedó validada por el workflow [Banco de pruebas · run
 39320288166](https://github.com/12344-ux/12344-ux.github.io/actions/runs/39320288166)
-sobre `90fbdf2`/`2483bb2`, con PostgreSQL 15 y Deno. Ese run antecede a los SQL
-operativos y al cambio de compatibilidad del puente; el corte actual debe
-obtener su propio banco verde antes de operar producción.
+sobre `90fbdf2`/`2483bb2`. El paquete operativo actual obtuvo su propio [run
+39326788045](https://github.com/12344-ux/12344-ux.github.io/actions/runs/39326788045)
+en `SUCCESS` sobre `efa253f`, con PostgreSQL 15/Deno; los seis SQL operativos y
+la migración pasaron además parser PostgreSQL.
 
 **Ese resultado no constituye aplicación ni evidencia productiva.** La
 migración `20261105000000` NO está aplicada; no hay pre/postflight productivos;

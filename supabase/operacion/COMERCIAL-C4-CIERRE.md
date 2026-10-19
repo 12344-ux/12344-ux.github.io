@@ -1,6 +1,6 @@
 # Comercial C4 · cierre operativo
 
-**Estado al preparar este paquete (19-oct-2026):** C4 está fusionado en ambos `main`; GitHub Pages publicó backend/back-office y tienda. El banco PostgreSQL 15/Deno histórico pasó para la implementación anterior; este paquete y su puente requieren un run nuevo antes de producción. Según la última evidencia y la confirmación del dueño, producción todavía necesita preflight, puente de retorno, Edge `estado-pago`, migración C4, postflight, Edge `crear-intencion-pago` y pruebas controladas. Esto no declara C4 cerrado.
+**Estado al preparar este paquete (19-oct-2026):** C4 está fusionado en ambos `main`; GitHub Pages publicó backend/back-office y tienda. El banco PostgreSQL 15/Deno run `39326788045` terminó `SUCCESS` sobre el commit `efa253f` de este paquete; además, el parser PostgreSQL aceptó los seis SQL operativos y la migración. Según la última evidencia y la confirmación del dueño, producción todavía necesita preflight, puente de retorno, Edge `estado-pago`, migración C4, postflight, Edge `crear-intencion-pago` y pruebas controladas. Esto no declara C4 cerrado.
 
 ## Archivos y orden
 

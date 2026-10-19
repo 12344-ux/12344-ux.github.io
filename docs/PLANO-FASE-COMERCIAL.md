@@ -317,7 +317,7 @@ Producción continúa en `20261104000000`/C3 con
 run `39320288166`, terminó `SUCCESS` sobre el commit `90fbdf2` de
 `feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y Deno. Pasaron las
 migraciones y el banco CI, además de los checks de Node, el diff y la revisión.
-`90fbdf2` es el commit backend validado por ese run y `2483bb2` el commit de tienda validado. El paquete operativo actual y el puente son cambios posteriores que requieren un banco nuevo.
+`90fbdf2`/`2483bb2` acreditan la implementación inicial. El paquete operativo actual quedó validado por el banco PostgreSQL 15/Deno run `39326788045` en `SUCCESS` sobre `efa253f`; sus seis SQL operativos también pasaron parser PostgreSQL.
 
 Este gate local/CI está cumplido, pero **no es evidencia productiva**. La
 migración C4 NO está aplicada en producción; no hay preflight ni postflight
@@ -487,7 +487,7 @@ El gate local/CI de C4 ya está cumplido: el workflow «Banco de pruebas» run
 `39320288166` terminó `SUCCESS` sobre `90fbdf2` de
 `feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y Deno; pasaron las
 migraciones y el banco CI, además de los checks de Node, el diff y la revisión.
-`90fbdf2` es el commit backend validado por ese run y `2483bb2` el commit de tienda validado. Ese run antecede al paquete operativo actual y no lo acredita; el nuevo corte debe obtener su propio banco verde. Este resultado no modifica producción.
+`90fbdf2`/`2483bb2` acreditan la implementación inicial. El banco del paquete, run `39326788045`, terminó `SUCCESS` sobre `efa253f` con PostgreSQL 15/Deno; los seis SQL operativos pasaron además parser PostgreSQL. Este resultado no modifica producción.
 
 **C4 todavía no ha recorrido la operación productiva.** Seguir exclusivamente
 `supabase/operacion/COMERCIAL-C4-CIERRE.md`: preflight; puente de estado C3→C4;

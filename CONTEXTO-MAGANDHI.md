@@ -419,9 +419,10 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
   `supabase/operacion/COMERCIAL-C4-CIERRE.md`.**
 - `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`: relevo general más reciente; fija
   contrato C4, merges/Pages cumplidos y producción todavía en C3. El run
-  `39320288166` acredita el corte de implementación anterior; el paquete
-  operativo actual exige un nuevo banco verde. Preflight, puente/Edge de estado,
-  migración, postflight, Edge de intención y medición siguen pendientes.
+  `39326788045` terminó `SUCCESS` sobre `efa253f`: valida migraciones y banco
+  PostgreSQL 15/Deno del paquete; sus seis SQL operativos también pasaron parser
+  PostgreSQL. Preflight, puente/Edge de estado, migración, postflight, Edge de
+  intención y medición productivos siguen pendientes.
 - `docs/RELEVO-COMERCIAL-C3-2026-10-17.md`: relevo histórico de C3; conserva la
   evidencia de su intención v2 sin pago, el flag final `false` y sus límites.
 - `docs/RELEVO-COMERCIAL-C2-2026-10-16.md`: relevo histórico de C2; conserva su
@@ -487,10 +488,10 @@ cierres estructurales de sus primeros tramos:
    lectura comercial siguen pendientes. Meta Ads, Pixel, Conversions API y
    publicación automática continúan fuera de alcance.
 
-La definición final de la fase no se relaja. El run histórico `39320288166`
-acredita el corte `90fbdf2`/`2483bb2`, no el paquete operativo actual ni
-producción. Este nuevo corte debe obtener su propio banco PostgreSQL 15/Deno
-en verde antes de usar los SQL.
+La definición final de la fase no se relaja. El banco PostgreSQL 15/Deno run
+`39326788045` terminó `SUCCESS` sobre `efa253f`, commit del paquete operativo;
+los seis SQL operativos también pasaron parser PostgreSQL. Esto valida el corte
+local/CI, no producción.
 
 El despliegue C4 debe seguir exclusivamente
 `supabase/operacion/COMERCIAL-C4-CIERRE.md`: preflight; puente C3→C4; despliegue
