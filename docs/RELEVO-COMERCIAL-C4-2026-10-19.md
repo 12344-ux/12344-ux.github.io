@@ -98,10 +98,11 @@ estado abierto de los PR ni por una interfaz construida.
 
 ### 2.5 Superficie SQL
 
-Las RPC nominales son las únicas puertas previstas. Los helpers internos `co__*`,
+Las RPC nominales son las únicas puertas previstas. Los núcleos internos `co__*`,
 `pw__*`, `crear_pedido_c3_base` y `crear_pedido_c4` no deben quedar con
-`EXECUTE` de API, incluido `service_role`; la Edge accede por las puertas
-nominales, no llamando helpers internos.
+`EXECUTE` de API. La excepción histórica `pw__contexto_servidor()` no expone ni
+muta datos y puede conservar `EXECUTE` de `service_role` por ownership en ciertos
+cortes. La Edge accede por puertas nominales, no llamando núcleos internos.
 
 ## 3. Validación disponible y límite de evidencia
 
