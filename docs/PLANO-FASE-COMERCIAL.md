@@ -1,7 +1,7 @@
 # PLANO · Fase comercial: Carrito + Promocionar
 
 **Decisión del dueño:** 16 de octubre de 2026  
-**Estado por tramos:** **C1, C2 y C3 desplegados y probados en estructura**; C3 conserva pendiente la aprobación end-to-end. C4 está construido, fusionado y publicado en Pages (backend/back-office #283, tienda #108), pero no está aplicado en Supabase ni medido; producción sigue en `20261104000000`/C3 con `carrito_habilitado=false`. El cierre controlado está preparado en `supabase/operacion/COMERCIAL-C4-CIERRE.md`. P0–P5 siguen pendientes. La fase completa no está cerrada.
+**Estado por tramos:** **C1, C2 y C3 desplegados y probados en estructura**; C3 conserva pendiente la aprobación end-to-end. **C4 está aplicado, desplegado y probado sin dinero en producción (19-oct-2026), con el carrito encendido**; su cierre formal y el rediseño carrito/pago siguen abiertos en `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`. P0–P5 siguen pendientes. La fase completa no está cerrada.
 **Superficies:** back-office `montaguth.institute`, tienda `magandhi.com` y backend compartido en Supabase.
 
 Este plano reúne los dos frentes comerciales elegidos para la siguiente evolución de MAGANDHI:
@@ -303,29 +303,23 @@ pertenece a C4.
 
 **Relación con Cuentas:** este tramo materializa parte de C4 sin obligar a completar toda la futura pantalla C3 de perfil/pedidos.
 
-**Estado de implementación · 19-oct-2026:** backend/back-office PR #283 y tienda
-PR #108 están fusionados en `main`; los dos despliegues de Pages terminaron
-`SUCCESS`. La migración forward
-`20261105000000_comercial_c4_cuenta_ciclo_carrito.sql`, ambas Edge Functions
-(`crear-intencion-pago`, `estado-pago`), Ventas y la tienda están construidos.
-**La base y las Edge C4 no están aplicadas/desplegadas ni medidas en producción.**
-Producción continúa en `20261104000000`/C3 con
-`carrito_habilitado=false`. El cierre usa el paquete
-`supabase/operacion/COMERCIAL-C4-CIERRE.md`, incluido su puente de retorno C3→C4.
+**Estado productivo · 19-oct-2026:** C4 está **aplicado, desplegado y probado
+sin dinero**. La migración `20261105000000` se aplicó una vez y el postflight
+dio 30/30 funciones correctas. El puente de estado y las Edge `estado-pago` y
+`crear-intencion-pago` están en producción, igual que Ventas y la tienda
+(PR #283, #108, #284, #109 y #285). **El carrito quedó encendido** al cierre de
+la sesión. Se corrigieron en producción dos defectos: ids de campaña rechazados
+por la tienda y una campaña publicada sin slug. Sin pago aprobado no hay cierre
+transaccional. Detalle y decisiones abiertas en
+`docs/RELEVO-COMERCIAL-C4-2026-10-19.md`.
 
-**Evidencia de validación:** el workflow «Banco de pruebas» de GitHub Actions,
-run `39320288166`, terminó `SUCCESS` sobre el commit `90fbdf2` de
-`feat/comercial-c4-ciclo-carrito`, usando PostgreSQL 15 y Deno. Pasaron las
-migraciones y el banco CI, además de los checks de Node, el diff y la revisión.
-`90fbdf2`/`2483bb2` acreditan la implementación inicial. El paquete operativo actual quedó validado por el banco PostgreSQL 15/Deno run `39326788045` en `SUCCESS` sobre `efa253f`; sus seis SQL operativos también pasaron parser PostgreSQL.
-
-Este gate local/CI está cumplido, pero **no es evidencia productiva**. La
-migración C4 NO está aplicada en producción; no hay preflight ni postflight
-productivos; las Edge Functions no están redesplegadas; no hubo dinero ni
-medición productiva. Tienda y back-office sí están publicados en Pages, pero el
-flag OFF contiene el carrito. No atribuir a C4 pedidos, inventario, proveedor,
-asiento, correo, webhook repetido ni ningún resultado end-to-end hasta
-medirlos.
+**Rediseño en discusión (no aprobado):** el dueño prefiere separar carrito y
+pago. Al iniciar el pago, las líneas congeladas se vuelven una compra en
+proceso en una nueva sección "Mis compras" y el carrito queda libre al
+instante, sin bloqueo de 30 minutos. Es candidato a **C5** en una migración
+forward sobre C4. La alternativa menor es un botón "Cancelar este pago". El
+relevo C4 §4 lista las ocho decisiones. También queda pendiente generar el slug
+automáticamente en servidor.
 
 ---
 
@@ -431,13 +425,13 @@ Ventas muestra la procedencia validada. Los pedidos manuales pueden tener una fu
 
 ## 5. Orden de construcción
 
-Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual: C1, C2 y C3 están desplegados y probados en estructura; C3 conserva pendiente el pago aprobado end-to-end. C4 está construido, fusionado y publicado en Pages, pero su base/Edge y medición siguen pendientes; producción continúa en `20261104000000`/C3 con `carrito_habilitado=false`. Lo demás permanece pendiente.
+Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual: C1, C2 y C3 están desplegados y probados en estructura; C3 conserva pendiente el pago aprobado end-to-end. C4 está aplicado y probado sin dinero, con el carrito encendido. Lo demás permanece pendiente.
 
 1. **Plano y arranque — cerrado.** Este documento y referencias de contexto.
 2. **C1 · cantidad inmediata — estructura lista.** Valor comercial rápido y cimiento de carrito; sin afirmar cierre transaccional de qty2.
 3. **C2 · carrito persistente — estructura lista y flag OFF.** Datos/RLS/UI medidos.
 4. **C3 · intención y checkout multiproducto — estructura lista y flag OFF.** Líneas congeladas, total autoritativo, Wompi abierto sin pago e idempotencia de intención medida.
-5. **C4 · cuenta y ciclo del carrito — construido, fusionado/Pages y gate local/CI cumplidos; operación productiva pendiente.** Migración, `crear-intencion-pago`, `estado-pago`, Ventas y tienda están implementados. El run `39320288166` pasó las migraciones y el banco CI con PostgreSQL 15 y Deno. Falta ejecutar el paquete `supabase/operacion/COMERCIAL-C4-CIERRE.md`: preflight, puente de retorno, Edge `estado-pago`, migración, postflight, Edge `crear-intencion-pago`, regresión OFF y mediciones controladas.
+5. **C4 · cuenta y ciclo del carrito — aplicado, desplegado y probado sin dinero; cierre formal pendiente.** Carrito encendido al 19-oct. Pendientes: slug automático, decisión entre B1 (cancelar) y B2/C5 (carrito libre + Mis compras), y el valor final del flag.
 6. **P0 · taxonomía y privacidad — pendiente.** Contrato de atribución, canales y retención antes de capturar datos.
 7. **P1 · producto compartible — pendiente.** También resuelve SEO/IA pendiente.
 8. **P2 · estudio Promocionar — pendiente.** Enlaces largos, textos, preview, QR y kit.
@@ -489,16 +483,12 @@ El gate local/CI de C4 ya está cumplido: el workflow «Banco de pruebas» run
 migraciones y el banco CI, además de los checks de Node, el diff y la revisión.
 `90fbdf2`/`2483bb2` acreditan la implementación inicial. El banco del paquete, run `39326788045`, terminó `SUCCESS` sobre `efa253f` con PostgreSQL 15/Deno; los seis SQL operativos pasaron además parser PostgreSQL. Este resultado no modifica producción.
 
-**C4 todavía no ha recorrido la operación productiva.** Seguir exclusivamente
-`supabase/operacion/COMERCIAL-C4-CIERRE.md`: preflight; puente de estado C3→C4;
-desplegar `estado-pago`; aplicar una vez la migración; postflight; desplegar
-`crear-intencion-pago`; regresión OFF; y ventana controlada con
-activar/estado/desactivar. Dinero solo con autorización expresa y evidencia
-completa. Tienda/back-office ya están en Pages; base y Edge siguen pendientes.
-
-Hasta completar esos pasos, producción continúa en C3 y el flag `false`. El
-run `39320288166` no acredita este paquete ni producción. La prueba aprobada
-end-to-end de C3 permanece pendiente y solo se atribuirá con evidencia real.
+**C4 recorrió la operación productiva el 19-oct-2026** con
+`supabase/operacion/COMERCIAL-C4-CIERRE.md`: preflight, puente, `estado-pago`,
+migración, postflight, `crear-intencion-pago` y ventana ON sin dinero. El
+carrito quedó encendido. Faltan el pago con dinero (solo con autorización) y
+el valor final del flag. La intención v2 que describía el relevo C3 no existe
+en producción (`v2_total=0`), por lo que la sucesión C3 no aplicó.
 
 ---
 

@@ -1,197 +1,246 @@
 # Relevo de sesión · Comercial C4 · cuenta y ciclo del carrito · 19 de octubre de 2026
 
-Este es el punto general vigente para continuar el frente comercial. Leer junto
-con `CONTEXTO-MAGANDHI.md`, `docs/PLANO-FASE-COMERCIAL.md` y
-`supabase/INSTRUCCIONES.md`. Los relevos de Comercial C1–C3 quedan como memoria
-histórica. No reconstruir esos tramos ni confundir Comercial C4 con Cuentas C4.
+Punto general vigente para continuar el frente comercial. Leer junto con
+`supabase/operacion/COMERCIAL-C4-CIERRE.md`, `CONTEXTO-MAGANDHI.md`,
+`docs/PLANO-FASE-COMERCIAL.md` y `supabase/INSTRUCCIONES.md`. Los relevos C1–C3
+quedan como memoria histórica. No confundir Comercial C4 con Cuentas C4.
 
-## 1. Estado exacto
+## 1. Estado exacto al cerrar la sesión (19-oct-2026, noche)
 
-**Comercial C4 está construido, fusionado y publicado en Pages, pero NO está
-aplicado en Supabase ni medido en producción.**
+**C4 está aplicado, desplegado y probado sin dinero en producción. El carrito
+quedó ENCENDIDO (`carrito_habilitado=true`) a propósito**, porque el dueño
+continúa de inmediato en el siguiente chat. C4 no está cerrado formalmente:
+falta registrar la expiración de 30 minutos, decidir el rediseño del ciclo
+carrito/pago y dejar el flag en su valor final.
 
-- Backend/back-office: PR #283 fusionado a `main` en `0d35d8f`; Pages run
-  `39321890522` terminó `SUCCESS`.
-- Tienda `12344-ux/magandhi`: PR #108 fusionado a `main` en `55e0187`; Pages run
-  `39321900476` terminó `SUCCESS`.
-- Migración pendiente:
-  `20261105000000_comercial_c4_cuenta_ciclo_carrito.sql`.
-- Las Edge Functions `crear-intencion-pago` y `estado-pago` todavía deben
-  redesplegarse y medirse junto con este cierre.
-- Producción sigue llegando únicamente a
-  `20261104000000_comercial_c3_checkout_multiproducto.sql` (Comercial C3), con
-  `carrito_habilitado=false`, según la última evidencia y la confirmación del
-  dueño.
-- No se aplicó `20261105000000`; no existen preflight/postflight productivos ni
-  evidencia de recorridos C4. Ventas/tienda están publicadas, pero contenidas por
-  el flag OFF.
-- El workflow [Banco de pruebas · run
-  39320288166](https://github.com/12344-ux/12344-ux.github.io/actions/runs/39320288166)
-  terminó `SUCCESS` sobre `90fbdf2`, con PostgreSQL 15 y Deno. Este gate no
-  equivale a producción.
-- El paquete autoritativo para continuar es
-  `supabase/operacion/COMERCIAL-C4-CIERRE.md`; incluye pre/postflight, estado,
-  activación/desactivación y un puente de retorno C3→C4.
+| Pieza | Estado |
+|---|---|
+| Backend/back-office PR #283 | Fusionado (`0d35d8f`), Pages `SUCCESS` |
+| Tienda PR #108 | Fusionado (`55e0187`), Pages `SUCCESS` |
+| Paquete operativo PR #284 | Fusionado (`0bd7546`), banco PostgreSQL 15/Deno run `39326788045` `SUCCESS` |
+| Corrección UUID tienda PR #109 | Fusionado (`9ac92d8`), Pages run `39336452763` `SUCCESS` |
+| Activación con vencidas PR #285 | Fusionado (`93e347a`), Pages run `39336495250` `SUCCESS` |
+| Migración `20261105000000` | **Aplicada una vez** en SQL Editor |
+| Edge `estado-pago` | **Desplegada** (C4), sobre el puente y luego sobre C4 |
+| Edge `crear-intencion-pago` | **Desplegada** (C4), Verify JWT sin cambios |
+| `carrito_habilitado` | **`true`** al cierre de la sesión |
+| Wompi | `prod`; no se hizo ningún pago real |
 
-No inferir aplicación de base, despliegue de Edge o prueba por el merge, Pages o
-la presencia del código.
+## 2. Ejecución productiva registrada hoy
 
-## 2. Contrato implementado
+Proyecto Supabase `bxlzipwxyxdtffnuizbz`. Todos los resultados son agregados,
+sin PII.
 
-### 2.1 Expiración autoritativa y sucesión de C3
+1. **Preflight** (`comercial-c4-preflight.sql`, por bloques):
+   - estructura: 5/5 `coincide=true` (C3 presente, índice v2, C4 ausente,
+     singleton y flag OFF);
+   - historia C3: **`v2_total=0`**, frente al 1 documentado; resto en 0/`true`;
+   - invariantes: 4/4 `true`, `revisiones_pendientes=0`;
+   - Wompi: singleton, `prod`, llave activa configurada.
+   - **Hallazgo:** en producción no existe la intención v2 que el relevo C3
+     describía (abierta en Wompi sin pagar). El dueño indicó que el pago de
+     prueba no se hizo. Se aceptó continuar: C4 arranca sin intención ciclo 0,
+     `c3_preservadas=0` es el valor esperado y la prueba de sucesión C3 queda
+     **no aplicable**. La causa exacta de la ausencia no se investigó más.
+2. **Puente** `comercial-c4-puente-estado.sql`: 4/4 `true`.
+3. **Edge `estado-pago`** desplegada. Sondas desde fuera: CORS 204, GET 405,
+   cuerpo inválido 400, referencia inexistente 404 con `no-store`, referencia
+   mal formada 404.
+4. **Migración** `20261105000000_comercial_c4_cuenta_ciclo_carrito.sql`:
+   `Success`, una sola ejecución. Probablemente no quedó registrada en
+   `supabase_migrations.schema_migrations`; no usar `supabase db push` hasta
+   reconciliar el historial.
+5. **Postflight** en 4 bloques (versión compacta entregada en el chat):
+   8/8 `true` de estructura, 11 constraints, 17 columnas e índice v2;
+   historia en 0, con `c3_preservadas=0`; RLS/permisos 6/6 `true`;
+   **30/30 funciones** correctas en SECURITY DEFINER, search_path y EXECUTE.
+6. **Edge `crear-intencion-pago`** desplegada. Sondas: CORS 204, GET 405,
+   cuerpo inválido 400, carrito mal formado 400 `CARRITO_INVALIDO`, monto
+   inyectado 400, carrito sin sesión 401 `SESION_REQUERIDA`, producto
+   inexistente en compra inmediata 404. Ninguna creó intenciones.
+7. **Regresión OFF:** el dueño continuó directamente a la ventana ON; no quedó
+   evidencia casilla por casilla del paso 7.
+8. **Activación** con `comercial-c4-activar.sql`: carrito encendido.
+9. **Pruebas ON sin dinero**, informadas por el dueño:
+   - agregar, consolidar y cambiar cantidades funcionó con el cubo Rubik;
+   - tras las dos correcciones de §3, la manzanilla y el Rubik se agregan y el
+     checkout desde el carrito funciona;
+   - Wompi `prod` aceptó el `expiration-time` firmado y **muestra el temporizador**;
+   - con la intención pendiente, el carrito queda bloqueado: no se puede
+     agregar ni cambiar hasta que vence (comportamiento C4 esperado);
+   - **sin registrar:** resultado de la expiración (9D), capturas de la
+     consulta de estado y prueba de aislamiento con una segunda cuenta.
+10. **No ejecutado:** pago con dinero, desactivación final y decisión del flag.
 
-- Cada intención C4 tiene una expiración autoritativa de **30 minutos** calculada
-  en servidor. El mismo instante ISO persistido se incorpora a la firma de
-  integridad enviada a Wompi; el navegador no decide ni recalcula ese límite.
-- La intención productiva de C3 permanece intacta con `ciclo=0`; no se borra, no
-  se edita y no se reetiqueta como C4.
-- Al siguiente checkout de ese carrito/versión, el backend registra de forma
-  durable la sucesión de la intención C3, avanza una vez la versión y permite a
-  `crear-intencion-pago` reintentar técnicamente con la nueva versión.
-- Un `APPROVED` posterior a rechazo o expiración, o para una intención con
-  sucesora, es una aprobación tardía: no crea automáticamente otro pedido y
-  pasa a `requiere_revision`.
+## 3. Defectos encontrados en producción y corregidos
 
-### 2.2 Identidad comercial y destinatario
+1. **IDs de campaña rechazados por la tienda (PR #109).** `carrito-core.js`
+   exigía UUID RFC 4122. Las campañas sembradas en 2025 tienen ids válidos para
+   PostgreSQL pero sin versión (`00000000-0000-0000-0000-0000000c0001`). Por
+   eso **5 de 6 campañas publicadas** no podían agregarse, y la tienda mostraba
+   "revisa tu conexión". Se aceptó la forma canónica 8-4-4-4-12, se agregaron
+   mensajes claros para `CO_CAMPANA_NO_COMPRABLE`, `CO_MAX_COMPRABLE` y
+   `CO_SOLICITUD_INVALIDA`, y se renovó la caché (`?v=3` / `carrito-ui.js?v=5`).
+2. **Producto publicado sin slug (dato corregido; falta prevención).** El cubo
+   Rubik estaba publicado con `slug=null`. El checkout multiproducto exige slug
+   y respondía `PW_CAMPANA_NO_COMPRABLE` → `CARRITO_NO_DISPONIBLE`; la tienda
+   mostraba en bucle "Una línea ya no se puede comprar como estaba". El dueño
+   le asignó `cubo-rubik-4x4-qiyi` desde el back-office (verificado en
+   `catalogo_publico`). **Hoy cualquier campaña nueva puede volver a publicarse
+   sin slug**; ver decisión A en §4.
+3. **Reactivación bloqueada por intenciones ya vencidas (PR #285).** El script
+   de activación rechazaba cualquier intención `creada` sin liberar, aunque
+   estuviera vencida. Como la liberación es perezosa y exige el flag encendido,
+   apagar con una vencida dejaba el carrito imposible de reactivar. Ahora solo
+   bloquean una intención vigente o una revisión abierta.
 
-- `crear-intencion-pago` valida el JWT y deriva el UID desde Auth. El navegador
-  no puede decidir UID, `customer_id`, correo Auth ni identidad comercial.
-- Durante la aprobación, `customer_id` se deriva de la cuenta activa y Auth. Si
-  la cuenta todavía no tiene cliente, se crea o vincula dentro de la misma
-  transacción del pedido y bajo el advisory lock `cc-correo:` compartido con
-  Cuentas C2. Ambigüedad, vínculo ajeno o carrera fallan cerrados.
-- Nombre, correo y teléfono de entrega pertenecen al destinatario y no deciden
-  `customer_id`. El pedido conserva esos datos y la dirección como snapshot de
-  la orden.
+## 4. Decisiones abiertas para el próximo chat (recordárselas al dueño)
 
-### 2.3 Bloqueo y retorno del checkout
+### A. Dirección web (slug) obligatoria — el dueño pidió corregirlo
 
-- El snapshot del carrito expone `bloqueo_pago` con `null`, `pendiente` o
-  `revision`; no expone la referencia ni un booleano `bloqueado_checkout`.
-- `pendiente` impide editar mientras la intención siga bloqueante y no haya
-  expirado. `revision` mantiene el bloqueo hasta su resolución explícita.
-- La expiración libera el carrito y avanza una vez la versión. El bloqueo no es
-  una reserva de inventario.
-- El retorno v2 pasa por la Edge Function `estado-pago`. Requiere un JWT válido
-  del propietario y consulta `pw_estado_checkout_publico`; una referencia v2
-  sin JWT, con JWT inválido o de otra cuenta no revela su existencia.
-- La respuesta v2 devuelve el estado saneado y el descriptor necesario para
-  recargar —ID del carrito propio y versión incluidos—, sin PII, monto, pedido,
-  transacción, motivo ni entorno. `pw_estado_publico` conserva solo los caminos
-  históricos v0/v1.
+Propuesta: **generación automática en servidor**.
 
-### 2.4 Resultado del pago y cantidades
+- Trigger en `campana_producto`: si el slug queda vacío al crear o editar, se
+  genera con `cm_normalizar_slug(nombre)`.
+- Si el slug ya existe, se agrega el sufijo `-2`, `-3`, etc., bajo un advisory
+  lock. Si el nombre normalizado queda vacío, se usa `producto-<8 hex del id>`.
+- Cubre back-office, Dropshipping y SQL manual. Al migrar se rellenan las
+  campañas existentes sin slug.
+- Texto de ayuda del formulario: "Si la dejas vacía, se genera desde el nombre".
+- Complemento recomendado: que el carrito marque como "no se puede pagar" una
+  línea sin slug, en lugar de entrar en bucle.
+- Los enlaces de Promocionar (P3) son una capa aparte con su propio código; no
+  reemplazan ni cambian el slug base.
 
-- **APPROVED normal:** valida identidad, cuenta, monto, moneda, entorno y líneas
-  congeladas; crea un solo pedido y sustrae del carrito las cantidades
-  congeladas. Si el usuario agregó unidades extra o líneas nuevas, las
-  preserva; ante drift histórico puede registrar consumo parcial en vez de
-  destruir el carrito completo.
-- **DECLINED, VOIDED o ERROR:** conserva las líneas, libera el bloqueo y avanza
-  exactamente una vez la versión.
-- **Expiración:** conserva las líneas, libera el bloqueo y avanza exactamente
-  una vez la versión.
-- **PENDING o estado no terminal:** no libera, no avanza versión y no convierte
-  la intención en rechazada; conserva líneas e intención bloqueante.
-- **APPROVED tardío:** pasa a `requiere_revision` sin automatizar un segundo
-  pedido.
-- **Revisión:** solo se resuelve mediante una acción explícita del back-office de
-  Ventas, después de confirmar el reembolso, con
-  `pw_resolver_revision_c4(..., 'reembolsado_liberar', nota)`. Esa acción libera
-  el carrito y deja evidencia; no hay desbloqueo implícito ni resolución por
-  editar datos.
-- Compra inmediata e invitada conservan sus caminos históricos independientes.
+### B. Bloqueo de 30 minutos — el dueño lo considera mala experiencia
 
-### 2.5 Superficie SQL
+Hoy, si la persona se arrepiente en Wompi, no puede tocar su carrito hasta que
+vence la intención. Hay dos caminos; el dueño se inclina por el segundo:
 
-Las RPC nominales son las únicas puertas previstas. Los helpers propios de C4
-`co__*`, `pw__*`, `crear_pedido_c3_base` y `crear_pedido_c4` no deben quedar con
-`EXECUTE` de API. El helper booleano histórico `pw__contexto_servidor()` no
-expone ni muta datos y queda fuera de esa auditoría porque su ownership varía
-entre reconstrucciones. La Edge accede por puertas nominales.
+**B1 · Botón "Cancelar este pago"** (cambio menor sobre C4):
 
-## 3. Validación disponible y límite de evidencia
+- RPC autenticada que pasa la intención propia a `rechazada`, la libera y
+  versiona una sola vez.
+- **Regla:** solo se puede cancelar si Wompi todavía no reportó transacción
+  (`transaccion_id` nulo). Si ya hay un pago en proceso (PSE/Nequi), responde
+  "tu banco está confirmando el pago".
+- Confirmación previa: "Si ya completaste el pago, no lo canceles".
+- Red de seguridad existente: un APPROVED posterior queda en revisión, sin
+  pedido doble.
 
-La implementación inicial quedó validada por el workflow [Banco de pruebas · run
-39320288166](https://github.com/12344-ux/12344-ux.github.io/actions/runs/39320288166)
-sobre `90fbdf2`/`2483bb2`. El paquete operativo actual obtuvo su propio [run
-39326788045](https://github.com/12344-ux/12344-ux.github.io/actions/runs/39326788045)
-en `SUCCESS` sobre `efa253f`, con PostgreSQL 15/Deno; los seis SQL operativos y
-la migración pasaron además parser PostgreSQL.
+**B2 · Carrito libre + "Mis compras"** (propuesta del dueño, C5):
 
-**Ese resultado no constituye aplicación ni evidencia productiva.** La
-migración `20261105000000` NO está aplicada; no hay pre/postflight productivos;
-las Edge no están redesplegadas y no hubo dinero ni medición. Tienda y
-back-office sí están publicados en Pages, contenidos por el flag OFF.
+- Al crear la intención, las líneas congeladas pasan a ser una **compra en
+  proceso** y el carrito queda libre al instante. El carrito solo prepara
+  pedidos; nunca guarda pagos.
+- La compra en proceso vive en **Mis compras**. El dueño ya tiene pensada esta
+  sección y la describirá en el próximo chat.
+- Opinión registrada: es el mejor modelo y simplifica C4, porque desaparecen el
+  bloqueo y el consumo del carrito al aprobar. Gran parte ya existe: el snapshot
+  `pagos_intencion_items` es esa compra.
 
-Por tanto, todavía no están demostrados en producción:
+Decisiones a tomar en B2, con la recomendación entre paréntesis:
 
-- objetos, constraints, índices, RLS, grants, firmas e invariantes resultantes;
-- expiración/sucesión, PENDING, aprobación tardía y resolución de revisión;
-- creación o vínculo real de `customer_id` durante una aprobación;
-- pedido, consumo completo/parcial, preservación de extras, inventario o reserva
-  de proveedor, asiento, correo e idempotencia productiva;
-- integración desplegada de las dos Edge Functions, Ventas y la tienda.
+1. Nombre: "intento de pago" mientras no se apruebe y "pedido" solo al
+   aprobarse (Ventas no debe llenarse de intentos; el stock baja solo al pagar).
+2. Momento de liberar el carrito: al **crear** la intención, no al volver de
+   Wompi (muchos cierran Wompi y no regresan).
+3. Si vuelve sin pagar: aviso en el carrito "Tienes un pago pendiente con N
+   productos", con *Pagar ahora* (si sigue vigente), *Cancelar* y *Devolver al
+   carrito*.
+4. Cancelado o no pagado: queda en Mis compras con *Volver a comprar* o
+   *Devolver al carrito*; precio y disponibilidad se recalculan en servidor.
+5. Cancelar: botón en Mis compras con la misma regla de B1.
+6. Pagar dos veces: avisar cuando un producto del carrito ya está en un intento
+   pendiente. Si igual ocurre, son dos pedidos legítimos o caen en revisión por
+   falta de stock.
+7. APPROVED después de cancelar o vencer: sigue en revisión, como hoy.
+8. Mis compras se cruza con Cuentas C3 (perfil/pedidos): diseñarlas juntas.
 
-C3 conserva además su límite anterior: la intención v2 productiva quedó sin
-pagar y no hubo aprobación end-to-end. No atribuir a C4 evidencia de C3 ni
-presentar ninguno de los dos tramos como cierre transaccional.
+Encaje propuesto: cerrar C4 tal como está (técnicamente probado) y construir
+B2 como **C5**, en una migración forward nueva sobre C4 sin rehacer nada. El
+slug (A) va antes, como cambio independiente.
 
-## 4. Plan de despliegue controlado
+### C. Valor del flag mientras se diseña
 
-El banco local/CI y los merges/Pages están cumplidos. El procedimiento
-operativo exacto y los resultados esperados viven en
-`supabase/operacion/COMERCIAL-C4-CIERRE.md`. Orden obligatorio:
+El carrito quedó **encendido**. Mientras siga así, cualquier cuenta existente
+puede usarlo y **pagar con dinero real** (Wompi `prod`), con el bloqueo de 30
+minutos de C4. El signup está OFF, así que solo afectan cuentas ya creadas.
+Decidir al inicio del próximo chat si se mantiene encendido o se apaga con
+`comercial-c4-desactivar.sql` hasta tener A/B.
 
-1. ejecutar `comercial-c4-preflight.sql` sobre C3 con flag OFF;
-2. instalar `comercial-c4-puente-estado.sql` y desplegar primero `estado-pago`
-   C4; el puente conserva simultáneamente el retorno antiguo y el nuevo;
-3. aplicar una sola vez `20261105000000_comercial_c4_cuenta_ciclo_carrito.sql`;
-   su `CREATE OR REPLACE` sustituye el puente por la versión autoritativa sin
-   cortar la Edge;
-4. ejecutar `comercial-c4-postflight.sql`; mantener OFF ante cualquier falla;
-5. desplegar `crear-intencion-pago`, verificar ambas Edge y hacer regresión de
-   compra inmediata/invitada, sesión, Ventas y tienda con OFF;
-6. abrir una ventana temporal solo con `comercial-c4-activar.sql`, medir los
-   recorridos sin dinero y cerrarla siempre con
-   `comercial-c4-desactivar.sql`; usar `comercial-c4-estado.sql` para evidencia;
-7. dinero únicamente con autorización expresa y observación de pedido único,
-   identidad, snapshots, consumo/preservación, inventario/proveedor, asiento,
-   correo e idempotencia;
-8. actualizar documentos y decidir el flag final solo después de medir.
+### D. Pendientes menores
 
-La ejecución manual en SQL Editor puede no registrar la versión en
-`supabase_migrations.schema_migrations`; documentar la aplicación y no usar
-`supabase db push` hasta reconciliar el historial por el procedimiento aprobado.
-No editar a mano las tablas internas de historial durante este cierre.
+- Registrar la prueba 9D (expiración, versión +1, líneas conservadas) con la
+  consulta de estado compacta (§5).
+- Prueba de aislamiento con una segunda cuenta en C4.
+- Regresión OFF casilla por casilla, si se apaga el flag.
+- Reconciliar el historial de migraciones antes de cualquier `db push`.
+- Prueba con dinero: solo con autorización expresa (C1 qty2, C3 y C4 siguen sin
+  cierre end-to-end).
+- Corregir el relevo C3: la intención v2 descrita no existe en producción.
 
-## 5. Reglas para continuar
+## 5. Consulta de estado compacta (solo lectura)
 
-- No reaplicar `20261104000000`; `20261105000000` se aplicará una sola vez cuando
-  el preflight autorice el despliegue.
-- Mantener `carrito_habilitado=false` durante aplicación y publicación.
-- No confiar en identidad, precio, expiración ni `customer_id` enviados por el
-  navegador.
-- No liberar una revisión sin la acción explícita `reembolsado_liberar` y la
-  evidencia de reembolso exigida por la operación.
-- No borrar ni editar la intención estructural C3 ni fabricar eventos.
-- No declarar aplicación de base, despliegue de Edge, prueba o medición que no
-  exista. PR #283 y PR #108 sí están fusionados y Pages terminó `SUCCESS`; esos
-  hechos no cierran producción.
-- Wompi permanece en `prod`; cualquier prueba con dinero requiere autorización
-  expresa.
+La que se usó hoy en el chat. Devuelve una fila, sin PII.
 
-## 6. Prompt de arranque para el próximo chat
+```sql
+begin transaction read only;
+set local search_path = pg_catalog, public;
+set local statement_timeout = '15s';
+select
+  (select carrito_habilitado from comercial_config where id = 1) as carrito_encendido,
+  count(*) filter (where ciclo_carrito_version = 4) as intenciones_c4,
+  count(*) filter (where ciclo_carrito_version = 4 and estado = 'creada'
+                     and expira_en > statement_timestamp()) as pendientes_vigentes,
+  count(*) filter (where ciclo_carrito_version = 4 and estado = 'creada'
+                     and expira_en <= statement_timestamp()
+                     and carrito_liberado_en is null) as vencidas_sin_liberar,
+  count(*) filter (where ciclo_carrito_version = 4 and estado = 'rechazada'
+                     and carrito_liberado_en is not null) as liberadas,
+  count(*) filter (where ciclo_carrito_version = 4 and estado = 'procesada') as aprobadas,
+  count(*) filter (where estado = 'requiere_revision' and resuelta_en is null) as revisiones_abiertas,
+  (select count(*) from pw_sucesiones_c4) as sucesiones
+from pagos_intencion;
+rollback;
+```
 
-> Retomamos MAGANDHI para **terminar y cerrar Comercial C4**. Lee primero
-> `supabase/operacion/COMERCIAL-C4-CIERRE.md` y después este relevo,
-> `CONTEXTO-MAGANDHI.md`, `docs/PLANO-FASE-COMERCIAL.md` y
-> `supabase/INSTRUCCIONES.md`. Backend PR #283 y tienda PR #108 están
-> fusionados; Pages terminó `SUCCESS`. El banco PostgreSQL 15/Deno run
-> `39320288166` también terminó `SUCCESS`. Eso no acredita Supabase: según la
-> última evidencia, producción sigue en `20261104000000`/C3, flag OFF, sin Edge
-> C4 ni medición. Continúa exactamente por el paquete operativo: preflight;
-> puente C3→C4; desplegar primero `estado-pago`; aplicar una vez `20261105000000`;
-> postflight; desplegar `crear-intencion-pago`; regresión OFF; ventana temporal
-> con activar/estado/desactivar; dinero solo con autorización. No edites la
-> intención C3 ni afirmes cierre end-to-end antes de observarlo.
+## 6. Contrato C4 vigente en producción (resumen)
+
+- Expiración autoritativa de 30 minutos fijada en servidor e incluida en la
+  firma Wompi.
+- `customer_id` derivado de cuenta/Auth bajo el lock `cc-correo:`;
+  destinatario separado de la identidad.
+- `bloqueo_pago` `null|pendiente|revision` en el snapshot. Las mutaciones
+  rechazan `CO_CARRITO_BLOQUEADO`.
+- APPROVED consume solo lo congelado y preserva extras. DECLINED/VOIDED/ERROR y
+  expiración liberan y versionan una vez. PENDING bloquea. APPROVED tardío pasa
+  a revisión. La revisión se resuelve solo con
+  `pw_resolver_revision_c4(..., 'reembolsado_liberar', nota)`.
+- El retorno v2 exige JWT del propietario. La respuesta lleva estado e
+  id/versión del carrito propio, sin PII, monto, pedido ni transacción.
+- Los helpers internos no tienen EXECUTE de API. Compra inmediata e invitada no
+  cambian.
+
+## 7. Reglas para continuar
+
+- No reaplicar migraciones; todo cambio nuevo (slug, C5) es forward.
+- No borrar ni editar intenciones o eventos para "limpiar" pruebas.
+- Wompi permanece en `prod`; dinero solo con autorización expresa.
+- Ante comportamiento raro: `comercial-c4-desactivar.sql` y confirmar
+  `apagado_confirmado=true`.
+- Reactivar solo con el `comercial-c4-activar.sql` actual de `main`.
+
+## 8. Prompt de arranque para el próximo chat
+
+> Retomamos MAGANDHI en **Comercial C4**. Lee este relevo primero,
+> `supabase/operacion/COMERCIAL-C4-CIERRE.md` y `CONTEXTO-MAGANDHI.md`. Estado:
+> C4 está aplicado y desplegado en producción (migración `20261105000000`, ambas
+> Edge, postflight 30/30), con PR #283/#108/#284/#109/#285 fusionados. **El
+> carrito quedó encendido.** Pruebas sin dinero OK tras corregir los ids de
+> campaña (PR #109) y el slug faltante del Rubik. Antes de seguir, recuérdame
+> las decisiones abiertas de §4: (C) si dejo el carrito encendido; (A) slug
+> automático en servidor; (B) bloqueo de 30 min → B1 botón cancelar o B2
+> carrito libre + "Mis compras" (mi preferencia; te describiré Mis compras), con
+> sus 8 decisiones. Después cerramos C4 formalmente y planeamos el siguiente
+> tramo. No toques producción sin mi confirmación.
