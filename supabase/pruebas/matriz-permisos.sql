@@ -425,7 +425,7 @@ begin
        )
        and (
          (
-           left(p.proname, 4) in ('co__','pw__')
+           left(p.proname, 4) in ('co__','pw__','cm__')
            or p.proname in ('crear_pedido_c3_base','crear_pedido_c4')
          ) = has_function_privilege('service_role', p.oid, 'execute')
        );
