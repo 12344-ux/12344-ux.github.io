@@ -1,7 +1,10 @@
--- Valida que los cuatro scripts operativos C5 completos sean ejecutables sobre
+-- Valida que los scripts operativos C5 completos sean ejecutables sobre
 -- PostgreSQL 15 después de aplicar todo el historial de migraciones.
+-- El diagnóstico debe devolver una sola fila «Todo correcto» antes de activar;
+-- cualquier fila «FALLA ·» la detecta el veredicto del banco.
 \set ON_ERROR_STOP on
 
+\ir ../../operacion/comercial-c5-diagnostico-activacion.sql
 \ir ../../operacion/comercial-c5-postflight.sql
 \ir ../../operacion/comercial-c5-estado.sql
 \ir ../../operacion/comercial-c5-activar.sql
