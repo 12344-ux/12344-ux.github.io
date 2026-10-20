@@ -8,9 +8,11 @@ set local search_path = pg_catalog, public;
 set local statement_timeout = '20s';
 set local lock_timeout = '3s';
 
--- 1/5 · Ledger y configuración. La versión máxima es evidencia, no permiso para
--- db push: C4 manual debe reconciliarse por el procedimiento aprobado.
-select (select max(version) from supabase_migrations.schema_migrations) as version_maxima_ledger,
+-- 1/5 · Ledger y configuración. Este proyecto no necesariamente tiene la
+-- tabla de ledger porque las migraciones productivas se aplicaron por SQL
+-- Editor. Detectar su ausencia es evidencia; nunca se crea ni rellena aquí.
+select to_regclass('supabase_migrations.schema_migrations') is not null
+         as ledger_migraciones_presente,
        count(*) = 1 as config_singleton,
        coalesce(bool_and(id = 1), false) as config_id_correcto,
        min(carrito_habilitado::text)::boolean as carrito_habilitado,
