@@ -1,6 +1,6 @@
 -- ============================================================================
 -- MAGANDHI · PROMOCIONAR P3 · REANUDAR SOLO CONTEO · IDEMPOTENTE
--- Exige redirect/evidencia vigentes y mantenimiento pg_cron realmente sano
+-- Exige redirect/routing vigentes y mantenimiento pg_cron realmente sano
 -- en current_database().
 -- ============================================================================
 begin;
@@ -19,11 +19,9 @@ begin
   end if;
   if not exists (
     select 1 from public.promocionar_p3_config
-     where id = 1 and redirect_habilitado
-       and politica_publicada and routing_verificado
-       and politica_version is not null
+     where id = 1 and redirect_habilitado and routing_verificado
   ) then
-    raise exception using errcode = 'P0001', message = 'P3_REANUDACION_REQUIERE_REDIRECT_Y_EVIDENCIA';
+    raise exception using errcode = 'P0001', message = 'P3_REANUDACION_REQUIERE_REDIRECT_Y_ROUTING';
   end if;
 
   if not exists (select 1 from pg_extension where extname = 'pg_cron')

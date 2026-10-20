@@ -36,11 +36,20 @@ Antes de proponer o tocar nada en una sesión nueva:
 - **Promocionar P0, P1 y P2 cerrados:** P2 fue aprobado visual/funcionalmente
   por el dueño; PR #298/#299, merge `90efd87`, Pages `39471770742` y cinco assets
   productivos HTTP 200 con comparación exacta 5/5. No hubo suite automatizada
-  P2, SQL, Edge, backend o DNS. Mantener `noindex,follow` y sitemap solo home
-  hasta políticas. **Siguiente etapa: P3 · Registro y enlace corto**; su contrato
+  P2, SQL, Edge, backend o DNS. Mantener el gate propio de P1:
+  `noindex,follow` y sitemap solo home hasta políticas. **Siguiente etapa: P3 ·
+  Registro y enlace corto**; su contrato
   está en construcción y todos sus gates nacen OFF. No afirmar despliegue por
   código en Git ni adelantar P4/P5. Fuente:
   `docs/RELEVO-PROMOCIONAR-P2-CIERRE-2026-10-20.md`.
+- **Decisión final P3 del dueño · producto/técnica, 20-oct-2026:** conservar
+  íntegros enlaces, clics aproximados, métricas, historial, filtros, antiabuso,
+  retención, home y controles internos. El enlace activo redirige de inmediato;
+  P3 no usa cookies ni crea perfil individual y nunca muestra al visitante
+  banner, popup, modal, aviso intermedio o solicitud de consentimiento. La
+  explicación se incorpora después a la política general y no bloquea
+  lanzamiento o activación P3. P4 y EM7 conservan sus gates propios; no formular
+  esto como asesoría jurídica.
 - **Candados documentales P3:** antes de distribuir, exigir configuración y
   enlace/resolubilidad autoritativos; un activo local no basta. Toda espera o
   falla debe degradar al enlace largo P2 dentro de un plazo total máximo de 3
