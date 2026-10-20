@@ -135,7 +135,7 @@ Variables: `{nombre}` con respaldo ("Hola" si no hay nombre). La vista previa en
 **`em_eventos`**: un evento por fila, llegado por webhook. Campos: `svix_id` (único, para idempotencia: Resend repite el mismo `svix-id` en cada reintento), `tipo` (`entregado`, `rebote`, `queja`, `apertura`, `clic`, `baja`), `campana_id`, `contacto_id`, `enlace`, `cuando`, `payload` mínimo.
 
 **Ventas generadas (atribución).** Vista `em_campana_resultados`:
-- **Web (desde Wompi F2):** cada enlace de campaña lleva `utm_campaign`. La tienda lo guarda en la intención de pago, así que la atribución es exacta.
+- **Web legacy (desde Wompi F2):** cada enlace de campaña lleva `utm_campaign` y la tienda la guarda en la intención. P0 reclasifica esta señal como `legacy_email_utm`: declarada por el navegador, no verificada y no exacta. La atribución exacta futura exige el código propio validado server-side.
 - **Manual:** un pedido del mismo cliente en los **7 días** siguientes a un **clic** suyo en la campaña cuenta como "atribuido (aproximado)". Se rotula así, igual que Ranking distingue real, mixto y estimado.
 
 Métricas por campaña: enviados, entregados, rebotes, bajas, clics (únicos), aperturas (**marcadas como aproximadas**), pedidos y valor atribuidos.
@@ -316,7 +316,7 @@ Runbook completo en `supabase/INSTRUCCIONES.md` §EM5. Lo esencial para quien si
 - **Respuestas:** 200 para procesado/repetido/ignorado; 400/401/413 para lo inválido (Resend no insiste); 500/503 solo para fallos nuestros (Resend reintenta ~28 h). Si fallara muchas veces, Resend apaga el webhook y avisa por correo.
 - **Decisiones cerradas del dueño (8-oct):** (1) atribución aproximada = pedido no anulado, registrado después del clic, con `fecha_orden` entre el día del clic y +7 días, y solo para la campaña del **último** clic; (2) bajas por campaña = última campaña recibida antes de la baja, rotulado «aprox.»; (3) rebote permanente de un correo del pedido → contacto `rebotado`; (4) `email.suppressed` → `rebotado` («Suprimida por Resend»); (5) eventos crudos 13 meses, luego totales congelados en `em_campana_resultados_archivo`.
 - **Reglas duras:** el rebote temporal no suprime; los estados solo empeoran (suscrito < baja < rebotado < queja); un webhook nunca vuelve a suscribir; no se guarda IP ni navegador del clic; aperturas siempre «aproximadas».
-- **Atribución exacta:** `pedidos.utm_campaign` existe y está vacía. **Wompi F2** debe: (a) que la tienda conserve el `utm_campaign` de la URL de llegada y lo mande a la intención de pago, y (b) que el pedido web lo guarde. Sin eso, todo se atribuye como aproximado.
+- **Señal web legacy:** `pedidos.utm_campaign` existe y está vacía. **Wompi F2** debe: (a) que la tienda conserve el `utm_campaign` de la URL de llegada y lo mande a la intención de pago, y (b) que el pedido web lo guarde. P0 supera el nombre histórico «exacta»: esta cadena controlada por el navegador se rotula `legacy_email_utm`, no verificada; la exacta futura requiere código propio validado server-side.
 - **Matriz de permisos:** su lista blanca de `authenticated` estaba desactualizada desde Opiniones (marcaba 1 falla). Se puso al día; el conteo ahora es dinámico. Cada tramo nuevo que agregue RPC para usuarios del panel debe agregarlos ahí.
 - **Arnés de pruebas de EM5:** `supabase/pruebas/local/em5-resultados.sql` (61 comprobaciones; corre después de `correr-local.sh` y lo deshace todo).
 

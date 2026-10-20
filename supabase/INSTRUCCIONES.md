@@ -3646,9 +3646,10 @@ id cambiado, vencida, futura, varias firmas, v2, sin headers, GET, JSON roto,
 413, prueba/ignorado, rebote de punta a punta, base caída → 500, sin secreto →
 503, llave de servicio en apikey y Authorization, **interoperable con la
 librería oficial `svix`**, logs sin correos ni secretos). Interfaz en Chromium
-PC 1280 y celular 390: **66/66** (embudo, ventas exactas/aproximadas, sin
-webhook, sin la migración aplicada, salud, entrega, ficha; sin desbordes ni
-errores de JS nuevos).
+PC 1280 y celular 390: **66/66** (embudo, ventas UTM legacy/aproximadas,
+sin webhook, sin la migración aplicada, salud, entrega, ficha; sin desbordes ni
+errores de JS nuevos). La prueba y la RPC históricas llaman `exacta` al tipo UTM;
+P0 supera esa interpretación: es `legacy_email_utm`, no verificada, hasta P4/P5.
 
 # EM5.1 · La respuesta a email alimenta el clúster y los Segmentos
 
@@ -3826,7 +3827,9 @@ agregados sin datos personales.
    **Inventario**.
 2. **Email**: crecimiento de la lista (altas/bajas), campañas lado a lado y
    salud frente a los límites de Resend. Los números coinciden con el área de
-   Email marketing (misma fuente, incluida la atribución exacta + aproximada).
+   Email marketing (misma fuente, incluida la señal UTM legacy + atribución
+   aproximada). La RPC histórica devuelve `exacta` para UTM; P0 la reclasifica
+   como `legacy_email_utm`, no verificada, y P4/P5 deberán rotularla así.
 3. **Opiniones**: promedio real **siempre con su total** (sin suavizado), más
    distribución, por mes, cobertura y productos. Excluye prueba y ocultas.
 4. **Inventario**: existencias por producto, rotación por semana, días de
@@ -3935,7 +3938,10 @@ Diagnóstico: Edge Functions → `wompi-webhook` → pestaña **Logs** (no
   persiste antes de firmar con el monto releído del servidor, el precio del
   navegador se ignora, `utm_campaign` y `mg_vid` inválidos no entran, y el
   **ciclo completo** tienda → firma → webhook → pedido deja el pedido
-  `canal=web` con la atribución exacta y una sola salida de inventario.
+  `canal=web` con la señal `utm_campaign` y una sola salida de inventario. El
+  banco histórico la llamó atribución exacta; P0 la reclasifica como
+  `legacy_email_utm`, controlada por navegador y no verificada. La exacta futura
+  requiere código propio validado server-side.
 - Matriz de permisos **170/170 TODO PASA**.
 
 # Pagos F3 · asiento contable automático + correo «Recibido» automático
