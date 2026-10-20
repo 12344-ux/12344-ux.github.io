@@ -6,6 +6,8 @@ medida en producción. Leer `docs/PLANO-PROMOCIONAR-P1.md` y
 
 ## Entregado en código
 
+- Back-office/backend: PR #295, commit inicial `437edc8`.
+- Tienda: PR #116, commit inicial `30e8707`.
 - Historial inmutable de slugs y vista pública mínima de aliases.
 - Preflight, migración, postflight y runbook manual.
 - Plantilla única de producto compatible con query, UUID y ruta canónica.
