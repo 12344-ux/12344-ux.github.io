@@ -77,7 +77,7 @@ Guarda el cuerpo completo, el checksum y el **resultado** de cada aviso, para po
 
 ## 5. Qué conecta de paso
 
-- **`pedidos.utm_campaign`** se llena con el de la intención. Eso convierte la atribución de ventas de las campañas de email de «aproximada» a **exacta**.
+- **`pedidos.utm_campaign`** se llena con el valor de la intención. Es una señal web más directa que la inferencia por último clic, pero P0 la reclasifica como `legacy_email_utm`: la controla el navegador y no es atribución exacta. La exacta futura exige código propio validado server-side.
 - **`mg_vid`** (id aleatorio de la analítica) queda guardado en la intención. Es el enchufe que Métricas esperaba para medir el embudo real hasta la compra y, más adelante, la interacción por cliente.
 
 ## 6. Fuera del alcance de F2
@@ -106,7 +106,7 @@ Corrección de paso: el encabezado del área se desbordaba en 390 px (el rótulo
 
 `window.mgProcedencia()` en `analitica/analitica.js` devuelve dos cosas con criterios distintos a propósito:
 
-- **`utm_campaign`**: el identificador de *nuestra* campaña, tomado de la URL que la persona abrió y recordado durante la visita (para que la compra se atribuya aunque ocurra dos páginas después). No identifica a nadie, así que viaja siempre: es lo que permite decir con honestidad «esta venta vino de este correo».
+- **`utm_campaign`**: etiqueta descriptiva de *nuestra* campaña, tomada de la URL y recordada durante la visita. No identifica a una persona, pero puede ser copiada o alterada en el navegador; por eso P0 la rotula `legacy_email_utm`, no verificada, y no la usa como autoridad exacta.
 - **`mg_vid`**: el identificador aleatorio del navegador. **Solo existe si la persona aceptó la analítica.** Si la rechazó, la compra no lleva identificador y no se crea uno para la ocasión.
 
 ## 10. F3 · asiento contable automático (en producción desde el 9-oct-2026)

@@ -1,7 +1,7 @@
 # PLANO · Fase comercial: Carrito + Promocionar
 
 **Decisión del dueño:** 16 de octubre de 2026  
-**Estado por tramos (20-oct-2026):** **C1–C5 están cerrados estructuralmente en producción** con sus límites documentados; C4 quedó superado por C5. Carrito encendido y Wompi `prod`. Ningún tramo de carrito tiene cierre transaccional: falta un pago real autorizado. P0–P5 siguen pendientes y **P0 es la siguiente etapa**. La fase completa no está cerrada hasta el cierre transaccional y Promocionar.
+**Estado por tramos (20-oct-2026):** **C1–C5 están cerrados estructuralmente en producción** con sus límites documentados; C4 quedó superado por C5. Carrito encendido y Wompi `prod`. Ningún tramo de carrito tiene cierre transaccional: falta un pago real autorizado. **P0 está cerrado como contrato documental**, sin implementación ni producción; P1 es la siguiente etapa y P2–P5 siguen pendientes. La fase completa no está cerrada hasta el cierre transaccional y Promocionar.
 **Superficies:** back-office `montaguth.institute`, tienda `magandhi.com` y backend compartido en Supabase.
 
 Este plano reúne los dos frentes comerciales elegidos para la siguiente evolución de MAGANDHI:
@@ -334,15 +334,27 @@ determinista y `NOT NULL`; ninguna campaña puede publicarse sin slug.
 
 ### P0 · Taxonomía y privacidad
 
-**Entrega:** contrato de atribución antes de capturar datos.
+**Estado · 20-oct-2026:** **cerrado como contrato documental**, sin cambios de
+esquema, Edge Functions, tienda, DNS, políticas publicadas o producción. Fuente
+de verdad: `docs/PLANO-PROMOCIONAR-P0.md`; relevo:
+`docs/RELEVO-PROMOCIONAR-P0-2026-10-20.md`.
 
-- canales cerrados: WhatsApp, Instagram, Facebook, email, QR, anuncio manual y otro controlado;
-- `source`, `medium`, `campaign`, `content` normalizados;
-- código propio autoritativo; UTM descriptivo;
-- modelo inicial de último enlace propio válido dentro de la visita;
-- clic agregado sin perfil individual;
+**Entrega cerrada:** contrato de atribución antes de capturar datos.
+
+- canales canónicos: `whatsapp`, `instagram`, `facebook`, `email`, `qr`,
+  `anuncio_manual` y `otro_controlado`;
+- `source`, `medium`, `campaign` y `content` normalizados con un algoritmo único;
+- código propio opaco y autoritativo; UTM descriptivo y compatible;
+- modelo inicial de último enlace propio válido dentro de una visita de 30 minutos;
+- clic diario agregado sin perfil individual ni historial de IP/referrer/User-Agent;
 - `mg_vid` y eventos de navegación solo con consentimiento;
-- retención, desactivación y estados de enlaces definidos en políticas.
+- precedencia excluyente entre exacta propia, legacy UTM de email,
+  aproximada de email y sin atribuir;
+- retención, desactivación, estados e inmutabilidad de enlaces definidos.
+
+**Límite:** P0 no implementó captura. Las políticas públicas siguen en
+`borrador-0`; deben incorporar y revisar este contrato antes de activar P3/P4.
+P1 puede avanzar sin adelantar redirector, atribución transaccional o métricas.
 
 ### P1 · Producto compartible
 
@@ -383,12 +395,16 @@ Modelo conceptual:
 
 ```text
 atribucion_enlaces
-  id · codigo · campana_id · canal · source · medium · campaign · content
-  destino interno · receta/texto opcional · activo · auditoria
+  id · codigo · campana_producto_id · canal_promocion
+  source · medium · campaign · content · tipo_destino · estado_enlace
+  receta/texto opcional · reemplaza_enlace_id · auditoria
 
 atribucion_clics_dia
   enlace_id · fecha_colombia · total_aproximado
 ```
+
+Los nombres, estados, normalización e inmutabilidad los gobierna
+`docs/PLANO-PROMOCIONAR-P0.md`; este bosquejo no los redefine.
 
 - códigos aleatorios, no secretos ni secuenciales;
 - destino resuelto desde campaña, nunca desde `?url=`;
@@ -432,7 +448,7 @@ Ventas muestra la procedencia validada. Los pedidos manuales pueden tener una fu
 
 ## 5. Orden de construcción
 
-Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual (20-oct-2026): C1–C5 cerrados estructuralmente en producción; falta el cierre transaccional por carrito. P0–P5 permanecen pendientes.
+Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual (20-oct-2026): C1–C5 cerrados estructuralmente en producción; falta el cierre transaccional por carrito. **P0 está cerrado como contrato documental**, P1 es el siguiente tramo y P2–P5 permanecen pendientes.
 
 1. **Plano y arranque — cerrado.** Este documento y referencias de contexto.
 2. **C1 · cantidad inmediata — estructura lista.** Valor comercial rápido y cimiento de carrito; sin afirmar cierre transaccional de qty2.
@@ -440,13 +456,14 @@ Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato est
 4. **C3 · intención y checkout multiproducto — estructura lista y flag OFF.** Líneas congeladas, total autoritativo, Wompi abierto sin pago e idempotencia de intención medida.
 5. **C4 · cuenta y ciclo bloqueante — cerrado estructuralmente y superado por C5.** Conserva compatibilidad histórica; no tuvo cierre monetario propio.
 6. **C5 · Mis compras y carrito libre — cerrado estructuralmente el 20-oct-2026.** Edge, migración C5, slug automático, postflight, activación y recorrido sin dinero ejecutados; carrito encendido. Cierre transaccional pendiente de un pago real autorizado.
-7. **P0 · taxonomía y privacidad — siguiente etapa.** Contrato de atribución, canales y retención antes de capturar datos.
-8. **P1 · producto compartible — pendiente.** También resuelve SEO/IA pendiente.
+7. **P0 · taxonomía y privacidad — contrato cerrado.** Decisiones completas en `docs/PLANO-PROMOCIONAR-P0.md`; cero captura y cero producción.
+8. **P1 · producto compartible — siguiente etapa.** También resuelve SEO/IA pendiente.
 9. **P2 · estudio Promocionar — pendiente.** Enlaces largos, textos, preview, QR y kit.
 10. **P3–P4 · enlace corto y atribución — pendiente.** Backend, routing y pago.
 11. **P5 · lectura comercial — pendiente.** Métricas sobre hechos ya capturados.
 
-La ventana productiva C5 quedó cerrada el 20-oct-2026, así que P0 puede empezar. No se mezclan carrito, redirector y metadata en una sola migración o despliegue.
+P1 puede empezar desde el contrato P0. No se mezclan metadata, estudio,
+redirector, atribución y métricas en una sola migración o despliegue.
 
 ---
 

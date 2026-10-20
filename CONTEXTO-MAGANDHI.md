@@ -275,7 +275,7 @@ Marketing → Email marketing. Diseño completo en `docs/PLANO-EMAIL-MARKETING.m
 - EM2: perfil por cliente con datos propios (valor, precio y rebajas, productos y categorías, opiniones, lugar, franja y día de compra, canal) y **Segmentos** por condiciones con vista previa en vivo; la audiencia de una campaña será siempre segmento ∩ suscritos.
 - EM3: **Análisis de clúster** en Marketing Project (k-means++ con semilla fija, silueta, retrato en palabras, mapa, comparativo, CSV; reglas de pocos datos) y «Guardar como segmento» congelado.
 - EM4: **Campañas** por bloques (título, texto, imagen, producto destacado, botón único, separador), vista previa PC/celular, prueba a tu correo, revisión final con N exacto, envío o programación vía Resend Broadcasts desde `news.magandhi.com`, cancelación. Envío real bloqueado hasta registrar la política publicada.
-- EM5 (en producción, webhook de Resend conectado y verificado): webhook firmado `em-webhook` (Svix, Verify JWT apagado, escribe solo como service_role), supresión automática con historial, resultados por campaña (embudo, enlaces, rebotes/spam/bajas, ventas exactas y aproximadas con último clic + 7 días), salud de la lista contra los límites de Resend, entrega de los correos del pedido. Eventos crudos 13 meses.
+- EM5 (en producción, webhook de Resend conectado y verificado): webhook firmado `em-webhook` (Svix, Verify JWT apagado, escribe solo como service_role), supresión automática con historial, resultados por campaña (embudo, enlaces, rebotes/spam/bajas, ventas por UTM legacy/no verificada y aproximadas con último clic + 7 días), salud de la lista contra los límites de Resend, entrega de los correos del pedido. La implementación histórica devuelve el tipo interno `exacta` para UTM; P0 supera esa interpretación y P4/P5 deberán mostrarla como `legacy_email_utm`. Eventos crudos 13 meses.
 - EM5.1: la respuesta a email alimenta el análisis. 5 variables en el clúster (campañas recibidas, % con clic, clics 90 días, días desde el último clic, compras atribuidas) y 9 condiciones en Segmentos (hizo/no hizo clic en una campaña, campañas seguidas sin clic…). Sin aperturas: son aproximadas.
 - **Corrección del 10-oct-2026 · los días se cuentan en Colombia.** La base corre en UTC, así que `current_date` es la fecha UTC: entre las 7 p. m. y la medianoche de Colombia, `dias_desde_ultimo_clic`, `dias_desde_ultima_compra` y `dias_en_lista` salían **con un día de más**, y eso alimenta Segmentos y el clúster. A mediodía las dos formas coinciden, y por eso pasó inadvertido. Migración forward `20261022000000`, que sólo redefine `em__perfil_base`, `em__perfil_email` y `em__segmento_where` cambiando 3 líneas. El guardián contra la clase entera de bug vive en `supabase/pruebas/local/fechas-colombia.sql` y corre en cada rama. Ver `supabase/INSTRUCCIONES.md`.
 - EM6 (en producción, **apagado a propósito**): formulario de novedades en magandhi.com con doble confirmación (`em-suscripcion`), apagado por defecto y encendible solo por admin con la política registrada. Política en versión `borrador-*` para probar: esos contactos nunca reciben campañas reales. Captura pública (EM6) y analítica (EM7) esperan la política.
@@ -426,7 +426,11 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
   autenticado, Mis compras y Promocionar— con fórmulas, contratos, orden de
   despliegue y criterios de cierre. **C1–C5 están cerrados estructuralmente en
   producción con los límites documentados; ninguno tiene cierre transaccional
-  por carrito. P0–P5 permanecen pendientes.**
+  por carrito. P0 está cerrado como contrato documental; P1 es el siguiente
+  tramo y P2–P5 permanecen pendientes.**
+- `docs/PLANO-PROMOCIONAR-P0.md`: fuente de verdad del contrato de taxonomía,
+  normalización, atribución, privacidad, conteo agregado, estados y retención.
+  No equivale a implementación ni despliegue.
 - `docs/PLANO-COMERCIAL-C5.md`: contrato técnico de carrito libre, Mis compras,
   reapertura, seguimiento y opinión tras entrega.
 - `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`: **relevo general vigente y
@@ -503,10 +507,17 @@ cierres estructurales de sus primeros tramos:
    cierre transaccional con pago real autorizado, opinión autenticada por cuenta
    y los placeholders del centro de cuenta (Favoritos, Mis opiniones, Eliminar
    cuenta). Relevo vigente: `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`.
-6. **Promocionar P0–P5 · siguiente etapa del plano, empezando por P0
-   (taxonomía y privacidad).** Producto compartible, estudio, enlace, atribución
-   y lectura comercial siguen pendientes. Meta Ads, Pixel, Conversions API y
-   publicación automática continúan fuera de alcance.
+6. **Promocionar P0 · cerrado como contrato documental (20-oct-2026).**
+   `docs/PLANO-PROMOCIONAR-P0.md` fija siete canales canónicos, normalización,
+   código opaco propio, último enlace válido en visita de 30 minutos,
+   precedencia con Email histórico, clic diario agregado, consentimiento,
+   estados y retención. **P0 no contiene artefactos ni una ventana de
+   despliegue:** no crea tablas, Edge Function, DNS, interfaz o captura. No se
+   hizo un diagnóstico remoto en este cierre; el estado productivo medido sigue
+   siendo el del relevo C5. P1 (producto compartible) es el siguiente tramo;
+   P2–P5 siguen pendientes. Meta Ads, Pixel, Conversions API y publicación
+   automática continúan fuera de alcance.
+   Relevo: `docs/RELEVO-PROMOCIONAR-P0-2026-10-20.md`.
 
 La definición final de la fase no se relaja: el carrito está cerrado en
 estructura, no end-to-end. Dinero solo con autorización expresa. Cuando se
