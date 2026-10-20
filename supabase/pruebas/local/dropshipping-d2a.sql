@@ -142,10 +142,10 @@ select pg_temp.chk(
   'ficha proveedor con costo y stock de la relectura, NACE VENCIDA (no vende) y apunta al candidato');
 select pg_temp.chk(
   (select not publicado and activo and not sello_elegido and not aviso_urgencia_activo and precio_venta is null
-      and slug is null and imagenes = '["mg8k2-abc123.webp","mg8k3-def456.webp"]'::jsonb
+      and slug = 'bafle-bluetooth' and imagenes = '["mg8k2-abc123.webp","mg8k3-def456.webp"]'::jsonb
       and product_id_ref = (select (j->>'producto_id')::uuid from imp) and nombre = 'Bafle Bluetooth'
      from campana_producto where id = (select (j->>'campana_id')::uuid from imp)),
-  'borrador sin publicar, sin sello, sin precio, con las fotos propias (sin duplicar) y ligado');
+  'borrador sin publicar, sin sello, sin precio, con slug automático, fotos propias y vínculo');
 select pg_temp.chk(
   (select estado = 'llevado_a_campanas' from dropshipping_candidatos where id = (select id from c)),
   'el candidato queda llevado a Campañas');
