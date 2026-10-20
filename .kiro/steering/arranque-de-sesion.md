@@ -22,8 +22,8 @@ Antes de proponer o tocar nada en una sesión nueva:
 
 - **Comercial C1–C5 cerrados estructuralmente.** C4 superado funcionalmente por
   C5. Sin pago real por carrito: no hay cierre transaccional.
-- Producción Supabase aplicada hasta `20261106000100` (C5 + slug automático).
-  Edge `crear-intencion-pago` y `estado-pago` en versión C5.
+- Producción Supabase aplicada manualmente hasta `20261107000100` (P1:
+  historial de slugs + corrección ACL). Edge de pagos permanecen en versión C5.
 - **Carrito ENCENDIDO a propósito** (`carrito_habilitado=true`) y Wompi `prod`:
   cualquier compra por carrito cobra dinero real. Signup OFF.
 - **No existe tabla de ledger** (`supabase_migrations.schema_migrations`): todas
@@ -32,10 +32,11 @@ Antes de proponer o tocar nada en una sesión nueva:
 - Operación del carrito: `supabase/operacion/comercial-c5-estado.sql`,
   `comercial-c5-desactivar.sql`, `comercial-c5-activar.sql` y, si una
   activación falla, `comercial-c5-diagnostico-activacion.sql`.
-- **Promocionar P0 cerrado y P1 preparado en código:** P1 tiene migración de
-  historial/alias, runbook y shells de tienda, pero no está desplegado ni medido.
-  Mantener `noindex,follow`; ejecutar únicamente con confirmación del dueño.
-  Fuente: `docs/PLANO-PROMOCIONAR-P1.md`. P2–P5 siguen pendientes.
+- **Promocionar P0 y P1 cerrados:** P1 tiene historial/aliases desplegados,
+  ACL final solo-SELECT y seis shells canónicos publicados y medidos. Mantener
+  `noindex,follow` y sitemap solo home hasta políticas. **Siguiente etapa: P2 ·
+  Estudio Promocionar**; el dueño confirma antes de construir. Fuente:
+  `docs/RELEVO-PROMOCIONAR-P1-2026-10-20.md`. P3–P5 siguen pendientes.
 - Pago real únicamente con autorización expresa del dueño.
 
 ## Convenciones con el dueño

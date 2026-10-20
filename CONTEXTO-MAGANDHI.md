@@ -61,7 +61,7 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > nunca bloquea el asiento, al contrario que el costo y el flete. Banco SQL
 > **613/613**, matriz **170/170**, pantalla **70/70**.
 >
-> **El estado actual de producción llega hasta la migración `20261106000100` (Comercial C5 + slug automático), aplicada el 20-oct-2026 por SQL Editor. El carrito quedó ENCENDIDO (`carrito_habilitado=true`) y Wompi en `prod`. El proyecto no tiene tabla de ledger de migraciones: todo se aplica a mano y nunca con `supabase db push`.**
+> **El estado actual de producción llega hasta la migración `20261107000100` (Promocionar P1: historial de slugs + corrección ACL), aplicada el 20-oct-2026 por SQL Editor. El carrito permanece ENCENDIDO (`carrito_habilitado=true`) y Wompi en `prod`. El proyecto no tiene tabla de ledger de migraciones: todo se aplica a mano y nunca con `supabase db push`.**
 >
 > **Cuentas de cliente C1 · DESPLEGADO · 15-oct-2026 (PR #268).** El dueño
 > decidió conservar compra como invitado y añadir inicio de sesión opcional en
@@ -426,8 +426,8 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
   autenticado, Mis compras y Promocionar— con fórmulas, contratos, orden de
   despliegue y criterios de cierre. **C1–C5 están cerrados estructuralmente en
   producción con los límites documentados; ninguno tiene cierre transaccional
-  por carrito. P0 está cerrado como contrato documental; P1 es el siguiente
-  tramo y P2–P5 permanecen pendientes.**
+  por carrito. P0 está cerrado como contrato documental y P1 está desplegado y
+  cerrado estructuralmente; P2 es el siguiente tramo.**
 - `docs/PLANO-PROMOCIONAR-P0.md`: fuente de verdad del contrato de taxonomía,
   normalización, atribución, privacidad, conteo agregado, estados y retención.
   No equivale a implementación ni despliegue.
@@ -507,19 +507,17 @@ cierres estructurales de sus primeros tramos:
    cierre transaccional con pago real autorizado, opinión autenticada por cuenta
    y los placeholders del centro de cuenta (Favoritos, Mis opiniones, Eliminar
    cuenta). Relevo vigente: `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`.
-6. **Promocionar P0 cerrado; P1 preparado en código (20-oct-2026).**
-   P0 gobierna taxonomía y privacidad en `docs/PLANO-PROMOCIONAR-P0.md`. P1
-   agrega, sin despliegue todavía, historial inmutable de slugs y vista pública
-   mínima de aliases en backend; en tienda prepara seis shells del catálogo
-   público, URLs canónicas, metadata social, JSON-LD sin precio/stock, sitemap,
-   robots y generador reproducible. Los shells mantienen `noindex,follow` y la
-   verdad comercial sigue viva en `catalogo_publico`. Backend #295 está
-   fusionado y `20261107000000` fue aplicada; el postflight confirmó todo salvo
-   ACL nominal de la vista por privilegios extra de defaults Supabase. La forward
-   `20261107000100` está preparada para dejar solo SELECT. Tienda #116 permanece
-   sin fusionar hasta cerrar ese gate. P2–P5
-   siguen pendientes; Meta Ads, Pixel, Conversions API y publicación automática
-   continúan fuera de alcance. Plan: `docs/PLANO-PROMOCIONAR-P1.md`; relevo:
+6. **Promocionar P0 y P1 · cerrados (20-oct-2026).** P0 gobierna taxonomía
+   y privacidad. P1 está desplegado: backend #295/#296, migraciones
+   `20261107000000` y `20261107000100`, historial inmutable de slugs y vista de
+   aliases únicamente SELECT; tienda #116, seis shells canónicos, metadata
+   social, JSON-LD sin precio/stock, sitemap, robots y generador reproducible.
+   Pages run `39384518735` correcto; seis shells, query slug/UUID y vista de
+   aliases medidos por HTTP. PC 1280 y móvil 390 verificados. Los shells
+   mantienen `noindex,follow` y sitemap solo home hasta publicar políticas.
+   **P2 · Estudio Promocionar es el siguiente tramo**; P3–P5 siguen pendientes.
+   Meta Ads, Pixel, Conversions API y publicación automática continúan fuera de
+   alcance. Plan y evidencia: `docs/PLANO-PROMOCIONAR-P1.md`; relevo vigente:
    `docs/RELEVO-PROMOCIONAR-P1-2026-10-20.md`.
 
 La definición final de la fase no se relaja: el carrito está cerrado en
