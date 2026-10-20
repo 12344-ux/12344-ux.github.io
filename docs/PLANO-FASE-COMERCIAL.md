@@ -1,7 +1,7 @@
 # PLANO · Fase comercial: Carrito + Promocionar
 
 **Decisión del dueño:** 16 de octubre de 2026  
-**Estado por tramos:** **C1, C2 y C3 desplegados y probados en estructura**; C3 conserva pendiente la aprobación end-to-end. **C4 está aplicado, desplegado y probado sin dinero en producción (19-oct-2026), con el carrito encendido**; su cierre formal y el rediseño carrito/pago siguen abiertos en `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`. P0–P5 siguen pendientes. La fase completa no está cerrada.
+**Estado por tramos:** C1–C4 están desplegados con sus límites documentados. **C5 está construido, fusionado y probado en CI (19-oct-2026), pero aún no aplicado en Supabase**; producción sigue en C4 con último flag documentado ON. P0–P5 siguen pendientes. La fase completa no está cerrada hasta desplegar/verificar C5 y decidir el cierre transaccional.
 **Superficies:** back-office `montaguth.institute`, tienda `magandhi.com` y backend compartido en Supabase.
 
 Este plano reúne los dos frentes comerciales elegidos para la siguiente evolución de MAGANDHI:
@@ -313,13 +313,18 @@ por la tienda y una campaña publicada sin slug. Sin pago aprobado no hay cierre
 transaccional. Detalle y decisiones abiertas en
 `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`.
 
-**Rediseño en discusión (no aprobado):** el dueño prefiere separar carrito y
-pago. Al iniciar el pago, las líneas congeladas se vuelven una compra en
-proceso en una nueva sección "Mis compras" y el carrito queda libre al
-instante, sin bloqueo de 30 minutos. Es candidato a **C5** en una migración
-forward sobre C4. La alternativa menor es un botón "Cancelar este pago". El
-relevo C4 §4 lista las ocho decisiones. También queda pendiente generar el slug
-automáticamente en servidor.
+**C5 aprobado e implementado (no desplegado):** el dueño eligió separar carrito
+y pago. Al crear correctamente la intención, las líneas congeladas se vuelven
+una compra en proceso y el carrito queda libre en la misma transacción. «Mis
+compras» lista procesos, realizadas y no completadas; permite continuar solo
+sin transacción bancaria y verificar PENDING/revisión. El estado logístico sale
+de `pedidos.estado`, el panel intenta el correo de cada avance y la opinión solo
+se habilita tras entregado. Backend #287 (`c8fd03c`) y tienda #113 (`4a0b439`)
+están fusionados; banco run `39354906924` `SUCCESS`. Migración `20261106000000`
+y Edge C5 siguen sin desplegar. Contrato y gates en `docs/PLANO-COMERCIAL-C5.md`
+y `docs/RELEVO-COMERCIAL-C5-2026-10-19.md`.
+
+Pendiente separado: slug automático server-side con migración forward.
 
 ---
 
@@ -425,20 +430,21 @@ Ventas muestra la procedencia validada. Los pedidos manuales pueden tener una fu
 
 ## 5. Orden de construcción
 
-Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual: C1, C2 y C3 están desplegados y probados en estructura; C3 conserva pendiente el pago aprobado end-to-end. C4 está aplicado y probado sin dinero, con el carrito encendido. Lo demás permanece pendiente.
+Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual: C1–C4 están desplegados con límites; C5 está fusionado y probado en CI, pero no desplegado en Supabase. P0–P5 permanecen pendientes.
 
 1. **Plano y arranque — cerrado.** Este documento y referencias de contexto.
 2. **C1 · cantidad inmediata — estructura lista.** Valor comercial rápido y cimiento de carrito; sin afirmar cierre transaccional de qty2.
 3. **C2 · carrito persistente — estructura lista y flag OFF.** Datos/RLS/UI medidos.
 4. **C3 · intención y checkout multiproducto — estructura lista y flag OFF.** Líneas congeladas, total autoritativo, Wompi abierto sin pago e idempotencia de intención medida.
-5. **C4 · cuenta y ciclo del carrito — aplicado, desplegado y probado sin dinero; cierre formal pendiente.** Carrito encendido al 19-oct. Pendientes: slug automático, decisión entre B1 (cancelar) y B2/C5 (carrito libre + Mis compras), y el valor final del flag.
-6. **P0 · taxonomía y privacidad — pendiente.** Contrato de atribución, canales y retención antes de capturar datos.
-7. **P1 · producto compartible — pendiente.** También resuelve SEO/IA pendiente.
-8. **P2 · estudio Promocionar — pendiente.** Enlaces largos, textos, preview, QR y kit.
-9. **P3–P4 · enlace corto y atribución — pendiente.** Backend, routing y pago.
-10. **P5 · lectura comercial — pendiente.** Métricas sobre hechos ya capturados.
+5. **C4 · cuenta y ciclo bloqueante — productivo, superado funcionalmente por C5.** Conserva compatibilidad histórica y evidencia estructural; no tuvo cierre monetario propio.
+6. **C5 · Mis compras y carrito libre — código/CI listos, despliegue pendiente.** Requiere ledger C4 reconciliado, paquete operativo, Edge compatibles, carrito OFF, migración manual, postflight y pruebas sin dinero. Slug automático sigue como forward separado.
+7. **P0 · taxonomía y privacidad — pendiente.** Contrato de atribución, canales y retención antes de capturar datos.
+8. **P1 · producto compartible — pendiente.** También resuelve SEO/IA pendiente.
+9. **P2 · estudio Promocionar — pendiente.** Enlaces largos, textos, preview, QR y kit.
+10. **P3–P4 · enlace corto y atribución — pendiente.** Backend, routing y pago.
+11. **P5 · lectura comercial — pendiente.** Métricas sobre hechos ya capturados.
 
-P1/P2 pueden avanzar en paralelo con C4 si se mantienen en ramas/PR separados. No se mezclan carrito, redirector y metadata en una sola migración o despliegue.
+P1/P2 solo avanzan después de cerrar la ventana productiva C5 o en ramas completamente separadas. No se mezclan carrito, redirector y metadata en una sola migración o despliegue.
 
 ---
 
