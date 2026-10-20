@@ -143,3 +143,120 @@ export function nombreArchivo(producto, formato, canal) {
   const canalSeguro = CANALES[canal] ? normalizarUtm(canal, 32) : 'canal';
   return `magandhi-${slug}-${canalSeguro}-${formatoSeguro}.png`;
 }
+
+// ------------------------------------------------------------
+// IDENTIDAD EDITORIAL MAGANDHI
+// ------------------------------------------------------------
+
+export const PALETA_MARCA = Object.freeze({
+  negro: { etiqueta: 'Negro MAGANDHI', hex: '#111111', oscuro: true },
+  terracota: { etiqueta: 'Terracota', hex: '#A6332E', oscuro: true },
+  terracotaOscuro: { etiqueta: 'Terracota profundo', hex: '#5C1F1C', oscuro: true },
+  dorado: { etiqueta: 'Dorado', hex: '#C28A3A', oscuro: false },
+  crema: { etiqueta: 'Crema', hex: '#FAF6F1', oscuro: false },
+  arena: { etiqueta: 'Arena', hex: '#EFE7DD', oscuro: false },
+  blanco: { etiqueta: 'Blanco', hex: '#FFFFFF', oscuro: false },
+  gris: { etiqueta: 'Gris cálido', hex: '#6B6660', oscuro: true },
+});
+
+export const PRESETS_MARCA = Object.freeze({
+  terracota: {
+    etiqueta: 'Terracota editorial', detalle: 'Cercanía e identidad de marca',
+    superficie: 'terracota', panel: 'crema', pretitulo: 'terracota', titulo: 'negro',
+    descripcion: 'gris', acento: 'dorado', botonFondo: 'terracota', botonTexto: 'blanco',
+  },
+  negro: {
+    etiqueta: 'Negro curaduría', detalle: 'Selección boutique y sobria',
+    superficie: 'negro', panel: 'crema', pretitulo: 'terracota', titulo: 'negro',
+    descripcion: 'gris', acento: 'dorado', botonFondo: 'terracota', botonTexto: 'blanco',
+  },
+  negro_dorado: {
+    etiqueta: 'Negro + dorado', detalle: 'Edición especial y protagonista',
+    superficie: 'negro_dorado', panel: 'negro', pretitulo: 'dorado', titulo: 'blanco',
+    descripcion: 'crema', acento: 'dorado', botonFondo: 'dorado', botonTexto: 'negro',
+  },
+});
+
+export function colorMarca(clave) {
+  const color = PALETA_MARCA[clave];
+  if (!color) throw new Error('Se intentó usar un color ajeno a la paleta MAGANDHI.');
+  return color.hex;
+}
+
+export function resolverTema(valores) {
+  const preset = PRESETS_MARCA[valores?.preset] || PRESETS_MARCA.negro;
+  const claves = {
+    superficie: valores?.superficie || preset.superficie,
+    panel: valores?.panel || preset.panel,
+    pretitulo: valores?.pretitulo || preset.pretitulo,
+    titulo: valores?.titulo || preset.titulo,
+    descripcion: valores?.descripcion || preset.descripcion,
+    acento: valores?.acento || preset.acento,
+    botonFondo: valores?.botonFondo || preset.botonFondo,
+    botonTexto: valores?.botonTexto || preset.botonTexto,
+  };
+  const superficie = {
+    terracota: { inicio: '#79211F', fin: colorMarca('terracota'), textoMarca: colorMarca('blanco') },
+    negro: { inicio: colorMarca('negro'), fin: '#1D1D1D', textoMarca: colorMarca('blanco') },
+    negro_dorado: { inicio: colorMarca('negro'), fin: colorMarca('dorado'), textoMarca: colorMarca('blanco') },
+  }[claves.superficie];
+  if (!superficie) throw new Error('Selecciona una superficie aprobada de MAGANDHI.');
+  return {
+    claves,
+    superficieInicio: superficie.inicio,
+    superficieFin: superficie.fin,
+    marcaTexto: superficie.textoMarca,
+    pieTexto: claves.superficie === 'negro_dorado' ? colorMarca('negro') : superficie.textoMarca,
+    panel: colorMarca(claves.panel),
+    pretitulo: colorMarca(claves.pretitulo),
+    titulo: colorMarca(claves.titulo),
+    descripcion: colorMarca(claves.descripcion),
+    acento: colorMarca(claves.acento),
+    botonFondo: colorMarca(claves.botonFondo),
+    botonTexto: colorMarca(claves.botonTexto),
+    qrFondo: colorMarca('blanco'),
+    qrTinta: colorMarca('negro'),
+  };
+}
+
+function luminancia(hex) {
+  const limpio = String(hex).replace('#', '');
+  const canales = [0, 2, 4].map((i) => parseInt(limpio.slice(i, i + 2), 16) / 255)
+    .map((c) => c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  return canales[0] * 0.2126 + canales[1] * 0.7152 + canales[2] * 0.0722;
+}
+
+export function contraste(colA, colB) {
+  const a = luminancia(colA);
+  const b = luminancia(colB);
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+}
+
+export function validarTema(tema) {
+  const revisiones = [
+    ['El pretítulo', tema.pretitulo, tema.panel, 4.5],
+    ['El título', tema.titulo, tema.panel, 3],
+    ['La descripción', tema.descripcion, tema.panel, 4.5],
+    ['El botón', tema.botonTexto, tema.botonFondo, 4.5],
+  ];
+  return revisiones.flatMap(([nombre, frente, fondo, minimo]) => {
+    const ratio = contraste(frente, fondo);
+    return ratio >= minimo ? [] : [`${nombre} necesita más contraste (${ratio.toFixed(1)}:1; mínimo ${minimo}:1).`];
+  });
+}
+
+// Reglas editoriales comunes para cualquier texto que pueda salir del estudio.
+// La revisión humana sigue siendo necesaria para nombres o referencias que una
+// expresión regular no puede interpretar con contexto.
+export function validarTextoPromocional(valor, campo = 'El contenido') {
+  const texto = String(valor || '').trim();
+  const errores = [];
+  if (/(?:https?:\/\/|www\.|\b[a-z0-9-]+\.(?:com|co|net|org|io)\b)/i.test(texto)) {
+    errores.push(`${campo} no debe incluir otra URL; el sistema agrega el enlace protegido.`);
+  }
+  if (parecePII(texto)) errores.push(`${campo} parece contener datos personales o una audiencia identificable.`);
+  if (/(?:\$|\bCOP\b|\bprecio\b|\bdescuento\b|\bstock\b|\bproveedor\b|\bcosto\b|\bDropi\b|\d+\s*%|\búltimas?\s+\d+|\b\d+\s+unidades?\b)/i.test(texto)) {
+    errores.push(`${campo} no debe congelar precio, descuento, stock, proveedor o costo.`);
+  }
+  return errores;
+}
