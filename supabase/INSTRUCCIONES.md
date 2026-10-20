@@ -5666,9 +5666,10 @@ Punto de continuidad: `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`. Contrato 
 - Operación: `comercial-c5-estado.sql` (una tabla), `comercial-c5-desactivar.sql`, `comercial-c5-activar.sql` y, si la activación falla, `comercial-c5-diagnostico-activacion.sql`.
 - Pendiente: cierre transaccional con un pago real C5 autorizado expresamente por el dueño.
 
-# Promocionar P1 · historial de slugs (PREPARADO; NO APLICADO)
+# Promocionar P1 · historial de slugs (APLICADO Y CERRADO)
 
-Diseño y criterios: `docs/PLANO-PROMOCIONAR-P1.md`. Operación exacta:
+**Estado productivo · 20-oct-2026:** `20261107000000` y la corrección forward
+`20261107000100` aplicadas una vez. No volver a ejecutarlas. Diseño y criterios: `docs/PLANO-PROMOCIONAR-P1.md`. Operación exacta:
 `supabase/operacion/PROMOCIONAR-P1-DESPLIEGUE.md`.
 
 P1 añade `campana_slug_historial` y `campana_slug_alias_publico` mediante la
@@ -5697,9 +5698,12 @@ salvo `vista_solo_lectura=false`. El diagnóstico mostró que `anon`,
 y `TRUNCATE` además de `SELECT` por los default privileges reales del proyecto.
 No se reejecuta ni edita la migración aplicada.
 
-Aplicar una sola vez
-`20261107000100_promocionar_p1_vista_solo_lectura.sql`: hace `REVOKE ALL` sobre
-la vista para PUBLIC y los tres roles API, vuelve a conceder únicamente SELECT y
-aborta si queda cualquier ACL extra. Después repetir
-`promocionar-p1-postflight.sql`; todos los booleanos deben ser `true` y
-`faltantes_actuales=0`.
+La corrección `20261107000100_promocionar_p1_vista_solo_lectura.sql` se aplicó
+una sola vez y el postflight final específico confirmó SELECT para `anon`,
+`authenticated` y `service_role`, `privilegios_extra=0` y
+`vista_solo_lectura=true`. No volver a ejecutar ninguna migración P1.
+
+La tienda #116 fue publicada y Pages run `39384518735` terminó correcto; seis
+shells, sitemap, robots y compatibilidad query/UUID responden HTTP 200. P1 queda
+cerrado estructuralmente. `noindex,follow` y sitemap solo home permanecen hasta
+políticas.

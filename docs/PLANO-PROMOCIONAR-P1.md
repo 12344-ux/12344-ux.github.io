@@ -1,7 +1,8 @@
 # PLANO · Promocionar P1 · Producto compartible
 
 **Decisión del dueño:** 20 de octubre de 2026
-**Estado:** implementación preparada en dos repositorios; producción pendiente
+**Estado:** **desplegado y cerrado estructuralmente en producción**
+**Cierre:** 20 de octubre de 2026
 **Depende de:** `docs/PLANO-PROMOCIONAR-P0.md`
 **No incluye:** estudio P2, enlaces/clics P3, atribución P4 o métricas P5.
 
@@ -242,15 +243,20 @@ Runbook: `supabase/operacion/PROMOCIONAR-P1-DESPLIEGUE.md`.
 - [x] Historial/alias server-side preparado como migración forward.
 - [x] P2–P5 fuera de alcance.
 
-### Cierre productivo pendiente
+### Cierre productivo · 20-oct-2026
 
-- [ ] Migración aplicada una vez con preflight/postflight correctos.
-- [ ] Vista pública de aliases medida.
-- [ ] Tienda fusionada y Pages terminado.
-- [ ] Todos los shells responden 200 con metadata correcta.
-- [ ] Compatibilidad query/UUID y retorno Wompi verificados.
-- [ ] Resultado PC/móvil/sin JS archivado.
-- [ ] `noindex` permanece hasta publicar políticas; su valor final se registra.
+- [x] `20261107000000` aplicada una vez con preflight correcto.
+- [x] Postflight estructural correcto; hallazgo ACL aislado y corregido forward.
+- [x] `20261107000100` aplicada una vez; ACL final: solo SELECT para los tres roles.
+- [x] Vista pública de aliases responde HTTP 200 (0 aliases en este corte).
+- [x] Tienda #116 fusionada; Pages run `39384518735` correcto.
+- [x] Los seis shells responden HTTP 200 con metadata correcta.
+- [x] Query slug/UUID, sitemap y robots responden HTTP 200.
+- [x] PC 1280 y móvil 390 verificados visualmente.
+- [x] HTML inicial medido sin depender de JavaScript: identidad útil, compra
+  deshabilitada y ausencia de precio/stock/Offer.
+- [x] `noindex,follow` permanece; sitemap solo publica la home hasta políticas.
 
-P1 no queda cerrado en producción por existir código o un PR. Requiere completar
-la segunda lista con evidencia real.
+P1 queda cerrado estructuralmente. El gate editorial de indexación sigue abierto
+por políticas y se resolverá mediante el mismo valor versionado que cambia
+shells y sitemap juntos. **Siguiente tramo: P2 · Estudio Promocionar.**

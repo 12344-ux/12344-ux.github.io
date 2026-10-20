@@ -1,7 +1,7 @@
 # PLANO · Fase comercial: Carrito + Promocionar
 
 **Decisión del dueño:** 16 de octubre de 2026  
-**Estado por tramos (20-oct-2026):** **C1–C5 están cerrados estructuralmente en producción** con sus límites documentados; C4 quedó superado por C5. Carrito encendido y Wompi `prod`. Ningún tramo de carrito tiene cierre transaccional: falta un pago real autorizado. **P0 está cerrado como contrato documental. P1 tiene implementación preparada en backend y tienda, pero no está desplegado ni medido;** P2–P5 siguen pendientes. La fase completa no está cerrada hasta el cierre transaccional y Promocionar.
+**Estado por tramos (20-oct-2026):** **C1–C5 están cerrados estructuralmente en producción** con sus límites documentados; C4 quedó superado por C5. Carrito encendido y Wompi `prod`. Ningún tramo de carrito tiene cierre transaccional: falta un pago real autorizado. **P0 está cerrado como contrato y P1 está desplegado/cerrado estructuralmente; P2 es la siguiente etapa.** P3–P5 siguen pendientes. La fase completa no está cerrada hasta el cierre transaccional y Promocionar.
 **Superficies:** back-office `montaguth.institute`, tienda `magandhi.com` y backend compartido en Supabase.
 
 Este plano reúne los dos frentes comerciales elegidos para la siguiente evolución de MAGANDHI:
@@ -358,11 +358,13 @@ P1 puede avanzar sin adelantar redirector, atribución transaccional o métricas
 
 ### P1 · Producto compartible
 
-**Estado · 20-oct-2026:** implementación preparada en backend y tienda;
-producción pendiente. Contrato y gates en `docs/PLANO-PROMOCIONAR-P1.md`;
-relevo en `docs/RELEVO-PROMOCIONAR-P1-2026-10-20.md`.
+**Estado · 20-oct-2026:** **desplegado y cerrado estructuralmente en
+producción.** Backend #295/#296, migraciones `20261107000000` y
+`20261107000100`; tienda #116, Pages run `39384518735`. Contrato y evidencia en
+`docs/PLANO-PROMOCIONAR-P1.md`; relevo vigente en
+`docs/RELEVO-PROMOCIONAR-P1-2026-10-20.md`.
 
-**Entrega preparada:** la URL de cada producto genera confianza y una preview real.
+**Entrega cerrada:** la URL de cada producto genera confianza y una preview real.
 
 - URL canónica estable `/producto/<slug>/`;
 - HTML inicial por producto con título, description, canonical, Open Graph, Twitter Card y JSON-LD;
@@ -374,9 +376,11 @@ relevo en `docs/RELEVO-PROMOCIONAR-P1-2026-10-20.md`.
 - `noindex,follow` permanece hasta comprobar producción sin JavaScript y publicar políticas.
 
 La tienda genera shells completos y deterministas desde una única plantilla y
-un manifiesto unido por UUID. La migración P1 reserva cada slug histórico para
-su campaña original y expone una vista mínima alias → slug actual. Ninguno de
-estos hechos se considera desplegado hasta ejecutar el runbook y medir Pages.
+un manifiesto unido por UUID. La base reserva cada slug histórico para su
+campaña original y expone una vista alias → slug actual estrictamente
+solo-SELECT. Seis shells, rutas legacy, sitemap, robots y pantalla PC/móvil
+fueron medidos en producción. `noindex,follow` continúa únicamente por el gate
+de políticas; productos y sitemap cambiarán juntos al abrirlo.
 
 ### P2 · Estudio Promocionar
 
@@ -455,7 +459,7 @@ Ventas muestra la procedencia validada. Los pedidos manuales pueden tener una fu
 
 ## 5. Orden de construcción
 
-Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual (20-oct-2026): C1–C5 cerrados estructuralmente en producción; falta el cierre transaccional por carrito. **P0 está cerrado como contrato documental**, P1 es el siguiente tramo y P2–P5 permanecen pendientes.
+Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual (20-oct-2026): C1–C5 cerrados estructuralmente en producción; falta el cierre transaccional por carrito. **P0 y P1 están cerrados; P2 es el siguiente tramo y P3–P5 permanecen pendientes.**
 
 1. **Plano y arranque — cerrado.** Este documento y referencias de contexto.
 2. **C1 · cantidad inmediata — estructura lista.** Valor comercial rápido y cimiento de carrito; sin afirmar cierre transaccional de qty2.
@@ -464,14 +468,14 @@ Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato est
 5. **C4 · cuenta y ciclo bloqueante — cerrado estructuralmente y superado por C5.** Conserva compatibilidad histórica; no tuvo cierre monetario propio.
 6. **C5 · Mis compras y carrito libre — cerrado estructuralmente el 20-oct-2026.** Edge, migración C5, slug automático, postflight, activación y recorrido sin dinero ejecutados; carrito encendido. Cierre transaccional pendiente de un pago real autorizado.
 7. **P0 · taxonomía y privacidad — contrato cerrado.** Decisiones completas en `docs/PLANO-PROMOCIONAR-P0.md`; cero captura y cero producción.
-8. **P1 · producto compartible — implementación preparada; producción pendiente.** Shells, metadata, sitemap, URLs limpias e historial/alias están en dos ramas coordinadas. Cierre según `docs/PLANO-PROMOCIONAR-P1.md` y runbook manual; no inferir despliegue por los PR.
-9. **P2 · estudio Promocionar — pendiente.** Enlaces largos, textos, preview, QR y kit; no comienza antes de cerrar o aceptar expresamente el límite productivo P1.
+8. **P1 · producto compartible — desplegado y cerrado estructuralmente.** Seis shells, metadata, URLs limpias, historial/alias, sitemap y robots medidos. Gate `noindex` ligado a políticas.
+9. **P2 · estudio Promocionar — siguiente etapa.** Enlaces largos, textos, preview, QR y kit; confirma el tramo antes de construir.
 10. **P3–P4 · enlace corto y atribución — pendiente.** Backend, routing y pago.
 11. **P5 · lectura comercial — pendiente.** Métricas sobre hechos ya capturados.
 
-P1 está preparado en código pero aún requiere despliegue coordinado y medición.
-No se mezclan metadata, estudio, redirector, atribución y métricas en una sola
-migración o despliegue.
+P1 está cerrado estructuralmente en producción. P2 puede comenzar desde P0/P1,
+sin mezclar estudio, redirector, atribución y métricas en una sola migración o
+despliegue.
 
 ---
 

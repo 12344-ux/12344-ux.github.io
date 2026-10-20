@@ -1,7 +1,7 @@
 # Promocionar P1 · despliegue coordinado
 
-**Estado:** `20261107000000` aplicada; corrección ACL `20261107000100` pendiente.
-**Escritura:** ambas migraciones se ejecutan una sola vez, en Runs separados.
+**Estado:** `20261107000000` y `20261107000100` aplicadas; P1 cerrado.
+**Escritura:** ambas migraciones se ejecutaron una sola vez; no repetir.
 **Dinero:** no abre Wompi ni requiere pago real.
 
 ## Objetivo
