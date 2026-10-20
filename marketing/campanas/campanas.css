@@ -164,6 +164,12 @@
 /* Editar: enlace sobrio al formulario. */
 .cm-accion.editar{color:var(--mk-marino);background:transparent;border-color:var(--mk-linea)}
 .cm-accion.editar:hover{background:rgba(16,28,51,.05);border-color:var(--mk-azul-cl)}
+/* Promocionar P2: entrada al estudio, con el dorado comercial de MAGANDHI. */
+.cm-accion.promocionar{color:var(--mk-marino);background:rgba(194,138,58,.12);border-color:rgba(194,138,58,.38)}
+.cm-accion.promocionar:hover{background:rgba(194,138,58,.22);border-color:#C28A3A}
+.cm-accion:focus-visible,.cm-btn-primario:focus-visible,.cm-btn-secundario:focus-visible{
+  outline:3px solid rgba(143,163,196,.62);outline-offset:2px;
+}
 /* Publicar (cuando esta en borrador): accion afirmativa azul marino. */
 .cm-accion.publicar{color:#fff;background:var(--mk-marino)}
 .cm-accion.publicar:hover{background:var(--mk-marino-2)}
@@ -734,3 +740,13 @@
   color:#8A5A00;background:rgba(191,124,0,.10);font-size:12.5px;line-height:1.45;
 }
 .cm-sello-historico-aviso[hidden]{display:none}
+
+/* Accesibilidad compartida: respeta preferencias de movimiento reducido. */
+@media (prefers-reduced-motion:reduce){
+  .cm-card,.cm-btn-primario,.cm-btn-secundario,.cm-accion,.cm-distintivo-opcion{
+    transition:none!important;
+  }
+  .cm-card:hover,.cm-btn-primario:hover,.cm-btn-secundario:hover,.cm-distintivo-opcion:hover{
+    transform:none!important;
+  }
+}
