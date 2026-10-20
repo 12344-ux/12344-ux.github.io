@@ -1,8 +1,8 @@
 # PLANO · Promocionar P0 · Taxonomía y privacidad
 
-**Decisión del dueño:** 20 de octubre de 2026  
-**Estado:** **contrato cerrado; sin implementación ni despliegue**  
-**Siguiente tramo:** P1 · Producto compartible  
+**Decisión del dueño:** 20 de octubre de 2026
+**Estado:** **contrato cerrado; sin implementación ni despliegue**
+**Siguiente tramo:** P1 · Producto compartible
 **Superficies futuras:** back-office `montaguth.institute`, tienda `magandhi.com` y backend compartido en Supabase.
 
 P0 define el lenguaje, la autoridad y los límites de privacidad de Promocionar
