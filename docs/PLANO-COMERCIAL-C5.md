@@ -1,6 +1,6 @@
 # Plano operativo · Comercial C5 · Mis compras
 
-> **Estado repo-side:** el paquete operativo C5 y la migración forward de slug automático `20261106000100_campanas_slug_automatico.sql` ya están construidos en Git. No se han ejecutado en producción; C5 no está cerrado y no existe medición productiva nueva. El orden autoritativo y los gates están en `supabase/operacion/COMERCIAL-C5-CIERRE.md`. No hay puente C5.
+> **Estado productivo · 20-oct-2026: desplegado y cerrado estructuralmente.** Migraciones `20261106000000` (C5) y `20261106000100` (slug automático) aplicadas una vez por SQL Editor; Edge `crear-intencion-pago` y `estado-pago` en versión C5; carrito encendido; Wompi `prod`. El recorrido sin dinero fue confirmado por el dueño. Falta el cierre transaccional con un pago real autorizado. Evidencia en `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`; operación en `supabase/operacion/COMERCIAL-C5-CIERRE.md`. No hay puente C5.
 
 ## Contrato
 
@@ -30,7 +30,7 @@ Superficies:
 
 ## Despliegue seguro
 
-**No aplicar esta migración con `supabase db push` hasta reconciliar primero el ledger de migraciones de C4.** C4 se aplicó manualmente en producción y puede no figurar en `supabase_migrations.schema_migrations`. Confirmar que `20261105000000` representa exactamente el SQL ya aplicado antes de registrar o ejecutar C5. No editar ni reaplicar migraciones históricas.
+**Nunca usar `supabase db push`.** Medido el 20-oct-2026: el proyecto no tiene `supabase_migrations.schema_migrations`; todas las migraciones, incluida C5, se aplican a mano por SQL Editor, un Run por archivo y una sola vez. No editar ni reaplicar migraciones históricas.
 
 Orden seguro:
 

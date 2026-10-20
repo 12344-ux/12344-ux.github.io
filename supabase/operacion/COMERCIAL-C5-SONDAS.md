@@ -132,6 +132,21 @@ Esperado: HTTP `409`, código `INTENCION_NO_REABRIBLE`, sin firma, monto, compra
 
 La reapertura ajena se comprueba únicamente con dos cuentas propias y una intención sin dinero creada durante la ventana ON. Cuenta B debe recibir la misma respuesta pública que una referencia inexistente. No guardar la referencia ni los tokens en documentos o logs.
 
+## Resultado · 20-oct-2026 (Edge C5 desplegadas, base aún en C4)
+
+| Sonda | Resultado |
+|---|---|
+| 1 · CORS permitido, ambas Edge | `204`, `Access-Control-Allow-Origin: https://magandhi.com` |
+| 2 · origen ajeno | `204` sin reflejar el origen ajeno |
+| 3 · `GET`, ambas Edge | `405` |
+| 4 · JSON inválido, ambas Edge | `400 Body invalido` |
+| 5 · referencia inexistente | `404`, `Cache-Control: no-store` |
+| 6 · carrito sin sesión de usuario | `401 SESION_REQUERIDA` |
+| 7 · router C5 `{"intencion":{}}` | `400 INTENCION_INVALIDA` (confirma la revisión C5) |
+| 8 · reapertura inexistente con token propio | No ejecutada; «Continuar pago» de una compra propia sí funcionó en la prueba sin dinero |
+
+Ninguna sonda creó intenciones.
+
 ## Evidencia y criterio
 
 Registrar únicamente fecha/hora, commit Edge desplegado, sonda, HTTP, código público y aprobado/fallido. No registrar headers de autorización ni bodies con correladores. Confirmar mediante `comercial-c5-estado.sql` que las sondas 1–8 no crearon intenciones.

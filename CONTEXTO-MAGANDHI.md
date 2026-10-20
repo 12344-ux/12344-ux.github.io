@@ -1,6 +1,6 @@
 # MAGANDHI + Impulse · contexto operativo vigente
 
-**Corte:** 19 de octubre de 2026
+**Corte:** 20 de octubre de 2026
 **Producción interna:** `https://montaguth.institute`
 **Tienda pública:** `https://magandhi.com`
 
@@ -61,7 +61,7 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > nunca bloquea el asiento, al contrario que el costo y el flete. Banco SQL
 > **613/613**, matriz **170/170**, pantalla **70/70**.
 >
-> **El estado actual de producción llega hasta la migración `20261105000000` (Comercial C4), aplicada el 19-oct-2026 por SQL Editor. El carrito quedó ENCENDIDO (`carrito_habilitado=true`) al cierre de esa sesión.**
+> **El estado actual de producción llega hasta la migración `20261106000100` (Comercial C5 + slug automático), aplicada el 20-oct-2026 por SQL Editor. El carrito quedó ENCENDIDO (`carrito_habilitado=true`) y Wompi en `prod`. El proyecto no tiene tabla de ledger de migraciones: todo se aplica a mano y nunca con `supabase db push`.**
 >
 > **Cuentas de cliente C1 · DESPLEGADO · 15-oct-2026 (PR #268).** El dueño
 > decidió conservar compra como invitado y añadir inicio de sesión opcional en
@@ -146,10 +146,10 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > `crear-intencion-pago`. **El carrito quedó ENCENDIDO** porque el dueño sigue de
 > inmediato en otro chat. Las pruebas ON sin dinero funcionan, incluido el
 > temporizador en Wompi, tras corregir dos defectos: ids de campaña rechazados
-> (PR #109) y el Rubik publicado sin slug (dato corregido). Siguen abiertas las
-> decisiones de slug automático, el bloqueo de 30 minutos (botón cancelar o
-> carrito libre + "Mis compras") y el valor del flag. Punto de arranque:
-> `docs/RELEVO-COMERCIAL-C4-2026-10-19.md` §4 y §8.
+> (PR #109) y el Rubik publicado sin slug (dato corregido). Las decisiones que
+> dejó abiertas (slug automático, bloqueo de 30 minutos y flag) se resolvieron
+> con C5 el 20-oct-2026: C4 queda **cerrado estructuralmente y superado**.
+> Relevo histórico: `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`.
 >
 > El contrato fija una expiración autoritativa de 30 minutos firmada para Wompi.
 > Si hubiera una intención C3 previa (`ciclo=0`), la conserva y registra su
@@ -170,21 +170,20 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > idempotencia C4 no se midieron en producción. Relevo histórico:
 > `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`.
 >
-> **Comercial C5 · 19-oct-2026 noche · CÓDIGO FUSIONADO, NO DESPLEGADO EN
-> SUPABASE.** El dueño aprobó reemplazar el bloqueo C4 por carrito libre + «Mis
-> compras». Backend PR #287 fusionado en `c8fd03c` y tienda PR #113 en
-> `4a0b439`; Pages de tienda quedó `built`. El banco completo PostgreSQL 15/Deno
-> pasó en run `39354906924`. C5 separa atómicamente el snapshot al crear la
-> intención, deja el carrito libre, lista compras propias e históricas, permite
-> continuar/verificar pagos, refleja estados de Ventas y solo habilita opinión
-> tras entrega. La tienda ya contiene la interfaz compatible, pero la migración
-> `20261106000000` y las Edge C5 siguen solo en Git. El paquete operativo C5 y
-> la migración forward `20261106000100_campanas_slug_automatico.sql` ya están
-> construidos en Git, pero **no ejecutados**. Producción continúa en C4, último
-> flag documentado ON y Wompi prod. Antes de desplegar: reconciliar el ledger C4
-> y seguir `supabase/operacion/COMERCIAL-C5-CIERRE.md`. No hay puente C5. No se
-> declara C5 cerrado ni producción medida. Relevo vigente:
-> `docs/RELEVO-COMERCIAL-C5-2026-10-19.md`.
+> **Hito · Comercial C5 · 20-oct-2026 · desplegado y cerrado
+> estructuralmente.** El dueño aprobó reemplazar el bloqueo C4 por carrito
+> libre + «Mis compras» (backend #287 `c8fd03c`, tienda #113 `4a0b439`). El
+> 20-oct se ejecutó la ventana completa de
+> `supabase/operacion/COMERCIAL-C5-CIERRE.md`: preflight, Edge C5 con sondas
+> correctas, migraciones `20261106000000` (C5) y `20261106000100` (slug
+> automático) una vez cada una, postflight y activación. El recorrido sin dinero
+> lo confirmó el dueño: al crear la intención el carrito queda libre, la compra
+> aparece en Mis compras, «Continuar pago» no duplica y la intención sin
+> transacción vence. **El carrito quedó ENCENDIDO** a propósito y Wompi en
+> `prod`. Se corrigieron cuatro defectos de los scripts (PR #290–#292 y el PR de
+> cierre) sin efecto en producción. **Límite:** sin pago real por carrito no hay
+> cierre transaccional de C3/C4/C5. Relevo vigente:
+> `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`.
 
 ## 1. Separación de superficies
 
@@ -425,19 +424,22 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
   invitado y tramos C1–C4.
 - `docs/PLANO-FASE-COMERCIAL.md`: evolución aprobada —cantidades, carrito
   autenticado, Mis compras y Promocionar— con fórmulas, contratos, orden de
-  despliegue y criterios de cierre. **C1–C4 están en producción con los límites
-  documentados. C5 está fusionado y probado en CI, pero no aplicado en
-  Supabase. P0–P5 permanecen pendientes.**
-- `docs/PLANO-COMERCIAL-C5.md`: contrato técnico y orden seguro de despliegue de
-  carrito libre, Mis compras, reapertura, seguimiento y opinión tras entrega.
-- `docs/RELEVO-COMERCIAL-C5-2026-10-19.md`: **relevo general vigente y punto de
-  arranque**. Distingue código fusionado de backend productivo, enumera gates y
-  contiene el prompt exacto de continuidad.
-- `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`: relevo histórico productivo de C4;
-  conserva su ejecución y evidencia, pero ya no gobierna el próximo chat.
-- `supabase/operacion/COMERCIAL-C4-CIERRE.md` y `comercial-c4-*.sql`: paquete
-  operativo de C4. Para reactivar, usar siempre el `comercial-c4-activar.sql`
-  actual.
+  despliegue y criterios de cierre. **C1–C5 están cerrados estructuralmente en
+  producción con los límites documentados; ninguno tiene cierre transaccional
+  por carrito. P0–P5 permanecen pendientes.**
+- `docs/PLANO-COMERCIAL-C5.md`: contrato técnico de carrito libre, Mis compras,
+  reapertura, seguimiento y opinión tras entrega.
+- `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`: **relevo general vigente y
+  punto de arranque**. Estado productivo exacto, evidencia de la ventana C5,
+  pendientes y prompt de continuidad.
+- `docs/RELEVO-COMERCIAL-C5-2026-10-19.md` y
+  `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`: relevos históricos; conservan
+  diseño, plan y evidencia, pero ya no gobiernan el próximo chat.
+- `supabase/operacion/COMERCIAL-C5-CIERRE.md` y `comercial-c5-*.sql`: paquete
+  operativo vigente del carrito. Estado con `comercial-c5-estado.sql`, apagado
+  con `comercial-c5-desactivar.sql`, reactivación con el `comercial-c5-activar.sql`
+  actual y, si falla, `comercial-c5-diagnostico-activacion.sql`. El paquete C4
+  queda como historia y no se usa para reactivar.
 - `docs/RELEVO-COMERCIAL-C3-2026-10-17.md`: relevo histórico de C3. **Aviso:**
   la intención v2 que describe no existe en producción (preflight C4:
   `v2_total=0`).
@@ -456,9 +458,9 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 - `supabase/pruebas/local/herramientas/LEEME.md`: banco de pruebas local (también corre en GitHub Actions en cada rama).
 
 El relevo general vigente es
-`docs/RELEVO-COMERCIAL-C5-2026-10-19.md`: C5 está fusionado y probado en CI,
-pero producción Supabase continúa en C4 hasta ejecutar la ventana controlada.
-El relevo C4 conserva la evidencia productiva histórica. El relevo temático de
+`docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`: C5 está desplegado y cerrado
+estructuralmente, con el carrito encendido. Los relevos C4 y C5 del 19-oct
+conservan la evidencia histórica. El relevo temático de
 cuentas `docs/RELEVO-CUENTAS-C2-2026-10-16.md` conserva su evidencia histórica
 y evita repetir migración, SMTP, plantillas o configuración Google al retomar
 esa apertura.
@@ -490,29 +492,28 @@ cierres estructurales de sus primeros tramos:
    conservó una sola intención al reintentar desde otra sesión. El flag final es
    `false`. No hubo aprobación, pedido, inventario, asiento, correo ni repetición
    real del webhook; C3 no está cerrado end-to-end.
-4. **Comercial C4 · productivo y superado funcionalmente por el diseño C5.**
-   Migración `20261105000000`, puente, postflight 30/30 y ambas Edge siguen en
-   producción; último flag documentado ON. C4 conserva compatibilidad histórica,
-   pero su bloqueo/expiración 9D ya no es el modelo objetivo. Sin pago aprobado,
-   su cierre fue estructural, no transaccional.
-5. **Comercial C5 · código y paquete repo-side construidos; despliegue pendiente.**
-   Backend #287 (`c8fd03c`) y tienda #113 (`4a0b439`) están en `main`; run
-   `39354906924` `SUCCESS`. La migración `20261106000000`, Edge C5 y la nueva
-   `20261106000100` de slug automático no están aplicadas/desplegadas. El
-   paquete operativo ya existe en Git y no incluye puente C5. Antes: reconciliar
-   ledger C4, seguir el runbook y confirmar carrito OFF. Después: pruebas sin
-   dinero y, con autorización, pago real. No se declara C5 cerrado ni producción
-   medida. Relevo vigente: `docs/RELEVO-COMERCIAL-C5-2026-10-19.md`.
-6. **Promocionar P0–P5:** producto compartible, estudio, enlace, atribución y
-   lectura comercial siguen pendientes. Meta Ads, Pixel, Conversions API y
+4. **Comercial C4 · cerrado estructuralmente y superado por C5.** Su migración
+   `20261105000000` sigue en producción como base; las intenciones C4 históricas
+   conservan su contrato. El bloqueo de 30 minutos y la prueba 9D ya no son el
+   modelo vigente. Sin pago aprobado, su cierre es estructural.
+5. **Comercial C5 · desplegado y cerrado estructuralmente (20-oct-2026).**
+   Migraciones `20261106000000` y `20261106000100` (slug automático) aplicadas,
+   Edge C5 desplegadas, postflight y activación correctos y recorrido sin dinero
+   confirmado por el dueño. **Carrito ENCENDIDO** y Wompi `prod`. Pendientes:
+   cierre transaccional con pago real autorizado, opinión autenticada por cuenta
+   y los placeholders del centro de cuenta (Favoritos, Mis opiniones, Eliminar
+   cuenta). Relevo vigente: `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`.
+6. **Promocionar P0–P5 · siguiente etapa del plano, empezando por P0
+   (taxonomía y privacidad).** Producto compartible, estudio, enlace, atribución
+   y lectura comercial siguen pendientes. Meta Ads, Pixel, Conversions API y
    publicación automática continúan fuera de alcance.
 
-La definición final de la fase no se relaja. C5 está listo en Git, pero no se
-presenta como productivo hasta medir migración, Edge, flag y recorridos reales.
-Dinero solo con autorización expresa. Cuando se autorice un pago C5 debe
-demostrar monto exacto, un solo pedido, `customer_id` correcto, snapshot,
-inventario/proveedor, asiento, correo e idempotencia. Continuar desde
-`docs/RELEVO-COMERCIAL-C5-2026-10-19.md`.
+La definición final de la fase no se relaja: el carrito está cerrado en
+estructura, no end-to-end. Dinero solo con autorización expresa. Cuando se
+autorice un pago C5 debe demostrar monto exacto, un solo pedido, `customer_id`
+correcto, snapshot, inventario/proveedor, asiento, correo «Recibido» e
+idempotencia del webhook. Continuar desde
+`docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`.
 
 Cuentas de cliente sigue en **preapertura**:
 
@@ -528,8 +529,11 @@ Cuentas de cliente sigue en **preapertura**:
    políticas y avisos contextuales. Solo después preparar Google Production y
    activar signup permanente. No reabrir pruebas de C1/C2 al retomar.
    Ver `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
-4. Después: **C3** (Mi cuenta: perfil, direcciones, pedidos, estado y opiniones)
-   y **C4** (checkout autenticado con `customer_id` derivado en servidor).
+4. Después: **C3** (Mi cuenta: perfil, direcciones y opiniones) y **C4**
+   (checkout autenticado con `customer_id` derivado en servidor). Comercial
+   C4/C5 ya entregaron en producción `customer_id` derivado en servidor para el
+   carrito y Mis compras (pedidos y estado); retomar Cuentas C3/C4 sin
+   duplicarlos.
 
 **Contabilidad · cerrada el 14-oct-2026:** la liquidación de Wompi, el inventario
 inicial, la recarga de Dropi y el seguro ya quedaron registrados y conciliados.

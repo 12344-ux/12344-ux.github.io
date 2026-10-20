@@ -1,7 +1,7 @@
 # PLANO · Fase comercial: Carrito + Promocionar
 
 **Decisión del dueño:** 16 de octubre de 2026  
-**Estado por tramos:** C1–C4 están desplegados con sus límites documentados. **C5 está construido, fusionado y probado en CI (19-oct-2026), pero aún no aplicado en Supabase**; producción sigue en C4 con último flag documentado ON. P0–P5 siguen pendientes. La fase completa no está cerrada hasta desplegar/verificar C5 y decidir el cierre transaccional.
+**Estado por tramos (20-oct-2026):** **C1–C5 están cerrados estructuralmente en producción** con sus límites documentados; C4 quedó superado por C5. Carrito encendido y Wompi `prod`. Ningún tramo de carrito tiene cierre transaccional: falta un pago real autorizado. P0–P5 siguen pendientes y **P0 es la siguiente etapa**. La fase completa no está cerrada hasta el cierre transaccional y Promocionar.
 **Superficies:** back-office `montaguth.institute`, tienda `magandhi.com` y backend compartido en Supabase.
 
 Este plano reúne los dos frentes comerciales elegidos para la siguiente evolución de MAGANDHI:
@@ -39,7 +39,7 @@ La fase no se cierra porque una interfaz se vea terminada. Se cierra cuando:
 5. El carrito se persiste en Supabase por `auth.uid()` y puede continuar en otro dispositivo. No guarda precio como verdad.
 6. El navegador nunca envía precio confiable, `customer_id`, UID, origen interno ni stock.
 7. El carrito no reserva inventario. Antes de cobrar se releen precio, publicación, máximo y disponibilidad; al aprobar el pago se validan otra vez bajo el candado de `crear_pedido`.
-8. El carrito solo elimina las líneas confirmadas después de un pago aprobado. Rechazo las deja editables; pendiente/revisión mantiene un bloqueo prudente.
+8. ~~El carrito solo elimina las líneas confirmadas después de un pago aprobado. Rechazo las deja editables; pendiente/revisión mantiene un bloqueo prudente.~~ **Reemplazado por C5:** al crear la intención, sus líneas pasan a Mis compras y el carrito queda libre de inmediato; rechazo o vencimiento dejan la compra como no completada, sin bloquear ni alterar el carrito nuevo.
 9. El checkout invitado permanece disponible y no se fuerza registro.
 
 ### 1.2 Máximo comprable efectivo
@@ -313,18 +313,20 @@ por la tienda y una campaña publicada sin slug. Sin pago aprobado no hay cierre
 transaccional. Detalle y decisiones abiertas en
 `docs/RELEVO-COMERCIAL-C4-2026-10-19.md`.
 
-**C5 aprobado e implementado (no desplegado):** el dueño eligió separar carrito
-y pago. Al crear correctamente la intención, las líneas congeladas se vuelven
+**C5 · desplegado y cerrado estructuralmente el 20-oct-2026:** el dueño eligió
+separar carrito y pago. Al crear correctamente la intención, las líneas congeladas se vuelven
 una compra en proceso y el carrito queda libre en la misma transacción. «Mis
 compras» lista procesos, realizadas y no completadas; permite continuar solo
 sin transacción bancaria y verificar PENDING/revisión. El estado logístico sale
 de `pedidos.estado`, el panel intenta el correo de cada avance y la opinión solo
 se habilita tras entregado. Backend #287 (`c8fd03c`) y tienda #113 (`4a0b439`)
-están fusionados; banco run `39354906924` `SUCCESS`. Migración `20261106000000`
-y Edge C5 siguen sin desplegar. Contrato y gates en `docs/PLANO-COMERCIAL-C5.md`
-y `docs/RELEVO-COMERCIAL-C5-2026-10-19.md`.
+están fusionados. Migraciones `20261106000000` y `20261106000100` aplicadas,
+Edge C5 desplegadas, postflight y activación correctos, y recorrido sin dinero
+confirmado por el dueño. Contrato en `docs/PLANO-COMERCIAL-C5.md`; evidencia en
+`docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`.
 
-Pendiente separado: slug automático server-side con migración forward.
+**Resuelto:** slug automático server-side (`20261106000100`): trigger, backfill
+determinista y `NOT NULL`; ninguna campaña puede publicarse sin slug.
 
 ---
 
@@ -430,21 +432,21 @@ Ventas muestra la procedencia validada. Los pedidos manuales pueden tener una fu
 
 ## 5. Orden de construcción
 
-Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual: C1–C4 están desplegados con límites; C5 está fusionado y probado en CI, pero no desplegado en Supabase. P0–P5 permanecen pendientes.
+Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual (20-oct-2026): C1–C5 cerrados estructuralmente en producción; falta el cierre transaccional por carrito. P0–P5 permanecen pendientes.
 
 1. **Plano y arranque — cerrado.** Este documento y referencias de contexto.
 2. **C1 · cantidad inmediata — estructura lista.** Valor comercial rápido y cimiento de carrito; sin afirmar cierre transaccional de qty2.
 3. **C2 · carrito persistente — estructura lista y flag OFF.** Datos/RLS/UI medidos.
 4. **C3 · intención y checkout multiproducto — estructura lista y flag OFF.** Líneas congeladas, total autoritativo, Wompi abierto sin pago e idempotencia de intención medida.
-5. **C4 · cuenta y ciclo bloqueante — productivo, superado funcionalmente por C5.** Conserva compatibilidad histórica y evidencia estructural; no tuvo cierre monetario propio.
-6. **C5 · Mis compras y carrito libre — código/CI listos, despliegue pendiente.** Requiere ledger C4 reconciliado, paquete operativo, Edge compatibles, carrito OFF, migración manual, postflight y pruebas sin dinero. Slug automático sigue como forward separado.
-7. **P0 · taxonomía y privacidad — pendiente.** Contrato de atribución, canales y retención antes de capturar datos.
+5. **C4 · cuenta y ciclo bloqueante — cerrado estructuralmente y superado por C5.** Conserva compatibilidad histórica; no tuvo cierre monetario propio.
+6. **C5 · Mis compras y carrito libre — cerrado estructuralmente el 20-oct-2026.** Edge, migración C5, slug automático, postflight, activación y recorrido sin dinero ejecutados; carrito encendido. Cierre transaccional pendiente de un pago real autorizado.
+7. **P0 · taxonomía y privacidad — siguiente etapa.** Contrato de atribución, canales y retención antes de capturar datos.
 8. **P1 · producto compartible — pendiente.** También resuelve SEO/IA pendiente.
 9. **P2 · estudio Promocionar — pendiente.** Enlaces largos, textos, preview, QR y kit.
 10. **P3–P4 · enlace corto y atribución — pendiente.** Backend, routing y pago.
 11. **P5 · lectura comercial — pendiente.** Métricas sobre hechos ya capturados.
 
-P1/P2 solo avanzan después de cerrar la ventana productiva C5 o en ramas completamente separadas. No se mezclan carrito, redirector y metadata en una sola migración o despliegue.
+La ventana productiva C5 quedó cerrada el 20-oct-2026, así que P0 puede empezar. No se mezclan carrito, redirector y metadata en una sola migración o despliegue.
 
 ---
 
@@ -496,6 +498,14 @@ carrito quedó encendido. Faltan el pago con dinero (solo con autorización) y
 el valor final del flag. La intención v2 que describía el relevo C3 no existe
 en producción (`v2_total=0`), por lo que la sucesión C3 no aplicó.
 
+**C5 recorrió la operación productiva el 20-oct-2026** con
+`supabase/operacion/COMERCIAL-C5-CIERRE.md`: preflight, Edge C5 y sondas,
+carrito OFF, migración C5, migración slug, postflight, activación y recorrido
+sin dinero confirmado por el dueño. El proyecto no tiene tabla de ledger, así
+que no hubo nada que reconciliar. Cuatro defectos de scripts se corrigieron
+antes de continuar, sin efecto en producción. El carrito quedó encendido por
+decisión del dueño; falta el pago con dinero, solo con autorización.
+
 ---
 
 ## 7. Riesgos que gobiernan la implementación
@@ -524,7 +534,7 @@ en producción (`v2_total=0`), por lo que la sucesión C3 no aplicó.
 - Un carrito autenticado sobrevive otro dispositivo y nunca cruza usuarios.
 - Invitado puede seguir comprando sin cuenta.
 - Wompi cobra la suma exacta y un webhook repetido produce un pedido.
-- Pago aprobado vacía solo lo comprado; rechazo no destruye la cesta.
+- Con C5, crear la intención libera el carrito y la compra vive en Mis compras; aprobación, rechazo o vencimiento nunca alteran el carrito nuevo.
 - Producto compartido presenta nombre, imagen y marca correctos.
 - Promocionar genera piezas útiles sin Meta ni servicios externos obligatorios.
 - Un enlace propio no puede redirigir fuera de MAGANDHI.

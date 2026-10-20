@@ -1,9 +1,11 @@
 # Relevo de sesión · Comercial C4 · cuenta y ciclo del carrito · 19 de octubre de 2026
 
-> **SUPERADO COMO PUNTO DE ARRANQUE:** C4 sigue describiendo el backend
-> productivo, pero Comercial C5 ya fue aprobado, construido y fusionado. Para
-> continuar usar `docs/RELEVO-COMERCIAL-C5-2026-10-19.md`. No ejecutar el prompt
-> de §8 como si C5 no existiera.
+> **CERRADO ESTRUCTURALMENTE Y SUPERADO (20-oct-2026):** C5 reemplazó en
+> producción el ciclo bloqueante de C4; las intenciones C4 históricas conservan
+> su contrato. Las decisiones abiertas de §4 quedaron resueltas: slug automático
+> en servidor (A), carrito libre + Mis compras (B2) y flag encendido (C). La
+> prueba 9D ya no aplica. Continuar con
+> `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`; no ejecutar el prompt de §8.
 
 Punto general vigente para continuar el frente comercial. Leer junto con
 `supabase/operacion/COMERCIAL-C4-CIERRE.md`, `CONTEXTO-MAGANDHI.md`,

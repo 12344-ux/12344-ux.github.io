@@ -1,21 +1,20 @@
 # Supabase · runbook operativo MAGANDHI / Impulse
 
-> **Estado al 19-oct-2026 (noche):** en producción están aplicadas todas las
-> migraciones hasta **`20261105000000` (Comercial C4)**, salvo `20261002000000`,
-> que quedó **SUPERADA y no debe aplicarse** (ver §0). C4 se aplicó por SQL
-> Editor y probablemente no figura en `supabase_migrations.schema_migrations`:
-> no usar `supabase db push` hasta reconciliar el historial. Wompi F1–F4 y
-> Dropshipping D2c están operativos. Cuentas C1/C2 continúan desplegados y
-> Cuentas C2 está cerrado técnicamente en preapertura; CAPTCHA activo, signup
-> OFF y Google Testing hasta publicar políticas. Comercial C1 conserva su límite
-> propio: no hubo pago real de dos unidades. Comercial C4: preflight, puente,
-> Edge `estado-pago`, migración, postflight 30/30 y Edge
-> `crear-intencion-pago` ejecutados, más una ventana ON sin dinero. **El carrito
-> quedó ENCENDIDO (`carrito_habilitado=true`).** C3 y C4 siguen sin cierre
-> end-to-end: no hubo aprobación, pedido, inventario, asiento, correo ni webhook
-> repetido. Estado general:
-> `docs/RELEVO-COMERCIAL-C4-2026-10-19.md` y `CONTEXTO-MAGANDHI.md` §9; para la
-> futura apertura de cuentas conserva vigencia temática
+> **Estado al 20-oct-2026:** en producción están aplicadas todas las
+> migraciones hasta **`20261106000100` (Comercial C5 + slug automático)**, salvo
+> `20261002000000`, que quedó **SUPERADA y no debe aplicarse** (ver §0). El
+> proyecto **no tiene** `supabase_migrations.schema_migrations` (medido): todas
+> las migraciones se aplican a mano por SQL Editor, un Run por archivo y una
+> sola vez. **Nunca usar `supabase db push`.** Wompi F1–F4 y Dropshipping D2c
+> están operativos. Cuentas C1/C2 continúan desplegados y Cuentas C2 está
+> cerrado técnicamente en preapertura; CAPTCHA activo, signup OFF y Google
+> Testing hasta publicar políticas. **Comercial C1–C5 están cerrados
+> estructuralmente**; C4 quedó superado por C5. Edge `crear-intencion-pago` y
+> `estado-pago` en versión C5. **El carrito quedó ENCENDIDO
+> (`carrito_habilitado=true`)** y Wompi en `prod`. No hubo pago real por
+> carrito: falta el cierre transaccional. Estado general:
+> `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md` y `CONTEXTO-MAGANDHI.md` §9;
+> para la futura apertura de cuentas conserva vigencia temática
 > `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
 >
 > **Archivo operativo acumulativo:** el estado de la cabecera y el relevo vigente
@@ -5647,18 +5646,16 @@ intención en `requiere_revision` permanece bloqueada hasta la acción explícit
 liberar cabeceras, borrar líneas ni fabricar webhooks para forzar un cierre.
 Para reactivar usar siempre el `comercial-c4-activar.sql` actual (PR #285): una
 intención ya vencida no bloquea la reactivación.
-## Comercial C5 · Mis compras y carrito libre · código fusionado, despliegue pendiente (19-oct-2026)
 
-Punto de continuidad: `docs/RELEVO-COMERCIAL-C5-2026-10-19.md` y `docs/PLANO-COMERCIAL-C5.md`.
+## Comercial C5 · Mis compras y carrito libre · desplegado y cerrado estructuralmente (20-oct-2026)
 
-- Backend PR #287 fusionado en `c8fd03c`; migración nueva `20261106000000_comercial_c5_mis_compras.sql`.
-- Tienda PR #113 fusionado en `4a0b439`; Pages `built`.
-- Banco PostgreSQL 15/Deno run `39354906924`: `SUCCESS`.
-- **Nada de C5 se considera aplicado en Supabase:** migración y Edge C5 siguen pendientes de despliegue.
-- Producción sigue en C4 (`20261105000000`), último flag documentado ON y Wompi `prod`.
-- Antes de C5 hay que reconciliar el ledger de C4. Nunca usar `supabase db push`, reaplicar C4 ni editar a mano el historial sin el procedimiento aprobado.
-- El paquete operativo C5 ya está construido en Git: `supabase/operacion/COMERCIAL-C5-CIERRE.md` es el runbook autoritativo; incluye preflight, postflight, estado, activación/desactivación y sondas. **No se ha ejecutado en producción.**
-- El slug automático ya está construido en Git como migración forward separada `20261106000100_campanas_slug_automatico.sql`: trigger server-side, backfill determinista, NOT NULL y ACL cerrada. **No está aplicado.**
-- Orden autoritativo: medir/reconciliar ledger → Edge compatibles y sondas → carrito OFF confirmado → migración C5 manual una vez → migración slug en Run separado → postflight → regresión OFF → carrito ON → pruebas sin dinero.
-- No hay puente C5. No declarar C5 cerrado ni producción medida por la existencia de este paquete.
-- Pago real C5 solo con autorización expresa; es necesario para cierre transaccional, no para afirmar que el código/CI están listos.
+Punto de continuidad: `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`. Contrato en `docs/PLANO-COMERCIAL-C5.md`; runbook ejecutado en `supabase/operacion/COMERCIAL-C5-CIERRE.md`.
+
+- Código: backend PR #287 (`c8fd03c`) y tienda PR #113 (`4a0b439`); paquete operativo y correcciones en PR #289–#292 y el PR de cierre.
+- **Aplicado una sola vez por SQL Editor el 20-oct-2026:** `20261106000000_comercial_c5_mis_compras.sql` y, en otro Run, `20261106000100_campanas_slug_automatico.sql`. No volver a ejecutarlas.
+- Edge `crear-intencion-pago` y `estado-pago` desplegadas en versión C5; sondas 1–7 correctas.
+- Postflight e invariantes correctos; activación con `activado_confirmado=true`. **El carrito queda ENCENDIDO** por decisión del dueño; Wompi `prod`.
+- Recorrido sin dinero confirmado por el dueño: carrito libre al crear la intención, Mis compras, continuar pago sin duplicar y vencimiento sin transacción.
+- El proyecto no tiene tabla de ledger: no hubo nada que reconciliar. **Nunca `supabase db push`.**
+- Operación: `comercial-c5-estado.sql` (una tabla), `comercial-c5-desactivar.sql`, `comercial-c5-activar.sql` y, si la activación falla, `comercial-c5-diagnostico-activacion.sql`.
+- Pendiente: cierre transaccional con un pago real C5 autorizado expresamente por el dueño.
