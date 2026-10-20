@@ -433,7 +433,8 @@ begin
            left(p.proname, 4) in ('co__','pw__')
            or p.proname in (
              'crear_pedido_c3_base','crear_pedido_c4',
-             'cm__asignar_slug_automatico'
+             'cm__asignar_slug_automatico','cm__validar_slug_no_reasignado',
+             'cm__registrar_slug_historial'
            )
          ) = has_function_privilege('service_role', p.oid, 'execute')
        );
