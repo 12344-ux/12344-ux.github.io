@@ -16,7 +16,7 @@ Dar al equipo una pantalla visual propia desde cada Campaña para preparar y des
 - UTM descriptiva con `campaign` y `content` normalizados.
 - Copia de enlace, copia de texto y Web Share cuando el navegador lo permita.
 - Texto inicial determinista desde contenido aprobado de la campaña, con campos separados para el texto visible del PNG y el mensaje que acompaña el enlace; la edición vive solo durante la sesión.
-- QR generado íntegramente en el navegador mediante una biblioteca versionada localmente.
+- QR calculado íntegramente en el navegador mediante `qrcode-generator` 1.4.4, cargado desde una URL fija con Subresource Integrity; la URL promocional nunca se envía al proveedor del script.
 - Piezas PNG locales en 1080×1080, 1080×1920 y 1200×628.
 - Previsualización responsive que no altera la resolución exportada.
 
