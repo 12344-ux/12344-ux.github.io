@@ -513,8 +513,11 @@ cierres estructurales de sus primeros tramos:
    mínima de aliases en backend; en tienda prepara seis shells del catálogo
    público, URLs canónicas, metadata social, JSON-LD sin precio/stock, sitemap,
    robots y generador reproducible. Los shells mantienen `noindex,follow` y la
-   verdad comercial sigue viva en `catalogo_publico`. Producción continúa en el
-   estado medido por C5 hasta ejecutar el runbook P1 y comprobar Pages. P2–P5
+   verdad comercial sigue viva en `catalogo_publico`. Backend #295 está
+   fusionado y `20261107000000` fue aplicada; el postflight confirmó todo salvo
+   ACL nominal de la vista por privilegios extra de defaults Supabase. La forward
+   `20261107000100` está preparada para dejar solo SELECT. Tienda #116 permanece
+   sin fusionar hasta cerrar ese gate. P2–P5
    siguen pendientes; Meta Ads, Pixel, Conversions API y publicación automática
    continúan fuera de alcance. Plan: `docs/PLANO-PROMOCIONAR-P1.md`; relevo:
    `docs/RELEVO-PROMOCIONAR-P1-2026-10-20.md`.

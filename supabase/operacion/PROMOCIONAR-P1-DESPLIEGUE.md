@@ -1,7 +1,7 @@
 # Promocionar P1 · despliegue coordinado
 
-**Estado:** código preparado; no ejecutado en producción.
-**Escritura:** solo la migración `20261107000000_promocionar_p1_slug_historial.sql`.
+**Estado:** `20261107000000` aplicada; corrección ACL `20261107000100` pendiente.
+**Escritura:** ambas migraciones se ejecutan una sola vez, en Runs separados.
 **Dinero:** no abre Wompi ni requiere pago real.
 
 ## Objetivo
@@ -16,8 +16,11 @@ Reservar slugs históricos en Supabase y publicar después los shells estáticos
    devolver `listo_para_aplicar=true` con contadores en cero.
 3. Ejecutar una sola vez la migración
    `20261107000000_promocionar_p1_slug_historial.sql`.
-4. Ejecutar `promocionar-p1-postflight.sql`. Es solo lectura; todos los booleanos
-   deben ser `true` y `faltantes_actuales=0`.
+4. Ejecutar `promocionar-p1-postflight.sql`. Si todo es `true` y
+   `faltantes_actuales=0`, continuar. Si únicamente `vista_solo_lectura=false`
+   por defaults de Supabase, aplicar una sola vez la forward
+   `20261107000100_promocionar_p1_vista_solo_lectura.sql` y repetir exactamente
+   el mismo postflight.
 5. En la tienda, ejecutar
    `node scripts/generar-productos.mjs --sync` y revisar el diff. Ahora debe leer
    también `campana_slug_alias_publico`.

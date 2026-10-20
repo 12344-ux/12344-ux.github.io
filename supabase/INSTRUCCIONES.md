@@ -5688,3 +5688,18 @@ Orden obligatorio, cada archivo en un Run separado:
 
 No usar `supabase db push`, no reejecutar la migración y no retirar `noindex`
 hasta publicar políticas y completar el gate P1 sin JavaScript.
+
+## Promocionar P1 · corrección forward de ACL medida en producción
+
+Después de aplicar `20261107000000`, el postflight del dueño dio todo correcto
+salvo `vista_solo_lectura=false`. El diagnóstico mostró que `anon`,
+`authenticated` y `service_role` recibieron `MAINTAIN`, `REFERENCES`, `TRIGGER`
+y `TRUNCATE` además de `SELECT` por los default privileges reales del proyecto.
+No se reejecuta ni edita la migración aplicada.
+
+Aplicar una sola vez
+`20261107000100_promocionar_p1_vista_solo_lectura.sql`: hace `REVOKE ALL` sobre
+la vista para PUBLIC y los tres roles API, vuelve a conceder únicamente SELECT y
+aborta si queda cualquier ACL extra. Después repetir
+`promocionar-p1-postflight.sql`; todos los booleanos deben ser `true` y
+`faltantes_actuales=0`.
