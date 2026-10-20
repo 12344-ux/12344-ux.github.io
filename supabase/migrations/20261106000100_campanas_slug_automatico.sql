@@ -7,7 +7,7 @@
 -- ============================================================================
 
 begin;
-set local search_path = pg_catalog, public;
+set local search_path = public, pg_catalog;
 set local statement_timeout = '60s';
 set local lock_timeout = '5s';
 
