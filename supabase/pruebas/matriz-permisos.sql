@@ -213,6 +213,18 @@ begin
       v_lista_blanca := v_lista_blanca || array['mc_compras_listar'];
     end if;
 
+    -- Promocionar P3 expone siete puertas administrativas únicamente a
+    -- authenticated. Sus helpers, mantenimiento y tablas siguen cerrados; las
+    -- dos puertas públicas del redirect pertenecen solo a service_role.
+    if to_regprocedure('public.promocionar_p3_config()') is not null then
+      v_lista_blanca := v_lista_blanca || array[
+        'promocionar_p3_config', 'promocionar_p3_listar',
+        'promocionar_p3_crear_borrador', 'promocionar_p3_editar_borrador',
+        'promocionar_p3_activar', 'promocionar_p3_desactivar',
+        'promocionar_p3_eliminar_borrador'
+      ];
+    end if;
+
     -- F3 solo existe desde 202610200. Sus constructores internos siguen fuera
     -- de la lista; estas dos son las únicas puertas de panel.
     if to_regprocedure('public.fz_asientos_automaticos_pendientes()') is not null then
@@ -410,6 +422,12 @@ begin
                    'cm__asignar_slug_automatico','cm__validar_slug_no_reasignado',
                    'cm__registrar_slug_historial'
                  )
+                 or (
+                   p.proname like 'promocionar\_p3\_%' escape '\'
+                   and p.proname not in (
+                     'promocionar_p3_resolver', 'promocionar_p3_contar'
+                   )
+                 )
                  then 'SOBRA helper: '
                else 'FALTA puerta: '
              end || p.proname,
@@ -435,6 +453,12 @@ begin
              'crear_pedido_c3_base','crear_pedido_c4',
              'cm__asignar_slug_automatico','cm__validar_slug_no_reasignado',
              'cm__registrar_slug_historial'
+           )
+           or (
+             p.proname like 'promocionar\_p3\_%' escape '\'
+             and p.proname not in (
+               'promocionar_p3_resolver', 'promocionar_p3_contar'
+             )
            )
          ) = has_function_privilege('service_role', p.oid, 'execute')
        );

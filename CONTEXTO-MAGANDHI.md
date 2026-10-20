@@ -63,6 +63,8 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 >
 > **El estado actual de producción llega hasta la migración `20261107000100` (Promocionar P1: historial de slugs + corrección ACL), aplicada el 20-oct-2026 por SQL Editor. El carrito permanece ENCENDIDO (`carrito_habilitado=true`) y Wompi en `prod`. El proyecto no tiene tabla de ledger de migraciones: todo se aplica a mano y nunca con `supabase db push`.**
 >
+> **Hito · Promocionar P2 · 20-oct-2026 · desplegado, cerrado y aprobado por el dueño.** PR #298 y #299 quedaron fusionados; el cierre publicado corresponde a `90efd87ae1be07493fdf38aad5e140be558d38ac` y Pages run `39471770742` terminó `completed/success`. Los cinco assets productivos del estudio respondieron HTTP 200 y coincidieron exactamente, byte por byte, con ese merge. La aprobación fue **visual/funcional**: no se ejecutó ni se atribuye una suite automatizada P2, auditoría formal de accesibilidad, protocolo separado de teclado/foco o prueba independiente de escaneo QR. P2 fue solo frontend, sin SQL, Edge, backend o DNS. **P3 es el siguiente tramo: implementación y contrato en construcción, con `activacion_habilitada`, `redirect_habilitado` y `conteo_habilitado` OFF.** El primer gate apagado permite preparar borradores privados sin código y solo impide publicarlos. El banco automatizado P3 sigue pendiente porque no fue solicitado/agregado: no bloquea por sí solo este corte con los tres gates OFF, pero será obligatorio antes de cerrar P3 o activar cualquiera. No se acredita despliegue o CI P3.
+>
 > **Cuentas de cliente C1 · DESPLEGADO · 15-oct-2026 (PR #268).** El dueño
 > decidió conservar compra como invitado y añadir inicio de sesión opcional en
 > `magandhi.com`, con beneficios futuros sin frenar la compra. C1 mantiene
@@ -426,11 +428,27 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
   autenticado, Mis compras y Promocionar— con fórmulas, contratos, orden de
   despliegue y criterios de cierre. **C1–C5 están cerrados estructuralmente en
   producción con los límites documentados; ninguno tiene cierre transaccional
-  por carrito. P0 está cerrado como contrato documental y P1 está desplegado y
-  cerrado estructuralmente; P2 es el siguiente tramo.**
+  por carrito. P0 está cerrado como contrato; P1 y P2 están desplegados y
+  cerrados, con P2 aprobado visual/funcionalmente por el dueño. P3 es el
+  siguiente tramo y su contrato está en construcción, sin backend o DNS
+  desplegados.**
 - `docs/PLANO-PROMOCIONAR-P0.md`: fuente de verdad del contrato de taxonomía,
   normalización, atribución, privacidad, conteo agregado, estados y retención.
   No equivale a implementación ni despliegue.
+- `docs/PLANO-PROMOCIONAR-P2.md`: contrato y cierre aprobado del Estudio
+  Promocionar. Registra PR #298/#299, merge `90efd87`, Pages `39471770742`,
+  comparación productiva exacta 5/5 y los límites de la aprobación
+  visual/funcional.
+- `docs/RELEVO-PROMOCIONAR-P2-CIERRE-2026-10-20.md`: relevo vigente del frente
+  Promocionar; P1 queda como antecedente histórico.
+- `docs/PLANO-PROMOCIONAR-P3.md`: contrato e implementación en construcción
+  para SQL, Edge/routing, UI y operación. Define los gates
+  `activacion_habilitada`, `redirect_habilitado` y `conteo_habilitado`, todos
+  OFF en este corte: el primero no bloquea CRUD/listado privado de borradores
+  sin código, solo su publicación. El banco automatizado P3 no fue solicitado
+  ni agregado y sigue pendiente: no bloquea por sí solo este corte OFF, pero sí
+  el cierre de P3 o la activación de cualquier gate. El plano no acredita
+  despliegue ni CI P3.
 - `docs/PLANO-COMERCIAL-C5.md`: contrato técnico de carrito libre, Mis compras,
   reapertura, seguimiento y opinión tras entrega.
 - `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`: **relevo general vigente y
@@ -463,11 +481,13 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 
 El relevo general vigente es
 `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`: C5 está desplegado y cerrado
-estructuralmente, con el carrito encendido. Los relevos C4 y C5 del 19-oct
-conservan la evidencia histórica. El relevo temático de
-cuentas `docs/RELEVO-CUENTAS-C2-2026-10-16.md` conserva su evidencia histórica
-y evita repetir migración, SMTP, plantillas o configuración Google al retomar
-esa apertura.
+estructuralmente, con el carrito encendido. El relevo vigente del frente
+Promocionar es `docs/RELEVO-PROMOCIONAR-P2-CIERRE-2026-10-20.md`: P2 está
+cerrado/aprobado y P3 es el siguiente tramo sin despliegue. Los relevos C4 y C5
+del 19-oct conservan la evidencia histórica. El relevo temático de cuentas
+`docs/RELEVO-CUENTAS-C2-2026-10-16.md` conserva su evidencia histórica y evita
+repetir migración, SMTP, plantillas o configuración Google al retomar esa
+apertura.
 
 ## 9. Pendientes vigentes
 
@@ -507,18 +527,54 @@ cierres estructurales de sus primeros tramos:
    cierre transaccional con pago real autorizado, opinión autenticada por cuenta
    y los placeholders del centro de cuenta (Favoritos, Mis opiniones, Eliminar
    cuenta). Relevo vigente: `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`.
-6. **Promocionar P0 y P1 · cerrados (20-oct-2026).** P0 gobierna taxonomía
-   y privacidad. P1 está desplegado: backend #295/#296, migraciones
+6. **Promocionar P0, P1 y P2 · cerrados (20-oct-2026).** P0 gobierna
+   taxonomía y privacidad. P1 está desplegado: backend #295/#296, migraciones
    `20261107000000` y `20261107000100`, historial inmutable de slugs y vista de
    aliases únicamente SELECT; tienda #116, seis shells canónicos, metadata
    social, JSON-LD sin precio/stock, sitemap, robots y generador reproducible.
    Pages run `39384518735` correcto; seis shells, query slug/UUID y vista de
    aliases medidos por HTTP. PC 1280 y móvil 390 verificados. Los shells
    mantienen `noindex,follow` y sitemap solo home hasta publicar políticas.
-   **P2 · Estudio Promocionar es el siguiente tramo**; P3–P5 siguen pendientes.
+   P2 está desplegado, cerrado y aprobado visual/funcionalmente por el dueño:
+   PR #298/#299, merge `90efd87`, Pages `39471770742` y cinco assets productivos
+   HTTP 200 con igualdad exacta byte por byte. No hubo suite automatizada P2,
+   SQL, Edge, backend o DNS. **P3 · Registro y enlace corto es el siguiente
+   tramo; implementación y contrato siguen en construcción.** Sus gates
+   `activacion_habilitada`, `redirect_habilitado` y `conteo_habilitado`
+   permanecen OFF. El primero permite crear, editar, eliminar y listar
+   borradores privados sin código y solo impide hacerlos públicos; pausar
+   conteo no apaga redirect.
+
+   El contrato P3 exige bitácora SQL append-only de gates; cron horario nominal
+   dirigido a `current_database()`, con su último run unido por `jobid` al job de
+   esa misma base, y cero vencidos antes de activar; agregado diario cuyo rollup
+   dispone de índice encabezado por `fecha_colombia`; destino tipado ficha del
+   producto u home siempre ligado a la campaña de origen y editable solo en
+   borrador; y reemplazo capaz de corregir tipo sin cambiar origen.
+   `actualizado_en` es exclusivamente el token CAS de edición —no una versión
+   numérica ni una clave idempotente—. Crear un borrador usa una clave ligada al
+   actor y al payload canónico; repetir la misma alta devuelve el existente y
+   reutilizar la clave con otro payload se rechaza. La activación del mismo
+   `id`/estado también es idempotente. La navegación positiva exige
+   `navigate`/`document` y un media range `text/html` con calidad efectiva válida
+   mayor que cero (`q` ausente equivale a `1`; `q=0`, inválida o fuera de rango
+   no cuenta), además de una sola cabecera IP verificada por operación y HMAC
+   diario derivado de secreto maestro de al menos 32 bytes.
+
+   Antes de cada distribución, la UI debe revalidar configuración y, de forma
+   autoritativa, el enlace concreto y su resolubilidad; un estado activo local no
+   basta. Timeout, cancelación, falla o respuesta inválida dentro de un plazo
+   total máximo de 3 segundos degradan explícitamente al enlace largo P2. Una
+   mutación con resultado incierto refresca el historial antes de inferir estado
+   o reintentar, y el polling refresca tanto configuración como historial/estado
+   autoritativo. El banco automatizado P3 sigue pendiente porque no fue
+   solicitado ni agregado: no bloquea por sí solo este corte con gates OFF, pero
+   sí cerrar P3 o activar cualquiera. No se acredita backend, SQL, Edge, DNS/TLS,
+   routing, despliegue o CI P3; tampoco se marca criterio P3 completo. P4/P5,
    Meta Ads, Pixel, Conversions API y publicación automática continúan fuera de
-   alcance. Plan y evidencia: `docs/PLANO-PROMOCIONAR-P1.md`; relevo vigente:
-   `docs/RELEVO-PROMOCIONAR-P1-2026-10-20.md`.
+   alcance. Plan y evidencia: `docs/PLANO-PROMOCIONAR-P2.md`; relevo vigente del
+   frente: `docs/RELEVO-PROMOCIONAR-P2-CIERRE-2026-10-20.md`; contrato siguiente:
+   `docs/PLANO-PROMOCIONAR-P3.md`.
 
 La definición final de la fase no se relaja: el carrito está cerrado en
 estructura, no end-to-end. Dinero solo con autorización expresa. Cuando se
