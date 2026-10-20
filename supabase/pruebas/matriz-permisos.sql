@@ -399,7 +399,7 @@ begin
     end;
 
     -- ---------- EXECUTE: service_role solo puertas, nunca helpers internos ----------
-    -- Los helpers co__*/pw__*, el trigger privado de slug y los dos núcleos
+    -- Los helpers co__*/pw__*, los triggers privados de slug y los dos núcleos
     -- de pedido se alcanzan como propietario desde SECURITY DEFINER o triggers;
     -- no son RPC de la Edge.
     select string_agg(
@@ -407,7 +407,8 @@ begin
                when left(p.proname, 4) in ('co__','pw__')
                  or p.proname in (
                    'crear_pedido_c3_base','crear_pedido_c4',
-                   'cm__asignar_slug_automatico'
+                   'cm__asignar_slug_automatico','cm__validar_slug_no_reasignado',
+                   'cm__registrar_slug_historial'
                  )
                  then 'SOBRA helper: '
                else 'FALTA puerta: '
@@ -432,7 +433,8 @@ begin
            left(p.proname, 4) in ('co__','pw__')
            or p.proname in (
              'crear_pedido_c3_base','crear_pedido_c4',
-             'cm__asignar_slug_automatico'
+             'cm__asignar_slug_automatico','cm__validar_slug_no_reasignado',
+             'cm__registrar_slug_historial'
            )
          ) = has_function_privilege('service_role', p.oid, 'execute')
        );

@@ -5665,3 +5665,26 @@ Punto de continuidad: `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`. Contrato 
 - El proyecto no tiene tabla de ledger: no hubo nada que reconciliar. **Nunca `supabase db push`.**
 - Operación: `comercial-c5-estado.sql` (una tabla), `comercial-c5-desactivar.sql`, `comercial-c5-activar.sql` y, si la activación falla, `comercial-c5-diagnostico-activacion.sql`.
 - Pendiente: cierre transaccional con un pago real C5 autorizado expresamente por el dueño.
+
+# Promocionar P1 · historial de slugs (PREPARADO; NO APLICADO)
+
+Diseño y criterios: `docs/PLANO-PROMOCIONAR-P1.md`. Operación exacta:
+`supabase/operacion/PROMOCIONAR-P1-DESPLIEGUE.md`.
+
+P1 añade `campana_slug_historial` y `campana_slug_alias_publico` mediante la
+migración forward `20261107000000_promocionar_p1_slug_historial.sql`. No cambia
+`catalogo_publico`, precio, stock, carrito, pagos o Wompi.
+
+Orden obligatorio, cada archivo en un Run separado:
+
+1. `promocionar-p1-preflight.sql` — **solo lectura**; esperar
+   `listo_para_aplicar=true` y contadores en cero.
+2. `20261107000000_promocionar_p1_slug_historial.sql` — **escritura**, una sola
+   vez y únicamente con confirmación del dueño.
+3. `promocionar-p1-postflight.sql` — **solo lectura**; esperar todos los
+   booleanos en `true` y `faltantes_actuales=0`.
+4. Sincronizar la tienda con `node scripts/generar-productos.mjs --sync`,
+   publicar Pages y medir los shells por HTTP.
+
+No usar `supabase db push`, no reejecutar la migración y no retirar `noindex`
+hasta publicar políticas y completar el gate P1 sin JavaScript.
