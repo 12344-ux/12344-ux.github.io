@@ -5647,3 +5647,17 @@ intención en `requiere_revision` permanece bloqueada hasta la acción explícit
 liberar cabeceras, borrar líneas ni fabricar webhooks para forzar un cierre.
 Para reactivar usar siempre el `comercial-c4-activar.sql` actual (PR #285): una
 intención ya vencida no bloquea la reactivación.
+## Comercial C5 · Mis compras y carrito libre · código fusionado, despliegue pendiente (19-oct-2026)
+
+Punto de continuidad: `docs/RELEVO-COMERCIAL-C5-2026-10-19.md` y `docs/PLANO-COMERCIAL-C5.md`.
+
+- Backend PR #287 fusionado en `c8fd03c`; migración nueva `20261106000000_comercial_c5_mis_compras.sql`.
+- Tienda PR #113 fusionado en `4a0b439`; Pages `built`.
+- Banco PostgreSQL 15/Deno run `39354906924`: `SUCCESS`.
+- **Nada de C5 se considera aplicado en Supabase:** migración y Edge C5 siguen pendientes de despliegue.
+- Producción sigue en C4 (`20261105000000`), último flag documentado ON y Wompi `prod`.
+- Antes de C5 hay que reconciliar el ledger de C4. Nunca usar `supabase db push`, reaplicar C4 ni editar a mano el historial sin el procedimiento aprobado.
+- Falta construir el paquete operativo C5: preflight, postflight, estado, activación/desactivación y sondas.
+- Orden: medir/ledger → Edge compatibles → carrito OFF confirmado → migración C5 manual una vez → postflight → carrito ON → pruebas sin dinero.
+- Slug automático sigue pendiente como migración forward separada.
+- Pago real C5 solo con autorización expresa; es necesario para cierre transaccional, no para afirmar que el código/CI están listos.

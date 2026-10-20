@@ -1,5 +1,10 @@
 # Relevo de sesión · Comercial C4 · cuenta y ciclo del carrito · 19 de octubre de 2026
 
+> **SUPERADO COMO PUNTO DE ARRANQUE:** C4 sigue describiendo el backend
+> productivo, pero Comercial C5 ya fue aprobado, construido y fusionado. Para
+> continuar usar `docs/RELEVO-COMERCIAL-C5-2026-10-19.md`. No ejecutar el prompt
+> de §8 como si C5 no existiera.
+
 Punto general vigente para continuar el frente comercial. Leer junto con
 `supabase/operacion/COMERCIAL-C4-CIERRE.md`, `CONTEXTO-MAGANDHI.md`,
 `docs/PLANO-FASE-COMERCIAL.md` y `supabase/INSTRUCCIONES.md`. Los relevos C1–C3
