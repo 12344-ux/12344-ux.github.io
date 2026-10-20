@@ -1,5 +1,7 @@
 # Plano operativo · Comercial C5 · Mis compras
 
+> **Estado repo-side:** el paquete operativo C5 y la migración forward de slug automático `20261106000100_campanas_slug_automatico.sql` ya están construidos en Git. No se han ejecutado en producción; C5 no está cerrado y no existe medición productiva nueva. El orden autoritativo y los gates están en `supabase/operacion/COMERCIAL-C5-CIERRE.md`. No hay puente C5.
+
 ## Contrato
 
 Comercial C5 mantiene `version_checkout=2` y crea las nuevas intenciones con `ciclo_carrito_version=5`. Los ciclos históricos 0 y 4 conservan firmas, grants y procesamiento anterior.
