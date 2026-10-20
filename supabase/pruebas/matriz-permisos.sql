@@ -399,11 +399,11 @@ begin
     end;
 
     -- ---------- EXECUTE: service_role solo puertas, nunca helpers internos ----------
-    -- Los helpers co__*/pw__* y los dos núcleos de pedido se alcanzan como
-    -- propietario desde SECURITY DEFINER o triggers; no son RPC de la Edge.
+    -- Los helpers co__*/pw__*/cm__* y los dos núcleos de pedido se alcanzan
+    -- como propietario desde SECURITY DEFINER o triggers; no son RPC de la Edge.
     select string_agg(
              case
-               when left(p.proname, 4) in ('co__','pw__')
+               when left(p.proname, 4) in ('co__','pw__','cm__')
                  or p.proname in ('crear_pedido_c3_base','crear_pedido_c4')
                  then 'SOBRA helper: '
                else 'FALTA puerta: '
