@@ -178,10 +178,13 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > intención, deja el carrito libre, lista compras propias e históricas, permite
 > continuar/verificar pagos, refleja estados de Ventas y solo habilita opinión
 > tras entrega. La tienda ya contiene la interfaz compatible, pero la migración
-> `20261106000000` y las Edge C5 siguen solo en Git. Producción continúa en C4,
-> último flag documentado ON y Wompi prod. Antes de desplegar: reconciliar el
-> ledger C4, preparar paquete operativo C5 y resolver/planear slug automático.
-> Relevo vigente: `docs/RELEVO-COMERCIAL-C5-2026-10-19.md`.
+> `20261106000000` y las Edge C5 siguen solo en Git. El paquete operativo C5 y
+> la migración forward `20261106000100_campanas_slug_automatico.sql` ya están
+> construidos en Git, pero **no ejecutados**. Producción continúa en C4, último
+> flag documentado ON y Wompi prod. Antes de desplegar: reconciliar el ledger C4
+> y seguir `supabase/operacion/COMERCIAL-C5-CIERRE.md`. No hay puente C5. No se
+> declara C5 cerrado ni producción medida. Relevo vigente:
+> `docs/RELEVO-COMERCIAL-C5-2026-10-19.md`.
 
 ## 1. Separación de superficies
 
@@ -492,13 +495,14 @@ cierres estructurales de sus primeros tramos:
    producción; último flag documentado ON. C4 conserva compatibilidad histórica,
    pero su bloqueo/expiración 9D ya no es el modelo objetivo. Sin pago aprobado,
    su cierre fue estructural, no transaccional.
-5. **Comercial C5 · código fusionado y banco verde; despliegue pendiente.**
+5. **Comercial C5 · código y paquete repo-side construidos; despliegue pendiente.**
    Backend #287 (`c8fd03c`) y tienda #113 (`4a0b439`) están en `main`; run
-   `39354906924` `SUCCESS`. La migración `20261106000000` y Edge C5 no están
-   aplicadas/desplegadas. Antes: ledger C4, paquete operativo y carrito OFF.
-   Después: pruebas sin dinero y, con autorización, pago real. También sigue
-   pendiente el slug automático forward. Relevo vigente:
-   `docs/RELEVO-COMERCIAL-C5-2026-10-19.md`.
+   `39354906924` `SUCCESS`. La migración `20261106000000`, Edge C5 y la nueva
+   `20261106000100` de slug automático no están aplicadas/desplegadas. El
+   paquete operativo ya existe en Git y no incluye puente C5. Antes: reconciliar
+   ledger C4, seguir el runbook y confirmar carrito OFF. Después: pruebas sin
+   dinero y, con autorización, pago real. No se declara C5 cerrado ni producción
+   medida. Relevo vigente: `docs/RELEVO-COMERCIAL-C5-2026-10-19.md`.
 6. **Promocionar P0–P5:** producto compartible, estudio, enlace, atribución y
    lectura comercial siguen pendientes. Meta Ads, Pixel, Conversions API y
    publicación automática continúan fuera de alcance.

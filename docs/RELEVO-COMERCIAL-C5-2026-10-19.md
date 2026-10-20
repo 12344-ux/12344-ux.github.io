@@ -22,11 +22,12 @@ La prueba 9D de expiración del carrito bloqueado C4 deja de ser requisito del
 modelo nuevo: C5 ya no bloquea ni libera el carrito al vencer. Sí debe probarse
 que una intención C4 histórica siga funcionando con su contrato anterior.
 
-Dos pendientes no desaparecen con C5:
+Dos límites no desaparecen con C5:
 
-1. **Slug automático en servidor.** El dato del Rubik se corrigió, pero todavía
-   puede publicarse otra campaña sin slug. Debe ser una migración forward
-   independiente; es necesario para cerrar el defecto operativo heredado de C4.
+1. **Slug automático en servidor.** El dato del Rubik se corrigió y la migración
+   forward independiente `20261106000100_campanas_slug_automatico.sql` ya está
+   construida en Git junto con su gate operativo. **No está aplicada en
+   producción**, por lo que el defecto operativo heredado de C4 sigue abierto allí.
 2. **Opinión autenticada.** C5 muestra la acción únicamente cuando el pedido está
    entregado y no existe opinión, pero el botón queda deliberadamente como
    «Próximamente» hasta definir el registro por cuenta. El camino histórico por
@@ -56,6 +57,8 @@ Dos pendientes no desaparecen con C5:
 | Implementación tienda | `bee2992` |
 | GitHub Pages tienda | `built` para `4a0b439` |
 | Migración `20261106000000` | **Solo en Git; NO aplicada** |
+| Migración slug `20261106000100` | **Construida en Git; NO aplicada** |
+| Paquete `supabase/operacion/COMERCIAL-C5-CIERRE.md` | **Construido; NO ejecutado** |
 | Edge C5 | **Solo en Git; NO desplegadas** |
 
 La tienda C5 ya está publicada por Pages, pero fue construida para degradar de
@@ -127,11 +130,12 @@ RPC C5.
    intención, pendientes/revisiones y estado del ledger.
 2. Reconciliar `20261105000000` con el historial de migraciones mediante el
    procedimiento aprobado. No insertar a ciegas en tablas internas.
-3. Construir/revisar el paquete operativo C5 que aún falta en Git:
-   `comercial-c5-preflight.sql`, `comercial-c5-postflight.sql`,
-   `comercial-c5-estado.sql`, activación/desactivación y sondas Edge.
-4. Resolver slug automático como migración forward separada, o decidir
-   explícitamente si se despliega C5 primero y el slug inmediatamente después.
+3. Revisar el paquete operativo C5 ya construido en Git. El runbook autoritativo
+   es `supabase/operacion/COMERCIAL-C5-CIERRE.md`; contiene preflight,
+   postflight, estado, activación/desactivación y sondas Edge. No se ha ejecutado.
+4. Revisar la migración forward separada de slug automático
+   `20261106000100_campanas_slug_automatico.sql`, también construida pero no
+   aplicada. Se ejecuta después de C5 en un Run separado y antes del postflight.
 
 ### Fase 1 · ventana C5
 
@@ -141,10 +145,12 @@ RPC C5.
 3. Apagar carrito y confirmar `carrito_habilitado=false`.
 4. Aplicar una sola vez `20261106000000_comercial_c5_mis_compras.sql` por el
    método manual aprobado.
-5. Ejecutar postflight completo: objetos, constraints, grants, helpers privados,
-   compatibilidad ciclos 0/4, matriz y funciones.
-6. Probar `mc_compras_listar()` con cuenta propia sin exponer PII.
-7. Reactivar carrito únicamente con todos los gates correctos.
+5. En un Run separado, aplicar una sola vez
+   `20261106000100_campanas_slug_automatico.sql`.
+6. Ejecutar postflight completo: objetos, constraints, índices, triggers, grants,
+   helpers privados, compatibilidad ciclos 0/4, slug y firmas.
+7. Probar `mc_compras_listar()` con cuenta propia sin exponer PII.
+8. Reactivar carrito únicamente con todos los gates correctos.
 
 ### Fase 2 · pruebas sin dinero
 
@@ -190,8 +196,8 @@ actualizan contexto, plano, runbook y este relevo con evidencia productiva.
 > en C4/migración `20261105000000`, último flag documentado ON y Wompi prod; la
 > migración C5 `20261106000000` no se ha aplicado y las Edge C5 no se han
 > desplegado. Antes de tocar producción: medir estado/ledger, reconciliar C4,
-> preparar preflight/postflight/estado C5 y recordar que falta slug automático.
-> Después ejecutar Edge compatibles → carrito OFF → migración manual C5 →
-> postflight → carrito ON → pruebas sin dinero. Pago real solo con mi
+> y revisar el paquete operativo y la migración de slug ya construidos en Git.
+> Después ejecutar Edge compatibles → carrito OFF → migración C5 → migración
+> slug → postflight → carrito ON → pruebas sin dinero. Pago real solo con mi
 > autorización expresa. Al final decidir cierre estructural o transaccional de
 > C4/C5 según la evidencia.

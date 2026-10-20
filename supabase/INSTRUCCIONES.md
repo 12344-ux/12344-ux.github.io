@@ -5657,7 +5657,8 @@ Punto de continuidad: `docs/RELEVO-COMERCIAL-C5-2026-10-19.md` y `docs/PLANO-COM
 - **Nada de C5 se considera aplicado en Supabase:** migración y Edge C5 siguen pendientes de despliegue.
 - Producción sigue en C4 (`20261105000000`), último flag documentado ON y Wompi `prod`.
 - Antes de C5 hay que reconciliar el ledger de C4. Nunca usar `supabase db push`, reaplicar C4 ni editar a mano el historial sin el procedimiento aprobado.
-- Falta construir el paquete operativo C5: preflight, postflight, estado, activación/desactivación y sondas.
-- Orden: medir/ledger → Edge compatibles → carrito OFF confirmado → migración C5 manual una vez → postflight → carrito ON → pruebas sin dinero.
-- Slug automático sigue pendiente como migración forward separada.
+- El paquete operativo C5 ya está construido en Git: `supabase/operacion/COMERCIAL-C5-CIERRE.md` es el runbook autoritativo; incluye preflight, postflight, estado, activación/desactivación y sondas. **No se ha ejecutado en producción.**
+- El slug automático ya está construido en Git como migración forward separada `20261106000100_campanas_slug_automatico.sql`: trigger server-side, backfill determinista, NOT NULL y ACL cerrada. **No está aplicado.**
+- Orden autoritativo: medir/reconciliar ledger → Edge compatibles y sondas → carrito OFF confirmado → migración C5 manual una vez → migración slug en Run separado → postflight → regresión OFF → carrito ON → pruebas sin dinero.
+- No hay puente C5. No declarar C5 cerrado ni producción medida por la existencia de este paquete.
 - Pago real C5 solo con autorización expresa; es necesario para cierre transaccional, no para afirmar que el código/CI están listos.
