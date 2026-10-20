@@ -130,7 +130,7 @@ jobs:
         run: |
           echo "== Resumenes"
           grep -E "RESUMEN|TODO PASA|migraciones aplicadas|comprobaciones" /tmp/banco.log || true
-          if grep -E "FALLA|fallo pg.sh" /tmp/banco.log; then
+          if grep -E "FALLA|fallo pg.sh|comercial-c5-[a-z-]+\.sql:[0-9]+: ERROR" /tmp/banco.log; then
             echo "::error::Hay comprobaciones que FALLAN (ver arriba)"
             exit 1
           fi

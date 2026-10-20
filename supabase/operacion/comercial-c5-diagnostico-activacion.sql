@@ -62,7 +62,8 @@ with chequeos(orden, chequeo, falla) as (values
        and x.relname = 'pagos_intencion_c5_propietario_idx' and not i.indisunique
        and i.indnkeyatts = 2
        and pg_get_indexdef(i.indexrelid, 1, true) = 'auth_user_id'
-       and pg_get_indexdef(i.indexrelid, 2, true) = 'creado DESC'
+       and pg_get_indexdef(i.indexrelid, 2, true) = 'creado'
+       and (i.indoption[1] & 1) = 1
        and pg_get_expr(i.indpred, i.indrelid) =
          '((version_checkout = 2) AND (ciclo_carrito_version = 5))')),
   (210, 'índice pagos_intencion_c5_expiracion_idx ausente o distinto',
