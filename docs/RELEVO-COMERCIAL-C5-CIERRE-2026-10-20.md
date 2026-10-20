@@ -66,8 +66,8 @@ anteriores quedan como memoria histórica.
 | #290 | El preflight consultaba un ledger que no existe | Ninguno; solo lectura |
 | #291 | La migración slug creaba el helper en `pg_catalog` | Ninguno; revirtió completa |
 | #292 | `oid` ambiguo en la auditoría del postflight | Ninguno; solo lectura |
-| PR de cierre | El gate comparaba el índice DESC con `creado DESC`, texto que PostgreSQL nunca devuelve por columna | Ninguno; la activación se detuvo sola |
-| PR de cierre | El banco no detectaba errores `psql` de los scripts operativos | Ahora el veredicto los detecta y CI ejecuta diagnóstico → postflight → estado → activar → desactivar sobre PostgreSQL 15 con resultado positivo verificado |
+| #293 | El gate comparaba el índice DESC con `creado DESC`, texto que PostgreSQL nunca devuelve por columna | Ninguno; la activación se detuvo sola |
+| #293 | El banco no detectaba errores `psql` de los scripts operativos | Ahora el veredicto los detecta y CI ejecuta diagnóstico → postflight → estado → activar → desactivar sobre PostgreSQL 15 con resultado positivo verificado |
 
 Lecciones vigentes:
 

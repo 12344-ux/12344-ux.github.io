@@ -180,8 +180,8 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > lo confirmó el dueño: al crear la intención el carrito queda libre, la compra
 > aparece en Mis compras, «Continuar pago» no duplica y la intención sin
 > transacción vence. **El carrito quedó ENCENDIDO** a propósito y Wompi en
-> `prod`. Se corrigieron cuatro defectos de los scripts (PR #290–#292 y el PR de
-> cierre) sin efecto en producción. **Límite:** sin pago real por carrito no hay
+> `prod`. Se corrigieron cuatro defectos de los scripts (PR #290–#293) sin efecto
+> en producción. **Límite:** sin pago real por carrito no hay
 > cierre transaccional de C3/C4/C5. Relevo vigente:
 > `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`.
 

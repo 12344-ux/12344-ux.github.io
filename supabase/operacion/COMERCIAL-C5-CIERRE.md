@@ -1,6 +1,6 @@
 # Comercial C5 · cierre operativo autoritativo
 
-> **Ejecución · 20-oct-2026: fases A–E ejecutadas; C5 cerrado estructuralmente.** El carrito quedó **ENCENDIDO** por decisión del dueño y Wompi sigue en `prod`. Diferencias con lo previsto: el proyecto **no tiene** `supabase_migrations.schema_migrations`, así que el paso 2 no aplica; cuatro defectos de scripts se corrigieron antes de continuar (PR #290, #291, #292 y el PR de cierre), sin efecto en producción. Pendiente: fase F (dinero, solo autorizada). Evidencia en `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`. No volver a ejecutar las migraciones.
+> **Ejecución · 20-oct-2026: fases A–E ejecutadas; C5 cerrado estructuralmente.** El carrito quedó **ENCENDIDO** por decisión del dueño y Wompi sigue en `prod`. Diferencias con lo previsto: el proyecto **no tiene** `supabase_migrations.schema_migrations`, así que el paso 2 no aplica; cuatro defectos de scripts se corrigieron antes de continuar (PR #290, #291, #292 y #293), sin efecto en producción. Pendiente: fase F (dinero, solo autorizada). Evidencia en `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`. No volver a ejecutar las migraciones.
 >
 > El SQL Editor muestra **solo el último resultado** de cada Run. Para operar usar `comercial-c5-estado.sql` (una sola tabla) y, si una activación falla, `comercial-c5-diagnostico-activacion.sql` (solo lectura, una sola tabla con la causa exacta).
 

@@ -5651,7 +5651,7 @@ intención ya vencida no bloquea la reactivación.
 
 Punto de continuidad: `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`. Contrato en `docs/PLANO-COMERCIAL-C5.md`; runbook ejecutado en `supabase/operacion/COMERCIAL-C5-CIERRE.md`.
 
-- Código: backend PR #287 (`c8fd03c`) y tienda PR #113 (`4a0b439`); paquete operativo y correcciones en PR #289–#292 y el PR de cierre.
+- Código: backend PR #287 (`c8fd03c`) y tienda PR #113 (`4a0b439`); paquete operativo y correcciones en PR #289–#293.
 - **Aplicado una sola vez por SQL Editor el 20-oct-2026:** `20261106000000_comercial_c5_mis_compras.sql` y, en otro Run, `20261106000100_campanas_slug_automatico.sql`. No volver a ejecutarlas.
 - Edge `crear-intencion-pago` y `estado-pago` desplegadas en versión C5; sondas 1–7 correctas.
 - Postflight e invariantes correctos; activación con `activado_confirmado=true`. **El carrito queda ENCENDIDO** por decisión del dueño; Wompi `prod`.
