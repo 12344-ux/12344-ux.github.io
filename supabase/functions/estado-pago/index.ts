@@ -1,4 +1,4 @@
-// MAGANDHI · Edge Function · estado-pago (Pagos web · D0 + Comercial C4)
+// MAGANDHI · Edge Function · estado-pago (Pagos web · D0 + Comercial C5)
 // ----------------------------------------------------------------------------
 // Recibe { referencia }. v0/v1 conservan autorización por posesión y respuesta
 // histórica. Para v2 valida, cuando exista, el JWT de usuario y la RPC exige que
@@ -63,16 +63,36 @@ type FilaEstado = {
   checkout?: unknown;
 };
 
-type CheckoutPublico = {
-  tipo: "carrito";
-  id: string;
-  version: number;
-  recargar: boolean;
-};
+type CheckoutPublico =
+  | {
+    tipo: "carrito";
+    id: string;
+    version: number;
+    recargar: boolean;
+  }
+  | {
+    tipo: "compra";
+    referencia: string;
+    recargar: boolean;
+  };
 
 function checkoutSeguro(valor: unknown): CheckoutPublico | null {
   if (!valor || typeof valor !== "object" || Array.isArray(valor)) return null;
   const bruto = valor as Record<string, unknown>;
+
+  if (bruto.tipo === "compra") {
+    if (
+      typeof bruto.referencia !== "string" ||
+      !FORMATO_REFERENCIA.test(bruto.referencia) ||
+      typeof bruto.recargar !== "boolean"
+    ) return null;
+    return {
+      tipo: "compra",
+      referencia: bruto.referencia,
+      recargar: bruto.recargar,
+    };
+  }
+
   if (
     bruto.tipo !== "carrito" || typeof bruto.id !== "string" ||
     !FORMATO_UUID.test(bruto.id) || typeof bruto.recargar !== "boolean"

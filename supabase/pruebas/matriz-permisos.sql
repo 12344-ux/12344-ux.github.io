@@ -206,6 +206,13 @@ begin
       v_lista_blanca := v_lista_blanca || array['pw_resolver_revision_c4'];
     end if;
 
+    -- Comercial C5 expone una sola puerta de cuenta pública autenticada. Deriva
+    -- auth.uid()/customer_id dentro de SECURITY DEFINER y devuelve únicamente
+    -- la proyección saneada de Mis compras; las tablas base siguen cerradas.
+    if to_regprocedure('public.mc_compras_listar()') is not null then
+      v_lista_blanca := v_lista_blanca || array['mc_compras_listar'];
+    end if;
+
     -- F3 solo existe desde 202610200. Sus constructores internos siguen fuera
     -- de la lista; estas dos son las únicas puertas de panel.
     if to_regprocedure('public.fz_asientos_automaticos_pendientes()') is not null then
