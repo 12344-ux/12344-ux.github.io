@@ -306,9 +306,22 @@ Rechazar o retirar el consentimiento:
 - detiene eventos de navegación;
 - no borra pedidos ni su atribución transaccional necesaria.
 
-Antes de activar P3/P4, las políticas públicas deberán explicar el estado de
-visita, el conteo agregado, la atribución de pedidos, las duraciones y el modo de
-ejercer derechos. P0 no publica esas políticas ni cambia `borrador-0`.
+**Decisión de producto y técnica del dueño · 20-oct-2026.** La apertura del
+enlace público P3 y su conteo agregado no dependen de publicar políticas ni de
+pedir consentimiento. La redirección es inmediata, no usa cookies ni crea un
+perfil individual, y no presenta banner, popup, modal, aviso intermedio ni
+solicitud de consentimiento por el solo hecho de abrir el enlace. P3 tampoco
+implementa el estado de visita de 30 minutos ni la FK transaccional: esas
+capacidades comienzan en P4.
+
+La explicación del conteo aproximado, del procesamiento temporal antiabuso y de
+la retención P3 se incorporará después a la política general. Esa tarea
+informativa no bloquea el lanzamiento ni la activación de P3. La decisión no
+modifica los gates propios de P4 ni los de EM7: P4 conserva sus requisitos de
+activación definidos en §12, y EM7 conserva política y consentimiento para
+`mg_vid`, sesiones, páginas, dispositivo y eventos. P0 no publica esas políticas
+ni cambia `borrador-0`; esta separación documenta una decisión de producto y
+técnica, no una conclusión de asesoría jurídica.
 
 ---
 
@@ -401,9 +414,11 @@ cuando corresponda; no inventa un borrado de compras, contabilidad o evidencia
 que deba conservarse. P0 no implementa el botón de eliminar cuenta ni cambia la
 bitácora de consentimiento de Email Marketing.
 
-Los plazos públicos y sus excepciones deberán ser revisados antes de publicar
-las políticas. Hasta entonces la analítica y captura pública mantienen sus
-gates actuales.
+Los plazos y sus excepciones se explicarán en la política general. Para P3 es
+una tarea informativa posterior y no bloqueante: ni el redirect ni el conteo
+agregado dependen de política o consentimiento. Los gates que permanecen ligados
+a políticas o consentimiento se aplican solo a sus superficies propias —entre
+ellas P1, EM6 y EM7—; P4 conserva además sus condiciones de activación separadas.
 
 ---
 
@@ -438,8 +453,12 @@ gates actuales.
 - el esquema respete taxonomía, inmutabilidad y retención;
 - el redirector pruebe lista blanca y ausencia de open redirect;
 - existan filtros y limpieza de 48 horas;
-- las políticas públicas hayan sido revisadas y publicadas;
+- la apertura pública pruebe redirección inmediata, cero cookies, cero perfil
+  individual y cero banner, popup, modal, aviso intermedio o consentimiento;
 - se midan método, CORS, caché y comportamiento de códigos desactivados.
+
+Publicar la explicación en la política general no forma parte de estos gates P3
+y no condiciona su lanzamiento o activación.
 
 ### P4 no puede activarse hasta que
 

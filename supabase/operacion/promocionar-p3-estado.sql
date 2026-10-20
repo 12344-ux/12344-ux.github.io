@@ -166,7 +166,7 @@ with cfg as (
          case when count(*) > 0 then 'FALLA · contradicción' else '' end
     from public.promocionar_p3_config
    where ((activacion_habilitada or redirect_habilitado or conteo_habilitado)
-          and (not politica_publicada or not routing_verificado or politica_version is null))
+          and not routing_verificado)
       or (activacion_habilitada and not redirect_habilitado)
       or (conteo_habilitado and not redirect_habilitado)
       or actualizado_razon is null or btrim(actualizado_razon) = ''

@@ -80,6 +80,11 @@ Reglas:
 7. Las campañas UTM existentes de Email Marketing siguen funcionando. La evolución es compatible y multicanal.
 8. El kit inicial tiene plantillas cerradas y de marca; no intenta reemplazar Canva ni inventa promesas comerciales.
 9. Los enlaces usados no se borran ni reasignan: se desactivan y conservan su historia.
+10. P3 conserva íntegros enlaces, clics aproximados, métricas, historial,
+    filtros, antiabuso y retención. El enlace activo redirige inmediatamente,
+    sin cookies, perfil individual, banner, popup, modal, aviso intermedio o
+    consentimiento al abrirlo; la explicación posterior en la política general
+    no es un gate P3.
 
 ### 1.4 Decisiones descartadas o aplazadas
 
@@ -353,10 +358,14 @@ de verdad: `docs/PLANO-PROMOCIONAR-P0.md`; relevo:
 - retención, desactivación, estados e inmutabilidad de enlaces definidos.
 
 **Límite:** P0 no implementó captura. Las políticas públicas siguen en
-`borrador-0`; deben incorporar y revisar este contrato antes de activar P3/P4.
-P1 y P2 avanzaron sin adelantar redirector, atribución transaccional o métricas;
-la captura pública nueva comienza solo cuando P3 se despliegue y sus gates se
-activen.
+`borrador-0`, pero la decisión de producto y técnica del dueño del 20-oct-2026
+separa sus gates: publicar la explicación informativa no es requisito para
+lanzar o activar P3, que tampoco pide consentimiento al abrir un enlace. P4
+conserva sus requisitos propios de activación y EM7 conserva sus gates de
+política y consentimiento. P1 y P2 avanzaron sin adelantar redirector,
+atribución transaccional o métricas; la captura pública nueva comienza solo
+cuando P3 se despliegue y sus gates técnicos se activen. Esta separación no es
+una conclusión de asesoría jurídica.
 
 ### P1 · Producto compartible
 
@@ -425,6 +434,13 @@ activación futura. Fuente:
 
 **Entrega prevista:** registrar enlaces propios y resolverlos con conteo diario
 aproximado, sin adelantar atribución P4 o lectura P5.
+
+**Decisión final del dueño · 20-oct-2026:** P3 conserva íntegros enlaces,
+conteo, métricas, historial, filtros, antiabuso, retención, destino `home` y
+controles internos. El enlace activo redirige inmediatamente; su apertura no usa
+cookies, no crea perfil individual y no muestra ni solicita UI de aviso o
+consentimiento. La explicación posterior en la política general no condiciona
+lanzamiento o activación P3. P4 y EM7 mantienen sus gates propios.
 
 Modelo conceptual:
 

@@ -142,7 +142,7 @@ create table promocionar_p3_config (
     (not politica_publicada or politica_version is not null)
     and (
       not (activacion_habilitada or redirect_habilitado or conteo_habilitado)
-      or (politica_publicada and routing_verificado and politica_version is not null)
+      or routing_verificado
     )
     and (not activacion_habilitada or redirect_habilitado)
     and (not conteo_habilitado or redirect_habilitado)
@@ -159,7 +159,11 @@ insert into promocionar_p3_config (
 );
 
 comment on table promocionar_p3_config is
-  'Promocionar P3 · singleton privado. Los tres gates nacen OFF y requieren política publicada, versión y routing medido.';
+  'Promocionar P3 · singleton privado. Los tres gates nacen OFF y requieren routing medido; la política es informativa y no bloquea P3.';
+comment on column promocionar_p3_config.politica_publicada is
+  'Referencia informativa para la política general; no condiciona activación, redirect ni conteo P3.';
+comment on column promocionar_p3_config.politica_version is
+  'Versión informativa opcional; P3 puede operar mientras permanece NULL.';
 comment on column promocionar_p3_config.activacion_habilitada is
   'Gate para que Marketing active borradores; solo puede encenderse con redirect habilitado.';
 comment on column promocionar_p3_config.redirect_habilitado is
@@ -643,8 +647,6 @@ begin
      where c.id = 1
        and p_enlace.estado_enlace = 'activo'
        and c.redirect_habilitado
-       and c.politica_publicada
-       and c.politica_version is not null
        and c.routing_verificado
        and (
          p_enlace.tipo_destino = 'home_v1'
@@ -716,11 +718,7 @@ begin
   end if;
   if (
        (new.activacion_habilitada or new.redirect_habilitado or new.conteo_habilitado)
-       and (
-         not new.politica_publicada
-         or not new.routing_verificado
-         or new.politica_version is null
-       )
+       and not new.routing_verificado
      )
      or (new.activacion_habilitada and not new.redirect_habilitado)
      or (new.conteo_habilitado and not new.redirect_habilitado) then
@@ -957,9 +955,7 @@ begin
          or not exists (
            select 1 from promocionar_p3_config c
             where c.id = 1 and c.activacion_habilitada
-              and c.redirect_habilitado
-              and c.politica_publicada and c.routing_verificado
-              and c.politica_version is not null
+              and c.redirect_habilitado and c.routing_verificado
          ) then
         raise exception using errcode = 'P0001', message = 'P3_ACTIVACION_SIN_GATES_O_CODIGO';
       end if;
@@ -1064,8 +1060,6 @@ begin
     'url_corta_base', c.url_corta_base,
     'cuota_hora', c.cuota_hora,
     'razon_bloqueo', case
-      when not c.politica_publicada then 'POLITICA_NO_PUBLICADA'
-      when c.politica_version is null then 'POLITICA_VERSION_AUSENTE'
       when not c.routing_verificado then 'ROUTING_NO_VERIFICADO'
       when not c.redirect_habilitado then 'REDIRECT_APAGADO'
       when not c.activacion_habilitada then 'ACTIVACION_APAGADA'
@@ -1438,8 +1432,7 @@ begin
   perform 1
     from public.promocionar_p3_config c
    where c.id = 1 and c.activacion_habilitada and c.redirect_habilitado
-     and c.politica_publicada and c.routing_verificado
-     and c.politica_version is not null
+     and c.routing_verificado
    for share;
   if not found then
     raise exception using errcode = 'P0001', message = 'P3_GATES_NO_AUTORIZAN_ACTIVAR';
@@ -1593,8 +1586,7 @@ begin
   if not exists (
     select 1 from promocionar_p3_config c
      where c.id = 1 and c.redirect_habilitado
-       and c.politica_publicada and c.routing_verificado
-       and c.politica_version is not null
+       and c.routing_verificado
   ) then
     return null;
   end if;
@@ -1667,8 +1659,7 @@ begin
   select c.cuota_hora into v_cuota
     from public.promocionar_p3_config c
    where c.id = 1 and c.conteo_habilitado and c.redirect_habilitado
-     and c.politica_publicada and c.routing_verificado
-     and c.politica_version is not null
+     and c.routing_verificado
    for share;
   if v_cuota is null then
     return jsonb_build_object('contado', false, 'motivo', 'conteo_deshabilitado');

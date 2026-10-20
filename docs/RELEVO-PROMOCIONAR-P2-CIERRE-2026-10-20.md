@@ -22,6 +22,11 @@ carrito, Wompi y su cierre monetario pendiente.
   captura de clics ni atribución.
 - **Siguiente punto: P3 · Registro y enlace corto.** Su contrato está en
   construcción; P3 no está desplegado ni tiene relevo productivo.
+- La decisión final del dueño conserva íntegros enlaces, clics aproximados,
+  métricas, historial, filtros, antiabuso y retención P3. El redirect activo es
+  inmediato y no usa cookies, perfil individual ni UI de aviso/consentimiento;
+  la explicación posterior en la política general no bloquea su lanzamiento o
+  activación.
 
 ## 2. Alcance cerrado
 
@@ -93,8 +98,10 @@ retrospectivas.
 5. **Dependencia del shell P1.** Compartir/exportar conserva la confirmación
    humana de que el shell fue publicado; P2 no automatiza el despliegue de
    fichas.
-6. **Políticas aún pendientes.** `noindex,follow`, sitemap solo home y los gates
-   públicos de captura permanecen hasta publicar políticas.
+6. **Políticas y gates separados.** `noindex,follow` y sitemap solo home
+   conservan el gate propio de P1; EM6 y EM7 conservan sus gates de política y
+   consentimiento. La política general sigue pendiente, pero ya no bloquea el
+   lanzamiento, la activación, el redirect ni el conteo agregado de P3.
 7. **P3 no existe en producción.** No hay backend, tablas, Edge redirectora,
    DNS/TLS de `go.magandhi.com`, contador ni feature gate P3 activado.
 
@@ -108,11 +115,16 @@ sin mezclar P4/P5:
   pendientes;
 - destino MAGANDHI resuelto server-side desde lista blanca;
 - respuesta `302` con `Cache-Control: no-store`;
+- redirección inmediata para todo enlace activo, sin cookies, perfil individual,
+  banner, popup, modal, aviso intermedio ni solicitud de consentimiento al
+  abrirlo; conteo, filtros y antiabuso nunca retrasan esa salida;
 - ciclo `borrador -> activo -> desactivado`;
 - clic diario aproximado por fecha de Colombia;
 - cuota temporal inicial de 600 por hora, global por hash diario y sin vínculo
   con el enlace;
 - retención y limpieza definidas por P0;
+- explicación informativa posterior en la política general, fuera de los gates
+  y criterios de activación P3; P4 y EM7 conservan sus gates propios;
 - feature gates inicialmente OFF y activación solo con evidencia productiva.
 
 P3 no congela atribución en intención/pedido —eso es P4— ni construye tableros o
@@ -126,6 +138,9 @@ Edge desplegada, DNS configurado ni feature gate activo.
 > `docs/PLANO-PROMOCIONAR-P2.md`, `docs/PLANO-PROMOCIONAR-P3.md` y
 > `docs/PLANO-PROMOCIONAR-P0.md`. P2 fue aprobado visual/funcionalmente; PR
 > #298/#299, merge `90efd87`, Pages `39471770742` y comparación productiva exacta
-> 5/5. No inventar tests P2. Siguiente tramo: P3, contrato en construcción y sin
-> despliegue. Todos sus gates nacen OFF; no afirmar backend o DNS por código en
-> Git. No adelantar P4/P5 ni tocar dinero/Wompi.
+> 5/5. No inventar tests P2. Siguiente tramo: P3, contrato en construcción y
+> sin despliegue. Todos sus gates nacen OFF; la política general no es gate de
+> lanzamiento o activación P3. Conservar enlaces, clics aproximados, métricas,
+> historial, filtros, antiabuso y retención; el redirect activo es inmediato y
+> no usa cookies, perfil individual ni UI de aviso/consentimiento. No afirmar
+> backend o DNS por código en Git. No adelantar P4/P5 ni tocar dinero/Wompi.

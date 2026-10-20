@@ -13,7 +13,7 @@
 - Editar: `promocionar_p3_editar_borrador(uuid,timestamptz,text,text,text,text)` con `(p_enlace_id,p_actualizado_en_esperado,p_tipo_destino,p_canal_promocion,p_campaign_base,p_content)`. El `actualizado_en` devuelto es el token CAS exacto; una versión obsoleta falla con `P3_BORRADOR_VERSION_CONFLICTO`.
 - Solo un borrador puede reemplazar directamente a cada enlace. El anterior debe estar desactivado y pertenecer a la misma campaña de origen; el reemplazo sí puede corregir `tipo_destino`.
 - Activar un enlace ya activo devuelve idempotentemente el mismo JSON/código. Un enlace desactivado es terminal y nunca se reactiva.
-- Todo JSON de enlace incluye el booleano obligatorio `resoluble`. Solo es `true` para un enlace activo que el redirect podría resolver ahora: gates de redirect/política/version/routing vigentes y, para `producto_v1`, campaña activa, publicada, no placeholder y con slug válido. Borradores, desactivados, productos no publicables o redirect apagado devuelven `false`; volver a ejecutar `promocionar_p3_listar` revalida este estado antes de distribuir.
+- Todo JSON de enlace incluye el booleano obligatorio `resoluble`. Solo es `true` para un enlace activo que el redirect podría resolver ahora: gates de redirect/routing vigentes y, para `producto_v1`, campaña activa, publicada, no placeholder y con slug válido. Borradores, desactivados, productos no publicables o redirect apagado devuelven `false`; volver a ejecutar `promocionar_p3_listar` revalida este estado antes de distribuir.
 - Todos los `SECURITY DEFINER` fijan exactamente `public, pg_temp` o, donde se usa pgcrypto, `public, extensions, pg_temp`; los roles API no pueden crear objetos en `public` ni `extensions`.
 
 ## Instalación estructural (una sola vez)
@@ -93,7 +93,7 @@ Antes de activar:
 4. Configurar DNS, TLS y proxy para `https://go.magandhi.com/<codigo>` y verificar que la query no selecciona destino.
 5. Medir lista blanca y ausencia de open redirect; `GET/HEAD/OPTIONS`; `302`; `Cache-Control: no-store`; CORS; código inválido/desactivado; y falla independiente del contador.
 6. Confirmar que solo cuenta un `GET` con `Sec-Fetch-Mode: navigate`, `Sec-Fetch-Dest: document`, `Accept` con `text/html`, UA humano y sin señales de preview/prefetch. La ausencia de cualquiera de las tres señales positivas no cuenta.
-7. Medir cuota, fecha Colombia, derivación diaria, logs sin IP/hash/URL/UA y publicar la política con su versión literal.
+7. Medir cuota, fecha Colombia, derivación diaria y logs sin IP/hash/URL/UA. La explicación se incorporará después a la política general y no bloquea P3. Verificar además que el enlace activo nunca muestre banner, popup, modal, aviso intermedio ni consentimiento.
 
 La presencia de archivos en Git no prueba ninguna de estas condiciones. Resolver y contar siguen separados: un fallo de conteo no cambia un destino ya resuelto. `redirect_habilitado` gobierna resolución; `conteo_habilitado`, conteo; `activacion_habilitada`, nuevas activaciones. Crear, editar y listar borradores funciona con gates OFF.
 
@@ -101,16 +101,16 @@ La presencia de archivos en Git no prueba ninguna de estas condiciones. Resolver
 
 Solo después de instalación, cron sano y evidencia Edge/routing:
 
-1. En `promocionar-p3-activar.sql`, reemplazar `REEMPLAZAR_VERSION_POLITICA` y cambiar individualmente a `true` las cinco confirmaciones.
-2. Ejecutar el archivo completo. Exige job nominal exacto apuntando a `current_database()`, último run de ese job/base exitoso dentro de dos horas, cero cuotas vencidas y cero detalle vencido.
+1. En `promocionar-p3-activar.sql`, cambiar individualmente a `true` las cuatro confirmaciones técnicas.
+2. Ejecutar el archivo completo. No exige ni modifica política: exige job nominal exacto apuntando a `current_database()`, último run de ese job/base exitoso dentro de dos horas, cero cuotas vencidas y cero detalle vencido.
 3. Exigir `activado_confirmado=true`; repetir `promocionar-p3-estado.sql` y luego activar un enlace controlado para las sondas productivas.
 
-La operación registra `auth.uid()` nullable, `current_user` y la razón `activacion_global:<version>` en la bitácora. Repetirla sobre el mismo estado/version es un no-op idempotente, pero vuelve a exigir cron sano.
+La operación registra `auth.uid()` nullable, `current_user` y la razón `activacion_global_p3` en la bitácora. Repetirla sobre el mismo estado es un no-op idempotente, pero vuelve a exigir cron sano.
 
 ## Pausar y reanudar solo el conteo
 
 - Ejecutar `promocionar-p3-pausar-conteo.sql` para poner solo `conteo_habilitado=false`. Es idempotente y debe devolver `conteo_pausado_confirmado=true`. El lock espera los conteos ya autorizados y bloquea nuevos mientras confirma; redirect y activación no cambian.
-- Ejecutar `promocionar-p3-reanudar-conteo.sql` para volver a `true`. Es idempotente, pero siempre exige redirect encendido, política/version/routing vigentes, job nominal exacto apuntando a `current_database()` y último run de ese job/base `succeeded` dentro de dos horas. También conserva el bloqueo si quedan cuotas o detalle vencidos. Debe devolver `conteo_reanudado_confirmado=true`.
+- Ejecutar `promocionar-p3-reanudar-conteo.sql` para volver a `true`. Es idempotente, pero siempre exige redirect y routing vigentes, job nominal exacto apuntando a `current_database()` y último run de ese job/base `succeeded` dentro de dos horas. También conserva el bloqueo si quedan cuotas o detalle vencidos. Debe devolver `conteo_reanudado_confirmado=true`.
 - Ambas operaciones registran razón, `auth.uid()` nullable y `current_user`; nunca borran historial.
 
 ## Desactivación y reversa

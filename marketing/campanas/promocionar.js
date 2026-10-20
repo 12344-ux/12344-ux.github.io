@@ -159,7 +159,7 @@ function mensajeErrorP3(error, accion = 'completar esta acción') {
   if (esRpcAusenteP3(error) || /P3_CONFIG_(AUSENTE|MISSING)/.test(texto)) return 'La interfaz P3 ya está lista, pero sus funciones o configuración todavía no están desplegadas. P2 sigue disponible con el destino oficial largo.';
   if (/SIN_ACCESO|PERMISSION DENIED|42501|JWT|UNAUTHORIZED|401/.test(texto)) return 'Tu sesión no tiene permiso para administrar enlaces cortos. P2 sigue disponible con el destino oficial largo.';
   if (/CUOTA|RATE|429|LIMITE|LÍMITE|COLISIONES_AGOTADAS/.test(texto)) return 'P3 alcanzó un límite temporal. Espera antes de intentarlo de nuevo; el destino oficial largo sigue disponible.';
-  if (/POLITICA|POLÍTICA|GATES_NO_AUTORIZAN/.test(texto)) return 'La política o los gates operativos todavía no autorizan activar P3. Puedes conservar el borrador y usar P2.';
+  if (/GATES_NO_AUTORIZAN/.test(texto)) return 'Los gates operativos todavía no autorizan activar P3. Puedes conservar el borrador y usar P2.';
   if (/ROUTING|RUTA|ENRUTAMIENTO/.test(texto)) return 'El enrutamiento del enlace corto aún no está verificado. Puedes conservar el borrador y usar P2.';
   if (/REDIRECT/.test(texto)) return 'El redirect P3 permanece apagado. Los enlaces cortos no se distribuyen y P2 continúa con el destino oficial largo.';
   if (/CONTEO|CONTADOR/.test(texto)) return 'El conteo de clics aproximados está pausado. Esto no apaga por sí solo el redirect de enlaces activos.';
@@ -453,7 +453,6 @@ function utmListaParaBorradorP3() {
 
 function razonBloqueoP3(razon) {
   const texto = textoAcotado(razon, 100).toUpperCase();
-  if (/POLITICA|POLÍTICA/.test(texto)) return 'Falta publicar la política requerida.';
   if (/ROUTING|RUTA|ENRUTAMIENTO/.test(texto)) return 'Falta verificar el enrutamiento del dominio corto.';
   if (/CONSTRUID/.test(texto)) return 'La infraestructura P3 todavía no está construida.';
   if (/CUOTA|LIMITE|LÍMITE/.test(texto)) return 'La cuota temporal está bloqueando nuevas activaciones.';
@@ -471,12 +470,11 @@ function resumenSistemaP3() {
     return { badge: 'No confirmado', clase: 'no-disponible', titulo: 'Configuración o historial P3 sin vigencia', detalle: 'No se usará ningún enlace corto hasta confirmar de nuevo configuración e historial. P2 sigue disponible.' };
   }
   const cfg = estado.p3.config;
-  const politica = cfg.politica_publicada ? `Política ${cfg.politica_version || 'registrada'}` : 'Política pendiente';
   const routing = cfg.routing_verificado ? 'routing verificado' : 'routing pendiente';
   const cuota = cfg.cuota_hora === null ? '' : ` · cuota ${cfg.cuota_hora}/h`;
   const activacion = cfg.activacion_habilitada ? 'activación habilitada' : 'nuevas activaciones pausadas';
   const conteo = cfg.conteo_habilitado ? 'conteo de clics aproximados habilitado' : 'conteo de clics aproximados pausado';
-  const controles = `${politica} · ${routing}${cuota} · ${activacion}`;
+  const controles = `${routing}${cuota} · ${activacion}`;
   if (!cfg.construido) return { badge: 'Pendiente', clase: 'no-disponible', titulo: 'P3 no está construido', detalle: `${razonBloqueoP3(cfg.razon_bloqueo)} P2 sigue operativo; ${conteo}.` };
   if (cfg.redirect_habilitado && !cfg.conteo_habilitado) {
     return { badge: 'Redirect activo', clase: 'activo', titulo: 'Redirect activo · conteo pausado', detalle: `Los enlaces activos siguen funcionando y pueden distribuirse; el conteo de clics aproximados está pausado. ${controles}.` };

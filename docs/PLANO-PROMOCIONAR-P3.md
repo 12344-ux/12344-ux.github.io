@@ -14,8 +14,16 @@ Sí continúa siendo requisito antes de cerrar P3 o activar cualquier gate.
 P3 registra enlaces propios, los resuelve mediante un redirect seguro y conserva
 solo un conteo diario aproximado. Este plano especializa las decisiones de
 `docs/PLANO-PROMOCIONAR-P0.md`; no relaja su taxonomía, privacidad, precedencia,
-inmutabilidad o retención. La implementación sigue en construcción: este corte
-no afirma despliegue, CI ni cierre de criterios.
+inmutabilidad o retención. Se conservan íntegros los enlaces, métricas, historial,
+filtros, antiabuso, retención y controles internos definidos para P3.
+
+Para un enlace activo, la redirección pública es inmediata y no depende del
+conteo. Abrirlo no usa cookies, no crea un perfil individual y no muestra banner,
+popup, modal, consentimiento ni aviso intermedio. La explicación informativa se
+incorporará después a la política general y no bloquea el lanzamiento ni la
+activación P3; P4 y EM7 conservan sus gates propios. Esta es una decisión de
+producto y técnica, no una conclusión de asesoría jurídica. La implementación
+sigue en construcción: este corte no afirma despliegue, CI ni cierre de criterios.
 
 ---
 
@@ -68,10 +76,13 @@ routing ya existan**.
 - El servidor construye `Location` desde una lista blanca versionada.
 - Se rechazan `url`, `next`, `redirect`, `returnTo` y cualquier parámetro que
   intente elegir destino.
-- Un enlace activo resuelto responde **HTTP `302`** y
-  **`Cache-Control: no-store`**.
+- Un enlace activo resuelto responde de inmediato **HTTP `302`** con
+  **`Cache-Control: no-store`**; no espera el conteo ni una acción del visitante.
+- Abrir el enlace público P3 no usa cookies ni crea estado o perfil individual.
+  Jamás intercala banner, popup, modal, aviso o pantalla de consentimiento.
 - Un código inexistente, mal formado o desactivado no atribuye, no cuenta y no se
-  reasigna: muestra una respuesta de marca MAGANDHI de enlace no disponible.
+  reasigna: muestra una respuesta terminal de marca MAGANDHI de enlace no
+  disponible. Esa respuesta de error no es un intermedio para enlaces activos.
 - El redirect ocurre aunque el incremento del contador falle o la cuota impida
   contarlo.
 
@@ -257,9 +268,12 @@ Orden obligatorio para una solicitud:
 3. resolver un registro activo;
 4. construir el destino tipado desde la lista blanca server-side y la campaña
    de origen;
-5. preparar el `302` válido, independiente del subsistema de conteo;
-6. solo con `conteo_habilitado=ON`, aceptar para conteo exclusivamente un `GET`
-   con las tres señales positivas: `Sec-Fetch-Mode: navigate`,
+5. responder de inmediato el `302` válido con `Location` permitido y
+   `Cache-Control: no-store`, sin cookies, perfil individual, interfaz pública o
+   solicitud de consentimiento;
+6. sin bloquear ni retrasar esa respuesta, y solo con
+   `conteo_habilitado=ON`, aceptar para conteo exclusivamente un `GET` con las
+   tres señales positivas: `Sec-Fetch-Mode: navigate`,
    `Sec-Fetch-Dest: document` y un media range exacto `text/html` en `Accept`
    con calidad efectiva válida mayor que cero (`q` ausente equivale a `1`;
    `q=0`, mal formada o fuera de `0 < q <= 1` no cuenta);
@@ -268,12 +282,14 @@ Orden obligatorio para una solicitud:
 8. derivar la llave HMAC diaria desde el secreto maestro de al menos 32 bytes,
    calcular `hash_ip_dia`, aplicar la cuota global 600/h e incrementar
    atómicamente el día Colombia cuando corresponda;
-9. responder `302` con `Location` permitido y `Cache-Control: no-store`.
+9. si cualquiera de los pasos 6–8 falla, vence o no puede completarse sin
+   bloquear, omitir ese incremento sin alterar la redirección ya resuelta.
 
-El paso 9 no depende del éxito de 6–8. Apagar o fallar el conteo no cambia
+El paso 5 no depende del éxito de 6–8. Apagar o fallar el conteo no cambia
 `redirect_habilitado`. No se registra IP cruda ni se emite un evento individual.
-Códigos inválidos/desactivados llegan a una respuesta de marca y nunca a un
-destino alternativo improvisado.
+Códigos inválidos/desactivados llegan a una respuesta terminal de marca y nunca
+a un destino alternativo improvisado; esa respuesta no es un intermedio para un
+enlace activo.
 
 Antes de activar se medirán explícitamente métodos, navegación positiva, la
 cabecera IP única y su cadena de confianza, CORS, caché, códigos
@@ -282,6 +298,11 @@ ausencia de open redirect. La existencia de una Edge Function en Git no prueba
 que esa versión esté desplegada.
 
 ## 5. Capa UI
+
+Esta capa pertenece exclusivamente al back-office autenticado y conserva todos
+sus controles internos. El redirect público de un enlace activo no atraviesa
+esta UI ni presenta al visitante banner, popup, modal, aviso intermedio o
+consentimiento.
 
 Campañas deberá incorporar P3 sin romper el estudio P2:
 
@@ -349,10 +370,14 @@ Orden mínimo de despliegue futuro:
     navegación positiva —incluidos `text/html` sin `q`, con `q>0`, `q=0` y `q`
     inválida—, cabecera IP única, HMAC diario, cuota, fecha Colombia, fallas,
     retención y degradación a P2 dentro de 3 segundos;
-12. publicar/revisar las políticas exigidas por P0;
-13. solo con banco P3 archivado, cron horario sano en la base actual y cero
-    vencidos, activar gates en una ventana aprobada, medir producción y
-    documentar el resultado.
+12. solo con banco P3 archivado, infraestructura y sondas medidas, cron horario
+    sano en la base actual y cero vencidos, activar gates en una ventana
+    aprobada, medir producción y documentar el resultado.
+
+La explicación del conteo aproximado, el procesamiento antiabuso temporal y la
+retención se incorporará después a la política general. Es una tarea informativa
+fuera del orden de activación: no es prerrequisito, gate ni autorización de P3 y
+no introduce interfaz alguna al visitante.
 
 El banco automatizado P3 **no fue solicitado ni agregado en este corte** y
 permanece pendiente. Su ausencia no bloquea por sí sola este corte documental y
@@ -381,12 +406,13 @@ Ningún gate se enciende por fusionar código. Cada transición escribe una fila
 la bitácora append-only con valor anterior/nuevo, actor/rol, razón y tiempo. No
 se reescribe, borra ni trunca esa historia.
 
-Encender `activacion_habilitada` requiere políticas publicadas, infraestructura
-medida, banco P3 ejecutado y archivado, postflight correcto, sondas verdes, cron
-horario dirigido a `current_database()` cuyo último run correcto pertenezca por
-`jobid` a ese job de esa base, cero filas vencidas pendientes y decisión
-explícita del dueño. La operación debe comprobar esas condiciones, no inferirlas
-de la configuración.
+Encender `activacion_habilitada` requiere infraestructura medida —incluidos
+DNS, TLS y routing—, banco P3 ejecutado y archivado, postflight correcto, sondas
+verdes, cron horario dirigido a `current_database()` cuyo último run correcto
+pertenezca por `jobid` a ese job de esa base, cero filas vencidas pendientes y
+decisión explícita del dueño. La operación debe comprobar esas condiciones, no
+inferirlas de la configuración. Publicar la política general o pedir
+consentimiento al visitante no son condiciones para este ni para ningún gate P3.
 
 Apagar `activacion_habilitada` no bloquea el trabajo privado ni invalida enlaces
 existentes; su resolución depende únicamente de `redirect_habilitado`. Apagar
@@ -414,7 +440,8 @@ ausencia de redirección abierta antes de cualquier activación.
 | Cabecera IP falsificada o ambigua | una sola cabecera elegida y verificada por operación; sin fallbacks |
 | Secreto diario débil o acumulado | HMAC diario derivado de secreto maestro de al menos 32 bytes |
 | Multiplicar la cuota por enlace | hash diario global sin `enlace_id` |
-| Perfil de navegación sin consentimiento | cero evento individual y cero unión con `mg_vid`/sesión/cuenta |
+| Cookies o perfil individual en P3 | el flujo público no lee ni escribe cookies, no crea identificador o evento individual y no se une con `mg_vid`/sesión/cuenta |
+| Aviso o consentimiento interrumpe el enlace | `302` inmediato sin banner, popup, modal, aviso intermedio ni acción del visitante; la UI P3 permanece interna |
 | Día incorrecto entre 19:00 y 00:00 Colombia | `America/Bogota`, no `current_date` UTC |
 | Limpieza ejecutada en otra base | job nominal dirigido a `current_database()` y último run unido por `jobid` a ese job de esa base |
 | Rollup crece por barrido global | índice de `atribucion_clics_dia` encabezado por `fecha_colombia` |
@@ -481,7 +508,9 @@ aprobación explícita del dueño:
       de inferir resultado u ofrecer reintento.
 - [ ] UI cubre borrador privado, CAS/conflicto, activación idempotente por el
       mismo `id`, campos congelados, desactivación, reemplazo y errores.
-- [ ] Políticas públicas revisadas y publicadas antes de captura activa.
+- [ ] Apertura pública de un enlace activo redirige de inmediato, sin cookies,
+      perfil individual, banner, popup, modal, aviso intermedio o consentimiento;
+      conteo, cuota o métricas nunca bloquean la salida.
 - [ ] Cron horario de retención instalado para `current_database()`; su último
       run correcto está unido por `jobid` al job nominal de esa misma base y el
       postflight informa cero filas vencidas antes de habilitar activación.
@@ -495,6 +524,11 @@ aprobación explícita del dueño:
 - [ ] P4/P5 continúan fuera del diff y no se afirma atribución o conversión.
 - [ ] Tras medir despliegue, plano de fase y contexto incorporan la evidencia
       productiva; solo entonces se crea un relevo de cierre P3.
+
+**Tarea informativa posterior y no bloqueante:** la política general incorporará
+la explicación del conteo aproximado, el procesamiento antiabuso temporal y la
+retención. No es un criterio de cierre o activación P3 y no habilita ninguna UI
+para el visitante.
 
 **Estado de este corte:** implementación y contrato en construcción; los tres
 gates permanecen OFF y ningún criterio se marca como completo. El banco

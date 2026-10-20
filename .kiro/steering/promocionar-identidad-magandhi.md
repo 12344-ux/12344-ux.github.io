@@ -47,3 +47,16 @@ inclusion: always
   otro caso, enlace largo P2.
 - La libertad editorial nunca permite URL arbitraria, PII, proveedor, costo,
   stock congelado, atribución anticipada ni publicación automática.
+
+## Funcionamiento y métricas de P3
+
+**Corrección final del dueño · 20 de octubre de 2026.**
+
+- P3 conserva íntegros los enlaces controlados, estados, historial, conteo de clics aproximados, métricas, filtros, antiabuso y retención construidos: son parte esencial para conocer el desempeño de una campaña.
+- Al abrir `go.magandhi.com/<codigo>`, la redirección a MAGANDHI es inmediata. Jamás mostrar al visitante banners, popups, modales, ventanas de consentimiento ni avisos intermedios, ni pedir consentimiento por el solo hecho de abrir el enlace.
+- P3 no usa cookies ni crea un perfil individual o de navegación. El funcionamiento del enlace y su conteo agregado no requieren una acción de autorización en la interfaz.
+- La explicación del conteo aproximado, procesamiento temporal antiabuso y retención se incorporará después a la política general; esa publicación no debe bloquear el lanzamiento ni la activación de P3.
+- P4 y EM7 mantienen sus gates propios; esta corrección no los relaja ni los traslada al redirect o al conteo P3.
+- No eliminar ni simplificar por esta decisión las métricas, el historial, la desactivación, la seguridad backend, home o los controles internos ya construidos. El único elemento descartado es cualquier aviso o consentimiento mostrado al visitante por abrir el enlace.
+- Los detalles técnicos pueden permanecer en la operación interna cuando sean necesarios, pero nunca interrumpen la navegación del cliente.
+- Esta es una decisión de producto y técnica. Se documenta sin formular conclusiones de asesoría jurídica.

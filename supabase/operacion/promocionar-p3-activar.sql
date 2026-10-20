@@ -2,8 +2,9 @@
 -- MAGANDHI · PROMOCIONAR P3 · ACTIVACIÓN GLOBAL CONTROLADA
 -- ESCRITURA DELIBERADA. NO EJECUTAR TODAVÍA.
 --
--- Antes de un Run aprobado, reemplazar la versión y cambiar a true CADA
--- confirmación. Además de la evidencia humana, este archivo exige pg_cron sano
+-- Antes de un Run aprobado, cambiar a true CADA confirmación técnica.
+-- Este archivo no exige política ni consentimiento: P3 redirige sin cookies,
+-- banner, popup, modal o aviso intermedio. Sí exige pg_cron sano
 -- en current_database(), último run de ese job/base exitoso <= 2h y cero trabajo
 -- de retención vencido.
 -- ============================================================================
@@ -16,9 +17,7 @@ select id from public.promocionar_p3_config where id = 1 for update;
 
 do $activar$
 declare
-  -- PARÁMETROS OBLIGATORIOS: editar únicamente durante la ventana aprobada.
-  v_politica_version text := 'REEMPLAZAR_VERSION_POLITICA';
-  v_confirmo_politica_publicada boolean := false;
+  -- CONFIRMACIONES OBLIGATORIAS: editar únicamente durante la ventana aprobada.
   v_confirmo_postflight_verde boolean := false;
   v_confirmo_edge_desplegada_verify_jwt_off boolean := false;
   v_confirmo_dns_tls_y_routing boolean := false;
@@ -28,12 +27,7 @@ declare
   v_ya_activo boolean := false;
   v_filas integer;
 begin
-  if v_politica_version is null
-     or btrim(v_politica_version) = ''
-     or v_politica_version = 'REEMPLAZAR_VERSION_POLITICA'
-     or length(v_politica_version) > 120
-     or not v_confirmo_politica_publicada
-     or not v_confirmo_postflight_verde
+  if not v_confirmo_postflight_verde
      or not v_confirmo_edge_desplegada_verify_jwt_off
      or not v_confirmo_dns_tls_y_routing
      or not v_confirmo_sondas_http_y_no_open_redirect then
@@ -188,8 +182,7 @@ begin
     select 1 from public.promocionar_p3_config
      where id = 1
        and activacion_habilitada and redirect_habilitado and conteo_habilitado
-       and politica_publicada and routing_verificado
-       and politica_version = btrim(v_politica_version)
+       and routing_verificado
   ) into v_ya_activo;
   if v_ya_activo then
     return;
@@ -208,9 +201,7 @@ begin
   end if;
 
   update public.promocionar_p3_config
-     set politica_publicada = true,
-         politica_version = btrim(v_politica_version),
-         routing_verificado = true,
+     set routing_verificado = true,
          activacion_habilitada = true,
          redirect_habilitado = true,
          conteo_habilitado = true,
@@ -218,7 +209,7 @@ begin
            clock_timestamp(), actualizado_en + interval '1 microsecond'
          ),
          actualizado_por = auth.uid(),
-         actualizado_razon = 'activacion_global:' || btrim(v_politica_version),
+         actualizado_razon = 'activacion_global_p3',
          actualizado_rol = current_user
    where id = 1
      and activacion_habilitada is false
@@ -239,7 +230,6 @@ select id, activacion_habilitada, redirect_habilitado, conteo_habilitado,
        (select count(*)::bigint from public.promocionar_p3_config_bitacora)
          as eventos_config,
        activacion_habilitada and redirect_habilitado and conteo_habilitado
-         and politica_publicada and routing_verificado
-         and politica_version is not null as activado_confirmado
+         and routing_verificado as activado_confirmado
   from public.promocionar_p3_config
  where id = 1;

@@ -65,6 +65,8 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 >
 > **Hito · Promocionar P2 · 20-oct-2026 · desplegado, cerrado y aprobado por el dueño.** PR #298 y #299 quedaron fusionados; el cierre publicado corresponde a `90efd87ae1be07493fdf38aad5e140be558d38ac` y Pages run `39471770742` terminó `completed/success`. Los cinco assets productivos del estudio respondieron HTTP 200 y coincidieron exactamente, byte por byte, con ese merge. La aprobación fue **visual/funcional**: no se ejecutó ni se atribuye una suite automatizada P2, auditoría formal de accesibilidad, protocolo separado de teclado/foco o prueba independiente de escaneo QR. P2 fue solo frontend, sin SQL, Edge, backend o DNS. **P3 es el siguiente tramo: implementación y contrato en construcción, con `activacion_habilitada`, `redirect_habilitado` y `conteo_habilitado` OFF.** El primer gate apagado permite preparar borradores privados sin código y solo impide publicarlos. El banco automatizado P3 sigue pendiente porque no fue solicitado/agregado: no bloquea por sí solo este corte con los tres gates OFF, pero será obligatorio antes de cerrar P3 o activar cualquiera. No se acredita despliegue o CI P3.
 >
+> **Decisión final de producto y técnica para P3 · 20-oct-2026.** Se conservan íntegros enlaces, clics aproximados, métricas, historial, filtros, antiabuso, retención, home y controles internos. Un enlace activo redirige inmediatamente: la apertura no usa cookies, no crea un perfil individual y jamás muestra banner, popup, modal, aviso intermedio ni solicitud de consentimiento. La explicación se añadirá después a la política general sin bloquear lanzamiento o activación P3; P4 y EM7 mantienen sus gates propios. Esto no acredita despliegue ni cierre P3 y no se presenta como asesoría jurídica.
+>
 > **Cuentas de cliente C1 · DESPLEGADO · 15-oct-2026 (PR #268).** El dueño
 > decidió conservar compra como invitado y añadir inicio de sesión opcional en
 > `magandhi.com`, con beneficios futuros sin frenar la compra. C1 mantiene
@@ -280,11 +282,12 @@ Marketing → Email marketing. Diseño completo en `docs/PLANO-EMAIL-MARKETING.m
 - EM5 (en producción, webhook de Resend conectado y verificado): webhook firmado `em-webhook` (Svix, Verify JWT apagado, escribe solo como service_role), supresión automática con historial, resultados por campaña (embudo, enlaces, rebotes/spam/bajas, ventas por UTM legacy/no verificada y aproximadas con último clic + 7 días), salud de la lista contra los límites de Resend, entrega de los correos del pedido. La implementación histórica devuelve el tipo interno `exacta` para UTM; P0 supera esa interpretación y P4/P5 deberán mostrarla como `legacy_email_utm`. Eventos crudos 13 meses.
 - EM5.1: la respuesta a email alimenta el análisis. 5 variables en el clúster (campañas recibidas, % con clic, clics 90 días, días desde el último clic, compras atribuidas) y 9 condiciones en Segmentos (hizo/no hizo clic en una campaña, campañas seguidas sin clic…). Sin aperturas: son aproximadas.
 - **Corrección del 10-oct-2026 · los días se cuentan en Colombia.** La base corre en UTC, así que `current_date` es la fecha UTC: entre las 7 p. m. y la medianoche de Colombia, `dias_desde_ultimo_clic`, `dias_desde_ultima_compra` y `dias_en_lista` salían **con un día de más**, y eso alimenta Segmentos y el clúster. A mediodía las dos formas coinciden, y por eso pasó inadvertido. Migración forward `20261022000000`, que sólo redefine `em__perfil_base`, `em__perfil_email` y `em__segmento_where` cambiando 3 líneas. El guardián contra la clase entera de bug vive en `supabase/pruebas/local/fechas-colombia.sql` y corre en cada rama. Ver `supabase/INSTRUCCIONES.md`.
-- EM6 (en producción, **apagado a propósito**): formulario de novedades en magandhi.com con doble confirmación (`em-suscripcion`), apagado por defecto y encendible solo por admin con la política registrada. Política en versión `borrador-*` para probar: esos contactos nunca reciben campañas reales. Captura pública (EM6) y analítica (EM7) esperan la política.
+- EM6 (en producción, **apagado a propósito**): formulario de novedades en magandhi.com con doble confirmación (`em-suscripcion`), apagado por defecto y encendible solo por admin con la política registrada. Política en versión `borrador-*` para probar: esos contactos nunca reciben campañas reales. Captura pública (EM6) y analítica (EM7) esperan la política como gates propios;
+  esa espera no aplica al redirect ni al conteo agregado de P3.
 
 ### Métricas — M1 y M2 en producción (analítica apagada a propósito)
 
-Sexta área del panel (`metricas/`), módulo propio `metricas`. Recolecta, organiza y muestra (no interpreta). M1 (en producción): pestañas En vivo (refresco 30 s), Ventas y Tienda con gráficas propias en SVG. Capa de datos compartida `mt_*` (agregados sin PII) que también consumen Marketing y Ventas. Analítica propia de la tienda (EM7) con aviso de consentimiento, sin Meta/Google, sin IP ni URLs de procedencia, 13 meses. M2 (en producción): pestañas **Email** (crecimiento de la lista, campañas lado a lado, salud frente a Resend), **Opiniones** (promedio real con su total, distribución, por mes, cobertura, productos) e **Inventario** (existencias, rotación, días de inventario estimado, alertas). Diseño en `docs/PLANO-METRICAS.md`. Banco de pruebas local reutilizable: `supabase/pruebas/local/herramientas/LEEME.md`.
+Sexta área del panel (`metricas/`), módulo propio `metricas`. Recolecta, organiza y muestra (no interpreta). M1 (en producción): pestañas En vivo (refresco 30 s), Ventas y Tienda con gráficas propias en SVG. Capa de datos compartida `mt_*` (agregados sin PII) que también consumen Marketing y Ventas. Analítica propia de la tienda (EM7) con aviso de consentimiento, sin Meta/Google, sin IP ni URLs de procedencia, 13 meses. Ese aviso y consentimiento son exclusivos de EM7 y nunca se intercalan en la apertura de un enlace P3. M2 (en producción): pestañas **Email** (crecimiento de la lista, campañas lado a lado, salud frente a Resend), **Opiniones** (promedio real con su total, distribución, por mes, cobertura, productos) e **Inventario** (existencias, rotación, días de inventario estimado, alertas). Diseño en `docs/PLANO-METRICAS.md`. Banco de pruebas local reutilizable: `supabase/pruebas/local/herramientas/LEEME.md`.
 
 ### Gestión de opiniones — operativo
 
@@ -447,8 +450,9 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
   OFF en este corte: el primero no bloquea CRUD/listado privado de borradores
   sin código, solo su publicación. El banco automatizado P3 no fue solicitado
   ni agregado y sigue pendiente: no bloquea por sí solo este corte OFF, pero sí
-  el cierre de P3 o la activación de cualquier gate. El plano no acredita
-  despliegue ni CI P3.
+  el cierre de P3 o la activación de cualquier gate. La explicación informativa
+  se añadirá después a la política general y no forma parte de esos gates. El
+  plano no acredita despliegue ni CI P3.
 - `docs/PLANO-COMERCIAL-C5.md`: contrato técnico de carrito libre, Mis compras,
   reapertura, seguimiento y opinión tras entrega.
 - `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`: **relevo general vigente y
@@ -544,6 +548,15 @@ cierres estructurales de sus primeros tramos:
    permanecen OFF. El primero permite crear, editar, eliminar y listar
    borradores privados sin código y solo impide hacerlos públicos; pausar
    conteo no apaga redirect.
+
+   La decisión final de producto y técnica conserva íntegros enlaces, clics
+   aproximados, métricas, historial, filtros, antiabuso, retención, `home` y
+   controles internos P3. Un enlace activo redirige inmediatamente: su apertura
+   no usa cookies, no crea perfil individual y no muestra banner, popup, modal,
+   aviso intermedio ni solicitud de consentimiento. La explicación se incorpora
+   después a la política general y no bloquea lanzamiento o activación P3. P4 y
+   EM7 conservan sus gates propios; no se formula una conclusión de asesoría
+   jurídica.
 
    El contrato P3 exige bitácora SQL append-only de gates; cron horario nominal
    dirigido a `current_database()`, con su último run unido por `jobid` al job de
