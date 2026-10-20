@@ -237,9 +237,9 @@ with e(etiqueta,firma,definer,anon_e,auth_e,service_e) as (values
  ('editar campaña viva','public.cm_editar_campana(uuid,text,text,text,text,text,bigint,text,text,text,jsonb,jsonb,boolean,boolean,integer,boolean,integer,text[],uuid,text,integer,boolean,integer)',true,false,true,true)
 ), r as(select e.*,to_regprocedure(firma) oid from e), a as(
  select r.*,p.prosecdef,p.proconfig,
-  case when oid is null then null else has_function_privilege('anon',oid,'execute') end anon_r,
-  case when oid is null then null else has_function_privilege('authenticated',oid,'execute') end auth_r,
-  case when oid is null then null else has_function_privilege('service_role',oid,'execute') end service_r
+  case when r.oid is null then null else has_function_privilege('anon',r.oid,'execute') end anon_r,
+  case when r.oid is null then null else has_function_privilege('authenticated',r.oid,'execute') end auth_r,
+  case when r.oid is null then null else has_function_privilege('service_role',r.oid,'execute') end service_r
  from r left join pg_proc p on p.oid=r.oid)
 select etiqueta,firma,oid is not null as existe,prosecdef=definer as security_definer_ok,
  coalesce('search_path=public'=any(proconfig),false) as search_path_publico_ok,
