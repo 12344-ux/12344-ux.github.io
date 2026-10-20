@@ -388,10 +388,42 @@ function versionCarritoValida(valor: unknown): string | null {
   }
 }
 
+function compradorCarritoValido(valor: unknown): Obj | null {
+  if (!esObjeto(valor)) return null;
+  const limpiar = (campo: unknown) =>
+    typeof campo === "string" ? campo.trim() : "";
+  const nombre = limpiar(valor.nombre);
+  const correo = limpiar(valor.correo).toLowerCase();
+  const telefono = limpiar(valor.telefono);
+  const direccion = limpiar(valor.direccion);
+  const ciudad = limpiar(valor.ciudad);
+  const departamento = limpiar(valor.departamento);
+  const pais = limpiar(valor.pais).toUpperCase();
+  if (
+    nombre.length < 2 || nombre.length > 120 ||
+    correo.length > 160 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo) ||
+    !/^\d{10}$/.test(telefono) ||
+    direccion.length < 3 || direccion.length > 220 ||
+    ciudad.length < 2 || ciudad.length > 80 ||
+    departamento.length < 1 || departamento.length > 80 || pais !== "CO"
+  ) return null;
+  return { nombre, correo, telefono, direccion, ciudad, departamento, pais };
+}
+
 function errorCarrito(
   mensaje: string,
   cors: Record<string, string>,
 ): Response | null {
+  if (/PW_INTENCION_NO_REABRIBLE/.test(mensaje)) {
+    return json(
+      {
+        error: "Esta compra ya existe. Revisa su estado en Mis compras.",
+        codigo: "INTENCION_NO_REABRIBLE",
+      },
+      409,
+      cors,
+    );
+  }
   if (/PW_CARRITO_YA_PROCESADO/.test(mensaje)) {
     return json(
       {
@@ -444,7 +476,7 @@ function errorCarrito(
   }
 
   if (
-    /PW_CARRITO_|PW_CAMPANA_NO_COMPRABLE|PW_MAX_LINEAS|PW_CANTIDAD_INVALIDA|CO_CARRITO_|CO_CAMPANA_|CO_MAX_LINEAS|CO_CUENTA_/
+    /PW_CARRITO_|PW_CUENTA_|PW_CAMPANA_NO_COMPRABLE|PW_MAX_LINEAS|PW_CANTIDAD_INVALIDA|CO_CARRITO_|CO_CAMPANA_|CO_MAX_LINEAS|CO_CUENTA_/
       .test(
         mensaje,
       )
@@ -461,6 +493,120 @@ function errorCarrito(
   return null;
 }
 
+async function procesarIntencion(
+  req: Request,
+  body: Record<string, unknown>,
+  cors: Record<string, string>,
+): Promise<Response> {
+  const intencion = esObjeto(body.intencion) ? body.intencion : null;
+  const referencia = typeof intencion?.referencia === "string"
+    ? intencion.referencia.trim()
+    : "";
+  if (
+    !intencion || Object.keys(body).some((k) => k !== "intencion") ||
+    Object.keys(intencion).some((k) => k !== "referencia") ||
+    !/^[A-Za-z0-9_-]{6,64}$/.test(referencia)
+  ) {
+    return json(
+      { error: "La intención solicitada no es válida.", codigo: "INTENCION_INVALIDA" },
+      400,
+      cors,
+    );
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const publicKey = Deno.env.get("SUPABASE_ANON_KEY") ??
+    Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? req.headers.get("apikey");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !publicKey || !serviceRoleKey) {
+    return json({ error: "Configuración del servidor incompleta.", codigo: "ERROR_SERVIDOR" }, 500, cors);
+  }
+
+  const jwt = (req.headers.get("authorization") ?? "")
+    .replace(/^Bearer\s+/i, "")
+    .trim();
+  if (!jwt) {
+    return json({ error: "Inicia sesión para continuar tu pago.", codigo: "SESION_REQUERIDA" }, 401, cors);
+  }
+  const supabaseUsuario = createClient(supabaseUrl, publicKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${jwt}` } },
+  });
+  const { data: sesion, error: errorSesion } = await supabaseUsuario.auth.getUser(jwt);
+  if (errorSesion || !sesion?.user) {
+    return json({ error: "Tu sesión no es válida.", codigo: "SESION_REQUERIDA" }, 401, cors);
+  }
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${serviceRoleKey}` } },
+  });
+  const { data: reaperturaBruta, error: errorReapertura } = await supabase.rpc(
+    "mc_reabrir_intencion_c5",
+    { p_referencia: referencia, p_auth_user_id: sesion.user.id },
+  );
+  if (errorReapertura) {
+    const noReabrible = /MC_INTENCION_NO_(?:DISPONIBLE|REABRIBLE)/.test(errorReapertura.message ?? "");
+    return json(
+      {
+        error: noReabrible
+          ? "Esta compra ya no se puede continuar; revisa su estado en Mis compras."
+          : "No se pudo continuar el pago.",
+        codigo: noReabrible ? "INTENCION_NO_REABRIBLE" : "ERROR_SERVIDOR",
+      },
+      noReabrible ? 409 : 500,
+      cors,
+    );
+  }
+  const reapertura = esObjeto(reaperturaBruta) ? reaperturaBruta : null;
+
+  const { data: configFilas, error: errorConfig } = await supabase.rpc(
+    "pagos_config_para_intencion",
+  );
+  const config = Array.isArray(configFilas) ? configFilas[0] : configFilas;
+  const entorno = String(reapertura?.entorno ?? "");
+  const monto = String(reapertura?.monto_centavos ?? "");
+  const moneda = String(reapertura?.moneda ?? "");
+  const expiraEn = String(reapertura?.expira_en ?? "");
+  const expiraMs = Date.parse(expiraEn);
+  if (
+    errorConfig || !config || String(config.entorno ?? "") !== entorno ||
+    !["sandbox", "prod"].includes(entorno) || !/^\d{1,18}$/.test(monto) ||
+    monto === "0" || moneda !== "COP" ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(expiraEn) ||
+    !Number.isFinite(expiraMs) || expiraMs <= Date.now()
+  ) {
+    return json({ error: "No se pudo validar la intención de pago.", codigo: "ERROR_SERVIDOR" }, 500, cors);
+  }
+  const llavePublica = String(config.llave_publica ?? "");
+  const secreto = Deno.env.get(
+    entorno === "prod" ? "WOMPI_INTEGRITY_PROD" : "WOMPI_INTEGRITY_SANDBOX",
+  );
+  if (!llavePublica || !secreto) {
+    return json({ error: "La configuración de pagos no está disponible.", codigo: "CONFIGURACION_PAGO" }, 500, cors);
+  }
+
+  const firma = await calcularFirmaIntegridad(referencia, monto, moneda, secreto, expiraEn);
+  return json(
+    {
+      referencia,
+      monto_en_centavos: monto,
+      moneda,
+      firma_integridad: firma,
+      expira_en: expiraEn,
+      llave_publica: llavePublica,
+      url_redireccion: `https://magandhi.com/carrito/?ref=${encodeURIComponent(referencia)}&cuenta=compras`,
+      nombre_producto: typeof reapertura?.nombre_producto === "string"
+        ? reapertura.nombre_producto
+        : "Compra",
+      comprador: esObjeto(reapertura?.comprador) ? reapertura.comprador : {},
+      checkout: { tipo: "compra", referencia, recargar: true },
+    },
+    200,
+    cors,
+  );
+}
+
 async function procesarCarrito(
   req: Request,
   body: Record<string, unknown>,
@@ -470,12 +616,8 @@ async function procesarCarrito(
   const idCarrito = typeof carrito?.id === "string" ? carrito.id.trim() : "";
   const versionEsperada = versionCarritoValida(carrito?.version);
   const clavesCarrito = carrito ? Object.keys(carrito) : [];
-  const compradorEntrada =
-    body.comprador === undefined || body.comprador === null
-      ? null
-      : esObjeto(body.comprador)
-      ? body.comprador
-      : undefined;
+  const compradorCrudo = esObjeto(body.comprador) ? body.comprador : null;
+  const compradorEntrada = compradorCarritoValido(compradorCrudo);
   const camposProhibidos = [
     "items",
     "precio",
@@ -498,18 +640,27 @@ async function procesarCarrito(
 
   if (
     !carrito || !pareceUuid(idCarrito) || versionEsperada === null ||
-    compradorEntrada === undefined ||
     clavesCarrito.some((k) => !["id", "version"].includes(k)) ||
     camposProhibidos.some((k) =>
       Object.prototype.hasOwnProperty.call(body, k) ||
-      (compradorEntrada !== null &&
-        Object.prototype.hasOwnProperty.call(compradorEntrada, k))
+      (compradorCrudo !== null &&
+        Object.prototype.hasOwnProperty.call(compradorCrudo, k))
     )
   ) {
     return json(
       {
         error: "La solicitud de carrito es inválida.",
         codigo: "CARRITO_INVALIDO",
+      },
+      400,
+      cors,
+    );
+  }
+  if (!compradorEntrada) {
+    return json(
+      {
+        error: "Completa los datos del comprador con información válida.",
+        codigo: "COMPRADOR_INVALIDO",
       },
       400,
       cors,
@@ -806,16 +957,7 @@ async function procesarCarrito(
 
   const texto = (v: unknown, max: number) =>
     typeof v === "string" && v.trim() !== "" ? v.trim().slice(0, max) : null;
-  const c = esObjeto(body.comprador) ? body.comprador : {};
-  const comprador = {
-    nombre: texto(c.nombre, 120),
-    correo: texto(c.correo, 160),
-    telefono: texto(c.telefono, 40),
-    direccion: texto(c.direccion, 200),
-    ciudad: texto(c.ciudad, 80),
-    departamento: texto(c.departamento, 80),
-    pais: texto(c.pais, 60),
-  };
+  const comprador = compradorEntrada;
   const utmBruto = texto(body.utm_campaign, 60);
   const utm = utmBruto && /^[a-z0-9-]{1,60}$/.test(utmBruto) ? utmBruto : null;
   const vidBruto = texto(body.mg_vid, 40);
@@ -877,7 +1019,25 @@ async function procesarCarrito(
   const montoFirmado = String(intencion?.monto_centavos ?? "");
   const monedaFirmada = String(intencion?.moneda ?? "");
   const carritoIdFirmado = String(intencion?.carrito_id ?? "");
-  const carritoVersionFirmada = Number(intencion?.carrito_version);
+  const carritoVersionFuente = versionCarritoValida(
+    intencion?.carrito_version_fuente,
+  );
+  const carritoVersionSucesora = versionCarritoValida(
+    intencion?.carrito_version_sucesora,
+  );
+  const carritoVersionHistorica = versionCarritoValida(
+    intencion?.carrito_version,
+  );
+  const carritoVersionHistoricaNumero = Number(carritoVersionHistorica);
+  const contratoC5 = carritoVersionFuente !== null &&
+    carritoVersionSucesora !== null &&
+    intencion?.estado === "creada" &&
+    carritoVersionFuente === versionRegistro &&
+    BigInt(carritoVersionSucesora) === BigInt(carritoVersionFuente) + 1n;
+  const contratoC4 = carritoVersionHistorica !== null &&
+    carritoVersionHistorica === versionRegistro &&
+    Number.isSafeInteger(carritoVersionHistoricaNumero) &&
+    carritoVersionHistoricaNumero >= 0;
   const expiraEn = String(intencion?.expira_en ?? "");
   const expiraEnMs = Date.parse(expiraEn);
   const lineas = Array.isArray(intencion?.items) ? intencion.items : [];
@@ -885,8 +1045,7 @@ async function procesarCarrito(
     !/^[A-Za-z0-9_-]{6,64}$/.test(referenciaFirmada) ||
     !/^\d{1,18}$/.test(montoFirmado) || montoFirmado === "0" ||
     monedaFirmada !== "COP" || carritoIdFirmado !== idCarrito ||
-    !Number.isSafeInteger(carritoVersionFirmada) || carritoVersionFirmada < 0 ||
-    String(carritoVersionFirmada) !== versionRegistro ||
+    (!contratoC5 && !contratoC4) ||
     !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(expiraEn) ||
     !Number.isFinite(expiraEnMs) || expiraEnMs <= Date.now() || !lineas.length
   ) {
@@ -950,16 +1109,29 @@ async function procesarCarrito(
       firma_integridad: firmaIntegridad,
       expira_en: expiraEn,
       llave_publica: llavePublica,
-      url_redireccion: `https://magandhi.com/carrito/?ref=${
-        encodeURIComponent(referenciaFirmada)
-      }`,
+      url_redireccion: contratoC5
+        ? `https://magandhi.com/carrito/?ref=${
+          encodeURIComponent(referenciaFirmada)
+        }&cuenta=compras`
+        : `https://magandhi.com/carrito/?ref=${
+          encodeURIComponent(referenciaFirmada)
+        }`,
       nombre_producto: nombreProducto,
-      checkout: {
-        tipo: "carrito",
-        id: carritoIdFirmado,
-        version: carritoVersionFirmada,
-        recargar: true,
-      },
+      checkout: contratoC5
+        ? { tipo: "compra", referencia: referenciaFirmada, recargar: true }
+        : {
+          tipo: "carrito",
+          id: carritoIdFirmado,
+          version: carritoVersionHistoricaNumero,
+          recargar: true,
+        },
+      carrito: contratoC5
+        ? {
+          id: carritoIdFirmado,
+          version_fuente: carritoVersionFuente,
+          version_sucesora: carritoVersionSucesora,
+        }
+        : undefined,
       resumen: {
         cantidad_lineas: intencion?.cantidad_lineas ?? lineas.length,
         cantidad_unidades: intencion?.cantidad_unidades ?? null,
@@ -993,9 +1165,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ error: "Body invalido; se esperaba JSON." }, 400, cors);
   }
 
-  // C3 agrega una ruta inequívoca sin tocar el contrato escalar histórico.
-  // Todo body con la clave `carrito` se procesa aquí y nunca puede caer a la
-  // compra inmediata por producto.
+  // C5 agrega una ruta inequívoca para volver a firmar una intención propia
+  // vigente. Nunca crea otra intención ni cae a compra inmediata.
+  if (Object.prototype.hasOwnProperty.call(body, "intencion")) {
+    return await procesarIntencion(req, body, cors);
+  }
+
+  // C3/C5 conservan una ruta inequívoca de carrito sin tocar el contrato
+  // escalar histórico.
   if (Object.prototype.hasOwnProperty.call(body, "carrito")) {
     return await procesarCarrito(req, body, cors);
   }

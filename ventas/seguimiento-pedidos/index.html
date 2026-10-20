@@ -541,7 +541,7 @@
       // El avance va por la RPC security definer avanzar_estado_pedido: pedidos
       // es SELECT-only bajo RLS, asi que un UPDATE directo lo rechazaria. La RPC
       // valida el acceso, el estado destino y que el pedido no este anulado.
-      const { error } = await supabase.rpc('avanzar_estado_pedido', {
+      const { data, error } = await supabase.rpc('avanzar_estado_pedido', {
         p_pedido_id: p.id,
         p_nuevo_estado: sig
       });
@@ -551,9 +551,45 @@
         btnAvanzar.disabled = false;
         return;
       }
+
+      if (!data || data.cambio !== true) {
+        cerrarDetalle();
+        await cargar();
+        abrirDetalle(p.id);
+        const msgActualizado = drawerBody.querySelector('#vt-d-msg');
+        if (msgActualizado) {
+          msgActualizado.className = data?.cambio === false ? 'vt-msg ok' : 'vt-msg err';
+          msgActualizado.textContent = data?.cambio === false
+            ? 'El pedido ya estaba actualizado. Recargamos su estado y no enviamos otro correo.'
+            : 'El servidor no confirmó el cambio. Recargamos el pedido y no enviamos correo.';
+        }
+        return;
+      }
+
+      // El estado ya quedó confirmado en base. El correo es un efecto posterior
+      // deliberadamente independiente: si falla, jamás se revierte el avance y
+      // los botones manuales quedan disponibles para reintentar.
+      msg.className = 'vt-msg';
+      msg.textContent = 'Estado actualizado. Enviando correo de «' + ESTADO_TXT[sig] + '»...';
+      const correo = await invocarCorreo({
+        modo: 'pedido', pedido_id: p.id, etapa: sig, reenviar: false
+      });
+
       cerrarDetalle();
       await cargar();
       abrirDetalle(p.id);
+      const msgResultado = drawerBody.querySelector('#vt-d-msg');
+      if (msgResultado) {
+        if (correo.ok) {
+          msgResultado.className = 'vt-msg ok';
+          msgResultado.textContent = 'Estado actualizado y correo enviado a ' +
+            (correo.data.destinatario || 'la persona destinataria') + '.';
+        } else {
+          msgResultado.className = 'vt-msg err';
+          msgResultado.textContent = 'Estado actualizado. El correo no se envió: ' +
+            correo.error + ' Puedes reintentarlo en Correos al cliente.';
+        }
+      }
     });
 
     btnAnular?.addEventListener('click', async () => {
