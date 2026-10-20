@@ -507,17 +507,17 @@ cierres estructurales de sus primeros tramos:
    cierre transaccional con pago real autorizado, opinión autenticada por cuenta
    y los placeholders del centro de cuenta (Favoritos, Mis opiniones, Eliminar
    cuenta). Relevo vigente: `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`.
-6. **Promocionar P0 · cerrado como contrato documental (20-oct-2026).**
-   `docs/PLANO-PROMOCIONAR-P0.md` fija siete canales canónicos, normalización,
-   código opaco propio, último enlace válido en visita de 30 minutos,
-   precedencia con Email histórico, clic diario agregado, consentimiento,
-   estados y retención. **P0 no contiene artefactos ni una ventana de
-   despliegue:** no crea tablas, Edge Function, DNS, interfaz o captura. No se
-   hizo un diagnóstico remoto en este cierre; el estado productivo medido sigue
-   siendo el del relevo C5. P1 (producto compartible) es el siguiente tramo;
-   P2–P5 siguen pendientes. Meta Ads, Pixel, Conversions API y publicación
-   automática continúan fuera de alcance.
-   Relevo: `docs/RELEVO-PROMOCIONAR-P0-2026-10-20.md`.
+6. **Promocionar P0 cerrado; P1 preparado en código (20-oct-2026).**
+   P0 gobierna taxonomía y privacidad en `docs/PLANO-PROMOCIONAR-P0.md`. P1
+   agrega, sin despliegue todavía, historial inmutable de slugs y vista pública
+   mínima de aliases en backend; en tienda prepara seis shells del catálogo
+   público, URLs canónicas, metadata social, JSON-LD sin precio/stock, sitemap,
+   robots y generador reproducible. Los shells mantienen `noindex,follow` y la
+   verdad comercial sigue viva en `catalogo_publico`. Producción continúa en el
+   estado medido por C5 hasta ejecutar el runbook P1 y comprobar Pages. P2–P5
+   siguen pendientes; Meta Ads, Pixel, Conversions API y publicación automática
+   continúan fuera de alcance. Plan: `docs/PLANO-PROMOCIONAR-P1.md`; relevo:
+   `docs/RELEVO-PROMOCIONAR-P1-2026-10-20.md`.
 
 La definición final de la fase no se relaja: el carrito está cerrado en
 estructura, no end-to-end. Dinero solo con autorización expresa. Cuando se

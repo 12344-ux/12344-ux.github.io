@@ -6,8 +6,8 @@ inclusion: always
 
 Antes de proponer o tocar nada en una sesión nueva:
 
-1. Leer `docs/RELEVO-PROMOCIONAR-P0-2026-10-20.md`: es el relevo vigente del
-   frente activo; después leer `docs/PLANO-PROMOCIONAR-P0.md`.
+1. Leer `docs/RELEVO-PROMOCIONAR-P1-2026-10-20.md`: es el relevo vigente del
+   frente activo; después leer `docs/PLANO-PROMOCIONAR-P1.md` y el contrato P0.
 2. Leer `CONTEXTO-MAGANDHI.md` §9 y `docs/PLANO-FASE-COMERCIAL.md`.
 3. Para estado de carrito, Wompi o producción, consultar
    `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md` y
@@ -32,11 +32,10 @@ Antes de proponer o tocar nada en una sesión nueva:
 - Operación del carrito: `supabase/operacion/comercial-c5-estado.sql`,
   `comercial-c5-desactivar.sql`, `comercial-c5-activar.sql` y, si una
   activación falla, `comercial-c5-diagnostico-activacion.sql`.
-- **Promocionar P0 cerrado como contrato documental:** taxonomía, normalización,
-  código propio, precedencia, visita, privacidad, clic agregado, estados y
-  retención viven en `docs/PLANO-PROMOCIONAR-P0.md`. No hay implementación ni
-  producción P0. **Siguiente etapa: P1 · Producto compartible**; el dueño la
-  confirma antes de construir P1.
+- **Promocionar P0 cerrado y P1 preparado en código:** P1 tiene migración de
+  historial/alias, runbook y shells de tienda, pero no está desplegado ni medido.
+  Mantener `noindex,follow`; ejecutar únicamente con confirmación del dueño.
+  Fuente: `docs/PLANO-PROMOCIONAR-P1.md`. P2–P5 siguen pendientes.
 - Pago real únicamente con autorización expresa del dueño.
 
 ## Convenciones con el dueño

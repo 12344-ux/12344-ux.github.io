@@ -1,7 +1,7 @@
 # PLANO · Fase comercial: Carrito + Promocionar
 
 **Decisión del dueño:** 16 de octubre de 2026  
-**Estado por tramos (20-oct-2026):** **C1–C5 están cerrados estructuralmente en producción** con sus límites documentados; C4 quedó superado por C5. Carrito encendido y Wompi `prod`. Ningún tramo de carrito tiene cierre transaccional: falta un pago real autorizado. **P0 está cerrado como contrato documental**, sin implementación ni producción; P1 es la siguiente etapa y P2–P5 siguen pendientes. La fase completa no está cerrada hasta el cierre transaccional y Promocionar.
+**Estado por tramos (20-oct-2026):** **C1–C5 están cerrados estructuralmente en producción** con sus límites documentados; C4 quedó superado por C5. Carrito encendido y Wompi `prod`. Ningún tramo de carrito tiene cierre transaccional: falta un pago real autorizado. **P0 está cerrado como contrato documental. P1 tiene implementación preparada en backend y tienda, pero no está desplegado ni medido;** P2–P5 siguen pendientes. La fase completa no está cerrada hasta el cierre transaccional y Promocionar.
 **Superficies:** back-office `montaguth.institute`, tienda `magandhi.com` y backend compartido en Supabase.
 
 Este plano reúne los dos frentes comerciales elegidos para la siguiente evolución de MAGANDHI:
@@ -358,18 +358,25 @@ P1 puede avanzar sin adelantar redirector, atribución transaccional o métricas
 
 ### P1 · Producto compartible
 
-**Entrega:** la URL de cada producto genera confianza y una preview real.
+**Estado · 20-oct-2026:** implementación preparada en backend y tienda;
+producción pendiente. Contrato y gates en `docs/PLANO-PROMOCIONAR-P1.md`;
+relevo en `docs/RELEVO-PROMOCIONAR-P1-2026-10-20.md`.
+
+**Entrega preparada:** la URL de cada producto genera confianza y una preview real.
 
 - URL canónica estable `/producto/<slug>/`;
 - HTML inicial por producto con título, description, canonical, Open Graph, Twitter Card y JSON-LD;
 - imagen social pública y estable;
-- sitemap;
+- sitemap y robots;
 - compatibilidad con `/producto/?slug=` y UUID;
-- historial/alias si cambia un slug;
-- no imprimir precio/stock estático como autoridad si no puede mantenerse sincronizado;
-- quitar `noindex` solo después de comprobar el HTML sin JavaScript y publicar políticas.
+- historial/alias server-side si cambia un slug;
+- precio, stock y máximo continúan vivos y nunca son metadata estática;
+- `noindex,follow` permanece hasta comprobar producción sin JavaScript y publicar políticas.
 
-En la arquitectura GitHub Pages, la vía preferida es generar shells estáticos por producto; el cuerpo continúa leyendo datos vivos.
+La tienda genera shells completos y deterministas desde una única plantilla y
+un manifiesto unido por UUID. La migración P1 reserva cada slug histórico para
+su campaña original y expone una vista mínima alias → slug actual. Ninguno de
+estos hechos se considera desplegado hasta ejecutar el runbook y medir Pages.
 
 ### P2 · Estudio Promocionar
 
@@ -457,13 +464,14 @@ Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato est
 5. **C4 · cuenta y ciclo bloqueante — cerrado estructuralmente y superado por C5.** Conserva compatibilidad histórica; no tuvo cierre monetario propio.
 6. **C5 · Mis compras y carrito libre — cerrado estructuralmente el 20-oct-2026.** Edge, migración C5, slug automático, postflight, activación y recorrido sin dinero ejecutados; carrito encendido. Cierre transaccional pendiente de un pago real autorizado.
 7. **P0 · taxonomía y privacidad — contrato cerrado.** Decisiones completas en `docs/PLANO-PROMOCIONAR-P0.md`; cero captura y cero producción.
-8. **P1 · producto compartible — siguiente etapa.** También resuelve SEO/IA pendiente.
-9. **P2 · estudio Promocionar — pendiente.** Enlaces largos, textos, preview, QR y kit.
+8. **P1 · producto compartible — implementación preparada; producción pendiente.** Shells, metadata, sitemap, URLs limpias e historial/alias están en dos ramas coordinadas. Cierre según `docs/PLANO-PROMOCIONAR-P1.md` y runbook manual; no inferir despliegue por los PR.
+9. **P2 · estudio Promocionar — pendiente.** Enlaces largos, textos, preview, QR y kit; no comienza antes de cerrar o aceptar expresamente el límite productivo P1.
 10. **P3–P4 · enlace corto y atribución — pendiente.** Backend, routing y pago.
 11. **P5 · lectura comercial — pendiente.** Métricas sobre hechos ya capturados.
 
-P1 puede empezar desde el contrato P0. No se mezclan metadata, estudio,
-redirector, atribución y métricas en una sola migración o despliegue.
+P1 está preparado en código pero aún requiere despliegue coordinado y medición.
+No se mezclan metadata, estudio, redirector, atribución y métricas en una sola
+migración o despliegue.
 
 ---
 
