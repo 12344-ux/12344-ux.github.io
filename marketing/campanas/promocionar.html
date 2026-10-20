@@ -4,62 +4,60 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MAGANDHI · Estudio Promocionar</title>
-<meta name="description" content="Estudio interno para preparar piezas y enlaces promocionales de MAGANDHI.">
+<meta name="description" content="Estudio de marca para preparar piezas y enlaces promocionales de MAGANDHI.">
 <meta name="robots" content="noindex, nofollow">
-<link rel="icon" type="image/png" href="../../marca-areas/marketing.png?v=1">
+<link rel="icon" type="image/png" href="../../favicon.png?v=2">
 <link rel="apple-touch-icon" href="../../icono-app-180.png?v=2">
-<meta name="theme-color" content="#101C33">
+<meta name="theme-color" content="#A6332E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
-<link rel="stylesheet" href="campanas.css?v=p2">
-<link rel="stylesheet" href="promocionar.css?v=p2-2">
+<link rel="stylesheet" href="campanas.css?v=p2-1">
+<link rel="stylesheet" href="promocionar.css?v=p2-3">
 </head>
 <body class="mk-body pp-body">
 <script type="module" src="../../auth-guard.js"></script>
 
 <main class="mk-wrap pp-main" id="pp-main" hidden>
   <section class="pp-producto" aria-labelledby="pp-producto-nombre">
-    <div class="pp-producto-foto" id="pp-producto-foto" aria-hidden="true">
-      <span data-ico="imagen"></span>
-    </div>
+    <div class="pp-producto-foto" id="pp-producto-foto" aria-hidden="true"><span data-ico="imagen"></span></div>
     <div class="pp-producto-info">
-      <div class="pp-producto-meta">
-        <span class="pp-estado" id="pp-estado">Cargando</span>
-        <span class="pp-categoria" id="pp-categoria">Campaña</span>
-      </div>
+      <div class="pp-producto-meta"><span class="pp-estado" id="pp-estado">Cargando</span><span class="pp-categoria" id="pp-categoria">Campaña</span></div>
       <h2 id="pp-producto-nombre">Preparando el estudio…</h2>
       <p id="pp-producto-detalle">Consultando el contenido aprobado de la campaña.</p>
     </div>
     <a class="pp-ficha-link" id="pp-ficha-link" href="#" target="_blank" rel="noopener" hidden>
-      <span>Abrir ficha oficial</span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 3h7v7M10 14 21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
+      <span>Abrir ficha oficial</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 3h7v7M10 14 21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
     </a>
   </section>
 
-  <div class="pp-carga" id="pp-carga" role="status">
-    <span class="pp-carga-marca" aria-hidden="true"></span>
-    <strong>Abriendo el estudio</strong>
-    <span>Estamos preparando los formatos y el contenido de esta campaña.</span>
-  </div>
+  <details class="pp-guia" id="pp-guia" open>
+    <summary><span class="pp-guia-icono">?</span><span><b>Aprende a usar el Estudio Promocionar</b><small>Qué hace cada parte y cómo distribuir correctamente una promoción</small></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+    <div class="pp-guia-contenido">
+      <div class="pp-guia-pasos">
+        <article><span>1</span><div><b>Elige dónde vas a compartir</b><p>El canal prepara etiquetas UTM para reconocer la colocación. No publica nada.</p></div></article>
+        <article><span>2</span><div><b>Personaliza la comunicación</b><p>Escoge foto, encuadre, textos y colores MAGANDHI sin modificar la campaña original.</p></div></article>
+        <article><span>3</span><div><b>Revisa el enlace protegido</b><p>Es la ficha oficial del producto. Precio, disponibilidad y compra se validan allí en vivo.</p></div></article>
+        <article><span>4</span><div><b>Descarga y distribuye</b><p>Adjunta el PNG y usa Copiar enlace, Copiar texto o Compartir. El sistema nunca publica por ti.</p></div></article>
+      </div>
+      <div class="pp-guia-clave">
+        <strong>Importante sobre el botón de la pieza</strong>
+        <p>El CTA dibujado dentro del PNG es visual: una imagen no puede tener un botón clicable. El enlace real se distribuye con <b>Copiar enlace</b>, con <b>Compartir</b> o mediante el <b>QR</b>.</p>
+        <dl><div><dt>CTA</dt><dd>Llamado a la acción, por ejemplo “Comprar ahora”.</dd></div><div><dt>UTM</dt><dd>Etiquetas descriptivas añadidas al enlace.</dd></div><div><dt>QR</dt><dd>Representación escaneable del mismo enlace protegido.</dd></div><div><dt>PNG</dt><dd>Archivo final de imagen que se descarga en tu dispositivo.</dd></div></dl>
+      </div>
+    </div>
+  </details>
 
-  <div class="pp-error" id="pp-error" role="alert" hidden>
-    <span class="pp-error-ico" data-ico="info" aria-hidden="true"></span>
-    <div><strong>No pudimos abrir esta campaña</strong><p id="pp-error-texto"></p></div>
-    <a href="index.html">Volver a Campañas</a>
-  </div>
+  <div class="pp-carga" id="pp-carga" role="status"><span class="pp-carga-marca" aria-hidden="true"></span><strong>Abriendo el estudio</strong><span>Estamos preparando los formatos y el contenido de esta campaña.</span></div>
+  <div class="pp-error" id="pp-error" role="alert" hidden><span class="pp-error-ico" data-ico="info" aria-hidden="true"></span><div><strong>No pudimos abrir esta campaña</strong><p id="pp-error-texto"></p></div><a href="index.html">Volver a Campañas</a></div>
 
   <div class="pp-estudio" id="pp-estudio" hidden>
-    <div class="pp-panel">
+    <div class="pp-panel" id="pp-panel">
       <section class="pp-bloque" aria-labelledby="pp-canal-titulo">
-        <div class="pp-bloque-cab">
-          <span class="pp-paso">01</span>
-          <div><h2 id="pp-canal-titulo">Elige el canal</h2><p>Cada canal aplica el preset aprobado de P0.</p></div>
-        </div>
-        <fieldset class="pp-canales" id="pp-canales">
-          <legend class="cm-sr-only">Canal de promoción</legend>
+        <div class="pp-bloque-cab"><span class="pp-paso">01</span><div><h2 id="pp-canal-titulo">Elige el canal</h2><p>Indica dónde se distribuirá. Solo prepara el enlace; no publica.</p></div></div>
+        <fieldset class="pp-canales" id="pp-canales"><legend class="cm-sr-only">Canal de promoción</legend>
           <label class="pp-canal"><input type="radio" name="pp-canal" value="whatsapp" checked><span class="pp-canal-ico">WA</span><span><b>WhatsApp</b><small>Conversación directa</small></span></label>
           <label class="pp-canal"><input type="radio" name="pp-canal" value="instagram"><span class="pp-canal-ico">IG</span><span><b>Instagram</b><small>Publicación o historia</small></span></label>
           <label class="pp-canal"><input type="radio" name="pp-canal" value="facebook"><span class="pp-canal-ico">FB</span><span><b>Facebook</b><small>Publicación de página</small></span></label>
@@ -71,107 +69,85 @@
       </section>
 
       <section class="pp-bloque" aria-labelledby="pp-enlace-titulo">
-        <div class="pp-bloque-cab">
-          <span class="pp-paso">02</span>
-          <div><h2 id="pp-enlace-titulo">Prepara el enlace</h2><p>La ficha es fija; la UTM describe esta colocación.</p></div>
-        </div>
-        <div class="pp-campos-dos">
-          <label class="pp-campo"><span>Source</span><input class="mk-input pp-mono" id="pp-source" readonly></label>
-          <label class="pp-campo"><span>Medium</span><input class="mk-input pp-mono" id="pp-medium" readonly></label>
-        </div>
-        <label class="pp-campo"><span>Campaña descriptiva</span><input class="mk-input pp-mono" id="pp-campaign" maxlength="60" autocomplete="off"><small>Fecha de Colombia y sufijo local; puedes ajustarlo.</small></label>
-        <label class="pp-campo"><span>Pieza o colocación</span><input class="mk-input pp-mono" id="pp-content" maxlength="60" autocomplete="off"><small>Nunca escribas nombres, correos, teléfonos o audiencias identificables.</small></label>
-        <label class="pp-check pp-check--compact" id="pp-utm-check-wrap">
-          <input type="checkbox" id="pp-utm-confirmada">
-          <span class="pp-check-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 4 4L19 6"/></svg></span>
-          <span><b>Estos identificadores no describen personas</b><small>Confirmo que campaign y content solo nombran la iniciativa y la colocación.</small></span>
-        </label>
-        <div class="pp-url-caja">
-          <div><span>Enlace de esta colocación</span><output id="pp-url"></output></div>
-          <button class="pp-icon-btn" id="pp-copiar-url-mini" type="button" aria-label="Copiar enlace de esta colocación" title="Copiar enlace">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          </button>
-        </div>
+        <div class="pp-bloque-cab"><span class="pp-paso">02</span><div><h2 id="pp-enlace-titulo">Prepara el enlace de compra</h2><p>La ficha es fija y segura; las UTM describen esta distribución.</p></div></div>
+        <div class="pp-explicacion"><b>¿Cómo funciona?</b><span>Quien lo abra llegará al producto en MAGANDHI. Allí se comprueban precio y disponibilidad antes de iniciar el pago.</span></div>
+        <div class="pp-campos-dos"><label class="pp-campo"><span>Origen (source)</span><input class="mk-input pp-mono" id="pp-source" readonly><small>Deriva del canal.</small></label><label class="pp-campo"><span>Medio (medium)</span><input class="mk-input pp-mono" id="pp-medium" readonly><small>Clasifica la forma de distribución.</small></label></div>
+        <label class="pp-campo"><span>Campaña descriptiva</span><input class="mk-input pp-mono" id="pp-campaign" maxlength="60" autocomplete="off"><small>Nombre interno de la iniciativa; no identifica personas.</small></label>
+        <label class="pp-campo"><span>Pieza o colocación</span><input class="mk-input pp-mono" id="pp-content" maxlength="60" autocomplete="off"><small>Distingue este formato o ubicación, por ejemplo “historia-v02”.</small></label>
+        <label class="pp-check pp-check--compact" id="pp-utm-check-wrap"><input type="checkbox" id="pp-utm-confirmada"><span class="pp-check-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 4 4L19 6"/></svg></span><span><b>Estos identificadores no describen personas</b><small>Confirmo que campaign y content solo nombran la iniciativa y la colocación.</small></span></label>
+        <div class="pp-url-caja"><div><span>Enlace protegido que vas a distribuir</span><output id="pp-url"></output></div><button class="pp-icon-btn" id="pp-copiar-url-mini" type="button" aria-label="Copiar enlace protegido" title="Copiar enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div>
         <p class="pp-validacion" id="pp-validacion" role="alert" hidden></p>
       </section>
 
-      <section class="pp-bloque" aria-labelledby="pp-texto-titulo">
-        <div class="pp-bloque-cab">
-          <span class="pp-paso">03</span>
-          <div><h2 id="pp-texto-titulo">Afina el mensaje</h2><p>Parte del contenido aprobado y edítalo para esta ocasión.</p></div>
+      <section class="pp-bloque" aria-labelledby="pp-imagen-titulo">
+        <div class="pp-bloque-cab"><span class="pp-paso">03</span><div><h2 id="pp-imagen-titulo">Elige y encuadra la imagen</h2><p>Usa la galería de Campañas o una foto temporal de este dispositivo.</p></div></div>
+        <fieldset class="pp-imagenes" id="pp-imagenes"><legend class="cm-sr-only">Imagen de la pieza</legend></fieldset>
+        <div class="pp-imagen-acciones"><button class="pp-btn-mini" id="pp-elegir-imagen" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Usar otra imagen</button><input class="cm-file-oculto" id="pp-imagen-local" type="file" accept="image/png,image/jpeg,image/webp"><span>Solo para esta sesión; no altera Campañas.</span></div>
+        <fieldset class="pp-modos-imagen"><legend>Tratamiento</legend><label><input type="radio" name="pp-modo-imagen" value="cover" checked><span><b>Llenar</b><small>Ocupa todo el espacio</small></span></label><label><input type="radio" name="pp-modo-imagen" value="contain"><span><b>Producto completo</b><small>Evita recortes</small></span></label></fieldset>
+        <div class="pp-sliders">
+          <label><span>Posición horizontal <output id="pp-foco-x-valor">50%</output></span><input id="pp-foco-x" type="range" min="0" max="100" value="50"></label>
+          <label><span>Posición vertical <output id="pp-foco-y-valor">50%</output></span><input id="pp-foco-y" type="range" min="0" max="100" value="50"></label>
+          <label><span>Acercamiento <output id="pp-zoom-valor">100%</output></span><input id="pp-zoom" type="range" min="100" max="180" step="5" value="100"></label>
         </div>
-        <label class="pp-campo">
-          <span>Texto visible en la pieza</span>
-          <textarea class="mk-input pp-texto-pieza" id="pp-texto-pieza" maxlength="220" rows="4"></textarea>
-          <small><span id="pp-caracteres-pieza">0</span>/220 · Este texto gobierna el PNG y se ajusta al espacio disponible.</small>
-        </label>
-        <label class="pp-campo">
-          <span>Mensaje para compartir</span>
-          <textarea class="mk-input pp-texto" id="pp-texto" maxlength="700" rows="8"></textarea>
-          <small><span id="pp-caracteres">0</span>/700 · Acompaña el enlace; solo vive en esta sesión.</small>
-        </label>
-        <button class="pp-restaurar" id="pp-restaurar" type="button">Restaurar texto sugerido</button>
+      </section>
+
+      <section class="pp-bloque" aria-labelledby="pp-contenido-titulo">
+        <div class="pp-bloque-cab"><span class="pp-paso">04</span><div><h2 id="pp-contenido-titulo">Edita lo que comunica la pieza</h2><p>Los textos cambian en el PNG, nunca el destino protegido.</p></div></div>
+        <div class="pp-editor-campo"><div class="pp-editor-cab"><label for="pp-pretitulo">Pretítulo</label><label class="pp-switch pp-switch--texto"><input type="checkbox" id="pp-mostrar-pretitulo" checked><span aria-hidden="true"></span>Mostrar</label></div><input class="mk-input" id="pp-pretitulo" maxlength="42"><small>Sello editorial breve: 2–4 palabras.</small></div>
+        <div class="pp-editor-campo"><label for="pp-titulo">Título</label><textarea class="mk-input pp-titulo-input" id="pp-titulo" maxlength="90" rows="3"></textarea><small><span id="pp-caracteres-titulo">0</span>/90 · Una sola idea memorable.</small></div>
+        <div class="pp-editor-campo"><label for="pp-texto-pieza">Descripción</label><textarea class="mk-input pp-texto-pieza" id="pp-texto-pieza" maxlength="220" rows="4"></textarea><small><span id="pp-caracteres-pieza">0</span>/220 · Explica lo mínimo necesario.</small></div>
+        <div class="pp-editor-campo"><div class="pp-editor-cab"><label for="pp-cta">Llamado a la acción (CTA)</label><label class="pp-switch pp-switch--texto"><input type="checkbox" id="pp-mostrar-cta" checked><span aria-hidden="true"></span>Mostrar</label></div><input class="mk-input" id="pp-cta" maxlength="32"><small>Es visual en el PNG. El enlace real se copia o comparte aparte.</small></div>
+        <hr class="pp-separador">
+        <label class="pp-campo"><span>Mensaje que acompaña el enlace</span><textarea class="mk-input pp-texto" id="pp-texto" maxlength="700" rows="7"></textarea><small><span id="pp-caracteres">0</span>/700 · Se usa al copiar texto o compartir; no aparece en el PNG.</small></label>
+        <p class="pp-contenido-validacion" id="pp-contenido-validacion" role="alert" hidden></p>
+        <label class="pp-check pp-check--compact" id="pp-contenido-check-wrap"><input type="checkbox" id="pp-contenido-confirmado"><span class="pp-check-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 4 4L19 6"/></svg></span><span><b>Revisé el contenido que saldrá al público</b><small>No contiene personas, URL externas, precio, stock, proveedor ni costo.</small></span></label>
+        <button class="pp-restaurar" id="pp-restaurar" type="button">Restaurar textos sugeridos</button>
+      </section>
+
+      <section class="pp-bloque" aria-labelledby="pp-marca-titulo">
+        <div class="pp-bloque-cab"><span class="pp-paso">05</span><div><h2 id="pp-marca-titulo">Elige los distintivos MAGANDHI</h2><p>Solo aparecen colores aprobados y el contraste se comprueba antes de descargar.</p></div></div>
+        <fieldset class="pp-presets" id="pp-presets"><legend class="cm-sr-only">Estilo general de marca</legend>
+          <label><input type="radio" name="pp-preset" value="terracota"><span class="pp-preset-muestra pp-preset-terracota"></span><span><b>Terracota editorial</b><small>Cercana e institucional</small></span></label>
+          <label><input type="radio" name="pp-preset" value="negro" checked><span class="pp-preset-muestra pp-preset-negro"></span><span><b>Negro curaduría</b><small>Sobria y boutique</small></span></label>
+          <label><input type="radio" name="pp-preset" value="negro_dorado"><span class="pp-preset-muestra pp-preset-dorado"></span><span><b>Negro + dorado</b><small>Edición protagonista</small></span></label>
+        </fieldset>
+        <div class="pp-color-grid">
+          <label class="pp-color-campo"><span>Superficie</span><span class="pp-select-color"><i id="pp-muestra-superficie"></i><select id="pp-color-superficie"></select></span></label>
+          <label class="pp-color-campo"><span>Panel de contenido</span><span class="pp-select-color"><i id="pp-muestra-panel"></i><select id="pp-color-panel"></select></span></label>
+          <label class="pp-color-campo"><span>Pretítulo</span><span class="pp-select-color"><i id="pp-muestra-pretitulo"></i><select id="pp-color-pretitulo"></select></span></label>
+          <label class="pp-color-campo"><span>Título</span><span class="pp-select-color"><i id="pp-muestra-titulo"></i><select id="pp-color-titulo"></select></span></label>
+          <label class="pp-color-campo"><span>Descripción</span><span class="pp-select-color"><i id="pp-muestra-descripcion"></i><select id="pp-color-descripcion"></select></span></label>
+          <label class="pp-color-campo"><span>Acento</span><span class="pp-select-color"><i id="pp-muestra-acento"></i><select id="pp-color-acento"></select></span></label>
+          <label class="pp-color-campo"><span>Fondo del CTA</span><span class="pp-select-color"><i id="pp-muestra-boton-fondo"></i><select id="pp-color-boton-fondo"></select></span></label>
+          <label class="pp-color-campo"><span>Texto del CTA</span><span class="pp-select-color"><i id="pp-muestra-boton-texto"></i><select id="pp-color-boton-texto"></select></span></label>
+        </div>
+        <div class="pp-estilo-pie"><span id="pp-estilo-estado">Preset Negro curaduría</span><button class="pp-restaurar" id="pp-restaurar-diseno" type="button">Restaurar diseño</button></div>
+        <p class="pp-diseno-validacion" id="pp-diseno-validacion" role="status" aria-live="polite" hidden></p>
       </section>
 
       <section class="pp-bloque pp-verificacion" aria-labelledby="pp-verificar-titulo">
-        <div class="pp-bloque-cab">
-          <span class="pp-paso">04</span>
-          <div><h2 id="pp-verificar-titulo">Confirma antes de compartir</h2><p>P2 no puede saber si Pages ya publicó el shell P1.</p></div>
-        </div>
-        <label class="pp-check" id="pp-check-wrap">
-          <input type="checkbox" id="pp-ficha-confirmada">
-          <span class="pp-check-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 4 4L19 6"/></svg></span>
-          <span><b>Confirmé que la ficha oficial abre correctamente</b><small>Ábrela, revisa producto e imagen y vuelve para marcar esta casilla.</small></span>
-        </label>
+        <div class="pp-bloque-cab"><span class="pp-paso">06</span><div><h2 id="pp-verificar-titulo">Confirma antes de distribuir</h2><p>Comprueba que la ficha pública ya está disponible.</p></div></div>
+        <label class="pp-check" id="pp-check-wrap"><input type="checkbox" id="pp-ficha-confirmada"><span class="pp-check-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 4 4L19 6"/></svg></span><span><b>Confirmé que la ficha oficial abre correctamente</b><small>Ábrela, revisa producto e imagen y vuelve para marcar esta casilla.</small></span></label>
         <p class="pp-gate" id="pp-gate" role="status"></p>
       </section>
     </div>
 
-    <aside class="pp-preview-col" aria-labelledby="pp-preview-titulo">
-      <div class="pp-preview-top">
-        <div><span class="pp-eyebrow">VISTA PREVIA</span><h2 id="pp-preview-titulo">Pieza lista para exportar</h2></div>
-        <span class="pp-dimensiones mk-num" id="pp-dimensiones">1080 × 1080</span>
-      </div>
-
-      <fieldset class="pp-formatos">
-        <legend class="cm-sr-only">Formato de la pieza</legend>
-        <label><input type="radio" name="pp-formato" value="cuadrado" checked><span><b>Cuadrado</b><small>1080 × 1080</small></span></label>
-        <label><input type="radio" name="pp-formato" value="historia"><span><b>Historia</b><small>1080 × 1920</small></span></label>
-        <label><input type="radio" name="pp-formato" value="horizontal"><span><b>Horizontal</b><small>1200 × 628</small></span></label>
-      </fieldset>
-
-      <div class="pp-lienzo-marco" id="pp-lienzo-marco">
-        <canvas id="pp-lienzo" width="1080" height="1080" aria-label="Vista previa de la pieza promocional"></canvas>
-        <div class="pp-renderizando" id="pp-renderizando" role="status" hidden>Actualizando diseño…</div>
-      </div>
+    <aside class="pp-preview-col" id="pp-preview-col" aria-labelledby="pp-preview-titulo">
+      <div class="pp-preview-top"><div><span class="pp-eyebrow">VISTA PREVIA</span><h2 id="pp-preview-titulo">Tu pieza MAGANDHI</h2></div><span class="pp-dimensiones mk-num" id="pp-dimensiones">1080 × 1080</span><a class="pp-volver-editor" href="#pp-panel">Volver a editar</a></div>
+      <fieldset class="pp-formatos"><legend class="cm-sr-only">Formato de la pieza</legend><label><input type="radio" name="pp-formato" value="cuadrado" checked><span><b>Cuadrado</b><small>1080 × 1080</small></span></label><label><input type="radio" name="pp-formato" value="historia"><span><b>Historia</b><small>1080 × 1920</small></span></label><label><input type="radio" name="pp-formato" value="horizontal"><span><b>Horizontal</b><small>1200 × 628</small></span></label></fieldset>
+      <div class="pp-lienzo-marco" id="pp-lienzo-marco"><canvas id="pp-lienzo" width="1080" height="1080" aria-label="Vista previa de la pieza promocional" aria-describedby="pp-alternativa"></canvas><div class="pp-renderizando" id="pp-renderizando" role="status" hidden>Actualizando diseño…</div></div>
       <p class="pp-alternativa" id="pp-alternativa"></p>
-
-      <div class="pp-qr-fila">
-        <canvas id="pp-qr" width="240" height="240" aria-label="Código QR del enlace promocional"></canvas>
-        <div><span class="pp-eyebrow">QR LOCAL</span><b>Se genera en este dispositivo</b><p>Ningún enlace se envía a un servicio de códigos QR.</p>
-          <label class="pp-switch"><input type="checkbox" id="pp-incluir-qr" checked><span aria-hidden="true"></span>Incluir QR en la pieza</label>
-        </div>
-      </div>
-
-      <div class="pp-acciones-principales">
-        <button class="pp-btn pp-btn-primario" id="pp-descargar" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 21h14"/></svg>
-          <span>Descargar PNG</span>
-        </button>
-        <button class="pp-btn" id="pp-copiar-url" type="button">Copiar enlace</button>
-        <button class="pp-btn" id="pp-copiar-texto" type="button">Copiar texto</button>
-        <button class="pp-btn" id="pp-compartir" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg>
-          <span>Compartir</span>
-        </button>
-      </div>
-      <p class="pp-nota-local"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"/><path d="M12 16v-4M12 8h.01"/></svg><span>Todo se descarga en este dispositivo. MAGANDHI no publica ni gasta dinero desde esta pantalla.</span></p>
+      <div class="pp-enlace-clave"><span class="pp-enlace-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg></span><div><span>ENLACE REAL DE COMPRA</span><b>Siempre protegido por MAGANDHI</b><output id="pp-url-resumen"></output></div></div>
+      <div class="pp-qr-fila"><canvas id="pp-qr" width="240" height="240" aria-label="Código QR del enlace promocional"></canvas><div><span class="pp-eyebrow">QR DEL MISMO ENLACE</span><b>Se genera en este dispositivo</b><p>No se envía el enlace a un servicio de QR.</p><label class="pp-switch"><input type="checkbox" id="pp-incluir-qr" checked><span aria-hidden="true"></span>Incluir QR en la pieza</label></div></div>
+      <div class="pp-acciones-principales"><button class="pp-btn pp-btn-primario" id="pp-descargar" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 21h14"/></svg><span>Descargar PNG</span></button><button class="pp-btn" id="pp-copiar-url" type="button">Copiar enlace</button><button class="pp-btn" id="pp-copiar-texto" type="button">Copiar texto</button><button class="pp-btn" id="pp-compartir" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg><span>Compartir</span></button></div>
+      <p class="pp-nota-local"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"/><path d="M12 16v-4M12 8h.01"/></svg><span>Se descarga en este dispositivo. MAGANDHI no publica ni gasta dinero desde aquí.</span></p>
       <p class="pp-feedback" id="pp-feedback" role="status" aria-live="polite"></p>
     </aside>
   </div>
+  <a class="pp-preview-flotante" id="pp-preview-flotante" href="#pp-preview-col" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg><span>Ver pieza</span></a>
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" integrity="sha384-mZT2gIty7ZDdOGkxfP6joZcYdMW1Jvj9dRlfpTmaJAKKXTqzygtB22k7FLe+KZC1" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script type="module" src="promocionar.js?v=p2-2"></script>
+<script type="module" src="promocionar.js?v=p2-3"></script>
 </body>
 </html>
