@@ -6,8 +6,9 @@ inclusion: always
 
 Antes de proponer o tocar nada en una sesión nueva:
 
-1. Leer `docs/RELEVO-PROMOCIONAR-P1-2026-10-20.md`: es el relevo vigente del
-   frente activo; después leer `docs/PLANO-PROMOCIONAR-P1.md` y el contrato P0.
+1. Leer `docs/RELEVO-PROMOCIONAR-P2-CIERRE-2026-10-20.md`: es el
+   relevo vigente del frente activo; después leer `docs/PLANO-PROMOCIONAR-P2.md`,
+   `docs/PLANO-PROMOCIONAR-P3.md` y el contrato P0.
 2. Leer `CONTEXTO-MAGANDHI.md` §9 y `docs/PLANO-FASE-COMERCIAL.md`.
 3. Para estado de carrito, Wompi o producción, consultar
    `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md` y
@@ -32,11 +33,28 @@ Antes de proponer o tocar nada en una sesión nueva:
 - Operación del carrito: `supabase/operacion/comercial-c5-estado.sql`,
   `comercial-c5-desactivar.sql`, `comercial-c5-activar.sql` y, si una
   activación falla, `comercial-c5-diagnostico-activacion.sql`.
-- **Promocionar P0 y P1 cerrados:** P1 tiene historial/aliases desplegados,
-  ACL final solo-SELECT y seis shells canónicos publicados y medidos. Mantener
-  `noindex,follow` y sitemap solo home hasta políticas. **Siguiente etapa: P2 ·
-  Estudio Promocionar**; el dueño confirma antes de construir. Fuente:
-  `docs/RELEVO-PROMOCIONAR-P1-2026-10-20.md`. P3–P5 siguen pendientes.
+- **Promocionar P0, P1 y P2 cerrados:** P2 fue aprobado visual/funcionalmente
+  por el dueño; PR #298/#299, merge `90efd87`, Pages `39471770742` y cinco assets
+  productivos HTTP 200 con comparación exacta 5/5. No hubo suite automatizada
+  P2, SQL, Edge, backend o DNS. Mantener `noindex,follow` y sitemap solo home
+  hasta políticas. **Siguiente etapa: P3 · Registro y enlace corto**; su contrato
+  está en construcción y todos sus gates nacen OFF. No afirmar despliegue por
+  código en Git ni adelantar P4/P5. Fuente:
+  `docs/RELEVO-PROMOCIONAR-P2-CIERRE-2026-10-20.md`.
+- **Candados documentales P3:** antes de distribuir, exigir configuración y
+  enlace/resolubilidad autoritativos; un activo local no basta. Toda espera o
+  falla debe degradar al enlace largo P2 dentro de un plazo total máximo de 3
+  segundos. El polling refresca configuración e historial/estado; una mutación
+  incierta refresca historial antes de inferir resultado o reintentar.
+- El cron nominal P3 debe dirigirse a `current_database()` y su último run
+  correcto pertenecer por `jobid` al job de esa base. El rollup exige índice
+  encabezado por `fecha_colombia`; `text/html` solo habilita conteo con calidad
+  efectiva válida `> 0` (`q` ausente = `1`). `actualizado_en` es token CAS de
+  edición, no versión numérica ni clave idempotente. Crear un borrador sí usa
+  una clave ligada al actor/payload para que el mismo reintento devuelva el
+  existente; activar de nuevo el mismo `id` activo devuelve el mismo código. El
+  banco P3 sigue pendiente: no bloquea por sí solo este corte OFF, pero sí cerrar
+  P3 o activar cualquier gate.
 - Pago real únicamente con autorización expresa del dueño.
 
 ## Convenciones con el dueño

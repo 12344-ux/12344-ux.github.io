@@ -29,7 +29,21 @@ inclusion: always
 
 ## Enlaces protegidos
 
-- El enlace canónico/UTM de compra es la pieza funcional más importante de Promocionar.
-- El texto visible de un botón puede editarse, pero su destino no se escribe libremente: siempre se deriva de la ficha canónica MAGANDHI y de los presets P0.
-- QR, copiar, Web Share y exportaciones deben distribuir exactamente ese enlace protegido.
-- La libertad editorial nunca permite URL arbitraria, PII, proveedor, costo, stock congelado, atribución anticipada ni publicación automática.
+- El enlace canónico/UTM largo P2 es la salida segura de base y la pieza
+  funcional más importante de Promocionar.
+- El texto visible de un botón puede editarse, pero su destino no se escribe
+  libremente: siempre se deriva de la ficha canónica MAGANDHI y de los presets
+  P0.
+- Un corto P3 solo puede sustituir esa salida al distribuir después de una
+  revalidación con plazo total máximo de 3 segundos: configuración vigente más
+  estado y resolubilidad autoritativos del enlace concreto. Un activo conservado
+  localmente no basta.
+- Timeout, cancelación, falla, respuesta inválida, gate OFF, enlace no activo o
+  no resoluble degradan explícitamente al enlace largo P2 sin dejar la acción
+  esperando. El polling refresca configuración e historial/estado; una mutación
+  incierta refresca historial antes de inferir resultado o reintentar.
+- QR, copiar, Web Share y exportaciones deben distribuir exactamente la salida
+  protegida elegida por esa comprobación: corto P3 acreditado o, en cualquier
+  otro caso, enlace largo P2.
+- La libertad editorial nunca permite URL arbitraria, PII, proveedor, costo,
+  stock congelado, atribución anticipada ni publicación automática.

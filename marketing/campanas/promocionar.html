@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
 <link rel="stylesheet" href="campanas.css?v=p2-1">
-<link rel="stylesheet" href="promocionar.css?v=p2-3">
+<link rel="stylesheet" href="promocionar.css?v=p3-2">
 </head>
 <body class="mk-body pp-body">
 <script type="module" src="../../auth-guard.js"></script>
@@ -39,13 +39,13 @@
       <div class="pp-guia-pasos">
         <article><span>1</span><div><b>Elige dónde vas a compartir</b><p>El canal prepara etiquetas UTM para reconocer la colocación. No publica nada.</p></div></article>
         <article><span>2</span><div><b>Personaliza la comunicación</b><p>Escoge foto, encuadre, textos y colores MAGANDHI sin modificar la campaña original.</p></div></article>
-        <article><span>3</span><div><b>Revisa el enlace protegido</b><p>Es la ficha oficial del producto. Precio, disponibilidad y compra se validan allí en vivo.</p></div></article>
+        <article><span>3</span><div><b>Revisa ambos destinos</b><p>El destino oficial largo siempre funciona. P3 puede sustituirlo por un enlace corto controlado cuando esté activo y sincronizado.</p></div></article>
         <article><span>4</span><div><b>Descarga y distribuye</b><p>Adjunta el PNG y usa Copiar enlace, Copiar texto o Compartir. El sistema nunca publica por ti.</p></div></article>
       </div>
       <div class="pp-guia-clave">
         <strong>Importante sobre el botón de la pieza</strong>
-        <p>El CTA dibujado dentro del PNG es visual: una imagen no puede tener un botón clicable. El enlace real se distribuye con <b>Copiar enlace</b>, con <b>Compartir</b> o mediante el <b>QR</b>.</p>
-        <dl><div><dt>CTA</dt><dd>Llamado a la acción, por ejemplo “Comprar ahora”.</dd></div><div><dt>UTM</dt><dd>Etiquetas descriptivas añadidas al enlace.</dd></div><div><dt>QR</dt><dd>Representación escaneable del mismo enlace protegido.</dd></div><div><dt>PNG</dt><dd>Archivo final de imagen que se descarga en tu dispositivo.</dd></div></dl>
+        <p>El CTA dibujado dentro del PNG es visual: una imagen no puede tener un botón clicable. El destino real —largo P2 o corto P3 activo— se distribuye con <b>Copiar enlace</b>, con <b>Compartir</b> o mediante el <b>QR</b>.</p>
+        <dl><div><dt>CTA</dt><dd>Llamado a la acción, por ejemplo “Comprar ahora”.</dd></div><div><dt>UTM</dt><dd>Etiquetas descriptivas añadidas al destino largo.</dd></div><div><dt>QR</dt><dd>Representación escaneable del destino en distribución.</dd></div><div><dt>PNG</dt><dd>Archivo final de imagen que se descarga en tu dispositivo.</dd></div></dl>
       </div>
     </div>
   </details>
@@ -69,14 +69,59 @@
       </section>
 
       <section class="pp-bloque" aria-labelledby="pp-enlace-titulo">
-        <div class="pp-bloque-cab"><span class="pp-paso">02</span><div><h2 id="pp-enlace-titulo">Prepara el enlace de compra</h2><p>La ficha es fija y segura; las UTM describen esta distribución.</p></div></div>
-        <div class="pp-explicacion"><b>¿Cómo funciona?</b><span>Quien lo abra llegará al producto en MAGANDHI. Allí se comprueban precio y disponibilidad antes de iniciar el pago.</span></div>
+        <div class="pp-bloque-cab"><span class="pp-paso">02</span><div><h2 id="pp-enlace-titulo">Prepara los destinos de promoción</h2><p>El destino oficial largo conserva P2; P3 añade un enlace corto controlado cuando está disponible.</p></div></div>
+        <div class="pp-explicacion"><b>¿Cómo funciona?</b><span>El destino largo P2 lleva a la ficha oficial del producto. El enlace corto P3 puede llevar a esa ficha o al inicio de MAGANDHI, siempre asociado a esta campaña.</span></div>
         <div class="pp-campos-dos"><label class="pp-campo"><span>Origen (source)</span><input class="mk-input pp-mono" id="pp-source" readonly><small>Deriva del canal.</small></label><label class="pp-campo"><span>Medio (medium)</span><input class="mk-input pp-mono" id="pp-medium" readonly><small>Clasifica la forma de distribución.</small></label></div>
         <label class="pp-campo"><span>Campaña descriptiva</span><input class="mk-input pp-mono" id="pp-campaign" maxlength="60" autocomplete="off"><small>Nombre interno de la iniciativa; no identifica personas.</small></label>
         <label class="pp-campo"><span>Pieza o colocación</span><input class="mk-input pp-mono" id="pp-content" maxlength="60" autocomplete="off"><small>Distingue este formato o ubicación, por ejemplo “historia-v02”.</small></label>
         <label class="pp-check pp-check--compact" id="pp-utm-check-wrap"><input type="checkbox" id="pp-utm-confirmada"><span class="pp-check-marca" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 4 4L19 6"/></svg></span><span><b>Estos identificadores no describen personas</b><small>Confirmo que campaign y content solo nombran la iniciativa y la colocación.</small></span></label>
-        <div class="pp-url-caja"><div><span>Enlace protegido que vas a distribuir</span><output id="pp-url"></output></div><button class="pp-icon-btn" id="pp-copiar-url-mini" type="button" aria-label="Copiar enlace protegido" title="Copiar enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div>
         <p class="pp-validacion" id="pp-validacion" role="alert" hidden></p>
+
+        <div class="pp-destino-oficial" aria-labelledby="pp-destino-largo-titulo">
+          <span id="pp-destino-largo-titulo">Destino oficial largo (P2)</span>
+          <output id="pp-url-larga"></output>
+          <small>Deriva de la ficha MAGANDHI y sus UTM. Sigue disponible si P3 está apagado o aún no se ha desplegado.</small>
+        </div>
+
+        <section class="pp-p3" id="pp-p3" aria-labelledby="pp-p3-titulo" aria-busy="true">
+          <div class="pp-p3-cab">
+            <span class="pp-p3-marca" aria-hidden="true">P3</span>
+            <div><h3 id="pp-p3-titulo">Enlace corto P3</h3><p>Controla un alias corto sin cambiar el destino oficial largo.</p></div>
+            <span class="pp-p3-badge consultando" id="pp-p3-badge">Consultando</span>
+          </div>
+          <fieldset class="pp-p3-destinos" id="pp-p3-destinos" aria-describedby="pp-p3-destino-ayuda">
+            <legend>Destino del enlace corto</legend>
+            <div class="pp-p3-destino-opciones">
+              <label class="pp-p3-destino"><input type="radio" name="pp-tipo-destino" value="producto_v1" checked><span><b>Ficha oficial de este producto</b><small>Abre la ficha publicada de la campaña actual.</small></span></label>
+              <label class="pp-p3-destino"><input type="radio" name="pp-tipo-destino" value="home_v1"><span><b>Inicio de MAGANDHI</b><small>Abre la portada sin perder la asociación con esta campaña.</small></span></label>
+            </div>
+            <p id="pp-p3-destino-ayuda">Puedes corregir el destino de un borrador. Cambiarlo no modifica un enlace activo: lo desprende para que prepares un reemplazo.</p>
+          </fieldset>
+          <div class="pp-p3-estados">
+            <div><span>Estado del sistema</span><strong id="pp-p3-sistema">Consultando P3…</strong><small id="pp-p3-sistema-detalle">P2 continúa disponible durante la consulta.</small></div>
+            <div><span>Enlace actual</span><strong id="pp-p3-enlace-estado">Sin enlace seleccionado</strong><small id="pp-p3-enlace-detalle">Puedes preparar un borrador cuando los identificadores UTM sean válidos.</small></div>
+          </div>
+          <div class="pp-p3-url">
+            <span>Enlace corto controlado</span>
+            <output id="pp-p3-url">Aún no asignado</output>
+            <small id="pp-p3-url-ayuda">Solo un enlace activo y sincronizado sustituye al destino largo.</small>
+          </div>
+          <p class="pp-p3-mensaje" id="pp-p3-mensaje" role="status" aria-live="polite"></p>
+          <div class="pp-p3-acciones" aria-label="Acciones del enlace corto">
+            <button class="pp-btn-mini pp-p3-accion-principal" id="pp-p3-guardar" type="button">Guardar borrador</button>
+            <button class="pp-btn-mini" id="pp-p3-actualizar" type="button">Actualizar borrador</button>
+            <button class="pp-btn-mini pp-p3-activar" id="pp-p3-activar" type="button">Activar enlace</button>
+            <button class="pp-btn-mini" id="pp-p3-desactivar" type="button">Desactivar</button>
+            <button class="pp-btn-mini pp-p3-peligro" id="pp-p3-eliminar" type="button">Eliminar borrador</button>
+            <button class="pp-btn-mini" id="pp-p3-preparar" type="button">Preparar reemplazo/nuevo</button>
+          </div>
+          <div class="pp-p3-historial-wrap">
+            <div class="pp-p3-historial-cab"><h4>Historial del producto</h4><span>Selecciona un enlace para revisarlo</span></div>
+            <ul class="pp-p3-historial" id="pp-p3-historial"><li class="pp-p3-vacio">Consultando enlaces… · — clics aproximados</li></ul>
+          </div>
+        </section>
+
+        <div class="pp-url-caja"><div><span id="pp-url-etiqueta">Destino oficial largo en distribución</span><output id="pp-url"></output></div><button class="pp-icon-btn" id="pp-copiar-url-mini" type="button" aria-label="Copiar enlace de distribución" title="Copiar enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div>
       </section>
 
       <section class="pp-bloque" aria-labelledby="pp-imagen-titulo">
@@ -96,7 +141,7 @@
         <div class="pp-editor-campo"><div class="pp-editor-cab"><label for="pp-pretitulo">Pretítulo</label><label class="pp-switch pp-switch--texto"><input type="checkbox" id="pp-mostrar-pretitulo" checked><span aria-hidden="true"></span>Mostrar</label></div><input class="mk-input" id="pp-pretitulo" maxlength="42"><small>Sello editorial breve: 2–4 palabras.</small></div>
         <div class="pp-editor-campo"><label for="pp-titulo">Título</label><textarea class="mk-input pp-titulo-input" id="pp-titulo" maxlength="90" rows="3"></textarea><small><span id="pp-caracteres-titulo">0</span>/90 · Una sola idea memorable.</small></div>
         <div class="pp-editor-campo"><label for="pp-texto-pieza">Descripción</label><textarea class="mk-input pp-texto-pieza" id="pp-texto-pieza" maxlength="220" rows="4"></textarea><small><span id="pp-caracteres-pieza">0</span>/220 · Explica lo mínimo necesario.</small></div>
-        <div class="pp-editor-campo"><div class="pp-editor-cab"><label for="pp-cta">Llamado a la acción (CTA)</label><label class="pp-switch pp-switch--texto"><input type="checkbox" id="pp-mostrar-cta" checked><span aria-hidden="true"></span>Mostrar</label></div><input class="mk-input" id="pp-cta" maxlength="32"><small>Es visual en el PNG. El enlace real se copia o comparte aparte.</small></div>
+        <div class="pp-editor-campo"><div class="pp-editor-cab"><label for="pp-cta">Llamado a la acción (CTA)</label><label class="pp-switch pp-switch--texto"><input type="checkbox" id="pp-mostrar-cta" checked><span aria-hidden="true"></span>Mostrar</label></div><input class="mk-input" id="pp-cta" maxlength="32"><small>Es visual en el PNG. El destino en distribución se copia o comparte aparte.</small></div>
         <hr class="pp-separador">
         <label class="pp-campo"><span>Mensaje que acompaña el enlace</span><textarea class="mk-input pp-texto" id="pp-texto" maxlength="700" rows="7"></textarea><small><span id="pp-caracteres">0</span>/700 · Se usa al copiar texto o compartir; no aparece en el PNG.</small></label>
         <p class="pp-contenido-validacion" id="pp-contenido-validacion" role="alert" hidden></p>
@@ -137,8 +182,8 @@
       <fieldset class="pp-formatos"><legend class="cm-sr-only">Formato de la pieza</legend><label><input type="radio" name="pp-formato" value="cuadrado" checked><span><b>Cuadrado</b><small>1080 × 1080</small></span></label><label><input type="radio" name="pp-formato" value="historia"><span><b>Historia</b><small>1080 × 1920</small></span></label><label><input type="radio" name="pp-formato" value="horizontal"><span><b>Horizontal</b><small>1200 × 628</small></span></label></fieldset>
       <div class="pp-lienzo-marco" id="pp-lienzo-marco"><canvas id="pp-lienzo" width="1080" height="1080" aria-label="Vista previa de la pieza promocional" aria-describedby="pp-alternativa"></canvas><div class="pp-renderizando" id="pp-renderizando" role="status" hidden>Actualizando diseño…</div></div>
       <p class="pp-alternativa" id="pp-alternativa"></p>
-      <div class="pp-enlace-clave"><span class="pp-enlace-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg></span><div><span>ENLACE REAL DE COMPRA</span><b>Siempre protegido por MAGANDHI</b><output id="pp-url-resumen"></output></div></div>
-      <div class="pp-qr-fila"><canvas id="pp-qr" width="240" height="240" aria-label="Código QR del enlace promocional"></canvas><div><span class="pp-eyebrow">QR DEL MISMO ENLACE</span><b>Se genera en este dispositivo</b><p>No se envía el enlace a un servicio de QR.</p><label class="pp-switch"><input type="checkbox" id="pp-incluir-qr" checked><span aria-hidden="true"></span>Incluir QR en la pieza</label></div></div>
+      <div class="pp-enlace-clave"><span class="pp-enlace-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg></span><div><span>ENLACE EN DISTRIBUCIÓN</span><b id="pp-url-resumen-tipo">Destino oficial largo MAGANDHI</b><output id="pp-url-resumen"></output></div></div>
+      <div class="pp-qr-fila"><canvas id="pp-qr" width="240" height="240" aria-label="Código QR del enlace promocional"></canvas><div><span class="pp-eyebrow">QR DEL MISMO ENLACE</span><b>Se genera en este dispositivo</b><p id="pp-qr-descripcion">Representa el destino oficial largo; no se envía a un servicio de QR.</p><label class="pp-switch"><input type="checkbox" id="pp-incluir-qr" checked><span aria-hidden="true"></span>Incluir QR en la pieza</label></div></div>
       <div class="pp-acciones-principales"><button class="pp-btn pp-btn-primario" id="pp-descargar" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 21h14"/></svg><span>Descargar PNG</span></button><button class="pp-btn" id="pp-copiar-url" type="button">Copiar enlace</button><button class="pp-btn" id="pp-copiar-texto" type="button">Copiar texto</button><button class="pp-btn" id="pp-compartir" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg><span>Compartir</span></button></div>
       <p class="pp-nota-local"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"/><path d="M12 16v-4M12 8h.01"/></svg><span>Se descarga en este dispositivo. MAGANDHI no publica ni gasta dinero desde aquí.</span></p>
       <p class="pp-feedback" id="pp-feedback" role="status" aria-live="polite"></p>
@@ -148,6 +193,6 @@
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" integrity="sha384-mZT2gIty7ZDdOGkxfP6joZcYdMW1Jvj9dRlfpTmaJAKKXTqzygtB22k7FLe+KZC1" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script type="module" src="promocionar.js?v=p2-3"></script>
+<script type="module" src="promocionar.js?v=p3-3"></script>
 </body>
 </html>

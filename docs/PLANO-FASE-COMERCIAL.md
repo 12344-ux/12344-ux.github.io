@@ -1,7 +1,7 @@
 # PLANO · Fase comercial: Carrito + Promocionar
 
-**Decisión del dueño:** 16 de octubre de 2026  
-**Estado por tramos (20-oct-2026):** **C1–C5 están cerrados estructuralmente en producción** con sus límites documentados; C4 quedó superado por C5. Carrito encendido y Wompi `prod`. Ningún tramo de carrito tiene cierre transaccional: falta un pago real autorizado. **P0 está cerrado como contrato y P1 está desplegado/cerrado estructuralmente; P2 es la siguiente etapa.** P3–P5 siguen pendientes. La fase completa no está cerrada hasta el cierre transaccional y Promocionar.
+**Decisión del dueño:** 16 de octubre de 2026
+**Estado por tramos (20-oct-2026):** **C1–C5 están cerrados estructuralmente en producción** con sus límites documentados; C4 quedó superado por C5. Carrito encendido y Wompi `prod`. Ningún tramo de carrito tiene cierre transaccional: falta un pago real autorizado. **P0 está cerrado como contrato; P1 y P2 están desplegados/cerrados, y el dueño aprobó P2 visual y funcionalmente. P3 es el siguiente tramo: implementación y contrato en construcción, tres gates OFF y banco automatizado P3 pendiente porque no fue solicitado/agregado; su ausencia no bloquea por sí sola este corte OFF, pero sí cerrar P3 o activar cualquier gate.** No se afirma backend, SQL, Edge, DNS, routing o CI P3; P4–P5 siguen pendientes. La fase completa no está cerrada hasta el cierre transaccional y Promocionar.
 **Superficies:** back-office `montaguth.institute`, tienda `magandhi.com` y backend compartido en Supabase.
 
 Este plano reúne los dos frentes comerciales elegidos para la siguiente evolución de MAGANDHI:
@@ -354,14 +354,16 @@ de verdad: `docs/PLANO-PROMOCIONAR-P0.md`; relevo:
 
 **Límite:** P0 no implementó captura. Las políticas públicas siguen en
 `borrador-0`; deben incorporar y revisar este contrato antes de activar P3/P4.
-P1 puede avanzar sin adelantar redirector, atribución transaccional o métricas.
+P1 y P2 avanzaron sin adelantar redirector, atribución transaccional o métricas;
+la captura pública nueva comienza solo cuando P3 se despliegue y sus gates se
+activen.
 
 ### P1 · Producto compartible
 
 **Estado · 20-oct-2026:** **desplegado y cerrado estructuralmente en
 producción.** Backend #295/#296, migraciones `20261107000000` y
 `20261107000100`; tienda #116, Pages run `39384518735`. Contrato y evidencia en
-`docs/PLANO-PROMOCIONAR-P1.md`; relevo vigente en
+`docs/PLANO-PROMOCIONAR-P1.md`; relevo de cierre P1 en
 `docs/RELEVO-PROMOCIONAR-P1-2026-10-20.md`.
 
 **Entrega cerrada:** la URL de cada producto genera confianza y una preview real.
@@ -384,47 +386,113 @@ de políticas; productos y sitemap cambiarán juntos al abrirlo.
 
 ### P2 · Estudio Promocionar
 
-**Entrega:** utilidad comercial completa aun sin medición.
+**Estado · 20-oct-2026:** **desplegado, cerrado y aprobado por el dueño mediante
+revisión visual/funcional.** PR #298 entregó la base; PR #299 cerró identidad
+MAGANDHI y editor creativo. El merge final
+`90efd87ae1be07493fdf38aad5e140be558d38ac` fue publicado por Pages run
+`39471770742` (`completed/success`). Los cinco assets productivos
+`promocionar.html`, `promocionar.css`, `promocionar-core.js`,
+`promocionar-render.js` y `promocionar.js` respondieron HTTP 200 y coincidieron
+exactamente, byte por byte, con el merge final.
 
-Nueva acción `Promocionar` desde una campaña guardada/publicada:
+**Entrega cerrada:** utilidad comercial completa aun sin medición.
 
-- enlace oficial;
-- presets por canal;
-- generador UTM;
-- copiar y Web Share;
-- vista previa interna;
-- textos deterministas y editables a partir de contenido aprobado;
-- QR local, sin enviar la URL a un tercero;
-- kit inicial: cuadrado `1080×1080`, historia `1080×1920` y horizontal;
-- exportación local; sin publicación automática.
+- acción `Promocionar` desde Campañas;
+- enlace canonical P1 y siete pares de canal P0;
+- UTM descriptiva, copia, Web Share y mensaje editable;
+- imagen temporal, textos y roles de color dentro de presets MAGANDHI;
+- preview interna, QR local y formatos 1080×1080, 1080×1920 y 1200×628;
+- validaciones de publicación/shell, contraste y desborde;
+- exportación local, sin persistencia ni publicación automática.
+
+**Límite de evidencia:** la aprobación no equivale a suite automatizada,
+auditoría formal de accesibilidad, matriz de navegadores o protocolo
+independiente de teclado/foco y escaneo QR. Pages y la comparación 5/5 prueban
+la versión publicada, no cada interacción. P2 no aplicó SQL ni desplegó backend,
+Edge, DNS, conteo o atribución. Contrato y evidencia:
+`docs/PLANO-PROMOCIONAR-P2.md`; relevo vigente del frente:
+`docs/RELEVO-PROMOCIONAR-P2-CIERRE-2026-10-20.md`.
 
 ### P3 · Registro y enlace corto
 
-**Entrega:** piezas versionadas y enlaces controlados.
+**Estado · 20-oct-2026:** **siguiente tramo; implementación y contrato en
+construcción; los tres gates permanecen OFF.** No hay SQL aplicado, Edge,
+backend, DNS, TLS, routing o feature gate P3 desplegado. El banco automatizado
+P3 sigue pendiente porque no fue solicitado ni agregado en este corte; no
+bloquea por sí solo este corte con gates OFF, pero sí cualquier cierre o
+activación futura. Fuente:
+`docs/PLANO-PROMOCIONAR-P3.md`.
+
+**Entrega prevista:** registrar enlaces propios y resolverlos con conteo diario
+aproximado, sin adelantar atribución P4 o lectura P5.
 
 Modelo conceptual:
 
 ```text
 atribucion_enlaces
-  id · codigo · campana_producto_id · canal_promocion
+  id · codigo · campana_producto_id de origen · canal_promocion
   source · medium · campaign · content · tipo_destino · estado_enlace
+  actualizado_en como token CAS de edición · clave_idempotencia de creación
   receta/texto opcional · reemplaza_enlace_id · auditoria
 
 atribucion_clics_dia
   enlace_id · fecha_colombia · total_aproximado
+  índice de rollup encabezado por fecha_colombia
+
+promocionar_p3_config
+  activacion_habilitada · redirect_habilitado · conteo_habilitado
+
+bitácora de gates P3
+  antes/después · actor/rol · razón · tiempo · append-only
 ```
 
-Los nombres, estados, normalización e inmutabilidad los gobierna
-`docs/PLANO-PROMOCIONAR-P0.md`; este bosquejo no los redefine.
+Los nombres, normalización, privacidad, inmutabilidad y retención los gobierna
+P0. P3 cierra además estas decisiones de implementación:
 
-- códigos aleatorios, no secretos ni secuenciales;
-- destino resuelto desde campaña, nunca desde `?url=`;
-- desactivar sin borrar/reasignar;
-- filtro de bots, previews, HEAD y prefetch;
-- conteo diario agregado, sin almacenar persona, IP, referrer o user-agent como historial;
-- rate limit con el patrón temporal ya usado en `tienda-eventos`.
+- URL pública `https://go.magandhi.com/<codigo>`; la elección está cerrada, pero
+  configurar DNS/TLS/routing sigue pendiente;
+- código Crockford base32 de 16 caracteres y 80 bits criptográficos;
+- cada borrador privado nace sin código, conserva la campaña de origen y permite
+  editar solo en `borrador` un destino tipado ficha del producto u home;
+- un reemplazo conserva esa campaña de origen aunque corrija el tipo de destino;
+- destino construido server-side desde lista blanca, nunca desde `?url=` u otro
+  parámetro libre;
+- edición de borrador con `actualizado_en` como token CAS de concurrencia; no
+  es una versión numérica ni una clave idempotente. La creación sí usa una clave
+  ligada al actor y al payload canónico para devolver el mismo borrador al
+  reintentar; la activación del mismo `id`/estado también es idempotente ante una
+  respuesta perdida;
+- respuesta `302` con `Cache-Control: no-store`;
+- ciclo terminal `borrador -> activo -> desactivado`, sin borrar o reasignar;
+- el conteo exige `GET`, `navigate`, `document` y un media range exacto
+  `text/html` con calidad efectiva válida mayor que cero: `q` ausente equivale a
+  `1`; `q=0`, inválida o fuera de rango no cuenta. También excluye bots,
+  previews, HEAD, OPTIONS y prefetch;
+- una sola cabecera IP elegida y verificada por operación, sin fallbacks, y llave
+  HMAC diaria derivada de un secreto maestro de al menos 32 bytes;
+- cuota temporal inicial de 600/h global por `hash_ip_dia`, sin `enlace_id`, con
+  purga antes de 48 horas;
+- agregado atómico por enlace y fecha de Colombia; detalle diario con índice
+  encabezado por `fecha_colombia`, 13 meses de retención y luego total histórico
+  no fechado;
+- bitácora append-only para toda transición de gates;
+- cron de limpieza horario: el job nominal debe dirigirse a
+  `current_database()` y su último run correcto debe vincularse por `jobid` a
+  ese job de esa base; junto con cero vencidos, es requisito antes de activar;
+- gates `activacion_habilitada`, `redirect_habilitado` y
+  `conteo_habilitado`, todos inicialmente OFF y separados.
 
-URL objetivo: `go.magandhi.com/<codigo>` si el routing/DNS se aprueba. Alternativa inicial: ruta de marca menos elegante sin mover el dominio principal.
+Con `activacion_habilitada=OFF`, Marketing todavía puede crear, editar, eliminar
+y listar borradores privados sin código; solo queda bloqueado hacerlos públicos.
+Apagar `conteo_habilitado` no apaga `redirect_habilitado`. Al abrir, recuperar
+foco/visibilidad, después de mutaciones y durante polling, la UI debe refrescar
+tanto configuración como historial/estado autoritativo. Si una mutación queda
+incierta, debe releer ese historial antes de inferir resultado o reintentar.
+Antes de cada distribución debe revalidar configuración, el enlace concreto y
+su resolubilidad autoritativa con plazo total máximo de 3 segundos: un activo
+local no basta, y timeout, falla o respuesta inválida continúan con el enlace
+largo P2 sin bloquear la acción. Código en Git no equivale a SQL aplicado, Edge
+desplegada, DNS configurado o gate activo.
 
 ### P4 · Atribución exacta hasta la venta
 
@@ -459,7 +527,7 @@ Ventas muestra la procedencia validada. Los pedidos manuales pueden tener una fu
 
 ## 5. Orden de construcción
 
-Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual (20-oct-2026): C1–C5 cerrados estructuralmente en producción; falta el cierre transaccional por carrito. **P0 y P1 están cerrados; P2 es el siguiente tramo y P3–P5 permanecen pendientes.**
+Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual (20-oct-2026): C1–C5 cerrados estructuralmente en producción; falta el cierre transaccional por carrito. **P0, P1 y P2 están cerrados; el dueño aprobó P2 y P3 es el siguiente tramo, con contrato en construcción pero sin despliegue. P4–P5 permanecen pendientes.**
 
 1. **Plano y arranque — cerrado.** Este documento y referencias de contexto.
 2. **C1 · cantidad inmediata — estructura lista.** Valor comercial rápido y cimiento de carrito; sin afirmar cierre transaccional de qty2.
@@ -469,13 +537,17 @@ Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato est
 6. **C5 · Mis compras y carrito libre — cerrado estructuralmente el 20-oct-2026.** Edge, migración C5, slug automático, postflight, activación y recorrido sin dinero ejecutados; carrito encendido. Cierre transaccional pendiente de un pago real autorizado.
 7. **P0 · taxonomía y privacidad — contrato cerrado.** Decisiones completas en `docs/PLANO-PROMOCIONAR-P0.md`; cero captura y cero producción.
 8. **P1 · producto compartible — desplegado y cerrado estructuralmente.** Seis shells, metadata, URLs limpias, historial/alias, sitemap y robots medidos. Gate `noindex` ligado a políticas.
-9. **P2 · estudio Promocionar — siguiente etapa.** Enlaces largos, textos, preview, QR y kit; confirma el tramo antes de construir.
-10. **P3–P4 · enlace corto y atribución — pendiente.** Backend, routing y pago.
-11. **P5 · lectura comercial — pendiente.** Métricas sobre hechos ya capturados.
+9. **P2 · estudio Promocionar — desplegado, cerrado y aprobado.** PR #298/#299, merge `90efd87`, Pages `39471770742`, aprobación visual/funcional y comparación productiva exacta 5/5; sin backend ni tests P2 dedicados.
+10. **P3 · registro y enlace corto — siguiente, en construcción.** Implementación
+    y contrato abiertos; los tres gates OFF y banco automatizado P3 pendiente
+    porque no fue solicitado/agregado. Su ausencia no bloquea por sí sola este
+    corte OFF, pero sí cerrar P3 o activar gates; cero backend/DNS desplegado.
+11. **P4–P5 · atribución y lectura — pendientes.** No entran en P3.
 
-P1 está cerrado estructuralmente en producción. P2 puede comenzar desde P0/P1,
-sin mezclar estudio, redirector, atribución y métricas en una sola migración o
-despliegue.
+P2 está cerrado y aprobado. P3 se construye desde P0–P2 sin mezclar redirector,
+atribución transaccional y métricas en una sola migración o despliegue. La
+existencia de código en Git no cambiará el estado productivo sin evidencia de
+SQL, Edge, DNS/routing, gates y HTTP.
 
 ---
 
@@ -534,6 +606,13 @@ sin dinero confirmado por el dueño. El proyecto no tiene tabla de ledger, así
 que no hubo nada que reconciliar. Cuatro defectos de scripts se corrigieron
 antes de continuar, sin efecto en producción. El carrito quedó encendido por
 decisión del dueño; falta el pago con dinero, solo con autorización.
+
+**P2 cerró su despliegue frontend el 20-oct-2026.** PR #298/#299 culminaron en
+el merge `90efd87ae1be07493fdf38aad5e140be558d38ac`; Pages run `39471770742`
+terminó `completed/success`. Los cinco assets del estudio respondieron HTTP 200
+y su contenido coincidió exactamente, byte por byte, con ese merge. El dueño
+aprobó visual y funcionalmente el resultado. No hubo suite automatizada P2 ni
+SQL, RPC, Edge, backend o DNS. Esta evidencia cierra P2, no despliega P3.
 
 ---
 
