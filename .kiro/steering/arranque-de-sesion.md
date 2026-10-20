@@ -6,43 +6,42 @@ inclusion: always
 
 Antes de proponer o tocar nada en una sesión nueva:
 
-1. Leer `docs/RELEVO-COMERCIAL-C5-2026-10-19.md`: es el relevo general vigente.
-2. Leer `docs/PLANO-COMERCIAL-C5.md` y `CONTEXTO-MAGANDHI.md`.
-3. Para contratos históricos, consultar `docs/PLANO-FASE-COMERCIAL.md` y el
-   relevo C4; C1–C4 ya no gobiernan el arranque.
+1. Leer `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`: es el relevo general
+   vigente y trae el prompt de continuidad.
+2. Leer `CONTEXTO-MAGANDHI.md` §9 y `docs/PLANO-FASE-COMERCIAL.md`.
+3. Para contratos de carrito/Mis compras, consultar `docs/PLANO-COMERCIAL-C5.md`;
+   los relevos C1–C5 anteriores son memoria histórica.
 4. Si la tarea toca identidad/apertura, leer `docs/CUENTAS-CLIENTE.md` y
    `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
 5. Solo si vuelve Dropshipping, leer `docs/dropshipping-envios/RELEVO-2026-10-10.md`
    y `.kiro/steering/dropshipping-magandhi.md`.
 
-## Realidad de arranque · 19-oct-2026 noche
+## Realidad de arranque · 20-oct-2026
 
-- C5 está construido y fusionado en Git, pero **no desplegado en Supabase**.
-- Backend PR #287: merge `c8fd03c`; banco PostgreSQL 15/Deno run `39354906924`
-  `SUCCESS`.
-- Tienda PR #113: merge `4a0b439`; GitHub Pages `built`.
-- Producción Supabase sigue en C4, migración `20261105000000`; último flag
-  documentado `carrito_habilitado=true`; Wompi `prod`.
-- `20261106000000_comercial_c5_mis_compras.sql` está solo en Git. Las Edge C5
-  `crear-intencion-pago` y `estado-pago` también están solo en Git.
-- C4 fue aplicada manualmente y su ledger puede no estar reconciliado. **Nunca
-  usar `supabase db push` ni reaplicar migraciones.**
-- Falta paquete operativo C5 (preflight/postflight/estado/activación) y slug
-  automático server-side.
-- La tienda C5 es compatible mientras el backend siga C4, pero Mis compras no
-  tendrá datos reales hasta instalar la RPC C5.
+- **Comercial C1–C5 cerrados estructuralmente.** C4 superado funcionalmente por
+  C5. Sin pago real por carrito: no hay cierre transaccional.
+- Producción Supabase aplicada hasta `20261106000100` (C5 + slug automático).
+  Edge `crear-intencion-pago` y `estado-pago` en versión C5.
+- **Carrito ENCENDIDO a propósito** (`carrito_habilitado=true`) y Wompi `prod`:
+  cualquier compra por carrito cobra dinero real. Signup OFF.
+- **No existe tabla de ledger** (`supabase_migrations.schema_migrations`): todas
+  las migraciones se aplican a mano por SQL Editor, un Run por archivo. Nunca
+  `supabase db push`; nunca reaplicar una migración histórica.
+- Operación del carrito: `supabase/operacion/comercial-c5-estado.sql`,
+  `comercial-c5-desactivar.sql`, `comercial-c5-activar.sql` y, si una
+  activación falla, `comercial-c5-diagnostico-activacion.sql`.
+- Siguiente etapa del plano: **Promocionar P0 · taxonomía y privacidad**. El
+  dueño la confirma antes de construir.
 - Pago real únicamente con autorización expresa del dueño.
 
-## Siguiente secuencia
+## Convenciones con el dueño
 
-1. Diagnóstico de solo lectura y reconciliación del ledger C4.
-2. Preparar paquete operativo C5 y slug forward.
-3. Desplegar Edge C5 compatibles.
-4. Apagar y confirmar carrito OFF.
-5. Aplicar C5 manualmente una sola vez y ejecutar postflight.
-6. Reactivar y probar sin dinero: separación inmediata, retry único, Mis compras,
-   expiración sin transacción, PENDING bancaria, aislamiento y estados de pedido.
-7. Solo con autorización, pago real para cierre transaccional.
+- Los SQL para el SQL Editor se entregan **pegados en el chat** y deben devolver
+  **una sola tabla**: el editor muestra solo el último resultado.
+- Antes de entregar un SQL operativo, ejecutarlo en CI y leer en el log la salida
+  positiva esperada; «CI verde» no basta.
+- Indicar siempre si un paso escribe o es solo lectura, y qué resultado exacto
+  esperar.
 
 Reglas permanentes: rama+PR, migraciones forward, medir antes de afirmar, no
 exponer secretos/PII, y un comando sin error no es evidencia suficiente.

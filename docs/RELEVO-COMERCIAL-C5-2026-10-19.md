@@ -1,5 +1,10 @@
 # Relevo de sesión · Comercial C5 · Mis compras y carrito libre · 19 de octubre de 2026
 
+> **SUPERADO COMO PUNTO DE ARRANQUE (20-oct-2026):** C5 ya está desplegado y
+> cerrado estructuralmente, con el carrito encendido. Usar
+> `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`. Este archivo conserva el
+> diseño y el plan de la ventana; no ejecutar su prompt de §7.
+
 Punto general vigente para continuar el frente comercial. Leer primero este
 archivo y después `docs/PLANO-COMERCIAL-C5.md`, `CONTEXTO-MAGANDHI.md`,
 `docs/PLANO-FASE-COMERCIAL.md` y `supabase/INSTRUCCIONES.md`. El relevo C4 queda

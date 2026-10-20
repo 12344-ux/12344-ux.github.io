@@ -1,13 +1,15 @@
 # Comercial C5 · cierre operativo autoritativo
 
-> **Estado repo-side:** paquete C5 y slug automático construidos en Git. **No están desplegados**. Producción continúa en C4, último flag documentado ON, Wompi `prod`; no se ha medido producción con estos archivos ni se declara C5 cerrado.
+> **Ejecución · 20-oct-2026: fases A–E ejecutadas; C5 cerrado estructuralmente.** El carrito quedó **ENCENDIDO** por decisión del dueño y Wompi sigue en `prod`. Diferencias con lo previsto: el proyecto **no tiene** `supabase_migrations.schema_migrations`, así que el paso 2 no aplica; cuatro defectos de scripts se corrigieron antes de continuar (PR #290, #291, #292 y #293), sin efecto en producción. Pendiente: fase F (dinero, solo autorizada). Evidencia en `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`. No volver a ejecutar las migraciones.
+>
+> El SQL Editor muestra **solo el último resultado** de cada Run. Para operar usar `comercial-c5-estado.sql` (una sola tabla) y, si una activación falla, `comercial-c5-diagnostico-activacion.sql` (solo lectura, una sola tabla con la causa exacta).
 
 ## Archivos y Runs separados
 
 | Orden | Archivo/acción | Modifica BD |
 |---:|---|---:|
 | 1 | `comercial-c5-preflight.sql` | No |
-| 2 | Reconciliar ledger C4 por el procedimiento aprobado | Según procedimiento |
+| 2 | Reconciliar ledger C4 (no aplicó: el proyecto no tiene tabla de ledger) | No |
 | 3 | Desplegar Edge C5 compatibles y ejecutar `COMERCIAL-C5-SONDAS.md` | No BD |
 | 4 | `comercial-c5-desactivar.sql` y confirmar OFF | Sí, flag |
 | 5 | `../migrations/20261106000000_comercial_c5_mis_compras.sql` | Sí |
@@ -15,7 +17,7 @@
 | 7 | `comercial-c5-postflight.sql` | No |
 | 8 | Probar `mc_compras_listar()` con cuenta propia | Puede expirar C5 perezosamente |
 | 9 | `comercial-c5-estado.sql` y regresión OFF | No |
-| 10 | `comercial-c5-activar.sql` | Sí, flag |
+| 10 | `comercial-c5-activar.sql` (si falla: `comercial-c5-diagnostico-activacion.sql`) | Sí, flag |
 | 11 | Pruebas sin dinero; estado; decisión explícita del flag | Según acción |
 
 Cada SQL se copia **completo** en una ejecución separada del SQL Editor. No concatenar desactivación, migraciones, postflight ni activación. **No existe ni debe crearse puente C5:** las Edge C5 son compatibles con C4 y se despliegan primero.
@@ -24,7 +26,7 @@ Cada SQL se copia **completo** en una ejecución separada del SQL Editor. No con
 
 - No tocar producción para “probar” los archivos repo-side. El dueño ejecuta cada fase.
 - No reaplicar C1–C4 ni usar una migración como rollback.
-- C4 se aplicó manualmente y puede faltar en `supabase_migrations.schema_migrations`: **nunca usar `supabase db push` hasta reconciliar el ledger**. No insertar a ciegas en tablas internas.
+- El proyecto no tiene `supabase_migrations.schema_migrations` (medido el 20-oct-2026): todo se aplica a mano por SQL Editor. **Nunca usar `supabase db push`** ni crear o rellenar tablas internas de historial.
 - Wompi permanece en `prod`; la configuración es compartida con compra inmediata.
 - No abrir Wompi ni pagar como diagnóstico. Pago real C5 únicamente con autorización expresa.
 - Mantener el carrito OFF durante ambas migraciones, postflight y regresión OFF.
