@@ -15,6 +15,10 @@ import {
   validarResolucion,
 } from "./core.ts";
 
+declare const EdgeRuntime: {
+  waitUntil(promise: Promise<unknown>): void;
+};
+
 const RESOLVER_TIMEOUT_MS = 2_500;
 const CONTAR_TIMEOUT_MS = 900;
 const METODOS_PERMITIDOS = "GET, HEAD, OPTIONS";
@@ -322,7 +326,8 @@ async function manejarSolicitud(req: Request): Promise<Response> {
   }
 
   const redirect = respuestaRedirect(resolucion.destinoUrl);
-  await intentarContar(req, supabase, resolucion.enlaceId);
+  // Conserva el conteo completo sin retener la entrega del 302.
+  EdgeRuntime.waitUntil(intentarContar(req, supabase, resolucion.enlaceId));
   return redirect;
 }
 
