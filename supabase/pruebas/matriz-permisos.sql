@@ -399,12 +399,16 @@ begin
     end;
 
     -- ---------- EXECUTE: service_role solo puertas, nunca helpers internos ----------
-    -- Los helpers co__*/pw__*/cm__* y los dos núcleos de pedido se alcanzan
-    -- como propietario desde SECURITY DEFINER o triggers; no son RPC de la Edge.
+    -- Los helpers co__*/pw__*, el trigger privado de slug y los dos núcleos
+    -- de pedido se alcanzan como propietario desde SECURITY DEFINER o triggers;
+    -- no son RPC de la Edge.
     select string_agg(
              case
-               when left(p.proname, 4) in ('co__','pw__','cm__')
-                 or p.proname in ('crear_pedido_c3_base','crear_pedido_c4')
+               when left(p.proname, 4) in ('co__','pw__')
+                 or p.proname in (
+                   'crear_pedido_c3_base','crear_pedido_c4',
+                   'cm__asignar_slug_automatico'
+                 )
                  then 'SOBRA helper: '
                else 'FALTA puerta: '
              end || p.proname,
@@ -425,8 +429,11 @@ begin
        )
        and (
          (
-           left(p.proname, 4) in ('co__','pw__','cm__')
-           or p.proname in ('crear_pedido_c3_base','crear_pedido_c4')
+           left(p.proname, 4) in ('co__','pw__')
+           or p.proname in (
+             'crear_pedido_c3_base','crear_pedido_c4',
+             'cm__asignar_slug_automatico'
+           )
          ) = has_function_privilege('service_role', p.oid, 'execute')
        );
     r_pers := r_pers || 'service_role'::text;
