@@ -1,7 +1,7 @@
 # PLANO · Fase comercial: Carrito + Promocionar
 
 **Decisión del dueño:** 16 de octubre de 2026
-**Estado por tramos (20-oct-2026):** **C1–C5 están cerrados estructuralmente en producción** con sus límites documentados; C4 quedó superado por C5. Carrito encendido y Wompi `prod`. Ningún tramo de carrito tiene cierre transaccional: falta un pago real autorizado. **P0 está cerrado como contrato; P1 y P2 están desplegados/cerrados, y el dueño aprobó P2 visual y funcionalmente. P3 es el siguiente tramo: implementación y contrato en construcción, tres gates OFF y banco automatizado P3 pendiente porque no fue solicitado/agregado; su ausencia no bloquea por sí sola este corte OFF, pero sí cerrar P3 o activar cualquier gate.** No se afirma backend, SQL, Edge, DNS, routing o CI P3; P4–P5 siguen pendientes. La fase completa no está cerrada hasta el cierre transaccional y Promocionar.
+**Estado por tramos (21-oct-2026):** **C1–C5 están cerrados estructuralmente en producción** con sus límites documentados; C4 quedó superado por C5. Carrito encendido y Wompi `prod`. Ningún tramo de carrito tiene cierre transaccional: falta un pago real autorizado. **P0–P2 están cerrados. P3 está desplegado, activo y medido; queda como cierre candidato pendiente únicamente de merge + redespliegue del hardening del Worker + sonda mínima posterior.** P4–P5 siguen pendientes. La fase completa no está cerrada hasta el cierre transaccional y Promocionar P4/P5.
 **Superficies:** back-office `montaguth.institute`, tienda `magandhi.com` y backend compartido en Supabase.
 
 Este plano reúne los dos frentes comerciales elegidos para la siguiente evolución de MAGANDHI:
@@ -363,8 +363,8 @@ separa sus gates: publicar la explicación informativa no es requisito para
 lanzar o activar P3, que tampoco pide consentimiento al abrir un enlace. P4
 conserva sus requisitos propios de activación y EM7 conserva sus gates de
 política y consentimiento. P1 y P2 avanzaron sin adelantar redirector,
-atribución transaccional o métricas; la captura pública nueva comienza solo
-cuando P3 se despliegue y sus gates técnicos se activen. Esta separación no es
+atribución transaccional o métricas. La captura pública P3 comenzó el
+21-oct-2026 al desplegarse y activarse sus gates técnicos. Esta separación no es
 una conclusión de asesoría jurídica.
 
 ### P1 · Producto compartible
@@ -419,18 +419,14 @@ auditoría formal de accesibilidad, matriz de navegadores o protocolo
 independiente de teclado/foco y escaneo QR. Pages y la comparación 5/5 prueban
 la versión publicada, no cada interacción. P2 no aplicó SQL ni desplegó backend,
 Edge, DNS, conteo o atribución. Contrato y evidencia:
-`docs/PLANO-PROMOCIONAR-P2.md`; relevo vigente del frente:
+`docs/PLANO-PROMOCIONAR-P2.md`; relevo histórico del corte P2:
 `docs/RELEVO-PROMOCIONAR-P2-CIERRE-2026-10-20.md`.
 
 ### P3 · Registro y enlace corto
 
-**Estado · 20-oct-2026:** **siguiente tramo; implementación y contrato en
-construcción; los tres gates permanecen OFF.** No hay SQL aplicado, Edge,
-backend, DNS, TLS, routing o feature gate P3 desplegado. El banco automatizado
-P3 sigue pendiente porque no fue solicitado ni agregado en este corte; no
-bloquea por sí solo este corte con gates OFF, pero sí cualquier cierre o
-activación futura. Fuente:
-`docs/PLANO-PROMOCIONAR-P3.md`.
+**Estado · 21-oct-2026:** **desplegado, activo y medido; cierre candidato pendiente únicamente de merge + redespliegue del hardening del Worker + sonda mínima posterior.** La migración está aplicada, Edge/DNS/Worker operan y los tres gates están ON. Fuente:
+`docs/PLANO-PROMOCIONAR-P3.md`; relevo:
+`docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`.
 
 **Entrega prevista:** registrar enlaces propios y resolverlos con conteo diario
 aproximado, sin adelantar atribución P4 o lectura P5.
@@ -465,8 +461,8 @@ bitácora de gates P3
 Los nombres, normalización, privacidad, inmutabilidad y retención los gobierna
 P0. P3 cierra además estas decisiones de implementación:
 
-- URL pública `https://go.magandhi.com/<codigo>`; la elección está cerrada, pero
-  configurar DNS/TLS/routing sigue pendiente;
+- URL pública `https://go.magandhi.com/<codigo>`; DNS autoritativo Cloudflare,
+  TLS, Worker y routing están medidos en producción;
 - código Crockford base32 de 16 caracteres y 80 bits criptográficos;
 - cada borrador privado nace sin código, conserva la campaña de origen y permite
   editar solo en `borrador` un destino tipado ficha del producto u home;
@@ -507,8 +503,37 @@ incierta, debe releer ese historial antes de inferir resultado o reintentar.
 Antes de cada distribución debe revalidar configuración, el enlace concreto y
 su resolubilidad autoritativa con plazo total máximo de 3 segundos: un activo
 local no basta, y timeout, falla o respuesta inválida continúan con el enlace
-largo P2 sin bloquear la acción. Código en Git no equivale a SQL aplicado, Edge
-desplegada, DNS configurado o gate activo.
+largo P2 sin bloquear la acción. Código en Git no equivale por sí solo a SQL aplicado, Edge desplegada, DNS configurado o gate activo; en este corte cada capa P3 sí tiene evidencia independiente.
+
+**Evidencia productiva P3 · 21-oct-2026:** PR/merge #300 `b2440c3`, #301
+`11d8008`, #302 `b4f8acb` y #303 `23ea5a2`; migración `20261108000000`
+aplicada una vez; preflight/postflight/matriz verdes; cinco tablas. Cron
+`promocionar-p3-mantenimiento-horario`, `7 * * * *`, misma base y último run
+`succeeded` dentro de dos horas. Edge `enlace-promocional` desplegada con
+Verify JWT OFF, `PROMOCIONAR_IP_HEADER=x-real-ip` y sal configurada sin exponer
+su valor.
+
+Cloudflare quedó como DNS autoritativo (`rita.ns.cloudflare.com` y
+`toby.ns.cloudflare.com`), Porkbun como registrador y DNSSEC/DS OFF durante el
+cambio. Se migraron 24 registros (4 A, 8 CNAME, 3 MX, 9 TXT), los preexistentes
+DNS only, preservando GitHub Pages y Zoho/Resend. Worker `magandhi-go-p3` está
+en Production con custom domain `go.magandhi.com`.
+
+Los gates quedaron ON el `2026-10-21 04:41:09.507253Z`; política `false`/`null`
+fuera del gate, cuota 600 y bitácora 2. Un enlace producto controlado activo
+respondió `302`, body 0, sin cookies, `no-store`, destino MAGANDHI exacto,
+queries de redirect ignoradas; métodos e inválidos fallaron según contrato, sin
+UI intermedia y con TTFB 0,22–0,43 s. Sondas negativas: 0 clics/0 ventanas; dos
+GET positivos con IP falsa distinta: 2 clics, 1 fila diaria y 1 ventana,
+demostrando overwrite. Histórico 0 e invariantes 0. Esos dos clics son
+sintéticos y el enlace no se usa para métricas reales. No se atribuyen pruebas
+de UI interna no ejecutadas.
+
+GitHub Actions run `39549981902` terminó `completed/success`. La salida revisada
+mostró `RESUMEN P3 SQL | 15 comprobaciones · 0 fallan`, Deno
+`9 passed | 0 failed`, `RESUMEN P3 Worker | 7 comprobaciones · 0 fallan` y
+veredicto `Todo pasa.` Su banco detectó/corrigió la defensa de cuerpo vacío en
+`302`; faltan merge, redespliegue y sonda mínima posterior para el cierre final.
 
 ### P4 · Atribución exacta hasta la venta
 
@@ -543,7 +568,7 @@ Ventas muestra la procedencia validada. Los pedidos manuales pueden tener una fu
 
 ## 5. Orden de construcción
 
-Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual (20-oct-2026): C1–C5 cerrados estructuralmente en producción; falta el cierre transaccional por carrito. **P0, P1 y P2 están cerrados; el dueño aprobó P2 y P3 es el siguiente tramo, con contrato en construcción pero sin despliegue. P4–P5 permanecen pendientes.**
+Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual (21-oct-2026): C1–C5 cerrados estructuralmente en producción; falta el cierre transaccional por carrito. **P0–P2 están cerrados. P3 está desplegado, activo y medido, con cierre candidato pendiente únicamente de merge + redespliegue del hardening + sonda mínima posterior. P4–P5 permanecen pendientes.**
 
 1. **Plano y arranque — cerrado.** Este documento y referencias de contexto.
 2. **C1 · cantidad inmediata — estructura lista.** Valor comercial rápido y cimiento de carrito; sin afirmar cierre transaccional de qty2.
@@ -554,16 +579,16 @@ Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato est
 7. **P0 · taxonomía y privacidad — contrato cerrado.** Decisiones completas en `docs/PLANO-PROMOCIONAR-P0.md`; cero captura y cero producción.
 8. **P1 · producto compartible — desplegado y cerrado estructuralmente.** Seis shells, metadata, URLs limpias, historial/alias, sitemap y robots medidos. Gate `noindex` ligado a políticas.
 9. **P2 · estudio Promocionar — desplegado, cerrado y aprobado.** PR #298/#299, merge `90efd87`, Pages `39471770742`, aprobación visual/funcional y comparación productiva exacta 5/5; sin backend ni tests P2 dedicados.
-10. **P3 · registro y enlace corto — siguiente, en construcción.** Implementación
-    y contrato abiertos; los tres gates OFF y banco automatizado P3 pendiente
-    porque no fue solicitado/agregado. Su ausencia no bloquea por sí sola este
-    corte OFF, pero sí cerrar P3 o activar gates; cero backend/DNS desplegado.
+10. **P3 · registro y enlace corto — desplegado, activo y medido.** Cierre
+    candidato: solo faltan merge, redespliegue y sonda mínima posterior del
+    hardening que fuerza cuerpo vacío en `302`. Los dos clics de control son
+    sintéticos y no se usan como métrica real.
 11. **P4–P5 · atribución y lectura — pendientes.** No entran en P3.
 
-P2 está cerrado y aprobado. P3 se construye desde P0–P2 sin mezclar redirector,
-atribución transaccional y métricas en una sola migración o despliegue. La
-existencia de código en Git no cambiará el estado productivo sin evidencia de
-SQL, Edge, DNS/routing, gates y HTTP.
+P2 está cerrado y aprobado. P3 se desplegó desde P0–P2 sin mezclar redirector,
+atribución transaccional y métricas en una sola migración o despliegue. P3 solo
+entrega clics aproximados: CTR requiere impresiones; atribución de
+conversión/pedidos empieza en P4 y tablero/ingresos en P5.
 
 ---
 
