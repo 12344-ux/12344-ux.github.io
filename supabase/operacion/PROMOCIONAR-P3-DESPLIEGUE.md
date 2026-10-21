@@ -1,7 +1,7 @@
 # Promocionar P3 · despliegue PostgreSQL y operación
 
-**Estado productivo · 21-oct-2026:** migración aplicada una vez, cron sano, Edge/routing medidos y tres gates **ON**. Cierre candidato: faltan únicamente merge, redespliegue del hardening del Worker que fuerza cuerpo vacío en `302` y sonda mínima posterior.
-**Alcance:** migración PostgreSQL P3, cron, Edge, Worker/DNS, activación, observación y reversa. P4/P5 se gestionan por separado.
+**Estado productivo · 21-oct-2026:** migración aplicada una vez, cron sano, Edge/routing medidos, tres gates **ON** y P3 **cerrado FINAL**. El hardening que fuerza cuerpo vacío en `302` fue fusionado, redesplegado desde ese merge según confirmó el dueño y medido después del redespliegue.
+**Alcance:** migración PostgreSQL P3, cron, Edge, Worker/DNS, activación, observación y reversa. **P4 es el siguiente tramo; P5 se gestiona después.**
 **Método SQL:** SQL Editor manual, un Run por archivo; no hay ledger productivo y no se usa `supabase db push`.
 
 ## Evidencia productiva del corte
@@ -13,19 +13,21 @@
 - DNS autoritativo en Cloudflare: `rita.ns.cloudflare.com` y `toby.ns.cloudflare.com`. Porkbun continúa como registrador; DNSSEC/DS se mantuvo OFF durante el cambio. Se migraron 24 registros: 4 A, 8 CNAME, 3 MX y 9 TXT. Todos los registros preexistentes quedaron DNS only; GitHub Pages y Zoho/Resend se preservaron.
 - Worker `magandhi-go-p3`: Production, custom domain `go.magandhi.com`.
 - Gates ON desde `2026-10-21 04:41:09.507253Z`; política `false`/`null` y fuera del gate, cuota 600, bitácora 2 al activar. Hay un enlace producto controlado activo.
-- HTTP medido: `GET 302`, body 0, sin `Set-Cookie`, `Cache-Control: no-store`, `Location` MAGANDHI exacta y query `url`/`next` ignorada; `HEAD 302`, `OPTIONS 204`, `POST 405`, inválidos `404`; sin banner, popup, modal, aviso ni consentimiento; TTFB 0,22–0,43 s.
+- HTTP medido antes del hardening final: `GET 302`, body 0, sin `Set-Cookie`, `Cache-Control: no-store`, `Location` MAGANDHI exacta y query `url`/`next` ignorada; `HEAD 302`, `OPTIONS 204`, `POST 405`, inválidos `404`; sin banner, popup, modal, aviso ni consentimiento; TTFB 0,22–0,43 s.
+- Sonda mínima **post-redespliegue**, `2026-10-21T05:56:36Z`: DNS público A correcto; `GET 302`, body 0, sin `Set-Cookie`, `Cache-Control: no-store`, `Location` MAGANDHI exacta, query `url`/`next` ignorada y TTFB `0.390943s`; `HEAD 302`, `OPTIONS 204` e inválido `404`.
 - Sondas negativas: 0 clics y 0 ventanas. Dos `GET` positivos con IP falsa distinta: 2 clics, 1 fila diaria y 1 ventana, lo que demuestra que la infraestructura sobrescribe `x-real-ip`. Histórico 0 e invariantes 0.
 - Los dos clics son **sintéticos**. El enlace controlado no se distribuye ni se usa para métricas reales.
 
-## Estado de código y banco
+## Estado final de código y banco
 
-- PR/merge de implementación: #300 `b2440c3`, #301 `11d8008`, #302 `b4f8acb` y #303 `23ea5a2`.
+- PR/merge de implementación: #300 `b2440c3`, #301 `11d8008`, #302 `b4f8acb`, #303 `23ea5a2` y hardening final #304 `f1f61527f4535b2d09b58255d9730690bebc072f`, fusionado el `2026-10-21T05:48:15Z`.
 - GitHub Actions run `39549981902` terminó `completed/success`. Su salida revisada mostró:
   - `RESUMEN P3 SQL | 15 comprobaciones · 0 fallan`
   - Deno `9 passed | 0 failed`
   - `RESUMEN P3 Worker | 7 comprobaciones · 0 fallan`
   - veredicto `Todo pasa.`
-- El banco detectó y corrigió en `cloudflare/magandhi-go-p3/worker.js` la defensa para que un `302` nunca propague cuerpo accidental de Edge. Esa revisión todavía necesita merge, redespliegue de `magandhi-go-p3` y sonda mínima posterior antes de declarar cierre final.
+- El banco detectó y corrigió en `cloudflare/magandhi-go-p3/worker.js` la defensa para que un `302` nunca propague cuerpo accidental de Edge. El dueño confirmó el redespliegue de `magandhi-go-p3` desde el merge de #304 y la sonda posterior quedó verde.
+- No se inventan version IDs ni pruebas de UI interna. El dueño recorrió guardar + activar; no se automatizaron ni recorrieron por completo edición/CAS y fallback forzado. Los bancos SQL/core/Worker cubren sus contratos, por lo que este límite no bloquea el cierre operativo.
 
 ## Contrato instalado
 
@@ -65,7 +67,7 @@ La función compacta detalle anterior a 13 meses en el histórico dentro de la m
 - Edge pública `enlace-promocional`: Verify JWT OFF. Solo ella usa el secreto `PROMOCIONAR_IP_SAL`; el repositorio nunca contiene su valor.
 - Cabecera única: `PROMOCIONAR_IP_HEADER=x-real-ip`. El Worker reemplaza cualquier valor del visitante por `CF-Connecting-IP`; no usa fallbacks.
 - Worker `magandhi-go-p3` fija un único origen, no sigue el `302`, filtra cabeceras, elimina cookies y fuerza `no-store`.
-- El hardening pendiente de cierre fuerza cuerpo nulo para `302` y elimina cabeceras de longitud/codificación asociadas; CI ya terminó `completed/success`, pero aún requiere merge, redespliegue y sonda mínima posterior.
+- El hardening final fuerza cuerpo nulo para `302` y elimina cabeceras de longitud/codificación asociadas. PR #304 quedó fusionado, el dueño confirmó el redespliegue desde ese merge y la sonda mínima posterior verificó el contrato.
 - Cloudflare es DNS autoritativo; Porkbun conserva el registro del dominio. Los 24 registros migrados y los servicios GitHub Pages/Zoho/Resend no se alteran durante P3.
 
 ## Activación global · ejecutada el 21-oct-2026
@@ -92,4 +94,4 @@ Ante falla de resolución segura, privacidad, retención, routing o hardening:
 
 ## Frontera P3/P4/P5
 
-P3 produce clics aproximados, no personas ni ventas. Un CTR necesita impresiones y no puede calcularse con clics solos. P4 comienza al congelar el enlace validado en intención/pedido y atribuye conversión/pedidos. P5 incorpora tablero e ingresos con denominadores explícitos.
+P3 produce clics aproximados, no personas ni ventas. Un CTR necesita impresiones y no puede calcularse con clics solos. **P4 es el siguiente tramo:** comienza al congelar el enlace validado en intención/pedido y atribuye conversión/pedidos. **P5 viene después:** incorpora tablero e ingresos con denominadores explícitos.

@@ -1,7 +1,7 @@
 # PLANO · Promocionar P3 · Registro y enlace corto
 
 **Decisión del dueño:** 20 de octubre de 2026
-**Estado productivo · 21-oct-2026:** **desplegado, activo y medido; cierre candidato pendiente únicamente de merge + redespliegue del hardening del Worker + sonda mínima posterior**
+**Estado productivo · 21-oct-2026:** **desplegado, activo, medido y cerrado FINAL**
 **Depende de:** P0 como contrato normativo, P1 como destino canónico y P2 como estudio aprobado.
 **URL productiva:** `https://go.magandhi.com/<codigo>` mediante DNS autoritativo Cloudflare, Worker `magandhi-go-p3` y Edge `enlace-promocional`.
 **Activación actual:** `activacion_habilitada`, `redirect_habilitado` y
@@ -26,15 +26,16 @@ La migración `20261108000000` se aplicó una sola vez; preflight, postflight y
 matriz quedaron verdes y hay cinco tablas. La Edge pública está desplegada con
 Verify JWT OFF; el DNS autoritativo y el Worker atienden `go.magandhi.com`; el
 cron horario está sano y los gates están ON. Las sondas productivas acreditan el
-redirect y conteo controlado descritos en §6. **P3 aún no tiene cierre final:**
-el banco detectó y corrigió la defensa de cuerpo vacío en `302`; esa versión del
-Worker aún requiere merge, redespliegue y sonda mínima posterior.
+redirect y conteo controlado descritos en §6. **P3 tiene cierre FINAL:** el
+hardening de cuerpo vacío en `302` se fusionó en PR #304 (merge
+`f1f61527f4535b2d09b58255d9730690bebc072f`), el dueño confirmó el
+redespliegue del Worker desde ese merge y la sonda mínima posterior quedó verde.
 
 ---
 
 ## 1. Resultado de P3
 
-Al cerrar P3, un operador autorizado podrá crear, editar y listar desde una
+Con P3 cerrado, un operador autorizado puede crear, editar y listar desde una
 campaña un borrador privado **sin código**, revisar canal/UTM/destino y activarlo
 una sola vez. Ese trabajo privado sigue disponible con
 `activacion_habilitada=OFF`; el gate impide pasar el borrador a público, no
@@ -358,7 +359,10 @@ estudio no debe depender del redirector para seguir siendo útil.
 
 La secuencia productiva concluyó el 21-oct-2026:
 
-1. PR/merge #300 `b2440c3`, #301 `11d8008`, #302 `b4f8acb` y #303 `23ea5a2`;
+1. PR/merge #300 `b2440c3`, #301 `11d8008`, #302 `b4f8acb`, #303
+   `23ea5a2` y hardening final #304
+   `f1f61527f4535b2d09b58255d9730690bebc072f` (fusionado el
+   `2026-10-21T05:48:15Z`);
 2. preflight verde;
 3. migración `20261108000000_promocionar_p3_enlaces.sql` aplicada una sola vez;
 4. postflight y matriz verdes; cinco tablas privadas presentes;
@@ -391,8 +395,17 @@ GitHub Actions run `39549981902` terminó `completed/success`. La salida
 revisada mostró `RESUMEN P3 SQL | 15 comprobaciones · 0 fallan`, Deno
 `9 passed | 0 failed`, `RESUMEN P3 Worker | 7 comprobaciones · 0 fallan` y
 veredicto `Todo pasa.` El banco detectó y corrigió que el Worker debía descartar
-siempre el cuerpo de un `302`; esa versión todavía requiere merge, redespliegue
-y sonda mínima posterior antes del cierre final.
+siempre el cuerpo de un `302`. Ese hardening se fusionó en PR #304 a las
+`2026-10-21T05:48:15Z`; el dueño confirmó el redespliegue de
+`magandhi-go-p3` desde el merge
+`f1f61527f4535b2d09b58255d9730690bebc072f`.
+
+La sonda mínima post-redespliegue de `2026-10-21T05:56:36Z` confirmó DNS
+público A correcto; `GET 302`, body 0, sin `Set-Cookie`,
+`Cache-Control: no-store`, `Location` MAGANDHI exacta, query `url`/`next`
+ignorada y TTFB `0.390943s`; además `HEAD 302`, `OPTIONS 204` e inválido
+`404`. Esta secuencia CI → merge → redespliegue confirmado → sonda posterior
+cierra P3.
 
 La explicación del conteo aproximado, el procesamiento antiabuso temporal y la
 retención se incorporará después a la política general. Sigue fuera de los
@@ -469,9 +482,11 @@ ausencia de redirección abierta antes de cualquier activación.
 
 ## 9. Criterios de cierre
 
-P3 está en **cierre candidato**. Se marca solo lo acreditado; las pruebas de UI
-interna no ejecutadas siguen abiertas. El merge + redespliegue del hardening del
-Worker + sonda mínima posterior son el único bloqueo para declarar cierre final.
+P3 está **cerrado FINAL**. Se marca lo acreditado por implementación, bancos,
+operación productiva y sonda post-redespliegue. Los recorridos no automatizados
+de UI interna se conservan como límite honesto de evidencia, no como bloqueo:
+el dueño recorrió guardar + activar, y los bancos SQL/core/Worker cubren los
+contratos.
 
 ### Implementación, datos y seguridad
 
@@ -502,30 +517,37 @@ Worker + sonda mínima posterior son el único bloqueo para declarar cierre fina
 
 ### UI y operación
 
-- [ ] No se atribuyen recorridos de UI interna no ejecutados: CRUD visual,
-      polling, CAS/conflicto, revalidación previa a distribución y degradación P2
-      conservan el alcance contractual, pero este corte no inventa su prueba.
+- **Límite de evidencia no bloqueante:** no se automatizaron ni recorrieron
+  todas las ramas de UI interna —edición/CAS y fallback P2 forzado—. El dueño sí
+  recorrió guardar + activar; los bancos SQL/core/Worker cubren los contratos de
+  CRUD, polling, CAS/conflicto, revalidación previa a distribución y degradación
+  P2. Este cierre no inventa ejecución visual adicional.
 - [x] Reversa documentada: gates OFF, respuesta de marca, cron/datos preservados,
       corrección forward y sin borrar todavía registros de Porkbun.
-- [x] P4/P5 permanecen fuera: P4 empieza en intención/pedido y atribuye
-      conversión/pedidos; CTR requiere impresiones; tablero e ingresos empiezan
-      en P5.
+- [x] P4 permanece fuera y es el siguiente tramo: empieza en intención/pedido
+      y atribuye conversión/pedidos; CTR requiere impresiones.
+- [x] P5 viene después de P4: incorpora tablero e ingresos.
 
-### Único bloqueo para cierre final
+### Evidencia final de cierre
 
 - [x] Banco local core 9/0 y Worker 7/0.
 - [x] SQL reversible integrado al workflow.
 - [x] Run `39549981902` `completed/success`; salida revisada: SQL 15/0, Deno
       9/0, Worker 7/0 y veredicto `Todo pasa.`
-- [ ] Hardening de cuerpo vacío `302` fusionado.
-- [ ] Worker `magandhi-go-p3` redesplegado con ese hardening.
-- [ ] Sonda mínima posterior confirma `302`, body 0, sin cookies y `no-store`.
-- [ ] Relevo candidato promovido a cierre final.
+- [x] Hardening de cuerpo vacío `302` fusionado en PR #304 el
+      `2026-10-21T05:48:15Z`, merge
+      `f1f61527f4535b2d09b58255d9730690bebc072f`.
+- [x] El dueño confirmó el redespliegue de `magandhi-go-p3` desde ese merge.
+- [x] Sonda mínima posterior de `2026-10-21T05:56:36Z`: DNS público A correcto;
+      `GET 302`, body 0, sin `Set-Cookie`, `no-store`, `Location` exacta, query
+      `url`/`next` ignorada, TTFB `0.390943s`; `HEAD 302`, `OPTIONS 204` e
+      inválido `404`.
+- [x] Relevo promovido a cierre FINAL.
 
 **Tarea informativa posterior y no bloqueante:** la política general incorporará
 la explicación del conteo aproximado, el procesamiento antiabuso temporal y la
 retención. No es criterio de activación P3 y no habilita UI para el visitante.
 
-**Estado de este corte:** P3 desplegado, activo y medido. Cierre candidato,
-pendiente únicamente de merge + redespliegue y sonda mínima posterior del
-hardening del Worker. Fuente de relevo: `docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`.
+**Estado de este corte:** P3 desplegado, activo, medido y **cerrado FINAL**.
+**P4 es el siguiente tramo; P5 viene después.** Fuente de cierre:
+`docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`.
