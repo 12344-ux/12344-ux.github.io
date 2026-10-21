@@ -480,7 +480,7 @@ begin
        )
        and (
          (
-           left(p.proname, 4) in ('co__','pw__')
+           left(p.proname, 4) in ('co__','pw__','cm__')
            or p.proname in (
              'crear_pedido_c3_base','crear_pedido_c4',
              'cm__asignar_slug_automatico','cm__validar_slug_no_reasignado',
