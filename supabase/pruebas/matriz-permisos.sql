@@ -237,6 +237,14 @@ begin
       ];
     end if;
 
+    -- Categorías oficiales: dos puertas atómicas de Campañas para usuarios
+    -- autenticados. Los helpers cm__* continúan privados y no entran aquí.
+    if to_regprocedure('public.cm_crear_campana_con_categorias(text,text,text,text,bigint,text,text,text,jsonb,jsonb,boolean,boolean,integer,boolean,integer,text[],uuid,text,integer,boolean,integer,text[],text)') is not null then
+      v_lista_blanca := v_lista_blanca || array[
+        'cm_crear_campana_con_categorias', 'cm_editar_campana_con_categorias'
+      ];
+    end if;
+
     -- F3 solo existe desde 202610200. Sus constructores internos siguen fuera
     -- de la lista; estas dos son las únicas puertas de panel.
     if to_regprocedure('public.fz_asientos_automaticos_pendientes()') is not null then
@@ -430,7 +438,7 @@ begin
     -- no son RPC de la Edge.
     select string_agg(
              case
-               when left(p.proname, 4) in ('co__','pw__')
+               when left(p.proname, 4) in ('co__','pw__','cm__')
                  or p.proname in (
                    'crear_pedido_c3_base','crear_pedido_c4',
                    'cm__asignar_slug_automatico','cm__validar_slug_no_reasignado',
