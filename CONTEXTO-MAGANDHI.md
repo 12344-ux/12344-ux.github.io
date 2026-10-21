@@ -63,17 +63,17 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 >
 > **El estado actual de producción llega hasta la migración `20261108000000` (Promocionar P3), aplicada una sola vez el 21-oct-2026 por SQL Editor. Preflight, postflight y matriz P3 quedaron verdes. El carrito permanece ENCENDIDO (`carrito_habilitado=true`) y Wompi en `prod`. El proyecto no tiene tabla de ledger de migraciones: todo se aplica a mano y nunca con `supabase db push`.**
 >
-> **Hito · Promocionar P2 · 20-oct-2026 · desplegado, cerrado y aprobado por el dueño.** PR #298 y #299 quedaron fusionados; el cierre publicado corresponde a `90efd87ae1be07493fdf38aad5e140be558d38ac` y Pages run `39471770742` terminó `completed/success`. Los cinco assets productivos del estudio respondieron HTTP 200 y coincidieron exactamente, byte por byte, con ese merge. La aprobación fue **visual/funcional**: no se ejecutó ni se atribuye una suite automatizada P2, auditoría formal de accesibilidad, protocolo separado de teclado/foco o prueba independiente de escaneo QR. P2 fue solo frontend, sin SQL, Edge, backend o DNS. **P3 es el siguiente tramo: implementación y contrato en construcción, con `activacion_habilitada`, `redirect_habilitado` y `conteo_habilitado` OFF.** El primer gate apagado permite preparar borradores privados sin código y solo impide publicarlos. El banco automatizado P3 sigue pendiente porque no fue solicitado/agregado: no bloquea por sí solo este corte con los tres gates OFF, pero será obligatorio antes de cerrar P3 o activar cualquiera. No se acredita despliegue o CI P3.
+> **Hito · Promocionar P2 · 20-oct-2026 · desplegado, cerrado y aprobado por el dueño.** PR #298 y #299 quedaron fusionados; el cierre publicado corresponde a `90efd87ae1be07493fdf38aad5e140be558d38ac` y Pages run `39471770742` terminó `completed/success`. Los cinco assets productivos del estudio respondieron HTTP 200 y coincidieron exactamente, byte por byte, con ese merge. La aprobación fue **visual/funcional**: no se ejecutó ni se atribuye una suite automatizada P2, auditoría formal de accesibilidad, protocolo separado de teclado/foco o prueba independiente de escaneo QR. P2 fue solo frontend, sin SQL, Edge, backend o DNS. **Estado histórico de ese corte, ya superado: P3 era el siguiente tramo, con implementación y contrato en construcción y `activacion_habilitada`, `redirect_habilitado` y `conteo_habilitado` OFF.** El primer gate apagado permite preparar borradores privados sin código y solo impide publicarlos. El banco automatizado P3 sigue pendiente porque no fue solicitado/agregado: no bloquea por sí solo este corte con los tres gates OFF, pero será obligatorio antes de cerrar P3 o activar cualquiera. En ese corte todavía no se acreditaban despliegue o CI P3; el hito del 21-oct-2026 registrado a continuación supera ese estado y documenta el cierre FINAL.
 >
-> **Decisión final de producto y técnica para P3 · 20-oct-2026.** Se conservan íntegros enlaces, clics aproximados, métricas, historial, filtros, antiabuso, retención, home y controles internos. Un enlace activo redirige inmediatamente: la apertura no usa cookies, no crea un perfil individual y jamás muestra banner, popup, modal, aviso intermedio ni solicitud de consentimiento. La explicación se añadirá después a la política general sin bloquear lanzamiento o activación P3; P4 y EM7 mantienen sus gates propios. Esto no acredita despliegue ni cierre P3 y no se presenta como asesoría jurídica.
+> **Decisión final de producto y técnica para P3 · 20-oct-2026.** Se conservan íntegros enlaces, clics aproximados, métricas, historial, filtros, antiabuso, retención, home y controles internos. Un enlace activo redirige inmediatamente: la apertura no usa cookies, no crea un perfil individual y jamás muestra banner, popup, modal, aviso intermedio ni solicitud de consentimiento. La explicación se añadirá después a la política general sin bloquear lanzamiento o activación P3; P4 y EM7 mantienen sus gates propios. Por sí sola, esta decisión aún no acreditaba despliegue ni cierre P3; el hito posterior sí los documenta. No se presenta como asesoría jurídica.
 >
-> **Hito · Promocionar P3 · 21-oct-2026 · desplegado, activo y medido; cierre candidato.** PR/merge #300 `b2440c3`, #301 `11d8008`, #302 `b4f8acb` y #303 `23ea5a2`. La migración `20261108000000` se aplicó una vez; preflight, postflight y matriz quedaron verdes y existen cinco tablas privadas. El cron exacto `promocionar-p3-mantenimiento-horario`, `7 * * * *`, apunta a la misma base y su último run medido fue `succeeded` dentro de dos horas. Edge `enlace-promocional` está desplegada con Verify JWT OFF, `PROMOCIONAR_IP_HEADER=x-real-ip` y `PROMOCIONAR_IP_SAL` configurado sin registrar su valor.
+> **Hito · Promocionar P3 · 21-oct-2026 · desplegado, activo, medido y cerrado FINAL.** PR/merge #300 `b2440c3`, #301 `11d8008`, #302 `b4f8acb`, #303 `23ea5a2` y hardening final #304 `f1f61527f4535b2d09b58255d9730690bebc072f`, fusionado el `2026-10-21T05:48:15Z`. La migración `20261108000000` se aplicó una vez; preflight, postflight y matriz quedaron verdes y existen cinco tablas privadas. El cron exacto `promocionar-p3-mantenimiento-horario`, `7 * * * *`, apunta a la misma base y su último run medido fue `succeeded` dentro de dos horas. Edge `enlace-promocional` está desplegada con Verify JWT OFF, `PROMOCIONAR_IP_HEADER=x-real-ip` y `PROMOCIONAR_IP_SAL` configurado sin registrar su valor.
 >
 > Cloudflare quedó como DNS autoritativo con `rita.ns.cloudflare.com` y `toby.ns.cloudflare.com`; Porkbun sigue como registrador y DNSSEC/DS permaneció OFF durante el cambio. Se migraron 24 registros (4 A, 8 CNAME, 3 MX, 9 TXT), todos los preexistentes DNS only, preservando GitHub Pages y Zoho/Resend. Worker `magandhi-go-p3` está en Production y sirve el custom domain `go.magandhi.com`.
 >
 > Los tres gates quedaron ON el `2026-10-21 04:41:09.507253Z`; política `false`/`null` fuera del gate, cuota 600 y bitácora 2 al activar. Un enlace producto controlado activo respondió `302`, body 0, sin cookies, `no-store`, destino MAGANDHI exacto, query `url`/`next` ignorada; `HEAD 302`, `OPTIONS 204`, `POST 405`, inválidos `404`; sin banner/popup/modal/aviso/consentimiento; TTFB 0,22–0,43 s. Sondas negativas dejaron 0 clics/0 ventanas; dos GET positivos con IP falsa distinta dejaron 2 clics, 1 fila diaria y 1 ventana, demostrando overwrite. Histórico 0 e invariantes 0. **Esos clics son sintéticos y el enlace controlado no se usa para métricas reales.**
 >
-> **Pendiente único antes del cierre final P3:** GitHub Actions run `39549981902` terminó `completed/success`; su salida revisada mostró `RESUMEN P3 SQL | 15 comprobaciones · 0 fallan`, Deno `9 passed | 0 failed`, `RESUMEN P3 Worker | 7 comprobaciones · 0 fallan` y veredicto `Todo pasa.` El banco detectó y corrigió la defensa de cuerpo vacío en `302`; esa versión de `worker.js` todavía requiere merge, redespliegue y sonda mínima posterior. El estado sigue siendo cierre candidato. Relevo candidato: `docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`.
+> **Cierre FINAL P3:** GitHub Actions run `39549981902` terminó `completed/success`; su salida revisada mostró `RESUMEN P3 SQL | 15 comprobaciones · 0 fallan`, Deno `9 passed | 0 failed`, `RESUMEN P3 Worker | 7 comprobaciones · 0 fallan` y veredicto `Todo pasa.` El banco detectó y corrigió la defensa de cuerpo vacío en `302`. El dueño confirmó el redespliegue de `magandhi-go-p3` desde el merge de #304. La sonda mínima post-redespliegue, `2026-10-21T05:56:36Z`, confirmó DNS público A correcto; `GET 302`, body 0, sin `Set-Cookie`, `Cache-Control: no-store`, `Location` MAGANDHI exacta, query `url`/`next` ignorada y TTFB `0.390943s`; `HEAD 302`, `OPTIONS 204` e inválido `404`. P4 es el siguiente tramo; P5 viene después. Relevo final: `docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`.
 >
 > **Cuentas de cliente C1 · DESPLEGADO · 15-oct-2026 (PR #268).** El dueño
 > decidió conservar compra como invitado y añadir inicio de sesión opcional en
@@ -441,8 +441,8 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
   producción con los límites documentados; ninguno tiene cierre transaccional
   por carrito. P0 está cerrado como contrato; P1 y P2 están desplegados y
   cerrados, con P2 aprobado visual/funcionalmente por el dueño. P3 está
-  desplegado, activo y medido; su cierre es candidato y solo espera merge +
-  redespliegue del hardening del Worker + sonda mínima posterior. P4/P5 siguen pendientes.**
+  desplegado, activo, medido y cerrado FINAL. P4 es el siguiente tramo y P5
+  viene después.**
 - `docs/PLANO-PROMOCIONAR-P0.md`: fuente de verdad del contrato de taxonomía,
   normalización, atribución, privacidad, conteo agregado, estados y retención.
   No equivale a implementación ni despliegue.
@@ -452,17 +452,16 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
   visual/funcional.
 - `docs/RELEVO-PROMOCIONAR-P2-CIERRE-2026-10-20.md`: relevo histórico del
   cierre P2; conserva el estado que era cierto el 20-oct-2026.
-- `docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`: relevo vigente del frente
-  Promocionar. Es un cierre candidato pendiente solo de merge + redespliegue y
-  sonda mínima posterior del hardening del Worker.
+- `docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`: relevo de cierre FINAL
+  de P3 y evidencia de continuidad hacia P4.
 - `docs/PLANO-PROMOCIONAR-P3.md`: contrato y estado productivo de SQL,
   Edge/routing, UI y operación. Los gates `activacion_habilitada`,
   `redirect_habilitado` y `conteo_habilitado` nacieron OFF y están ON desde
-  `2026-10-21 04:41:09.507253Z`. P3 está desplegado y medido; el único pendiente
-  para cierre final es fusionar y redesplegar el hardening que fuerza cuerpo
-  vacío en `302`, y ejecutar la sonda mínima posterior. P3 solo entrega clics aproximados; P4 comienza
-  la atribución de conversión/pedidos en intención/pedido y P5 el
-  tablero/ingresos.
+  `2026-10-21 04:41:09.507253Z`. P3 está desplegado, medido y cerrado FINAL:
+  PR #304 fusionó el hardening, el dueño confirmó su redespliegue y la sonda
+  mínima posterior quedó verde. P3 solo entrega clics aproximados; P4 es el
+  siguiente tramo y comienza la atribución de conversión/pedidos en
+  intención/pedido; P5 viene después con tablero/ingresos.
 - `docs/PLANO-COMERCIAL-C5.md`: contrato técnico de carrito libre, Mis compras,
   reapertura, seguimiento y opinión tras entrega.
 - `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`: **relevo general vigente y
@@ -495,15 +494,14 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 
 El relevo general vigente es
 `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`: C5 está desplegado y cerrado
-estructuralmente, con el carrito encendido. El relevo vigente del frente
-Promocionar es `docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`: P3 está
-desplegado, activo y medido, con cierre candidato pendiente únicamente de merge +
-redespliegue del hardening del Worker + sonda mínima posterior. El relevo P2 conserva la evidencia
-histórica del 20-oct y ya no gobierna el arranque. Los relevos C4 y C5
-del 19-oct conservan la evidencia histórica. El relevo temático de cuentas
-`docs/RELEVO-CUENTAS-C2-2026-10-16.md` conserva su evidencia histórica y evita
-repetir migración, SMTP, plantillas o configuración Google al retomar esa
-apertura.
+estructuralmente, con el carrito encendido. El relevo de cierre de Promocionar
+es `docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`: P3 está desplegado,
+activo, medido y cerrado FINAL. **P4 es el siguiente tramo; P5 viene después.**
+El relevo P2 conserva la evidencia histórica del 20-oct y ya no gobierna el
+arranque. Los relevos C4 y C5 del 19-oct conservan la evidencia histórica. El
+relevo temático de cuentas `docs/RELEVO-CUENTAS-C2-2026-10-16.md` conserva su
+evidencia histórica y evita repetir migración, SMTP, plantillas o configuración
+Google al retomar esa apertura.
 
 ## 9. Pendientes vigentes
 
@@ -543,10 +541,12 @@ cierres estructurales de sus primeros tramos:
    cierre transaccional con pago real autorizado, opinión autenticada por cuenta
    y los placeholders del centro de cuenta (Favoritos, Mis opiniones, Eliminar
    cuenta). Relevo vigente: `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`.
-6. **Promocionar P0–P2 cerrados; P3 desplegado, activo y medido
+6. **Promocionar P0–P3 cerrados; P3 desplegado, activo, medido y cerrado FINAL
    (21-oct-2026).** P0 gobierna taxonomía/privacidad; P1 y P2 conservan sus
    cierres del 20-oct. P3: PR/merge #300 `b2440c3`, #301 `11d8008`, #302
-   `b4f8acb` y #303 `23ea5a2`; migración `20261108000000` aplicada una vez;
+   `b4f8acb`, #303 `23ea5a2` y #304
+   `f1f61527f4535b2d09b58255d9730690bebc072f`; migración `20261108000000`
+   aplicada una vez;
    preflight/postflight/matriz verdes y cinco tablas. Los gates
    `activacion_habilitada`, `redirect_habilitado` y `conteo_habilitado` nacieron
    OFF y están ON desde `2026-10-21 04:41:09.507253Z`. Pausar conteo no apaga
@@ -597,14 +597,25 @@ cierres estructurales de sus primeros tramos:
    histórico 0 e invariantes 0. Son clics sintéticos: el enlace controlado no se
    usa para métricas reales. No se inventan pruebas de UI no ejecutadas.
 
-   P3 queda como **cierre candidato**. GitHub Actions run `39549981902` terminó
-   `completed/success`; la salida revisada mostró
-   `RESUMEN P3 SQL | 15 comprobaciones · 0 fallan`, Deno
+   El dueño recorrió guardar + activar. No se automatizaron ni recorrieron todas
+   las ramas de UI interna —edición/CAS y fallback forzado—; los bancos
+   SQL/core/Worker cubren esos contratos. Este límite honesto no bloquea el
+   cierre y no se inventa evidencia visual adicional.
+
+   GitHub Actions run `39549981902` terminó `completed/success`; la salida
+   revisada mostró `RESUMEN P3 SQL | 15 comprobaciones · 0 fallan`, Deno
    `9 passed | 0 failed`, `RESUMEN P3 Worker | 7 comprobaciones · 0 fallan` y
-   veredicto `Todo pasa.` El banco corrigió la defensa de cuerpo `302`; faltan
-   merge, redespliegue y sonda mínima posterior. P3 solo entrega clics aproximados;
-   CTR requiere impresiones, P4 inicia conversión/pedidos por atribución y P5
-   tablero/ingresos.
+   veredicto `Todo pasa.` El banco corrigió la defensa de cuerpo `302`; PR #304
+   quedó fusionado el `2026-10-21T05:48:15Z`. El dueño confirmó el redespliegue
+   desde ese merge. La sonda mínima posterior, `2026-10-21T05:56:36Z`, confirmó
+   DNS público A correcto; `GET 302`, body 0, sin `Set-Cookie`, `no-store`,
+   `Location` exacta, query `url`/`next` ignorada y TTFB `0.390943s`; `HEAD 302`,
+   `OPTIONS 204` e inválido `404`. P3 solo entrega clics aproximados y queda
+   **cerrado FINAL**.
+7. **Promocionar P4 · siguiente tramo.** Validará y congelará
+   `atribucion_enlace_id` en intención/pedido para atribuir
+   conversión/pedidos. **P5 viene después**, con tablero e ingresos. CTR sigue
+   requiriendo impresiones.
 
 La definición final de la fase no se relaja: el carrito está cerrado en
 estructura, no end-to-end. Dinero solo con autorización expresa. Cuando se

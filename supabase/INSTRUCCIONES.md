@@ -10,8 +10,10 @@
 > D2c están operativos. Cuentas C1/C2 continúan desplegados; Comercial C1–C5
 > están cerrados estructuralmente, con carrito ENCENDIDO y Wompi `prod`, pero
 > sin cierre transaccional por pago real. **Promocionar P3 está desplegado,
-> activo y medido; sus tres gates están ON. Su cierre es candidato y solo espera
-> merge + redespliegue del hardening del Worker + sonda mínima posterior.** Estado general:
+> activo, medido y cerrado FINAL; sus tres gates están ON. El hardening final
+> quedó fusionado en #304, el dueño confirmó el redespliegue desde ese merge y
+> la sonda mínima posterior quedó verde. P4 es el siguiente tramo; P5 viene
+> después.** Estado general:
 > `docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`,
 > `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md` y
 > `CONTEXTO-MAGANDHI.md` §9.
@@ -5707,11 +5709,12 @@ shells, sitemap, robots y compatibilidad query/UUID responden HTTP 200. P1 queda
 cerrado estructuralmente. `noindex,follow` y sitemap solo home permanecen hasta
 políticas.
 
-# Promocionar P3 · registro y enlace corto · DESPLEGADO, ACTIVO Y MEDIDO
+# Promocionar P3 · registro y enlace corto · DESPLEGADO, ACTIVO, MEDIDO Y CERRADO FINAL
 
-**Estado productivo · 21-oct-2026:** P3 está operativo. El cierre documental es
-candidato y queda pendiente únicamente de merge, redespliegue del hardening de
-cuerpo vacío `302` del Worker y sonda mínima posterior. Relevo vigente:
+**Estado productivo · 21-oct-2026:** P3 está operativo y **cerrado FINAL**. El
+hardening de cuerpo vacío `302` del Worker fue fusionado, redesplegado desde ese
+merge según confirmó el dueño y medido con una sonda mínima posterior. Relevo
+de cierre:
 `docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`. Operación:
 `supabase/operacion/PROMOCIONAR-P3-DESPLIEGUE.md`.
 
@@ -5747,26 +5750,37 @@ Los gates `activacion_habilitada`, `redirect_habilitado` y
 `2026-10-21 04:41:09.507253Z`. Política `false`/`null` fuera del gate, cuota
 600 y bitácora 2 al activar. Existe un enlace producto controlado activo.
 
-Sondas medidas: `302`, body 0, sin `Set-Cookie`, `Cache-Control: no-store`,
-`Location` MAGANDHI exacta; query `url`/`next` ignorada; `HEAD 302`,
-`OPTIONS 204`, `POST 405`, inválidos `404`; sin banner, popup, modal, aviso o
-consentimiento; TTFB 0,22–0,43 s. Las negativas dejaron 0 clics/0 ventanas. Dos
-GET positivos con IP falsa distinta dejaron 2 clics, 1 fila diaria y 1 ventana,
-acreditando overwrite de `x-real-ip`; histórico 0 e invariantes 0. **Los dos
-clics son sintéticos:** no usar el enlace controlado para métricas reales.
+Sondas medidas antes del hardening final: `302`, body 0, sin `Set-Cookie`,
+`Cache-Control: no-store`, `Location` MAGANDHI exacta; query `url`/`next`
+ignorada; `HEAD 302`, `OPTIONS 204`, `POST 405`, inválidos `404`; sin banner,
+popup, modal, aviso o consentimiento; TTFB 0,22–0,43 s. Las negativas dejaron
+0 clics/0 ventanas. Dos GET positivos con IP falsa distinta dejaron 2 clics, 1
+fila diaria y 1 ventana, acreditando overwrite de `x-real-ip`; histórico 0 e
+invariantes 0. **Los dos clics son sintéticos:** no usar el enlace controlado
+para métricas reales.
 
-## Código y banco pendiente de cierre final
+La sonda mínima post-redespliegue, ejecutada el `2026-10-21T05:56:36Z`, confirmó
+DNS público A correcto; `GET 302`, body 0, sin `Set-Cookie`,
+`Cache-Control: no-store`, `Location` MAGANDHI exacta, query `url`/`next`
+ignorada y TTFB `0.390943s`; además `HEAD 302`, `OPTIONS 204` e inválido `404`.
 
-- PR/merge #300 `b2440c3`, #301 `11d8008`, #302 `b4f8acb`, #303 `23ea5a2`.
+## Código, banco y cierre final
+
+- PR/merge #300 `b2440c3`, #301 `11d8008`, #302 `b4f8acb`, #303 `23ea5a2` y
+  hardening final #304 `f1f61527f4535b2d09b58255d9730690bebc072f`, fusionado
+  el `2026-10-21T05:48:15Z`.
 - GitHub Actions run `39549981902` terminó `completed/success`. Su salida revisada
   mostró `RESUMEN P3 SQL | 15 comprobaciones · 0 fallan`, Deno
   `9 passed | 0 failed`, `RESUMEN P3 Worker | 7 comprobaciones · 0 fallan` y
   veredicto `Todo pasa.`
 - El banco detectó y corrigió la defensa que descarta cualquier cuerpo accidental
-  junto a un `302`. Esa versión de `cloudflare/magandhi-go-p3/worker.js` todavía
-  requiere merge, redespliegue y sonda mínima posterior antes del cierre final.
-- No inventar version IDs, resultados de logs privados ni pruebas de UI no
-  ejecutadas.
+  junto a un `302`. El dueño confirmó el redespliegue de
+  `cloudflare/magandhi-go-p3/worker.js` desde el merge de #304 y la sonda mínima
+  posterior acreditó el contrato.
+- No inventar version IDs ni resultados de logs privados. El dueño recorrió
+  guardar + activar; no se automatizaron ni recorrieron por completo
+  edición/CAS y fallback forzado de UI interna. Los bancos SQL/core/Worker
+  cubren esos contratos; el límite no bloquea este cierre.
 
 ## Operación y reversa
 
@@ -5779,6 +5793,6 @@ clics son sintéticos:** no usar el enlace controlado para métricas reales.
 - Mantener DNS y Worker durante diagnóstico salvo aislamiento por incidente. No
   borrar los registros de Porkbun ni los 24 migrados de Cloudflare.
 
-P3 produce **clics aproximados**. CTR necesita impresiones. Congelar el enlace
-en intención/pedido y atribuir conversión/pedidos empieza en P4; tablero e
-ingresos empiezan en P5.
+P3 produce **clics aproximados**. CTR necesita impresiones. **P4 es el siguiente
+tramo:** congelar el enlace en intención/pedido y atribuir conversión/pedidos
+empieza allí. **P5 viene después**, con tablero e ingresos.

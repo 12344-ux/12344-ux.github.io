@@ -6,10 +6,10 @@ inclusion: always
 
 Antes de proponer o tocar nada en una sesión nueva:
 
-1. Leer `docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`: es el relevo
-   vigente del frente activo y un **cierre candidato**, pendiente únicamente del
-   merge, redespliegue del hardening del Worker y sonda mínima posterior. Después leer
-   `docs/PLANO-PROMOCIONAR-P3.md` y el contrato P0.
+1. Leer `docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`: conserva el
+   **cierre FINAL de P3** y su evidencia. Después leer
+   `docs/PLANO-PROMOCIONAR-P3.md` y el contrato P0. **P4 es el siguiente tramo;
+   P5 viene después.**
 2. Leer `CONTEXTO-MAGANDHI.md` §9 y `docs/PLANO-FASE-COMERCIAL.md`.
 3. Para estado de carrito, Wompi o producción, consultar
    `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md` y
@@ -22,10 +22,10 @@ Antes de proponer o tocar nada en una sesión nueva:
 
 ## Realidad de arranque · 21-oct-2026
 
-- **Promocionar P3 está desplegado, activo y medido en producción.** La
-  migración `20261108000000` se aplicó una vez; preflight, postflight y matriz
-  quedaron verdes. Existen cinco tablas privadas. No volver a ejecutar la
-  migración ni editarla: toda corrección futura es forward.
+- **Promocionar P3 está cerrado FINAL:** desplegado, activo y medido en
+  producción. La migración `20261108000000` se aplicó una vez; preflight,
+  postflight y matriz quedaron verdes. Existen cinco tablas privadas. No volver
+  a ejecutar la migración ni editarla: toda corrección futura es forward.
 - El cron nominal es exactamente `promocionar-p3-mantenimiento-horario`,
   `7 * * * *`, dirigido a `current_database()`; el último run medido fue
   `succeeded` dentro de dos horas. No inventar ni documentar `jobid`.
@@ -49,16 +49,25 @@ Antes de proponer o tocar nada en una sesión nueva:
   falsa distinta terminaron en 2 clics, 1 fila diaria y 1 ventana, demostrando
   overwrite de `x-real-ip`; histórico 0 e invariantes 0. **Esos dos clics son
   sintéticos:** el enlace controlado no debe usarse para métricas reales.
-- **Cierre todavía no final:** GitHub Actions run `39549981902` terminó
+- **Cierre FINAL P3:** GitHub Actions run `39549981902` terminó
   `completed/success`. La salida revisada mostró
   `RESUMEN P3 SQL | 15 comprobaciones · 0 fallan`, Deno
   `9 passed | 0 failed`, `RESUMEN P3 Worker | 7 comprobaciones · 0 fallan` y
-  veredicto `Todo pasa.` El banco detectó y corrigió la defensa de cuerpo vacío
-  en respuestas `302` del Worker; esa versión todavía necesita merge,
-  redespliegue y sonda mínima posterior antes del cierre final.
-- P3 solo entrega **clics aproximados**. Un CTR necesita impresiones; guardar el
-  enlace validado y atribuir conversión/pedidos empieza en P4, y tablero e
-  ingresos empiezan en P5.
+  veredicto `Todo pasa.` El hardening de cuerpo vacío en respuestas `302` se
+  fusionó en PR #304 el `2026-10-21T05:48:15Z`, merge
+  `f1f61527f4535b2d09b58255d9730690bebc072f`; el dueño confirmó el
+  redespliegue del Worker desde ese merge. La sonda mínima posterior, ejecutada
+  el `2026-10-21T05:56:36Z`, confirmó DNS público A correcto, `GET 302`, body 0,
+  sin `Set-Cookie`, `Cache-Control: no-store`, `Location` MAGANDHI exacta,
+  query `url`/`next` ignorada y TTFB `0.390943s`; también `HEAD 302`,
+  `OPTIONS 204` e inválido `404`.
+- **Límite de evidencia no bloqueante:** el dueño recorrió guardar + activar;
+  no se automatizaron ni recorrieron todas las ramas de UI interna
+  —edición/CAS y fallback forzado—. Los bancos SQL/core/Worker cubren los
+  contratos; no inventar ejecución visual adicional.
+- P3 solo entrega **clics aproximados**. Un CTR necesita impresiones. **P4 es el
+  siguiente tramo:** guardar el enlace validado y atribuir conversión/pedidos
+  empieza allí. **P5 viene después**, con tablero e ingresos.
 - Reversa P3: apagar juntos los tres gates, verificar respuesta MAGANDHI no
   disponible, conservar cron, datos, códigos y bitácora, y corregir con migración
   forward. Mantener DNS/Worker mientras se diagnostica; **no borrar todavía los
