@@ -61,7 +61,7 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > nunca bloquea el asiento, al contrario que el costo y el flete. Banco SQL
 > **613/613**, matriz **170/170**, pantalla **70/70**.
 >
-> **El estado actual de producción llega hasta la migración `20261109000000` (Promocionar P4), aplicada una sola vez el 21-oct-2026 por SQL Editor. P4 está activo y cerrado estructuralmente con una intención atribuida sintética sin pago; P3 permanece cerrado FINAL. El carrito continúa ENCENDIDO (`carrito_habilitado=true`) y Wompi en `prod`. El proyecto no tiene tabla de ledger de migraciones: todo se aplica a mano y nunca con `supabase db push`.**
+> **El estado actual de producción llega hasta la migración `20261110000000` (Promocionar P5), ejecutada una sola vez según confirmó el dueño. P0 está cerrado como contrato documental, sin implementación ni producción. P1–P5 están desplegados y cerrados en sus alcances respectivos: P3 permanece cerrado FINAL; P4 permanece activo y cerrado estructuralmente; P5 está cerrado estructural/productivamente como capa de lectura. El carrito continúa ENCENDIDO (`carrito_habilitado=true`) y Wompi en `prod`. No hay P6 definido; el pendiente monetario común C5/P4/P5 requiere una compra real expresamente autorizada. El proyecto no tiene tabla de ledger de migraciones: todo se aplica a mano y nunca con `supabase db push`.**
 >
 > **Hito · Promocionar P2 · 20-oct-2026 · desplegado, cerrado y aprobado por el dueño.** PR #298 y #299 quedaron fusionados; el cierre publicado corresponde a `90efd87ae1be07493fdf38aad5e140be558d38ac` y Pages run `39471770742` terminó `completed/success`. Los cinco assets productivos del estudio respondieron HTTP 200 y coincidieron exactamente, byte por byte, con ese merge. La aprobación fue **visual/funcional**: no se ejecutó ni se atribuye una suite automatizada P2, auditoría formal de accesibilidad, protocolo separado de teclado/foco o prueba independiente de escaneo QR. P2 fue solo frontend, sin SQL, Edge, backend o DNS. **Estado histórico de ese corte, ya superado: P3 era el siguiente tramo, con implementación y contrato en construcción y `activacion_habilitada`, `redirect_habilitado` y `conteo_habilitado` OFF.** El primer gate apagado permite preparar borradores privados sin código y solo impide publicarlos. El banco automatizado P3 sigue pendiente porque no fue solicitado/agregado: no bloquea por sí solo este corte con los tres gates OFF, pero será obligatorio antes de cerrar P3 o activar cualquiera. En ese corte todavía no se acreditaban despliegue o CI P3; el hito del 21-oct-2026 registrado a continuación supera ese estado y documenta el cierre FINAL.
 >
@@ -75,7 +75,9 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 >
 > **Cierre FINAL P3:** GitHub Actions run `39549981902` terminó `completed/success`; su salida revisada mostró `RESUMEN P3 SQL | 15 comprobaciones · 0 fallan`, Deno `9 passed | 0 failed`, `RESUMEN P3 Worker | 7 comprobaciones · 0 fallan` y veredicto `Todo pasa.` El banco detectó y corrigió la defensa de cuerpo vacío en `302`. El dueño confirmó el redespliegue de `magandhi-go-p3` desde el merge de #304. La sonda mínima post-redespliegue, `2026-10-21T05:56:36Z`, confirmó DNS público A correcto; `GET 302`, body 0, sin `Set-Cookie`, `Cache-Control: no-store`, `Location` MAGANDHI exacta, query `url`/`next` ignorada y TTFB `0.390943s`; `HEAD 302`, `OPTIONS 204` e inválido `404`. P3 permanece cerrado FINAL. Relevo: `docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`.
 >
-> **Hito · Promocionar P4 · 21-oct-2026 · desplegado, activo y cerrado estructuralmente.** Backend #306 (`75b14b4`) y tienda #118 (`1b22d24`) fusionados, CI/Pages verdes; migración `20261109000000` aplicada una vez y Edge `enlace-promocional`/`crear-intencion-pago` redesplegadas. Gate ON desde `2026-10-21T15:21:59.626776Z`. La prueba integral sin dinero confirmó validación `204`, `HEAD 302` con destino/UTM/fragmento propio y query hostil ignorada, captura exacta en `sessionStorage`, URL limpia, intención `200` y llegada a Wompi. Diagnóstico posterior: 1 intención atribuida sintética, 0 pedidos, 0 divergencias y 0 incidencias. No hubo pago/webhook/pedido; cierre estructural, no monetario. **P5 es el siguiente tramo.** Relevo vigente: `docs/RELEVO-PROMOCIONAR-P4-CIERRE-ESTRUCTURAL-2026-10-21.md`.
+> **Hito · Promocionar P4 · 21-oct-2026 · desplegado, activo y cerrado estructuralmente.** Backend #306 (`75b14b4`) y tienda #118 (`1b22d24`) fusionados, CI/Pages verdes; migración `20261109000000` aplicada una vez y Edge `enlace-promocional`/`crear-intencion-pago` redesplegadas. Gate ON desde `2026-10-21T15:21:59.626776Z`. La prueba integral sin dinero confirmó validación `204`, `HEAD 302` con destino/UTM/fragmento propio y query hostil ignorada, captura exacta en `sessionStorage`, URL limpia, intención `200` y llegada a Wompi. Diagnóstico posterior: 1 intención atribuida sintética, 0 pedidos, 0 divergencias y 0 incidencias. No hubo pago/webhook/pedido; cierre estructural, no monetario. **P5 era el siguiente tramo en ese corte.** Relevo histórico: `docs/RELEVO-PROMOCIONAR-P4-CIERRE-ESTRUCTURAL-2026-10-21.md`.
+>
+> **Hito · Promocionar P5 · 21-oct-2026 · cerrado estructural/productivamente.** La implementación PR #308 se fusionó como `3205e1b0cfcd5fc98126ccf2f37aa3cb2bf914f1`; CI de rama run `39643360479` terminó `success` con 88 migraciones, matriz 230/0 y suite final `Todo pasa.` El dueño confirmó que `20261110000000_promocionar_p5_lectura_comercial.sql` se ejecutó una sola vez; Pages producción run `39645791554` terminó `success` sobre el merge. El dueño recorrió la prueba integral final de Resultados, Métricas y Ventas y dijo «Todo en orden». Diagnóstico: `instalado=true`; P3 con 1 enlace, detalle desde/hasta nulo, 0 filas de detalle y 0 compactado; P4 con 1 intención atribuida, 0 convertidas `APPROVED`, 0 pedidos con FK, 0 ventas exactas autoritativas, 0 divergencias y 0 incidencias pendientes; analítica consentida `activa=false`, primer y último evento `2026-10-08T18:34:59.188+00:00`; intención sintética identificable `false`. No quedaron confirmados preflight ni postflight productivos separados. Tampoco se acreditaron categorías con datos reales, compra, pago `APPROVED`, pedido atribuido o ingreso. P5 queda cerrado como lectura, no monetaria ni end-to-end. No hay P6 definido. Relevo vigente: `docs/RELEVO-PROMOCIONAR-P5-CIERRE-ESTRUCTURAL-2026-10-21.md`.
 >
 > **Cuentas de cliente C1 · DESPLEGADO · 15-oct-2026 (PR #268).** El dueño
 > decidió conservar compra como invitado y añadir inicio de sesión opcional en
@@ -289,15 +291,15 @@ Marketing → Email marketing. Diseño completo en `docs/PLANO-EMAIL-MARKETING.m
 - EM2: perfil por cliente con datos propios (valor, precio y rebajas, productos y categorías, opiniones, lugar, franja y día de compra, canal) y **Segmentos** por condiciones con vista previa en vivo; la audiencia de una campaña será siempre segmento ∩ suscritos.
 - EM3: **Análisis de clúster** en Marketing Project (k-means++ con semilla fija, silueta, retrato en palabras, mapa, comparativo, CSV; reglas de pocos datos) y «Guardar como segmento» congelado.
 - EM4: **Campañas** por bloques (título, texto, imagen, producto destacado, botón único, separador), vista previa PC/celular, prueba a tu correo, revisión final con N exacto, envío o programación vía Resend Broadcasts desde `news.magandhi.com`, cancelación. Envío real bloqueado hasta registrar la política publicada.
-- EM5 (en producción, webhook de Resend conectado y verificado): webhook firmado `em-webhook` (Svix, Verify JWT apagado, escribe solo como service_role), supresión automática con historial, resultados por campaña (embudo, enlaces, rebotes/spam/bajas, ventas por UTM legacy/no verificada y aproximadas con último clic + 7 días), salud de la lista contra los límites de Resend, entrega de los correos del pedido. La implementación histórica devuelve el tipo interno `exacta` para UTM; P0 supera esa interpretación y P4/P5 deberán mostrarla como `legacy_email_utm`. Eventos crudos 13 meses.
+- EM5 (en producción, webhook de Resend conectado y verificado): webhook firmado `em-webhook` (Svix, Verify JWT apagado, escribe solo como service_role), supresión automática con historial, resultados por campaña (embudo, enlaces, rebotes/spam/bajas, ventas por UTM legacy/no verificada y aproximadas con último clic + 7 días), salud de la lista contra los límites de Resend, entrega de los correos del pedido. La implementación histórica devuelve el tipo interno `exacta` para UTM; P0 supera esa interpretación y P4/P5 la muestran como `legacy_email_utm`. Eventos crudos 13 meses.
 - EM5.1: la respuesta a email alimenta el análisis. 5 variables en el clúster (campañas recibidas, % con clic, clics 90 días, días desde el último clic, compras atribuidas) y 9 condiciones en Segmentos (hizo/no hizo clic en una campaña, campañas seguidas sin clic…). Sin aperturas: son aproximadas.
 - **Corrección del 10-oct-2026 · los días se cuentan en Colombia.** La base corre en UTC, así que `current_date` es la fecha UTC: entre las 7 p. m. y la medianoche de Colombia, `dias_desde_ultimo_clic`, `dias_desde_ultima_compra` y `dias_en_lista` salían **con un día de más**, y eso alimenta Segmentos y el clúster. A mediodía las dos formas coinciden, y por eso pasó inadvertido. Migración forward `20261022000000`, que sólo redefine `em__perfil_base`, `em__perfil_email` y `em__segmento_where` cambiando 3 líneas. El guardián contra la clase entera de bug vive en `supabase/pruebas/local/fechas-colombia.sql` y corre en cada rama. Ver `supabase/INSTRUCCIONES.md`.
 - EM6 (en producción, **apagado a propósito**): formulario de novedades en magandhi.com con doble confirmación (`em-suscripcion`), apagado por defecto y encendible solo por admin con la política registrada. Política en versión `borrador-*` para probar: esos contactos nunca reciben campañas reales. Captura pública (EM6) y analítica (EM7) esperan la política como gates propios;
   esa espera no aplica al redirect ni al conteo agregado de P3.
 
-### Métricas — M1 y M2 en producción (analítica apagada a propósito)
+### Métricas — M1, M2 y lectura P5 en producción (captura nueva de analítica apagada a propósito)
 
-Sexta área del panel (`metricas/`), módulo propio `metricas`. Recolecta, organiza y muestra (no interpreta). M1 (en producción): pestañas En vivo (refresco 30 s), Ventas y Tienda con gráficas propias en SVG. Capa de datos compartida `mt_*` (agregados sin PII) que también consumen Marketing y Ventas. Analítica propia de la tienda (EM7) con aviso de consentimiento, sin Meta/Google, sin IP ni URLs de procedencia, 13 meses. Ese aviso y consentimiento son exclusivos de EM7 y nunca se intercalan en la apertura de un enlace P3. M2 (en producción): pestañas **Email** (crecimiento de la lista, campañas lado a lado, salud frente a Resend), **Opiniones** (promedio real con su total, distribución, por mes, cobertura, productos) e **Inventario** (existencias, rotación, días de inventario estimado, alertas). Diseño en `docs/PLANO-METRICAS.md`. Banco de pruebas local reutilizable: `supabase/pruebas/local/herramientas/LEEME.md`.
+Sexta área del panel (`metricas/`), módulo propio `metricas`. Recolecta, organiza y muestra (no interpreta). M1 (en producción): pestañas En vivo (refresco 30 s), Ventas y Tienda con gráficas propias en SVG. Capa de datos compartida `mt_*` (agregados sin PII) que también consumen Marketing y Ventas. Analítica propia de la tienda (EM7) con aviso de consentimiento, sin Meta/Google, sin IP ni URLs de procedencia, 13 meses. Ese aviso y consentimiento son exclusivos de EM7 y nunca se intercalan en la apertura de un enlace P3. M2 (en producción): pestañas **Email** (crecimiento de la lista, campañas lado a lado, salud frente a Resend), **Opiniones** (promedio real con su total, distribución, por mes, cobertura, productos) e **Inventario** (existencias, rotación, días de inventario estimado, alertas). P5 (en producción) añade lectura promocional separada en Resultados, Métricas y Ventas. La captura nueva de analítica voluntaria está desactivada. P5 conserva cualquier evento histórico ya consentido del periodo, pero no completa los intervalos sin captura; por eso las sesiones y los checkouts pueden ser parciales. Los pedidos y los ingresos se leen por una vía transaccional independiente. Diseño en `docs/PLANO-METRICAS.md` y `docs/PLANO-PROMOCIONAR-P5.md`. Banco de pruebas local reutilizable: `supabase/pruebas/local/herramientas/LEEME.md`.
 
 ### Gestión de opiniones — operativo
 
@@ -440,11 +442,12 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 - `docs/PLANO-FASE-COMERCIAL.md`: evolución aprobada —cantidades, carrito
   autenticado, Mis compras y Promocionar— con fórmulas, contratos, orden de
   despliegue y criterios de cierre. **C1–C5 están cerrados estructuralmente en
-  producción con los límites documentados; ninguno tiene cierre transaccional
-  por carrito. P0 está cerrado como contrato; P1 y P2 están desplegados y
-  cerrados, con P2 aprobado visual/funcionalmente por el dueño. P3 está
-  desplegado, activo, medido y cerrado FINAL. P4 está desplegado, activo,
-  medido sin dinero y cerrado estructuralmente. P5 es el siguiente tramo.**
+  producción con sus límites documentados. P0 está cerrado como contrato
+  documental, sin implementación ni producción. P1–P5 están desplegados y
+  cerrados en sus alcances respectivos: P3 está cerrado FINAL; P4 permanece
+  activo y cerrado estructuralmente; P5 está cerrado
+  estructural/productivamente como lectura. La fase conserva el pendiente
+  monetario común C5/P4/P5; no hay P6 definido.**
 - `docs/PLANO-PROMOCIONAR-P0.md`: fuente de verdad del contrato de taxonomía,
   normalización, atribución, privacidad, conteo agregado, estados y retención.
   No equivale a implementación ni despliegue.
@@ -454,9 +457,18 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
   visual/funcional.
 - `docs/RELEVO-PROMOCIONAR-P2-CIERRE-2026-10-20.md`: relevo histórico del
   cierre P2; conserva el estado que era cierto el 20-oct-2026.
+- `docs/RELEVO-PROMOCIONAR-P5-CIERRE-ESTRUCTURAL-2026-10-21.md`: relevo
+  vigente de Promocionar. Registra implementación/CI, migración única, Pages,
+  recorrido integral, diagnóstico exacto, límite sin dinero y continuidad sin
+  P6 definido.
+- `docs/PLANO-PROMOCIONAR-P5.md`: contrato y cierre estructural/productivo de la
+  lectura comercial en Resultados, Métricas y Ventas.
+- `supabase/operacion/PROMOCIONAR-P5-DESPLIEGUE.md`: registro del despliegue
+  productivo acreditado con evidencia limitada y del protocolo completo no
+  recorrido; conserva la secuencia y los casos como referencia histórica.
 - `docs/RELEVO-PROMOCIONAR-P4-CIERRE-ESTRUCTURAL-2026-10-21.md`: relevo
-  vigente de Promocionar. P4 está desplegado/activo, la prueba sin dinero dejó
-  1 intención atribuida y 0 pedidos/divergencias/incidencias, y P5 es siguiente.
+  histórico de P4. Conserva la prueba sin dinero que dejó 1 intención atribuida
+  y 0 pedidos/divergencias/incidencias.
 - `docs/PLANO-PROMOCIONAR-P4.md`: contrato, implementación y cierre estructural
   de atribución intención/pedido; conserva explícito el límite sin dinero.
 - `docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`: relevo histórico de cierre
@@ -466,8 +478,9 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
   `redirect_habilitado` y `conteo_habilitado` nacieron OFF y están ON desde
   `2026-10-21 04:41:09.507253Z`. P3 está desplegado, medido y cerrado FINAL:
   PR #304 fusionó el hardening, el dueño confirmó su redespliegue y la sonda
-  mínima posterior quedó verde. P3 solo entrega clics aproximados. P4 ya está
-  cerrado estructuralmente; P5 es el siguiente tramo con tablero/ingresos.
+  mínima posterior quedó verde. P3 solo entrega clics aproximados. P4 y P5 ya
+  están cerrados estructuralmente; P5 aporta tablero e ingresos sin inventar
+  ventas.
 - `docs/PLANO-COMERCIAL-C5.md`: contrato técnico de carrito libre, Mis compras,
   reapertura, seguimiento y opinión tras entrega.
 - `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`: **relevo general vigente y
@@ -499,16 +512,18 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 - `supabase/pruebas/local/herramientas/LEEME.md`: banco de pruebas local (también corre en GitHub Actions en cada rama).
 
 El relevo vigente de Promocionar es
-`docs/RELEVO-PROMOCIONAR-P4-CIERRE-ESTRUCTURAL-2026-10-21.md`: P4 está
-fusionado, desplegado, activo y medido sin dinero; dejó una intención atribuida
-sintética y cero pedidos/divergencias/incidencias. **P5 es el siguiente tramo.**
-El relevo P3 conserva su cierre FINAL histórico y el relevo P2 conserva la
-evidencia del 20-oct; ninguno gobierna el próximo chat. El relevo Comercial C5
-continúa gobernando el pendiente monetario del carrito. Los relevos C4 y C5 del
-19-oct conservan la evidencia histórica. El
-relevo temático de cuentas `docs/RELEVO-CUENTAS-C2-2026-10-16.md` conserva su
-evidencia histórica y evita repetir migración, SMTP, plantillas o configuración
-Google al retomar esa apertura.
+`docs/RELEVO-PROMOCIONAR-P5-CIERRE-ESTRUCTURAL-2026-10-21.md`: P5 está
+fusionado, publicado, instalado y recorrido en Resultados, Métricas y Ventas;
+queda cerrado estructural/productivamente y conserva explícito el límite sin
+compra, pago `APPROVED`, pedido atribuido o ingreso. El relevo P4 es histórico y
+mantiene el contrato de captura y la intención sintética sin pago. Los relevos
+P3 y P2 conservan sus respectivos cierres históricos; ninguno gobierna el
+próximo chat. El relevo Comercial C5 continúa gobernando el pendiente monetario
+del carrito, común a C5/P4/P5 y siempre sujeto a autorización expresa. Los
+relevos C4 y C5 del 19-oct conservan la evidencia histórica. El relevo temático
+de cuentas `docs/RELEVO-CUENTAS-C2-2026-10-16.md` conserva su evidencia
+histórica y evita repetir migración, SMTP, plantillas o configuración Google al
+retomar esa apertura. No hay P6 definido.
 
 ## 9. Pendientes vigentes
 
@@ -548,8 +563,9 @@ cierres estructurales de sus primeros tramos:
    cierre transaccional con pago real autorizado, opinión autenticada por cuenta
    y los placeholders del centro de cuenta (Favoritos, Mis opiniones, Eliminar
    cuenta). Relevo vigente: `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`.
-6. **Promocionar P0–P3 cerrados; P3 desplegado, activo, medido y cerrado FINAL
-   (21-oct-2026).** P0 gobierna taxonomía/privacidad; P1 y P2 conservan sus
+6. **Promocionar P0 está cerrado como contrato documental, sin implementación
+   ni producción. P1–P3 están desplegados y cerrados en sus alcances; P3 está
+   activo, medido y cerrado FINAL (21-oct-2026).** P1 y P2 conservan sus
    cierres del 20-oct. P3: PR/merge #300 `b2440c3`, #301 `11d8008`, #302
    `b4f8acb`, #303 `23ea5a2` y #304
    `f1f61527f4535b2d09b58255d9730690bebc072f`; migración `20261108000000`
@@ -630,17 +646,32 @@ cierres estructurales de sus primeros tramos:
    llegada a `checkout.wompi.co/method`. Estado posterior: 1 intención atribuida
    sintética, 0 pedidos, 0 divergencias y 0 incidencias. No hubo pago, pedido,
    webhook APPROVED, inventario, asiento ni correo; por eso el cierre es
-   estructural, no monetario. Relevo vigente:
+   estructural, no monetario. Relevo histórico:
    `docs/RELEVO-PROMOCIONAR-P4-CIERRE-ESTRUCTURAL-2026-10-21.md`.
-   **P5 es el siguiente tramo**, con tablero e ingresos; CTR sigue requiriendo
-   impresiones.
+8. **Promocionar P5 · desplegado y cerrado estructural/productivamente.** PR
+   #308, merge `3205e1b0cfcd5fc98126ccf2f37aa3cb2bf914f1`; CI de rama
+   `39643360479` `success` (88 migraciones, matriz 230/0, `Todo pasa.`);
+   migración `20261110000000` ejecutada una sola vez según confirmó el dueño;
+   Pages producción `39645791554` `success` sobre el merge. El dueño recorrió
+   Resultados, Métricas y Ventas y dijo «Todo en orden». El diagnóstico final
+   dejó `instalado=true`, analítica consentida inactiva, 1 intención atribuida y
+   0 conversiones `APPROVED`, pedidos con FK, ventas exactas, divergencias o
+   incidencias pendientes. No quedaron confirmados preflight ni postflight
+   productivos separados. Tampoco se acreditaron categorías con datos reales,
+   compra, pago `APPROVED`, pedido atribuido o ingreso. Relevo vigente:
+   `docs/RELEVO-PROMOCIONAR-P5-CIERRE-ESTRUCTURAL-2026-10-21.md`. No hay P6
+   definido.
 
-La definición final de la fase no se relaja: el carrito está cerrado en
-estructura, no end-to-end. Dinero solo con autorización expresa. Cuando se
-autorice un pago C5 debe demostrar monto exacto, un solo pedido, `customer_id`
-correcto, snapshot, inventario/proveedor, asiento, correo «Recibido» e
-idempotencia del webhook. Continuar desde
-`docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`.
+La definición final de la fase no se relaja: C1–C5 están cerrados en
+estructura, no end-to-end. P0 está cerrado como contrato documental, sin
+implementación ni producción. P1–P5 están desplegados y cerrados en sus
+alcances respectivos; el pendiente monetario común C5/P4/P5 sigue abierto.
+Dinero solo con autorización expresa. Cuando se autorice un pago real debe cerrar el pendiente común C5/P4/P5 y demostrar monto
+exacto, un solo pedido, atribución, `customer_id` correcto, snapshot,
+inventario/proveedor, asiento, correo «Recibido» e idempotencia del webhook. La
+otra opción es retomar otro pendiente vigente. Continuar desde
+`docs/RELEVO-PROMOCIONAR-P5-CIERRE-ESTRUCTURAL-2026-10-21.md` y, para la
+operación monetaria, `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md`.
 
 Cuentas de cliente sigue en **preapertura**:
 

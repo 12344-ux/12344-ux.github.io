@@ -1,5 +1,7 @@
 # Relevo de sesión · Promocionar P4 · cierre estructural · 21 de octubre de 2026
 
+> **Aviso de supersesión:** este relevo conserva la historia y los límites del cierre P4. El relevo vigente de Promocionar es `RELEVO-PROMOCIONAR-P5-CIERRE-ESTRUCTURAL-2026-10-21.md`; P5 no convirtió la prueba sin dinero de P4 en pedido o ingreso.
+
 **Estado inequívoco:** P4 está fusionado, desplegado, activo y medido **sin dinero** en producción. Queda **cerrado estructuralmente**, no cerrado transaccionalmente: la prueba positiva congeló una FK en una intención y llegó a Wompi, pero no hubo pago APPROVED ni pedido. **P5 es el siguiente tramo.** Una futura compra real autorizada puede cerrar conjuntamente la copia intención → pedido y el pendiente transaccional de Comercial C5.
 
 Leer después `PLANO-PROMOCIONAR-P4.md`, `PLANO-PROMOCIONAR-P0.md` y `../supabase/operacion/PROMOCIONAR-P4-DESPLIEGUE.md`. No reabrir P3/P4 salvo regresión medida.

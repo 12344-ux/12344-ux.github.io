@@ -1,19 +1,21 @@
 # Supabase · runbook operativo MAGANDHI / Impulse
 
 > **Estado al 21-oct-2026:** en producción están aplicadas todas las
-> migraciones hasta **`20261109000000` (Promocionar P4)**, salvo
-> `20261002000000`, que quedó **SUPERADA y no debe aplicarse** (ver §0). La
-> migración P4 se aplicó una sola vez. El proyecto **no tiene**
+> migraciones hasta **`20261110000000` (Promocionar P5)**, salvo
+> `20261002000000`, que quedó **SUPERADA y no debe aplicarse** (ver §0). Las
+> migraciones P4 y P5 se aplicaron una sola vez. El proyecto **no tiene**
 > `supabase_migrations.schema_migrations` (medido): todas las migraciones se
 > aplican a mano por SQL Editor, un Run por archivo y una sola vez. **Nunca usar
 > `supabase db push`.** Wompi F1–F4 y Dropshipping D2c están operativos. Cuentas
 > C1/C2 continúan desplegados; Comercial C1–C5 están cerrados estructuralmente,
 > con carrito ENCENDIDO y Wompi `prod`, pero sin cierre transaccional por pago
-> real. **Promocionar P3 está cerrado FINAL. Promocionar P4 está desplegado,
-> activo y cerrado estructuralmente, todavía sin cierre transaccional por una
-> compra real autorizada. Promocionar P5 es el siguiente tramo: está en
-> construcción y NO desplegado.** Estado general:
-> `docs/RELEVO-PROMOCIONAR-P4-CIERRE-ESTRUCTURAL-2026-10-21.md`,
+> real. **Promocionar P0 está cerrado como contrato documental, sin
+> implementación ni producción. P1–P5 están desplegados y cerrados en sus
+> alcances respectivos: P3 está cerrado FINAL; P4 está desplegado, activo y
+> cerrado estructuralmente; P5 está desplegado y cerrado
+> estructural/productivamente como capa de lectura. No hay P6 definido.** El pendiente monetario común C5/P4/P5 requiere una compra real
+> expresamente autorizada. Estado general:
+> `docs/RELEVO-PROMOCIONAR-P5-CIERRE-ESTRUCTURAL-2026-10-21.md`,
 > `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md` y
 > `CONTEXTO-MAGANDHI.md` §9.
 >
