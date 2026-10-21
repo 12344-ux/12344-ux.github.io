@@ -507,7 +507,7 @@ create function pw_procesar_pago(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = public
 as $fn$
 declare
   v_resultado jsonb;
