@@ -1,7 +1,7 @@
 -- Promocionar P4 · reparación manual idempotente de incidencias fail-open.
 -- Ejecutar desde SQL Editor y revisar después promocionar-p4-estado.sql.
 begin;
-select promocionar_p4_reparar_incidencias() as reparacion;
+select promocionar_p4__reparar_incidencias() as reparacion;
 commit;
 
 select count(*) as incidencias_pendientes

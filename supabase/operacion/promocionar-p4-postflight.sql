@@ -26,10 +26,10 @@ select jsonb_build_object(
        and c.relrowsecurity
   ),
   'reparacion_privada',
-    to_regprocedure('public.promocionar_p4_reparar_incidencias()') is not null
-    and not has_function_privilege('service_role', 'public.promocionar_p4_reparar_incidencias()', 'EXECUTE')
-    and not has_function_privilege('authenticated', 'public.promocionar_p4_reparar_incidencias()', 'EXECUTE')
-    and not has_function_privilege('anon', 'public.promocionar_p4_reparar_incidencias()', 'EXECUTE'),
+    to_regprocedure('public.promocionar_p4__reparar_incidencias()') is not null
+    and not has_function_privilege('service_role', 'public.promocionar_p4__reparar_incidencias()', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.promocionar_p4__reparar_incidencias()', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.promocionar_p4__reparar_incidencias()', 'EXECUTE'),
   'sin_divergencias', not exists (
     select 1 from pagos_intencion i join pedidos p on p.id = i.pedido_id
      where i.atribucion_enlace_id is distinct from p.atribucion_enlace_id

@@ -588,7 +588,7 @@ grant execute on function pw_procesar_pago(text,text,text,bigint,text,text,text,
 
 -- Reparación privada e idempotente para incidencias fail-open. Se ejecuta de
 -- forma controlada desde SQL Editor; nunca está disponible a roles API.
-create function promocionar_p4_reparar_incidencias()
+create function promocionar_p4__reparar_incidencias()
 returns jsonb
 language plpgsql
 volatile
@@ -670,9 +670,9 @@ begin
   );
 end;
 $fn$;
-comment on function promocionar_p4_reparar_incidencias() is
+comment on function promocionar_p4__reparar_incidencias() is
   'P4 · reparación privada idempotente NULL→FK desde la intención; nunca sobrescribe una atribución distinta.';
-revoke all on function promocionar_p4_reparar_incidencias()
+revoke all on function promocionar_p4__reparar_incidencias()
   from public, anon, authenticated, service_role;
 
 -- La aproximación histórica solo aplica cuando no existe exacta propia.
@@ -703,7 +703,8 @@ as $fn$
   select pedido_id, campana_id, cuando from cand where rn = 1;
 $fn$;
 revoke all on function em__atribucion_aproximada()
-  from public, anon, authenticated, service_role;
+  from public, anon, authenticated;
+grant execute on function em__atribucion_aproximada() to service_role;
 
 create function promocionar_p4__clasificar_pedido(p_pedido_id uuid)
 returns jsonb
