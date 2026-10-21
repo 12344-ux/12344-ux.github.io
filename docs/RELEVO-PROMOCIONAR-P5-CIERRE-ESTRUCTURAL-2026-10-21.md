@@ -64,3 +64,16 @@ No hay P6 definido. La próxima decisión puede ser una de estas dos:
 Cualquier paso que cobre dinero requiere autorización expresa del dueño. Mientras no exista esa autorización, no afirmar cierre monetario/end-to-end y no tratar la intención atribuida existente como venta.
 
 No reaplicar `20261110000000`. Toda corrección SQL futura debe ser una migración forward. El relevo P4 queda como historia del contrato de captura y del cierre sin dinero; este archivo es el relevo vigente de Promocionar.
+## 6. Punto exacto para la próxima sesión · activar EM7 después de publicar políticas
+
+P5 queda cerrado; no necesita otra migración ni reconstrucción. La única fuente promocional actualmente apagada es la **captura de interacción consentida EM7**. Esto no apaga los clics agregados P3, la atribución transaccional P4, pagos, pedidos ni las lecturas P5.
+
+EM7 permanece apagada porque las políticas públicas siguen en borrador y el servidor exige una política registrada antes de activarla. Cuando el dueño confirme que publicó las políticas definitivas, continuar en este orden:
+
+1. registrar la versión exacta publicada desde **Email marketing → Resumen**;
+2. entrar como administrador a **Métricas → En vivo** o **Métricas → Tienda** y pulsar **Encender analítica**;
+3. confirmar que la tienda muestra el aviso de cookies/analítica;
+4. hacer una sola prueba integral: rechazo sin captura, aceptación con captura y aparición posterior de visita, producto visto y checkout en Métricas/P5;
+5. registrar el resultado en las fuentes de estado.
+
+La captura solo comienza para actividad futura de personas que acepten. No reconstruye retroactivamente sesiones ni interacciones del periodo en que estuvo apagada. Si el servidor rechaza la activación, comunicar el error exacto y no intentar saltarse el gate de política.
