@@ -5,6 +5,8 @@ export const FORMATO_CODIGO = /^[0-9a-hjkmnp-tv-z]{16}$/;
 
 const RUTA_ENLACE =
   /^(?:\/functions\/v1\/enlace-promocional|\/enlace-promocional)?\/([0-9a-hjkmnp-tv-z]{16})$/;
+const RUTA_VALIDACION =
+  /^(?:\/functions\/v1\/enlace-promocional|\/enlace-promocional)?\/validar\/([0-9a-hjkmnp-tv-z]{16})$/;
 const FORMATO_UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const FORMATO_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -45,6 +47,7 @@ export type ResolucionValidada =
     tipo: "encontrado";
     enlaceId: string;
     destinoUrl: string;
+    capturaP4?: true;
   };
 
 export type SenalesConteo = Readonly<{
@@ -73,6 +76,13 @@ export type TipoPagina =
  */
 export function extraerCodigoRuta(pathname: string): string | null {
   const coincidencia = RUTA_ENLACE.exec(pathname);
+  const codigo = coincidencia?.[1] ?? "";
+  return FORMATO_CODIGO.test(codigo) ? codigo : null;
+}
+
+/** Ruta nominal P4: valida un código sin redirigir ni contar. */
+export function extraerCodigoValidacionRuta(pathname: string): string | null {
+  const coincidencia = RUTA_VALIDACION.exec(pathname);
   const codigo = coincidencia?.[1] ?? "";
   return FORMATO_CODIGO.test(codigo) ? codigo : null;
 }
@@ -140,6 +150,21 @@ export function validarDestinoUrl(valor: unknown): string | null {
   return valor;
 }
 
+/**
+ * Añade el código P4 como fragmento reservado a un destino P3 ya validado.
+ * El fragmento no viaja en la petición HTTP de la página ni en el referrer.
+ */
+export function agregarCodigoAtribucion(
+  destinoUrl: string,
+  codigo: string,
+): string | null {
+  const seguro = validarDestinoUrl(destinoUrl);
+  if (!seguro || !FORMATO_CODIGO.test(codigo)) return null;
+  const destino = new URL(seguro);
+  destino.hash = `mg_promo=${codigo}`;
+  return destino.href;
+}
+
 export function validarResolucion(valor: unknown): ResolucionValidada {
   if (valor === null) return { tipo: "no_encontrado" };
   if (!valor || typeof valor !== "object" || Array.isArray(valor)) {
@@ -149,11 +174,20 @@ export function validarResolucion(valor: unknown): ResolucionValidada {
   const fila = valor as Record<string, unknown>;
   const enlaceId = typeof fila.enlace_id === "string" ? fila.enlace_id : "";
   const destinoUrl = validarDestinoUrl(fila.destino_url);
-  if (!FORMATO_UUID.test(enlaceId) || !destinoUrl) {
+  if (
+    !FORMATO_UUID.test(enlaceId) || !destinoUrl ||
+    (Object.prototype.hasOwnProperty.call(fila, "captura_p4") &&
+      typeof fila.captura_p4 !== "boolean")
+  ) {
     return { tipo: "invalido" };
   }
 
-  return { tipo: "encontrado", enlaceId, destinoUrl };
+  return {
+    tipo: "encontrado",
+    enlaceId,
+    destinoUrl,
+    ...(fila.captura_p4 === true ? { capturaP4: true as const } : {}),
+  };
 }
 
 const FORMATO_CALIDAD_HTTP = /^(?:0(?:\.[0-9]{0,3})?|1(?:\.0{0,3})?)$/;

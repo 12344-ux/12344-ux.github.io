@@ -90,7 +90,8 @@ const servidor = Deno.serve({ port: PORT, onListen() {} }, async (req) => {
       url_redireccion: "https://magandhi.com/producto/?pago=1",
     }]);
   }
-  if (ruta === "/rest/v1/rpc/pw_registrar_intencion") {
+  if (ruta === "/rest/v1/rpc/pw_registrar_intencion" ||
+      ruta === "/rest/v1/rpc/pw_registrar_intencion_p4") {
     E.intenciones = Number(E.intenciones) + 1;
     const body = await req.json() as Obj;
     E.ultima_intencion = body;

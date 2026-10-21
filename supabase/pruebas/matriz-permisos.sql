@@ -428,6 +428,7 @@ begin
                      'promocionar_p3_resolver', 'promocionar_p3_contar'
                    )
                  )
+                 or p.proname like 'promocionar\_p4\_\_%' escape '\'
                  then 'SOBRA helper: '
                else 'FALTA puerta: '
              end || p.proname,
@@ -460,6 +461,7 @@ begin
                'promocionar_p3_resolver', 'promocionar_p3_contar'
              )
            )
+           or p.proname like 'promocionar\_p4\_\_%' escape '\'
          ) = has_function_privilege('service_role', p.oid, 'execute')
        );
     r_pers := r_pers || 'service_role'::text;
