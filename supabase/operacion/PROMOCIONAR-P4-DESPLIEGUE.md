@@ -1,6 +1,12 @@
 # Promocionar P4 · despliegue controlado
 
-P4 no está desplegado por el hecho de fusionar código. La migración es forward y
+**Ejecutado el 21-oct-2026:** migración aplicada una vez, dos Edge desplegadas,
+Pages publicadas, gate ON y prueba integral sin dinero verde. Diagnóstico final:
+1 intención atribuida sintética, 0 pedidos, 0 divergencias y 0 incidencias.
+Cierre estructural; no cierre monetario. Ver
+`../../docs/RELEVO-PROMOCIONAR-P4-CIERRE-ESTRUCTURAL-2026-10-21.md`.
+
+La siguiente secuencia se conserva como runbook de referencia. P4 no está desplegado por el hecho de fusionar código. La migración es forward y
 se aplica una sola vez. No usar `supabase db push` en esta base.
 
 ## Orden

@@ -6,10 +6,7 @@ inclusion: always
 
 Antes de proponer o tocar nada en una sesión nueva:
 
-1. Leer `docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`: conserva el
-   **cierre FINAL de P3** y su evidencia. Después leer
-   `docs/PLANO-PROMOCIONAR-P3.md` y el contrato P0. **P4 es el siguiente tramo;
-   P5 viene después.**
+1. Leer `docs/RELEVO-PROMOCIONAR-P4-CIERRE-ESTRUCTURAL-2026-10-21.md`: conserva el cierre productivo sin dinero de P4 y el punto exacto de continuidad. Después leer `docs/PLANO-PROMOCIONAR-P4.md` y el contrato P0. **P5 es el siguiente tramo.** P3 permanece cerrado FINAL.
 2. Leer `CONTEXTO-MAGANDHI.md` §9 y `docs/PLANO-FASE-COMERCIAL.md`.
 3. Para estado de carrito, Wompi o producción, consultar
    `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md` y
@@ -65,9 +62,17 @@ Antes de proponer o tocar nada en una sesión nueva:
   no se automatizaron ni recorrieron todas las ramas de UI interna
   —edición/CAS y fallback forzado—. Los bancos SQL/core/Worker cubren los
   contratos; no inventar ejecución visual adicional.
-- P3 solo entrega **clics aproximados**. Un CTR necesita impresiones. **P4 es el
-  siguiente tramo:** guardar el enlace validado y atribuir conversión/pedidos
-  empieza allí. **P5 viene después**, con tablero e ingresos.
+- P3 solo entrega **clics aproximados**. Un CTR necesita impresiones. P3
+  permanece cerrado FINAL.
+- **P4 está desplegado, activo y cerrado estructuralmente:** migración
+  `20261109000000` aplicada una vez; Edge `enlace-promocional` y
+  `crear-intencion-pago` redesplegadas; backend #306 y tienda #118 publicados.
+  Gate ON desde `2026-10-21T15:21:59.626776Z`. Prueba final sin dinero:
+  validación 204, redirect con fragmento, captura local, intención 200 y llegada
+  a Wompi. Estado: 1 intención atribuida sintética, 0 pedidos, 0 divergencias y
+  0 incidencias. No afirmar cierre transaccional: no hubo pago/webhook/pedido.
+- **P5 es el siguiente tramo:** lectura comercial, pedidos, ingresos y
+  conversión con denominadores explícitos.
 - Reversa P3: apagar juntos los tres gates, verificar respuesta MAGANDHI no
   disponible, conservar cron, datos, códigos y bitácora, y corregir con migración
   forward. Mantener DNS/Worker mientras se diagnostica; **no borrar todavía los
@@ -87,6 +92,10 @@ Antes de proponer o tocar nada en una sesión nueva:
   positiva esperada; «CI verde» no basta.
 - Indicar siempre si un paso escribe o es solo lectura, y qué resultado exacto
   esperar.
+- Cadencia acordada: desplegar juntos todos los componentes del tramo,
+  comunicar los errores reales cuando aparezcan y concentrar la validación en
+  una prueba integral grande al final; evitar rondas repetitivas de “para ver”
+  salvo diagnóstico necesario.
 
 Reglas permanentes: rama+PR, migraciones forward, medir antes de afirmar, no
 exponer secretos/PII, y un comando sin error no es evidencia suficiente.
