@@ -438,7 +438,7 @@ begin
     -- no son RPC de la Edge.
     select string_agg(
              case
-               when left(p.proname, 4) in ('co__','pw__','cm__')
+               when left(p.proname, 4) in ('co__','pw__')
                  or p.proname in (
                    'crear_pedido_c3_base','crear_pedido_c4',
                    'cm__asignar_slug_automatico','cm__validar_slug_no_reasignado',
@@ -480,11 +480,16 @@ begin
        )
        and (
          (
-           left(p.proname, 4) in ('co__','pw__','cm__')
+           left(p.proname, 4) in ('co__','pw__')
            or p.proname in (
              'crear_pedido_c3_base','crear_pedido_c4',
              'cm__asignar_slug_automatico','cm__validar_slug_no_reasignado',
-             'cm__registrar_slug_historial'
+             'cm__registrar_slug_historial',
+             'cm__proteger_clave_producto_categoria',
+             'cm__sincronizar_categoria_principal_legado',
+             'cm__validar_categorias_seleccion',
+             'cm__validar_jerarquia_categoria',
+             'cm__validar_principal_puente'
            )
            or (
              p.proname like 'promocionar\_p3\_%' escape '\'
