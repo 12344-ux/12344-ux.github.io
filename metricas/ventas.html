@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../marca.css?v=2">
-<link rel="stylesheet" href="metricas.css?v=5">
+<link rel="stylesheet" href="metricas.css?v=p5-1">
 <!-- MAGANDHI · METRICAS · VENTAS (M1). RPC mt_ventas(desde, hasta): periodo +
      periodo anterior de igual largo. Pedidos anulados no cuentan. -->
 </head>
@@ -21,7 +21,11 @@
 <main class="mt-wrap" id="mt-main" hidden>
   <div class="mt-barra"><div id="vt-chips"></div><span class="mt-rango" id="vt-rango"></span></div>
   <div class="mt-kpis" id="vt-kpis"><div class="mt-kpi mt-esqueleto" style="height:120px"></div><div class="mt-kpi mt-esqueleto" style="height:120px"></div><div class="mt-kpi mt-esqueleto" style="height:120px"></div><div class="mt-kpi mt-esqueleto" style="height:120px"></div></div>
-  <section class="mt-card">
+  <section class="mt-card mt-p5" id="vt-p5" aria-labelledby="vt-p5-titulo" aria-busy="true">
+    <div class="mt-card-cab"><div><span class="mt-p5-eyebrow">PROMOCIÓN · P5</span><h2 class="mt-card-tit" id="vt-p5-titulo">Atribución y promoción</h2><p class="mt-card-sub">Lectura separada: clics aproximados, checkouts consentidos y ventas exactas.</p></div></div>
+    <div id="vt-p5-contenido"><div class="mt-p5-carga"><i class="mt-esqueleto"></i><i class="mt-esqueleto"></i><i class="mt-esqueleto"></i><i class="mt-esqueleto"></i></div></div>
+  </section>
+  <section class="mt-card mt-mt">
     <div class="mt-card-cab"><div><h2 class="mt-card-tit" id="vt-serie-tit">Ingresos por día</h2><p class="mt-card-sub">Pasa el cursor para ver cada día</p></div>
       <div class="mt-chips" role="group" aria-label="Qué mostrar"><button type="button" class="mt-chip" data-serie="ingresos" aria-pressed="true">Ingresos</button><button type="button" class="mt-chip" data-serie="pedidos" aria-pressed="false">Pedidos</button></div></div>
     <div id="vt-serie"></div>
@@ -33,15 +37,80 @@
   </div>
   <div class="mt-grid mt-g21 mt-mt">
     <section class="mt-card"><div class="mt-card-cab"><div><h2 class="mt-card-tit">Cuándo se vende</h2><p class="mt-card-sub" id="vt-calor-sub">Pedidos por día de la semana y hora</p></div></div><div id="vt-calor"></div></section>
-    <section class="mt-card"><div class="mt-card-cab"><div><h2 class="mt-card-tit">Por canal</h2><p class="mt-card-sub">Ingresos del periodo</p></div></div><div id="vt-canal"></div></section>
+    <section class="mt-card"><div class="mt-card-cab"><div><h2 class="mt-card-tit">Por puerta de venta</h2><p class="mt-card-sub">Registro manual o tienda web; no es procedencia promocional</p></div></div><div id="vt-canal"></div></section>
   </div>
 </main>
 
 <script type="module">
-  import { supabase, montarArea, ICONOS, esc, num, cop, copCorto, delta, kpi, vacio, grafLinea, filas, reparto, calor, chipsPeriodo, rangoDe, fechaCorta, fechaLarga, mensajeError, CANALES, pintarSparks } from './metricas-core.js';
+  import { supabase, montarArea, ICONOS, esc, num, cop, copCorto, delta, kpi, vacio, grafLinea, filas, reparto, calor, chipsPeriodo, fechaCorta, fechaLarga, mensajeError, CANALES, pintarSparks } from './metricas-core.js';
   const $ = (id) => document.getElementById(id);
   const p0 = new URLSearchParams(location.search).get('periodo');
   let periodo = ['7', '30', '90', '365'].includes(p0) ? p0 : '30', serie = 'ingresos', datos = null;
+  let cargaId = 0;
+
+  function fechaBogota() {
+    const partes = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(new Date());
+    const valor = Object.fromEntries(partes.map((p) => [p.type, p.value]));
+    return `${valor.year}-${valor.month}-${valor.day}`;
+  }
+
+  function desplazarFecha(iso, dias) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const fecha = new Date(Date.UTC(y, m - 1, d + dias));
+    return fecha.toISOString().slice(0, 10);
+  }
+
+  function rangoBogotaDe(id) {
+    const dias = Number(id) || 30;
+    const hasta = fechaBogota();
+    return { desde: desplazarFecha(hasta, -(dias - 1)), hasta };
+  }
+
+  function p5Carga() {
+    $('vt-p5').setAttribute('aria-busy', 'true');
+    $('vt-p5-contenido').innerHTML = '<div class="mt-p5-carga"><i class="mt-esqueleto"></i><i class="mt-esqueleto"></i><i class="mt-esqueleto"></i><i class="mt-esqueleto"></i></div>';
+  }
+
+  function p5Error(error) {
+    const m = String(error?.message || error || 'No disponible');
+    const detalle = /PGRST202|promocionar_p5_resumen_metricas|function/i.test(m)
+      ? 'La lectura P5 aún no está desplegada. El tablero de Ventas M1 continúa operativo.'
+      : 'No fue posible leer P5. El tablero de Ventas M1 continúa operativo.';
+    $('vt-p5').setAttribute('aria-busy', 'false');
+    $('vt-p5-contenido').innerHTML = '<div class="mt-aviso mt-p5-aviso">' + ICONOS.info + '<div><strong>Promoción no disponible</strong><p>' + esc(detalle) + '</p></div></div>';
+  }
+
+  function p5Valido(d) {
+    const n = (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0;
+    return d && d.contrato === 'promocionar_p5_metricas_v1' && d.totales && d.tasas && d.cobertura &&
+      ['clics_aproximados','checkouts_consentidos','pedidos_exactos','ingresos_exactos_cop'].every((k) => n(d.totales[k])) &&
+      d.tasas.pedido_sobre_clic && typeof d.tasas.pedido_sobre_clic.denominador_etiqueta === 'string' &&
+      Array.isArray(d.distribucion) && d.distribucion.every((x) => x && typeof x.etiqueta === 'string' && n(x.pedidos));
+  }
+
+  function pintarP5(d) {
+    if (!p5Valido(d)) { p5Error(new Error('Contrato P5 inválido')); return; }
+    const t = d.totales, tasa = d.tasas.pedido_sobre_clic;
+    const tasaTxt = tasa.disponible ? Number(tasa.valor).toLocaleString('es-CO', { maximumFractionDigits: 2 }) + '%' : 'No disponible';
+    const distrib = d.distribucion.map((x) => ({ n: x.etiqueta, v: x.pedidos }));
+    const calidad = d.cobertura.estado === 'parcial'
+      ? 'Cobertura parcial: no se completan el histórico P3 sin fecha ni la población sin consentimiento.'
+      : 'Cobertura declarada completa para el periodo; los clics siguen siendo aproximados y no únicos.';
+    $('vt-p5').setAttribute('aria-busy', 'false');
+    $('vt-p5-contenido').innerHTML =
+      '<div class="mt-p5-kpis">' +
+        kpi({ k: 'Clics aproximados', v: num(t.clics_aproximados), pie: 'Agregados P3 · no personas ni únicos' }) +
+        kpi({ k: 'Checkouts', v: num(t.checkouts_consentidos), pie: 'Eventos solo con consentimiento' }) +
+        kpi({ k: 'Pedidos exactos', v: num(t.pedidos_exactos), pie: 'Cadena P4 completa · no anulados' }) +
+        kpi({ k: 'Ingresos exactos', v: copCorto(t.ingresos_exactos_cop), pie: 'COP · pedidos exactos no anulados' }) +
+        kpi({ k: 'Conversión a pedido', v: esc(tasaTxt), pie: esc('Pedidos exactos ÷ ' + tasa.denominador_etiqueta) }) +
+      '</div>' +
+      '<div class="mt-p5-pie"><div><h3>Distribución de pedidos</h3><p>Precedencia exclusiva: enlace propio, Email legacy, Email aproximada, sin atribuir.</p>' +
+        (distrib.some((x) => x.v > 0) ? reparto(distrib, { formato: num }) : vacio('Sin pedidos en el periodo', 'La distribución aparecerá cuando existan pedidos no anulados.')) +
+      '</div><aside><strong>Calidad de lectura</strong><p>' + esc(calidad) + '</p><small>P5 no dispone de impresiones; cada conversión declara su denominador.</small></aside></div>';
+  }
 
   function pintar() {
     const d = datos, t = d.totales, a = d.totales_anterior;
@@ -80,13 +149,33 @@
   }
 
   async function cargar() {
-    const r = rangoDe(periodo);
+    const id = ++cargaId;
+    const r = rangoBogotaDe(periodo);
     history.replaceState(null, '', '?periodo=' + periodo);
     $('vt-chips').innerHTML = chipsPeriodo(periodo);
     $('vt-chips').querySelectorAll('[data-periodo]').forEach((b) => b.addEventListener('click', () => { periodo = b.dataset.periodo; cargar(); }));
-    const { data, error } = await supabase.rpc('mt_ventas', { p_desde: r.desde, p_hasta: r.hasta });
-    if (error) { $('vt-kpis').innerHTML = '<div class="mt-aviso" style="grid-column:1/-1">' + ICONOS.info + '<div><strong>No se pudo cargar</strong><p>' + esc(mensajeError(error)) + '</p></div></div>'; return; }
-    datos = data; pintar();
+    p5Carga();
+    const p5Controller = new AbortController();
+    const p5Timeout = window.setTimeout(() => p5Controller.abort(), 5000);
+    const m1Promise = Promise.resolve(supabase.rpc('mt_ventas', { p_desde: r.desde, p_hasta: r.hasta }));
+    const p5Promise = Promise.resolve(
+      supabase.rpc('promocionar_p5_resumen_metricas', { p_desde: r.desde, p_hasta: r.hasta }).abortSignal(p5Controller.signal)
+    );
+    const [m1r] = await Promise.allSettled([m1Promise]);
+    if (id !== cargaId) { p5Controller.abort(); window.clearTimeout(p5Timeout); return; }
+
+    if (m1r.status === 'fulfilled' && !m1r.value.error) {
+      datos = m1r.value.data; pintar();
+    } else {
+      const error = m1r.status === 'fulfilled' ? m1r.value.error : m1r.reason;
+      $('vt-kpis').innerHTML = '<div class="mt-aviso" style="grid-column:1/-1">' + ICONOS.info + '<div><strong>No se pudo cargar</strong><p>' + esc(mensajeError(error)) + '</p></div></div>';
+    }
+
+    const [p5r] = await Promise.allSettled([p5Promise]);
+    window.clearTimeout(p5Timeout);
+    if (id !== cargaId) return;
+    if (p5r.status === 'fulfilled' && !p5r.value.error) pintarP5(p5r.value.data);
+    else p5Error(p5r.status === 'fulfilled' ? p5r.value.error : p5r.reason);
   }
   document.querySelectorAll('[data-serie]').forEach((b) => b.addEventListener('click', () => {
     serie = b.dataset.serie; document.querySelectorAll('[data-serie]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); if (datos) pintar();

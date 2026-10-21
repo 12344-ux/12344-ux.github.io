@@ -287,3 +287,15 @@ body.mt-body{
   .mt-card-cab > .mt-chips{width:100%;display:flex}
   .mt-card-cab > .mt-chips .mt-chip{flex:1}
 }
+
+/* Promocionar P5 · bloque comercial con degradación independiente de M1. */
+.mt-p5{border-top:4px solid #C28A3A;background:linear-gradient(145deg,#fff 0 78%,rgba(194,138,58,.07))}
+.mt-p5-eyebrow{display:block;margin-bottom:4px;color:var(--mt-acento);font-size:10px;font-weight:700;letter-spacing:.13em}
+.mt-p5-carga{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}.mt-p5-carga i{height:105px}
+.mt-p5-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.mt-p5-kpis .mt-kpi{border:1px solid var(--mt-linea);box-shadow:none}
+.mt-p5-pie{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(230px,.6fr);gap:22px;margin-top:18px;padding-top:18px;border-top:1px solid var(--mt-linea)}
+.mt-p5-pie h3{margin:0;color:var(--mt-marino);font-size:13.5px}.mt-p5-pie>div>p{margin:3px 0 14px;color:var(--mt-gris);font-size:11.5px}
+.mt-p5-pie aside{padding:15px;border-radius:12px;background:var(--mt-marino);color:#fff}.mt-p5-pie aside strong{font-size:12px}.mt-p5-pie aside p{margin:5px 0;color:#c7d2e3;font-size:11px;line-height:1.5}.mt-p5-pie aside small{color:#d9ae6e;font-size:10px}
+.mt-p5-aviso{margin:0;background:rgba(255,255,255,.7)}
+@media(max-width:980px){.mt-p5-kpis{grid-template-columns:repeat(3,1fr)}.mt-p5-pie{grid-template-columns:1fr}}
+@media(max-width:720px){.mt-p5-kpis,.mt-p5-carga{grid-template-columns:repeat(2,minmax(0,1fr))}.mt-p5-kpis .mt-kpi:first-child{grid-column:1/-1}}

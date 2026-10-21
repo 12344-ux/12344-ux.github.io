@@ -170,6 +170,9 @@
 .cm-accion:focus-visible,.cm-btn-primario:focus-visible,.cm-btn-secundario:focus-visible{
   outline:3px solid rgba(143,163,196,.62);outline-offset:2px;
 }
+/* Resultados P5: lectura secundaria, compacta y dorada. */
+.cm-accion.resultados{color:var(--mk-marino);background:transparent;border-color:rgba(194,138,58,.28)}
+.cm-accion.resultados:hover{background:rgba(194,138,58,.10);border-color:#C28A3A}
 /* Publicar (cuando esta en borrador): accion afirmativa azul marino. */
 .cm-accion.publicar{color:#fff;background:var(--mk-marino)}
 .cm-accion.publicar:hover{background:var(--mk-marino-2)}
