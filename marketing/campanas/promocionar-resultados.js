@@ -78,7 +78,7 @@ function validarPayload(raw, campana, rangoEsperado) {
 }
 
 function ocultarEstados() {
-  ['pr-carga', 'pr-error', 'pr-vacio-total', 'pr-vacio-periodo', 'pr-parcial', 'pr-contenido'].forEach((id) => { $(id).hidden = true; });
+  ['pr-carga', 'pr-error', 'pr-vacio-total', 'pr-vacio-periodo', 'pr-parcial', 'pr-contenido', 'pr-calidad'].forEach((id) => { $(id).hidden = true; });
 }
 
 function mostrarCarga() {
@@ -105,10 +105,11 @@ function mensajeError(error) {
 }
 
 function actualizarNavegacion() {
-  const q = '?id=' + encodeURIComponent(campanaId);
-  $('pr-tab-editor').href = 'promocionar.html' + q;
-  $('pr-tab-resultados').href = 'promocionar-resultados.html' + q;
-  history.replaceState(null, '', q + '&periodo=' + periodo);
+  const editorQuery = '?id=' + encodeURIComponent(campanaId);
+  const resultadosQuery = '?v=p5-5&id=' + encodeURIComponent(campanaId);
+  $('pr-tab-editor').href = 'promocionar.html' + editorQuery;
+  $('pr-tab-resultados').href = 'promocionar-resultados.html' + resultadosQuery;
+  history.replaceState(null, '', resultadosQuery + '&periodo=' + periodo);
 }
 
 function pintarPeriodos() {
@@ -247,14 +248,18 @@ function pintarDesglose(d) {
 
 function calidadDato(dt, dd) { const div = document.createElement('div'); const t = document.createElement('dt'); t.textContent = dt; const d = document.createElement('dd'); d.textContent = dd; div.append(t, d); return div; }
 function pintarCalidad(d) {
-  const c = d.cobertura, f = d.frescura;
+  const c = d.cobertura, f = d.frescura, t = d.totales;
+  const hayClics = t.clics_aproximados > 0 || c.clics_vitalicios_aproximados > 0;
+  const coberturaClics = c.periodo_detalle_p3_completo
+    ? (hayClics ? 'Periodo cubierto; los clics disponibles están incluidos' : 'Periodo cubierto; aún no hay clics registrados')
+    : 'Periodo parcialmente cubierto desde ' + fecha(c.detalle_p3_disponible_desde);
   $('pr-calidad-datos').replaceChildren(
-    calidadDato('Detalle P3', c.periodo_detalle_p3_completo ? 'Completo para el periodo' : 'Parcial desde ' + fecha(c.detalle_p3_disponible_desde)),
-    calidadDato('Analítica consentida', c.analitica_consentida_activa ? 'Activa; solo incluye quien aceptó' : 'Inactiva o sin política; no se completan huecos'),
-    calidadDato('Último clic aproximado', f.ultimo_clic_fecha_colombia ? fecha(f.ultimo_clic_fecha_colombia) : 'Sin clics retenidos'),
-    calidadDato('Último evento consentido', momento(f.ultimo_evento_consentido)),
-    calidadDato('Último pago convertido', momento(f.ultimo_pago_convertido)),
-    calidadDato('Intención sintética P4', 'No identificable por esquema; queda entre no aprobadas, nunca en pedidos/ingresos')
+    calidadDato('Cobertura de clics P3', coberturaClics),
+    calidadDato('Medición voluntaria', c.analitica_consentida_activa ? 'Captura activa; solo incluye a quien aceptó' : 'Captura nueva apagada; el histórico aceptado se conserva'),
+    calidadDato('Último clic registrado', f.ultimo_clic_fecha_colombia ? fecha(f.ultimo_clic_fecha_colombia) : 'Aún no hay clics registrados'),
+    calidadDato('Última interacción consentida', f.ultimo_evento_consentido ? momento(f.ultimo_evento_consentido) : 'Aún no hay interacciones vinculadas a esta promoción'),
+    calidadDato('Último pago atribuido', f.ultimo_pago_convertido ? momento(f.ultimo_pago_convertido) : 'Aún no hay pagos atribuidos'),
+    calidadDato('Intención de prueba P4', 'La intención técnica sin pago no cuenta como pedido ni ingreso')
   );
 }
 
@@ -264,21 +269,23 @@ function pintar(d) {
   $('pr-campana-nombre').textContent = d.campana.nombre;
   $('pr-campana-meta').textContent = `${d.campana.estado} · ${d.totales.enlaces} ${d.totales.enlaces === 1 ? 'enlace' : 'enlaces'} · zona America/Bogota`;
   $('pr-rango').textContent = fecha(d.periodo.desde) + ' — ' + fecha(d.periodo.hasta);
+  pintarCalidad(d);
+  $('pr-calidad').hidden = false;
   const actividad = sumaActividad(d.totales);
   if (d.totales.enlaces === 0 && actividad === 0 && d.cobertura.clics_vitalicios_aproximados === 0) { $('pr-vacio-total').hidden = false; return; }
   if (actividad === 0) { $('pr-vacio-periodo').hidden = false; return; }
   if (d.cobertura.estado === 'parcial') {
     const textos = {
-      detalle_p3_compactado: 'el detalle diario P3 anterior al corte fue compactado sin fecha',
-      analitica_consentida_inactiva: 'la analítica consentida está inactiva',
-      sin_eventos_consentidos_periodo: 'no hay eventos consentidos atribuibles en la ventana'
+      detalle_p3_compactado: 'parte de los clics antiguos ya no conserva una fecha exacta',
+      analitica_consentida_inactiva: 'la medición voluntaria de navegación está apagada y la interacción puede estar incompleta',
+      sin_eventos_consentidos_periodo: 'no hay interacciones consentidas vinculadas a esta promoción en el periodo'
     };
     const razones = d.cobertura.razones.map((x) => textos[x]);
-    $('pr-parcial-texto').textContent = (razones.join('; ') || 'alguna fuente no cubre toda la ventana') + '. Las cifras disponibles se muestran sin completar huecos.';
+    $('pr-parcial-texto').textContent = (razones.join('; ') || 'alguna fuente no cubre toda la ventana') + '. Mostramos únicamente los datos disponibles, sin completar resultados por suposición.';
     $('pr-parcial').hidden = false;
   }
   $('pr-contenido').hidden = false;
-  pintarKpis(d); pintarPoblaciones(d); pintarGrafica(); pintarTablaSerie(d); pintarDesglose(d); pintarCalidad(d);
+  pintarKpis(d); pintarPoblaciones(d); pintarGrafica(); pintarTablaSerie(d); pintarDesglose(d);
 }
 
 async function cargar() {

@@ -85,6 +85,13 @@ Antes de proponer o tocar nada en una sesión nueva:
   es productivo y de solo lectura. No hay P6 definido.
 - El pendiente monetario común C5/P4/P5 exige una compra real expresamente
   autorizada; hasta entonces no afirmar cierre monetario/end-to-end.
+- **Punto de continuidad EM7:** la captura de interacción consentida está
+  apagada porque las políticas públicas siguen en borrador. Cuando el dueño
+  confirme su publicación definitiva, registrar la versión exacta en Email
+  marketing → Resumen y, como admin, usar Métricas → En vivo o Métricas →
+  Tienda → «Encender analítica». Después hacer una sola prueba integral de
+  rechazo/aceptación/captura. No requiere cambiar P5 ni reconstruye actividad
+  pasada; P3 y P4 continúan independientes.
 - Reversa P3: apagar juntos los tres gates, verificar respuesta MAGANDHI no
   disponible, conservar cron, datos, códigos y bitácora, y corregir con migración
   forward. Mantener DNS/Worker mientras se diagnostica; **no borrar todavía los

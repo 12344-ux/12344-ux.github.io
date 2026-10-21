@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
 <link rel="stylesheet" href="campanas.css?v=p5-1">
-<link rel="stylesheet" href="promocionar-resultados.css?v=p5-3">
+<link rel="stylesheet" href="promocionar-resultados.css?v=p5-5">
 </head>
 <body class="mk-body pr-body">
 <script type="module" src="../../auth-guard.js"></script>
@@ -23,7 +23,7 @@
 <main class="mk-wrap pr-main" id="pr-main" hidden>
   <nav class="pr-subnav" aria-label="Promocionar campaña">
     <a id="pr-tab-editor" href="promocionar.html">Editor</a>
-    <a id="pr-tab-resultados" href="promocionar-resultados.html" aria-current="page">Resultados</a>
+    <a id="pr-tab-resultados" href="promocionar-resultados.html?v=p5-5" aria-current="page">Resultados</a>
   </nav>
 
   <section class="pr-campana" aria-labelledby="pr-campana-nombre">
@@ -95,13 +95,14 @@
       <div class="pr-tabla-scroll" id="pr-desglose"></div>
     </section>
 
-    <section class="pr-calidad" aria-labelledby="pr-calidad-titulo">
-      <div class="pr-calidad-intro"><span>05 · CALIDAD</span><h2 id="pr-calidad-titulo">Cobertura y frescura</h2><p>La ausencia de consentimiento, el histórico P3 compactado y la intención sintética se declaran; nunca se rellenan con supuestos.</p></div>
-      <dl id="pr-calidad-datos"></dl>
-    </section>
   </div>
+
+  <section class="pr-calidad" id="pr-calidad" aria-labelledby="pr-calidad-titulo" hidden>
+    <div class="pr-calidad-intro"><span>05 · CALIDAD</span><h2 id="pr-calidad-titulo">Qué datos están disponibles</h2><p>Aquí puedes ver qué mediciones están encendidas y si todavía falta actividad. Cuando una fuente no tiene datos, P5 lo dice sin inventar resultados.</p></div>
+    <dl id="pr-calidad-datos"></dl>
+  </section>
 </main>
 
-<script type="module" src="promocionar-resultados.js?v=p5-3"></script>
+<script type="module" src="promocionar-resultados.js?v=p5-5"></script>
 </body>
 </html>
