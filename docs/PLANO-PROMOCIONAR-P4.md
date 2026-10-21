@@ -1,7 +1,7 @@
 # MAGANDHI · Plano Promocionar P4 · atribución transaccional
 
-**Estado:** implementación en construcción. No desplegado ni activado.
-**Base:** P0–P3 cerrados; P3 continúa operativo sin depender de P4.
+**Estado:** desplegado, activo, medido sin dinero y **cerrado estructuralmente** el 21-oct-2026. No cerrado transaccionalmente: existe una intención atribuida sintética, pero no hubo pago ni pedido.
+**Base:** P0–P3 cerrados; P3 continúa operativo sin depender de P4. Relevo vigente: `RELEVO-PROMOCIONAR-P4-CIERRE-ESTRUCTURAL-2026-10-21.md`.
 
 ## 1. Entrega
 
@@ -106,24 +106,22 @@ pagos y no borra atribuciones ya congeladas.
 - La migración es forward; no modifica `20261108000000` ni historia anterior.
 - P3 puede redirigir sin fragmento si P4 aún no está instalado o está apagado.
 
-## 10. Cierre
+## 10. Cierre estructural productivo · 21-oct-2026
 
-### Estructural, sin dinero
+- Backend PR #306 y tienda PR #118 fusionados; CI y Pages verdes.
+- Migración `20261109000000` aplicada una vez; Edge `enlace-promocional` y
+  `crear-intencion-pago` redesplegadas.
+- Gate activo desde `2026-10-21T15:21:59.626776Z`; validación pública y checkout
+  marcados verificados.
+- Enlace activo: validación `204`; `HEAD 302` a destino MAGANDHI con UTM y
+  fragmento P4; query hostil ignorada.
+- Navegador: fragmento capturado, estado exacto en `sessionStorage`, URL limpia,
+  intención `200` y llegada a `checkout.wompi.co/method`.
+- Se detuvo antes de pagar. Estado posterior: 1 intención atribuida sintética,
+  0 pedidos atribuidos, 0 divergencias y 0 incidencias.
 
-- migración, ACL, RLS, gate OFF y scripts operativos verificados;
-- redirect compatible con y sin P4;
-- validación pública CORS cerrada;
-- captura/limpieza/expiración en home, ficha, cuenta y carrito;
-- compra inmediata y carrito transportan solo el código;
-- código válido congela FK; inventado/desactivado congela NULL;
-- caída P4 conserva compra normal;
-- reintentos no cambian intención ni pedido;
-- carrito originado por A y con B o A+B atribuye el pedido completo a A;
-- categorías excluyentes.
-
-### Productivo/final
-
-Requiere despliegue ordenado, activación explícita y una compra real autorizada
-que confirme una intención, un pedido, la misma FK, inventario/proveedor,
-asiento, correo y webhook repetido sin duplicación. Sin autorización monetaria
-P4 puede quedar cerrado estructuralmente, no transaccionalmente.
+Esto cierra P4 **estructuralmente en producción**. No acredita todavía copia al
+pedido, webhook APPROVED/repetido, inventario, asiento, correo ni carrito real.
+Una compra real expresamente autorizada es necesaria para cierre transaccional.
+La evidencia completa y continuidad hacia P5 están en
+`RELEVO-PROMOCIONAR-P4-CIERRE-ESTRUCTURAL-2026-10-21.md`.

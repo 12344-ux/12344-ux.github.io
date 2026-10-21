@@ -1,7 +1,7 @@
 # PLANO · Fase comercial: Carrito + Promocionar
 
 **Decisión del dueño:** 16 de octubre de 2026
-**Estado por tramos (21-oct-2026):** **C1–C5 están cerrados estructuralmente en producción** con sus límites documentados; C4 quedó superado por C5. Carrito encendido y Wompi `prod`. Ningún tramo de carrito tiene cierre transaccional: falta un pago real autorizado. **P0–P3 están cerrados; P3 está desplegado, activo, medido y cerrado FINAL. P4 es el siguiente tramo; P5 viene después.** La fase completa no está cerrada hasta el cierre transaccional y Promocionar P4/P5.
+**Estado por tramos (21-oct-2026):** **C1–C5 están cerrados estructuralmente en producción** con sus límites documentados; C4 quedó superado por C5. Carrito encendido y Wompi `prod`. Ningún tramo de carrito tiene cierre transaccional: falta un pago real autorizado. **P0–P3 están cerrados; P3 está cerrado FINAL. P4 está desplegado, activo, medido sin dinero y cerrado estructuralmente. P5 es el siguiente tramo.** La fase completa no está cerrada hasta el cierre transaccional y Promocionar P5.
 **Superficies:** back-office `montaguth.institute`, tienda `magandhi.com` y backend compartido en Supabase.
 
 Este plano reúne los dos frentes comerciales elegidos para la siguiente evolución de MAGANDHI:
@@ -546,7 +546,7 @@ las ramas de UI interna —edición/CAS y fallback forzado—; los bancos
 SQL/core/Worker cubren sus contratos. Este límite honesto no bloquea el cierre
 y no se atribuye evidencia visual adicional.
 
-### P4 · SIGUIENTE TRAMO · Atribución exacta hasta la venta
+### P4 · CERRADO ESTRUCTURALMENTE EN PRODUCCIÓN · Atribución exacta hasta la venta
 
 **Entrega:** saber qué enlace produjo qué resultado sin depender de una UTM inventada.
 
@@ -557,6 +557,13 @@ y no se atribuye evidencia visual adicional.
 - enlaces inventados no se atribuyen;
 - una caída del sistema promocional no debe impedir una compra normal;
 - compra exacta, atribución aproximada y sin atribuir se muestran separadas.
+
+**Cierre estructural del 21-oct-2026:** backend #306 y tienda #118 fusionados;
+migración aplicada; Edge y Pages desplegadas; gate ON desde
+`2026-10-21T15:21:59.626776Z`. La prueba integral validó el enlace, capturó y
+limpió el fragmento, creó una intención atribuida y llegó a Wompi sin pagar.
+Diagnóstico final: 1 intención atribuida, 0 pedidos, 0 divergencias y 0
+incidencias. No se afirma cierre transaccional ni webhook APPROVED.
 
 ### P5 · TRAMO POSTERIOR · Lectura comercial
 
@@ -579,7 +586,7 @@ Ventas muestra la procedencia validada. Los pedidos manuales pueden tener una fu
 
 ## 5. Orden de construcción
 
-Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual (21-oct-2026): C1–C5 cerrados estructuralmente en producción; falta el cierre transaccional por carrito. **P0–P3 están cerrados; P3 está desplegado, activo, medido y cerrado FINAL. P4 es el siguiente tramo y P5 es posterior.**
+Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual (21-oct-2026): C1–C5 cerrados estructuralmente en producción; falta el cierre transaccional por carrito. **P0–P3 están cerrados; P3 está cerrado FINAL. P4 está desplegado, activo, medido sin dinero y cerrado estructuralmente. P5 es el siguiente tramo.**
 
 1. **Plano y arranque — cerrado.** Este documento y referencias de contexto.
 2. **C1 · cantidad inmediata — estructura lista.** Valor comercial rápido y cimiento de carrito; sin afirmar cierre transaccional de qty2.
@@ -594,15 +601,17 @@ Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato est
     PR #304 fusionado, Worker redesplegado desde ese merge según confirmó el
     dueño y sonda mínima posterior verde. Los dos clics de control son sintéticos
     y no se usan como métrica real.
-11. **P4 · atribución — siguiente tramo.** Congela la referencia validada en
-    intención/pedido y atribuye conversión/pedidos.
-12. **P5 · lectura — tramo posterior.** Incorpora tablero e ingresos.
+11. **P4 · atribución — cerrado estructuralmente el 21-oct-2026.** Backend #306,
+    tienda #118, migración aplicada, dos Edge redesplegadas, gate ON, validación
+    `204`, redirect con fragmento, captura por pestaña y una intención atribuida
+    que llegó a Wompi sin pagar. Estado final: intención 1, pedidos 0,
+    divergencias/incidencias 0. Falta cierre monetario intención → pedido.
+12. **P5 · lectura — siguiente tramo.** Incorpora tablero e ingresos.
 
-P2 está cerrado y aprobado. P3 se desplegó desde P0–P2 sin mezclar redirector,
-atribución transaccional y métricas en una sola migración o despliegue, y ahora
-está cerrado FINAL. P3 solo entrega clics aproximados: CTR requiere impresiones.
-P4 es el siguiente tramo y empieza la atribución de conversión/pedidos; P5 viene
-después con tablero/ingresos.
+P2 está cerrado y aprobado. P3 está cerrado FINAL y solo entrega clics
+aproximados: CTR requiere impresiones. P4 quedó desplegado, activo y cerrado
+estructuralmente con una intención atribuida sin pago; no se atribuye pedido ni
+cierre monetario. **P5 es el siguiente tramo**, con tablero e ingresos.
 
 ---
 
