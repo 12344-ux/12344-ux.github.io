@@ -15,17 +15,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
-<link rel="stylesheet" href="campanas.css?v=d2b-casilla">
+<link rel="stylesheet" href="campanas.css?v=categorias-oficiales">
 
 <!--
   MAGANDHI · Area de Marketing · Sub-area CAMPANAS · EDITAR.
   Igual al formulario de Agregar pero precargando una campana existente
   (?id=... en la URL) con supabase.from('campana_producto').select (+ sus
-  etiquetas desde la tabla puente campana_producto_etiqueta). Al guardar, toda
-  la escritura pasa por la RPC cm_editar_campana; el interruptor
-  Publicar/Despublicar usa cm_publicar_campana. El cliente NUNCA hace
-  insert/update directo a las tablas (solo .select para leer y .rpc para
-  escribir).
+  etiquetas y categorías desde sus tablas puente). Al guardar, toda la escritura
+  pasa por cm_editar_campana_con_categorias, wrapper de la RPC C1 vigente; el
+  interruptor Publicar/Despublicar usa cm_publicar_campana. Las RPC anteriores
+  se conservan para clientes viejos. El cliente NUNCA hace insert/update directo
+  a las tablas (solo .select para leer y .rpc para escribir).
 
   CONEXION CON INVENTARIO (Tanda 2 · la incision): Campanas YA se liga a
   Inventario por product_id_ref. El estado "Agotado" se deriva del stock REAL
@@ -37,8 +37,9 @@
   NADA SE BORRA: despublicar NO borra la ficha (solo la saca de la tienda);
   inactivar seria baja logica. La informacion siempre queda viva.
 
-  La categoria clasifica el producto. La tienda pública conserva una paleta fija
-  de marca; no cambia de color por categoria.
+  Las categorías clasifican el producto; una queda como principal y las demás
+  amplían su descubrimiento. La tienda pública conserva una paleta fija de
+  marca; no cambia de color por categoría.
 -->
 </head>
 <body class="mk-body">
@@ -75,13 +76,12 @@
           </div>
         </div>
         <div class="cm-campos">
-          <div class="cm-campo">
-            <label for="cm-categoria" class="cm-campo-lbl">Categoría</label>
-            <select id="cm-categoria" class="mk-select">
-              <option value="">Sin categoría</option>
-            </select>
-            <span class="cm-campo-ayuda">Clasifica el producto para organización y análisis. La tienda conserva la paleta fija de MAGANDHI.</span>
-          </div>
+          <fieldset class="cm-categorias-fieldset" aria-describedby="cm-categorias-ayuda cm-categorias-estado">
+            <legend class="cm-campo-lbl">Categorías *</legend>
+            <span class="cm-campo-ayuda" id="cm-categorias-ayuda">Elige una o varias categorías. Marca una como principal; las subcategorías aparecen agrupadas bajo su categoría oficial. La tienda conserva la paleta fija de MAGANDHI.</span>
+            <div id="cm-categorias" class="cm-categorias" role="group" aria-label="Categorías de la campaña"></div>
+            <span id="cm-categorias-estado" class="cm-categorias-estado" aria-live="polite"></span>
+          </fieldset>
           <div class="cm-campo">
             <label for="cm-producto" class="cm-campo-lbl">Producto de Inventario</label>
             <select id="cm-producto" class="mk-select">
@@ -368,7 +368,8 @@
   // tocado. Al editar, si la campana YA trae slug, se marca tocado (no pisar).
   let slugTocado = false;
 
-  let categorias = [];
+  let categorias = [];        // activas: [{codigo,nombre,parent_codigo,orden}]
+  let categoriasHistoricas = []; // códigos inactivos asociados; se explican antes de reemplazar
   let productos = [];        // [{id,sku,nombre,activo}] de Inventario
   let campanaId = null;      // uuid de la campana en edicion (?id=...)
   let publicadoActual = false;
@@ -377,8 +378,8 @@
   // D2b · CONFIRMACIÓN SIMPLE DEL PRODUCTO
   // ------------------------------------------------------------
   // La casilla pertenece a esta presentación comercial. La UI solo orienta:
-  // cm_crear_campana, cm_editar_campana, cm_publicar_campana y el gatillo SQL
-  // vuelven a imponer la misma regla.
+  // las RPC vigentes/wrappers, cm_publicar_campana y el gatillo SQL vuelven a
+  // imponer la misma regla.
   function mensajeErrorCuraduria(error) {
     const bruto = String(error?.message || error || '').trim();
     if (bruto.startsWith('CM_PRUEBA_SIN_PRODUCTO')) {
@@ -713,6 +714,124 @@
   }
 
   // ------------------------------------------------------------
+  // CATEGORÍAS OFICIALES (multiselección + una principal)
+  // ------------------------------------------------------------
+  const categoriasCont = $('cm-categorias');
+  const categoriasEstado = $('cm-categorias-estado');
+
+  function opcionCategoria(categoria, esHija) {
+    const codigo = escaparHTML(categoria.codigo);
+    return '<div class="cm-categoria-opcion' + (esHija ? ' es-hija' : '') + '">' +
+      '<label class="cm-categoria-check">' +
+        '<input type="checkbox" value="' + codigo + '">' +
+        '<span class="cm-tag-check">' + SVG_CHECK + '</span>' +
+        '<span class="cm-categoria-nombre">' + escaparHTML(categoria.nombre) + '</span>' +
+      '</label>' +
+      '<label class="cm-categoria-principal">' +
+        '<input type="radio" name="cm-categoria-principal" value="' + codigo + '" disabled>' +
+        '<span>Principal</span>' +
+      '</label>' +
+    '</div>';
+  }
+
+  function pintarCategorias(lista) {
+    if (!lista?.length) {
+      categoriasCont.innerHTML = '<span class="cm-campo-ayuda">No hay categorías activas disponibles.</span>';
+      return;
+    }
+    const raices = lista.filter((c) => !c.parent_codigo);
+    const huerfanas = lista.filter((c) => c.parent_codigo && !lista.some((r) => r.codigo === c.parent_codigo));
+    categoriasCont.innerHTML = raices.map((raiz) => {
+      const hijas = lista.filter((c) => c.parent_codigo === raiz.codigo);
+      return '<section class="cm-categoria-grupo" aria-label="' + escaparHTML(raiz.nombre) + '">' +
+        opcionCategoria(raiz, false) +
+        (hijas.length ? '<div class="cm-categoria-hijas">' + hijas.map((c) => opcionCategoria(c, true)).join('') + '</div>' : '') +
+      '</section>';
+    }).join('') + (huerfanas.length
+      ? '<section class="cm-categoria-grupo">' + huerfanas.map((c) => opcionCategoria(c, true)).join('') + '</section>'
+      : '');
+    cablearCategorias();
+    actualizarEstadoCategorias();
+  }
+
+  function recolectarCategorias() {
+    return [...categoriasCont.querySelectorAll('.cm-categoria-check input:checked')].map((c) => c.value);
+  }
+
+  function categoriaPrincipal() {
+    return categoriasCont.querySelector('input[name="cm-categoria-principal"]:checked')?.value || null;
+  }
+
+  function seleccionarCategorias(codigos, principal) {
+    const seleccion = new Set(codigos || []);
+    categoriasCont.querySelectorAll('.cm-categoria-opcion').forEach((opcion) => {
+      const check = opcion.querySelector('.cm-categoria-check input');
+      const radio = opcion.querySelector('.cm-categoria-principal input');
+      check.checked = seleccion.has(check.value);
+      radio.disabled = !check.checked;
+      radio.checked = check.checked && check.value === principal;
+    });
+    if (!categoriaPrincipal()) {
+      const primera = categoriasCont.querySelector('.cm-categoria-check input:checked');
+      if (primera) primera.closest('.cm-categoria-opcion').querySelector('.cm-categoria-principal input').checked = true;
+    }
+    actualizarEstadoCategorias();
+  }
+
+  function actualizarEstadoCategorias() {
+    const elegidas = recolectarCategorias();
+    const principal = categoriaPrincipal();
+    const estadoActual = elegidas.length
+      ? elegidas.length + (elegidas.length === 1 ? ' categoría elegida' : ' categorías elegidas') +
+        (principal ? ' · principal: ' + (categoriaPorCodigo(principal)?.nombre || principal) : ' · elige la principal')
+      : 'Debes elegir al menos una categoría.';
+    const avisoHistorico = categoriasHistoricas.length
+      ? ' · Clasificación histórica que se reemplazará al guardar: ' + categoriasHistoricas.join(', ') + '.'
+      : '';
+    categoriasEstado.textContent = estadoActual + avisoHistorico;
+    categoriasEstado.classList.toggle('err', !elegidas.length || !principal || categoriasHistoricas.length > 0);
+  }
+
+  function cablearCategorias() {
+    categoriasCont.querySelectorAll('.cm-categoria-opcion').forEach((opcion) => {
+      const check = opcion.querySelector('.cm-categoria-check input');
+      const radio = opcion.querySelector('.cm-categoria-principal input');
+      check.addEventListener('change', () => {
+        radio.disabled = !check.checked;
+        if (!check.checked && radio.checked) radio.checked = false;
+        if (check.checked && !categoriaPrincipal()) radio.checked = true;
+        actualizarEstadoCategorias();
+        refrescarPreview();
+      });
+      radio.addEventListener('change', () => {
+        actualizarEstadoCategorias();
+        refrescarPreview();
+      });
+    });
+  }
+
+  function validarCategorias() {
+    const elegidas = recolectarCategorias();
+    const principal = categoriaPrincipal();
+    if (!elegidas.length) {
+      mostrarMsg('Elige al menos una categoría para guardar la campaña.');
+      categoriasCont.querySelector('input[type="checkbox"]')?.focus();
+      return null;
+    }
+    if (elegidas.length > 12) {
+      mostrarMsg('Elige como máximo 12 categorías.');
+      categoriasCont.querySelector('.cm-categoria-check input:checked')?.focus();
+      return null;
+    }
+    if (!principal || !elegidas.includes(principal)) {
+      mostrarMsg('Marca una de las categorías elegidas como principal.');
+      categoriasCont.querySelector('input[name="cm-categoria-principal"]:not(:disabled)')?.focus();
+      return null;
+    }
+    return { codigos: elegidas, principal };
+  }
+
+  // ------------------------------------------------------------
   // VISTA PREVIA EN VIVO (misma paleta fija de la tienda publica)
   // ------------------------------------------------------------
   const preview = $('cm-preview');
@@ -726,7 +845,7 @@
     return cantidad === 1 ? 'ÚLTIMA DISPONIBLE' : 'ÚLTIMAS ' + formatearNumero(cantidad) + ' DISPONIBLES';
   }
   function refrescarPreview() {
-    const cat = categoriaPorCodigo($('cm-categoria').value);
+    const cat = categoriaPorCodigo(categoriaPrincipal());
     preview.style.setProperty('--cm-acento', '#C28A3A');
     preview.style.setProperty('--cm-acento-cl', '#D9AE6E');
     preview.style.setProperty('--cm-acento-sombra', 'rgba(194,138,58,.16)');
@@ -783,7 +902,7 @@
     $('cm-aviso-cantidad').addEventListener('input', refrescarPreview);
 
     // El banner ya no es un input de texto: se refresca desde el cargador.
-    ['cm-categoria', 'cm-nombre', 'cm-detalle', 'cm-precio']
+    ['cm-nombre', 'cm-detalle', 'cm-precio']
       .forEach((id) => {
         const el = $(id);
         el.addEventListener('input', refrescarPreview);
@@ -844,7 +963,7 @@
 
   // ------------------------------------------------------------
   // PRECARGA: lee la campana y rellena el formulario.
-  // Solo .select (lectura). Trae las etiquetas desde la tabla puente.
+  // Solo .select (lectura). Trae etiquetas y categorías desde sus puentes.
   // ------------------------------------------------------------
   function reflejarEstadoPublicado() {
     const estadoTxt = $('cm-pub-estado');
@@ -958,7 +1077,8 @@
               'caracteristica_adicional, precio_venta, hook_largo, por_que_magandhi, sobre_este_producto, ' +
               'ficha_tecnica, imagenes, sello_elegido, probado_por_magandhi, tope_escaparate, ' +
               'max_unidades_pedido, aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, product_id_ref, ' +
-              'campana_producto_etiqueta ( etiqueta_codigo )')
+              'campana_producto_etiqueta ( etiqueta_codigo ), ' +
+              'campana_producto_categoria ( categoria_codigo, es_principal )')
       .eq('id', campanaId)
       .maybeSingle();
 
@@ -971,7 +1091,32 @@
       return null;
     }
 
-    $('cm-categoria').value = data.categoria_codigo || '';
+    // Cargar primero el puente muchos-a-muchos. Si una fila aún no tiene
+    // asociaciones (cliente/migración anterior), escalar desde el campo legado
+    // categoria_codigo. Solo se muestran categorías activas.
+    const puenteCategorias = Array.isArray(data.campana_producto_categoria)
+      ? data.campana_producto_categoria : [];
+    categoriasHistoricas = puenteCategorias
+      .map((r) => r.categoria_codigo)
+      .filter((codigo) => !categorias.some((c) => c.codigo === codigo));
+    if (data.categoria_codigo && !categorias.some((c) => c.codigo === data.categoria_codigo)
+        && !categoriasHistoricas.includes(data.categoria_codigo)) {
+      categoriasHistoricas.push(data.categoria_codigo);
+    }
+    let categoriaCodigos = puenteCategorias
+      .map((r) => r.categoria_codigo)
+      .filter((codigo) => categorias.some((c) => c.codigo === codigo));
+    let categoriaPrincipalCodigo = puenteCategorias.find((r) =>
+      r.es_principal && categoriaCodigos.includes(r.categoria_codigo)
+    )?.categoria_codigo || null;
+    if (!categoriaCodigos.length && data.categoria_codigo && categorias.some((c) => c.codigo === data.categoria_codigo)) {
+      categoriaCodigos = [data.categoria_codigo];
+      categoriaPrincipalCodigo = data.categoria_codigo;
+    }
+    if (!categoriaPrincipalCodigo && data.categoria_codigo && categoriaCodigos.includes(data.categoria_codigo)) {
+      categoriaPrincipalCodigo = data.categoria_codigo;
+    }
+    seleccionarCategorias(categoriaCodigos, categoriaPrincipalCodigo || categoriaCodigos[0] || null);
     // Preseleccionar el producto de Inventario ligado (si lo hay). El <select>
     // ya viene lleno del ARRANQUE solo con productos activos.
     //
@@ -1046,7 +1191,8 @@
   }
 
   // ------------------------------------------------------------
-  // GUARDAR CAMBIOS -> cm_editar_campana (nombres de parametro EXACTOS)
+  // GUARDAR CAMBIOS -> wrapper atómico cm_editar_campana_con_categorias
+  // (conserva categoria_codigo como principal para clientes anteriores).
   // ------------------------------------------------------------
   async function guardar(e) {
     e.preventDefault();
@@ -1058,6 +1204,9 @@
       $('cm-nombre').focus();
       return;
     }
+
+    const seleccionCategorias = validarCategorias();
+    if (!seleccionCategorias) return;
 
     let precio = null;
     const precioRaw = $('cm-precio').value.trim();
@@ -1173,10 +1322,11 @@
       }
     }
 
-    const { error } = await supabase.rpc('cm_editar_campana', {
+    const { error } = await supabase.rpc('cm_editar_campana_con_categorias', {
       p_id: campanaId,
       p_nombre: nombre,
-      p_categoria_codigo: $('cm-categoria').value || null,
+      p_categoria_codigos: seleccionCategorias.codigos,
+      p_categoria_principal: seleccionCategorias.principal,
       p_detalle_presentacion: $('cm-detalle').value.trim() || null,
       p_imagen_banner_path: bannerPath,
       p_caracteristica_adicional: $('cm-caracteristica').value.trim() || null,
@@ -1314,7 +1464,8 @@
     // La lectura de productos la permite la policy productos_select_marketing.
     const [catRes, tagRes, prodRes] = await Promise.all([
       supabase.from('campana_categoria')
-        .select('codigo, nombre, orden')
+        .select('codigo, nombre, parent_codigo, icono_codigo, descripcion, orden')
+        .eq('activo', true)
         .order('orden', { ascending: true }),
       supabase.from('campana_etiqueta')
         .select('codigo, nombre, orden')
@@ -1331,15 +1482,13 @@
         .order('nombre', { ascending: true })
     ]);
 
-    if (!catRes.error) {
+    if (catRes.error) {
+      categorias = [];
+      pintarCategorias([]);
+      mostrarMsg('No se pudieron cargar las categorías: ' + (catRes.error.message || 'error.'));
+    } else {
       categorias = catRes.data || [];
-      const sel = $('cm-categoria');
-      for (const c of categorias) {
-        const opt = document.createElement('option');
-        opt.value = c.codigo;
-        opt.textContent = c.nombre;
-        sel.appendChild(opt);
-      }
+      pintarCategorias(categorias);
     }
 
     // Llenar el desplegable de productos ANTES de precargar (asi la preseleccion
