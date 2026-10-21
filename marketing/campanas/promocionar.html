@@ -23,7 +23,7 @@
 <main class="mk-wrap pp-main" id="pp-main" hidden>
   <nav class="pp-subnav" aria-label="Promocionar campaña">
     <a id="pp-tab-editor" href="promocionar.html" aria-current="page">Editor</a>
-    <a id="pp-tab-resultados" href="promocionar-resultados.html">Resultados</a>
+    <a id="pp-tab-resultados" href="promocionar-resultados.html?v=p5-5">Resultados</a>
   </nav>
   <section class="pp-producto" aria-labelledby="pp-producto-nombre">
     <div class="pp-producto-foto" id="pp-producto-foto" aria-hidden="true"><span data-ico="imagen"></span></div>
@@ -201,7 +201,7 @@
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
     const query = '?id=' + encodeURIComponent(id);
     document.getElementById('pp-tab-editor').href = 'promocionar.html' + query;
-    document.getElementById('pp-tab-resultados').href = 'promocionar-resultados.html' + query;
+    document.getElementById('pp-tab-resultados').href = 'promocionar-resultados.html?v=p5-5&id=' + encodeURIComponent(id);
   }
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" integrity="sha384-mZT2gIty7ZDdOGkxfP6joZcYdMW1Jvj9dRlfpTmaJAKKXTqzygtB22k7FLe+KZC1" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
