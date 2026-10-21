@@ -149,6 +149,30 @@ const DROPI_UA = () =>
 type Obj = Record<string, unknown>;
 const esObjeto = (v: unknown): v is Obj =>
   !!v && typeof v === "object" && !Array.isArray(v);
+const FORMATO_CODIGO_ATRIBUCION = /^[0-9a-hjkmnp-tv-z]{16}$/;
+
+function codigoAtribucion(valor: unknown): string | null {
+  if (typeof valor !== "string" || valor !== valor.trim()) return null;
+  return FORMATO_CODIGO_ATRIBUCION.test(valor) ? valor : null;
+}
+
+function permiteFallbackP4(error: { code?: string; message?: string } | null): boolean {
+  const codigo = String(error?.code ?? "");
+  const mensaje = String(error?.message ?? "");
+  return ["PGRST202", "PGRST204", "42883"].includes(codigo) ||
+    /\bP4_[A-Z0-9_]+\b/.test(mensaje) ||
+    /schema cache|failed to fetch|network|timeout|aborted/i.test(mensaje);
+}
+
+function registrarFallbackP4(
+  operacion: "inmediata" | "carrito",
+  error: { code?: string } | null,
+): void {
+  console.error(
+    "[crear-intencion-pago] P4 degradó a registro histórico:",
+    JSON.stringify({ operacion, code: error?.code ?? "SIN_CODIGO" }),
+  );
+}
 
 const sumarStockBodegas = (filas: unknown): number | null =>
   Array.isArray(filas)
@@ -636,6 +660,7 @@ async function procesarCarrito(
     "producto",
     "cantidad",
     "moneda",
+    "atribucion_enlace_id",
   ];
 
   if (
@@ -964,26 +989,37 @@ async function procesarCarrito(
   const mgVid = vidBruto && /^[A-Za-z0-9_-]{16,40}$/.test(vidBruto)
     ? vidBruto
     : null;
+  const atribucionCodigo = codigoAtribucion(body.atribucion_codigo);
   const referencia = generarReferencia(idCarrito);
 
   let intencionBruta: unknown = null;
   let errorIntencion: { message?: string; code?: string } | null = null;
   let versionRegistro = versionEsperada;
   for (let intento = 0; intento < 2; intento += 1) {
-    const respuesta = await supabase.rpc(
-      "pw_registrar_intencion_carrito",
-      {
-        p_referencia: referencia,
-        p_auth_user_id: sesion.user.id,
-        p_carrito_id: idCarrito,
-        p_version_esperada: versionRegistro,
-        p_entorno: entorno,
-        p_comprador: comprador,
-        p_utm_campaign: utm,
-        p_mg_vid: mgVid,
-        p_moneda: "COP",
-      },
+    const argumentosBase = {
+      p_referencia: referencia,
+      p_auth_user_id: sesion.user.id,
+      p_carrito_id: idCarrito,
+      p_version_esperada: versionRegistro,
+      p_entorno: entorno,
+      p_comprador: comprador,
+      p_utm_campaign: utm,
+      p_mg_vid: mgVid,
+      p_moneda: "COP",
+    };
+    let respuesta = await supabase.rpc(
+      "pw_registrar_intencion_carrito_p4",
+      { ...argumentosBase, p_atribucion_codigo: atribucionCodigo },
     );
+    if (respuesta.error && permiteFallbackP4(respuesta.error)) {
+      // Despliegue compatible y falla abierta: misma referencia/versión contra
+      // la puerta C5 histórica. Nunca se crea una segunda intención por P4.
+      registrarFallbackP4("carrito", respuesta.error);
+      respuesta = await supabase.rpc(
+        "pw_registrar_intencion_carrito",
+        argumentosBase,
+      );
+    }
     errorIntencion = respuesta.error;
     if (errorIntencion) break;
 
@@ -1177,6 +1213,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return await procesarCarrito(req, body, cors);
   }
 
+  if (Object.prototype.hasOwnProperty.call(body, "atribucion_enlace_id")) {
+    return json(
+      { error: "La solicitud contiene un campo de atribución no permitido." },
+      400,
+      cors,
+    );
+  }
+
   const producto = typeof body?.producto === "string"
     ? body.producto.trim()
     : "";
@@ -1228,16 +1272,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
     departamento: texto(c.departamento, 80),
     pais: texto(c.pais, 60),
   };
-  // Procedencia: utm_campaign da ATRIBUCION EXACTA a las campanas de correo
-  // (hoy es aproximada) y mg_vid es el id ALEATORIO de la analitica propia
-  // (sin nombre ni correo) que Metricas esperaba para medir el embudo real
-  // hasta la compra. Se validan con formato estricto: entran a la base.
+  // Procedencia descriptiva/legacy: utm_campaign se conserva para compatibilidad
+  // de Email, pero nunca es autoridad exacta P4. mg_vid es el id ALEATORIO de
+  // analítica propia y solo existe con consentimiento.
   const utmBruto = texto(body?.utm_campaign, 60);
   const utm = utmBruto && /^[a-z0-9-]{1,60}$/.test(utmBruto) ? utmBruto : null;
   const vidBruto = texto(body?.mg_vid, 40);
   const mgVid = vidBruto && /^[A-Za-z0-9_-]{16,40}$/.test(vidBruto)
     ? vidBruto
     : null;
+  const atribucionCodigo = codigoAtribucion(body?.atribucion_codigo);
 
   // DIAGNOSTICO: marca de entrada para correlacionar la invocacion en los logs.
   // Solo datos no sensibles (que producto se pidio y cuantas unidades).
@@ -1501,23 +1545,34 @@ Deno.serve(async (req: Request): Promise<Response> => {
   //
   // Si esto falla, NO se firma: es preferible que el comprador reintente que
   // cobrarle sin poder convertirlo en pedido.
-  const { data: intencion, error: errorIntencion } = await supabase.rpc(
-    "pw_registrar_intencion",
-    {
-      p_referencia: referencia,
-      p_campana_id: fila.id ?? null,
-      p_slug: fila.slug ?? null,
-      p_nombre: fila.nombre ?? null,
-      p_cantidad: cantidad,
-      p_precio_unitario: precioTexto,
-      p_monto_centavos: montoEnCentavos,
-      p_entorno: entorno === "prod" ? "prod" : "sandbox",
-      p_comprador: comprador,
-      p_utm_campaign: utm,
-      p_mg_vid: mgVid,
-      p_moneda: moneda,
-    },
+  const argumentosIntencion = {
+    p_referencia: referencia,
+    p_campana_id: fila.id ?? null,
+    p_slug: fila.slug ?? null,
+    p_nombre: fila.nombre ?? null,
+    p_cantidad: cantidad,
+    p_precio_unitario: precioTexto,
+    p_monto_centavos: montoEnCentavos,
+    p_entorno: entorno === "prod" ? "prod" : "sandbox",
+    p_comprador: comprador,
+    p_utm_campaign: utm,
+    p_mg_vid: mgVid,
+    p_moneda: moneda,
+  };
+  let respuestaIntencion = await supabase.rpc(
+    "pw_registrar_intencion_p4",
+    { ...argumentosIntencion, p_atribucion_codigo: atribucionCodigo },
   );
+  if (respuestaIntencion.error && permiteFallbackP4(respuestaIntencion.error)) {
+    // La puerta histórica conserva ventas durante despliegues parciales o una
+    // falla P4. Reutiliza exactamente la misma referencia para ser idempotente.
+    registrarFallbackP4("inmediata", respuestaIntencion.error);
+    respuestaIntencion = await supabase.rpc(
+      "pw_registrar_intencion",
+      argumentosIntencion,
+    );
+  }
+  const { data: intencion, error: errorIntencion } = respuestaIntencion;
   if (errorIntencion) {
     // Una baja entre la lectura pública y el lock autoritativo se informa con el
     // mismo contrato público 409, sin filtrar detalles internos.

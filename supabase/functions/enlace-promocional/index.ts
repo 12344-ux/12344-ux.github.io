@@ -1,12 +1,14 @@
-// MAGANDHI · Edge Function · enlace-promocional (Promocionar P3)
-// Resuelve códigos públicos y redirige. La service role nunca sale del runtime.
+// MAGANDHI · Edge Function · enlace-promocional (Promocionar P3 + puente P4)
+// Resuelve códigos, redirige y valida la captura P4. La service role nunca sale.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.116.0";
 import {
+  agregarCodigoAtribucion,
   crearHashIp,
   debeContar,
   esSecretoMaestroValido,
   extraerCodigoRuta,
+  extraerCodigoValidacionRuta,
   fechaColombia,
   obtenerIp,
   paginaMagandhi,
@@ -21,7 +23,13 @@ declare const EdgeRuntime: {
 
 const RESOLVER_TIMEOUT_MS = 2_500;
 const CONTAR_TIMEOUT_MS = 900;
+const P4_VALIDACION_TIMEOUT_MS = 1_500;
 const METODOS_PERMITIDOS = "GET, HEAD, OPTIONS";
+const ORIGENES_VALIDACION_P4 = new Set([
+  "https://magandhi.com",
+  "https://www.magandhi.com",
+  "https://12344-ux.github.io",
+]);
 const ERROR_PLAZO_AGOTADO = Symbol("P3_PLAZO_AGOTADO");
 
 const CABECERAS_BASE: Readonly<Record<string, string>> = Object.freeze({
@@ -41,6 +49,10 @@ type BaseDatosP3 = {
       };
       promocionar_p3_contar: {
         Args: { p_enlace_id: string; p_ip_hash: string };
+        Returns: unknown;
+      };
+      promocionar_p4_validar_codigo: {
+        Args: { p_codigo: string };
         Returns: unknown;
       };
     };
@@ -64,11 +76,17 @@ type CodigoLog =
   | "P3_COUNT_PREP_FAILURE"
   | "P3_COUNT_RPC"
   | "P3_COUNT_TIMEOUT"
+  | "P4_VALIDATION_RPC"
+  | "P4_VALIDATION_TIMEOUT"
   | "P3_HANDLER_FAILURE";
 
 type ResultadoResolver =
   | { ok: true; data: unknown }
   | { ok: false; codigo: "P3_RESOLVER_RPC" | "P3_RESOLVER_TIMEOUT" };
+
+type ResultadoValidacionP4 =
+  | { ok: true; valido: boolean }
+  | { ok: false; codigo: "P4_VALIDATION_RPC" | "P4_VALIDATION_TIMEOUT" };
 
 function logTecnico(codigo: CodigoLog): void {
   console.error(codigo);
@@ -111,6 +129,26 @@ function respuestaRedirect(destinoUrl: string): Response {
   return new Response(null, {
     status: 302,
     headers: cabeceras({ Location: destinoUrl }),
+  });
+}
+
+function cabecerasValidacionP4(req: Request): Record<string, string> {
+  const origen = req.headers.get("origin");
+  return {
+    ...(origen && ORIGENES_VALIDACION_P4.has(origen)
+      ? { "Access-Control-Allow-Origin": origen }
+      : {}),
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "accept",
+    "Access-Control-Max-Age": "300",
+    Vary: "Origin",
+  };
+}
+
+function respuestaValidacionP4(req: Request, status: number): Response {
+  return new Response(null, {
+    status,
+    headers: cabeceras(cabecerasValidacionP4(req)),
   });
 }
 
@@ -164,6 +202,33 @@ async function resolver(
       codigo: error === ERROR_PLAZO_AGOTADO
         ? "P3_RESOLVER_TIMEOUT"
         : "P3_RESOLVER_RPC",
+    };
+  }
+}
+
+async function validarCodigoP4(
+  supabase: ClienteSupabase,
+  codigo: string,
+  timeoutMs: number,
+): Promise<ResultadoValidacionP4> {
+  try {
+    const { data, error } = await ejecutarConPlazo(
+      timeoutMs,
+      (signal) =>
+        supabase
+          .rpc("promocionar_p4_validar_codigo", { p_codigo: codigo })
+          .abortSignal(signal),
+    );
+    if (error || typeof data !== "boolean") {
+      return { ok: false, codigo: "P4_VALIDATION_RPC" };
+    }
+    return { ok: true, valido: data };
+  } catch (error) {
+    return {
+      ok: false,
+      codigo: error === ERROR_PLAZO_AGOTADO
+        ? "P4_VALIDATION_TIMEOUT"
+        : "P4_VALIDATION_RPC",
     };
   }
 }
@@ -268,16 +333,23 @@ async function manejarSolicitud(req: Request): Promise<Response> {
     return respuestaNoDisponible(soloCabeceras);
   }
 
-  const codigo = extraerCodigoRuta(pathname);
+  const codigoValidacion = extraerCodigoValidacionRuta(pathname);
+  const esValidacionP4 = codigoValidacion !== null;
+  const codigo = codigoValidacion ?? extraerCodigoRuta(pathname);
   if (!codigo) return respuestaNoDisponible(soloCabeceras);
 
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: cabeceras({ Allow: METODOS_PERMITIDOS }),
-    });
+    return esValidacionP4
+      ? respuestaValidacionP4(req, 204)
+      : new Response(null, {
+        status: 204,
+        headers: cabeceras({ Allow: METODOS_PERMITIDOS }),
+      });
   }
-  if (req.method !== "GET" && req.method !== "HEAD") {
+  if (esValidacionP4 && req.method !== "GET") {
+    return respuestaValidacionP4(req, 405);
+  }
+  if (!esValidacionP4 && req.method !== "GET" && req.method !== "HEAD") {
     return respuestaHtml(405, "metodo_no_permitido", false, {
       Allow: METODOS_PERMITIDOS,
     });
@@ -310,6 +382,19 @@ async function manejarSolicitud(req: Request): Promise<Response> {
     return respuestaServicioNoDisponible(soloCabeceras);
   }
 
+  if (esValidacionP4) {
+    const validacion = await validarCodigoP4(
+      supabase,
+      codigo,
+      P4_VALIDACION_TIMEOUT_MS,
+    );
+    if (!validacion.ok) {
+      logTecnico(validacion.codigo);
+      return respuestaValidacionP4(req, 503);
+    }
+    return respuestaValidacionP4(req, validacion.valido ? 204 : 404);
+  }
+
   const resultadoRpc = await resolver(supabase, codigo);
   if (!resultadoRpc.ok) {
     logTecnico(resultadoRpc.codigo);
@@ -325,7 +410,10 @@ async function manejarSolicitud(req: Request): Promise<Response> {
     return respuestaServicioNoDisponible(soloCabeceras);
   }
 
-  const redirect = respuestaRedirect(resolucion.destinoUrl);
+  const destinoP4 = resolucion.capturaP4 === true
+    ? agregarCodigoAtribucion(resolucion.destinoUrl, codigo)
+    : null;
+  const redirect = respuestaRedirect(destinoP4 ?? resolucion.destinoUrl);
   // Conserva el conteo completo sin retener la entrega del 302.
   EdgeRuntime.waitUntil(intentarContar(req, supabase, resolucion.enlaceId));
   return redirect;
