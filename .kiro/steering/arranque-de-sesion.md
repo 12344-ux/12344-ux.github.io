@@ -6,7 +6,7 @@ inclusion: always
 
 Antes de proponer o tocar nada en una sesión nueva:
 
-1. Leer `docs/RELEVO-PROMOCIONAR-P4-CIERRE-ESTRUCTURAL-2026-10-21.md`: conserva el cierre productivo sin dinero de P4 y el punto exacto de continuidad. Después leer `docs/PLANO-PROMOCIONAR-P4.md` y el contrato P0. **P5 es el siguiente tramo.** P3 permanece cerrado FINAL.
+1. Leer `docs/RELEVO-PROMOCIONAR-P5-CIERRE-ESTRUCTURAL-2026-10-21.md`: conserva el cierre productivo de lectura P5 y el límite sin dinero. Después leer `docs/PLANO-PROMOCIONAR-P5.md`. Para el contrato de captura y la historia transaccional, consultar `docs/PLANO-PROMOCIONAR-P4.md` y su relevo histórico. P3 permanece cerrado FINAL; no hay P6 definido.
 2. Leer `CONTEXTO-MAGANDHI.md` §9 y `docs/PLANO-FASE-COMERCIAL.md`.
 3. Para estado de carrito, Wompi o producción, consultar
    `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md` y
@@ -71,8 +71,20 @@ Antes de proponer o tocar nada en una sesión nueva:
   validación 204, redirect con fragmento, captura local, intención 200 y llegada
   a Wompi. Estado: 1 intención atribuida sintética, 0 pedidos, 0 divergencias y
   0 incidencias. No afirmar cierre transaccional: no hubo pago/webhook/pedido.
-- **P5 es el siguiente tramo:** lectura comercial, pedidos, ingresos y
-  conversión con denominadores explícitos.
+- **P5 está fusionado, publicado, instalado y cerrado estructural/productivamente:**
+  PR #308, merge `3205e1b0cfcd5fc98126ccf2f37aa3cb2bf914f1` del 21-oct-2026;
+  migración `20261110000000` ejecutada una vez; CI `39643360479` `success`
+  (88 migraciones, matriz 230/0, `Todo pasa.`) y Pages `39645791554` `success`
+  sobre el merge. El dueño recorrió Resultados, Métricas y Ventas y confirmó
+  «Todo en orden». No quedaron confirmados preflight ni postflight productivos
+  separados. Tampoco se acreditaron categorías con datos reales, compra, pago
+  `APPROVED`, pedido atribuido ni ingreso.
+- **P0 está cerrado como contrato documental, sin implementación ni producción.**
+- **P1–P5 están desplegados y cerrados en sus alcances respectivos.** P3
+  permanece cerrado FINAL; P4 permanece activo y cerrado estructuralmente; P5
+  es productivo y de solo lectura. No hay P6 definido.
+- El pendiente monetario común C5/P4/P5 exige una compra real expresamente
+  autorizada; hasta entonces no afirmar cierre monetario/end-to-end.
 - Reversa P3: apagar juntos los tres gates, verificar respuesta MAGANDHI no
   disponible, conservar cron, datos, códigos y bitácora, y corregir con migración
   forward. Mantener DNS/Worker mientras se diagnostica; **no borrar todavía los

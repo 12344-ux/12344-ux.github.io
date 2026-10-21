@@ -1,7 +1,7 @@
 # MAGANDHI · Plano Promocionar P4 · atribución transaccional
 
 **Estado:** desplegado, activo, medido sin dinero y **cerrado estructuralmente** el 21-oct-2026. No cerrado transaccionalmente: existe una intención atribuida sintética, pero no hubo pago ni pedido.
-**Base:** P0–P3 cerrados; P3 continúa operativo sin depender de P4. Relevo vigente: `RELEVO-PROMOCIONAR-P4-CIERRE-ESTRUCTURAL-2026-10-21.md`.
+**Base:** P0 está cerrado como contrato documental, sin implementación ni producción; P1–P3 están desplegados y cerrados en sus alcances respectivos. P3 continúa operativo sin depender de P4. Relevo histórico de P4: `RELEVO-PROMOCIONAR-P4-CIERRE-ESTRUCTURAL-2026-10-21.md`. Continuidad vigente: `RELEVO-PROMOCIONAR-P5-CIERRE-ESTRUCTURAL-2026-10-21.md`.
 
 ## 1. Entrega
 
@@ -123,5 +123,7 @@ pagos y no borra atribuciones ya congeladas.
 Esto cierra P4 **estructuralmente en producción**. No acredita todavía copia al
 pedido, webhook APPROVED/repetido, inventario, asiento, correo ni carrito real.
 Una compra real expresamente autorizada es necesaria para cierre transaccional.
-La evidencia completa y continuidad hacia P5 están en
-`RELEVO-PROMOCIONAR-P4-CIERRE-ESTRUCTURAL-2026-10-21.md`.
+La evidencia completa del cierre P4 permanece en
+`RELEVO-PROMOCIONAR-P4-CIERRE-ESTRUCTURAL-2026-10-21.md`; es historia. La
+continuidad vigente está en
+`RELEVO-PROMOCIONAR-P5-CIERRE-ESTRUCTURAL-2026-10-21.md`.

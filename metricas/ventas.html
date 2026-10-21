@@ -47,6 +47,9 @@
   const p0 = new URLSearchParams(location.search).get('periodo');
   let periodo = ['7', '30', '90', '365'].includes(p0) ? p0 : '30', serie = 'ingresos', datos = null;
   let cargaId = 0;
+  const RAZONES_COBERTURA_P5 = new Set([
+    'detalle_p3_compactado', 'analitica_consentida_inactiva', 'sin_eventos_consentidos_periodo'
+  ]);
 
   function fechaBogota() {
     const partes = new Intl.DateTimeFormat('en-CA', {
@@ -85,9 +88,29 @@
   function p5Valido(d) {
     const n = (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0;
     return d && d.contrato === 'promocionar_p5_metricas_v1' && d.totales && d.tasas && d.cobertura &&
+      ['completa', 'parcial'].includes(d.cobertura.estado) && Array.isArray(d.cobertura.razones) &&
+      d.cobertura.razones.every((x) => typeof x === 'string' && RAZONES_COBERTURA_P5.has(x)) &&
       ['clics_aproximados','checkouts_consentidos','pedidos_exactos','ingresos_exactos_cop'].every((k) => n(d.totales[k])) &&
       d.tasas.pedido_sobre_clic && typeof d.tasas.pedido_sobre_clic.denominador_etiqueta === 'string' &&
       Array.isArray(d.distribucion) && d.distribucion.every((x) => x && typeof x.etiqueta === 'string' && n(x.pedidos));
+  }
+
+  function lecturaCoberturaP5(cobertura) {
+    const razones = new Set(cobertura.razones);
+    const mensajes = [];
+    if (razones.has('analitica_consentida_inactiva')) {
+      mensajes.push('La medición voluntaria de navegación está apagada. Conservamos los datos aceptados anteriormente, pero las sesiones y los checkouts pueden estar incompletos. Los pedidos y los ingresos se calculan por separado desde las ventas.');
+    }
+    if (razones.has('detalle_p3_compactado')) {
+      mensajes.push('Parte del histórico P3 ya no conserva fecha. Por eso los clics y la conversión sobre clics pueden no cubrir todo el periodo.');
+    }
+    if (!razones.has('analitica_consentida_inactiva') && razones.has('sin_eventos_consentidos_periodo')) {
+      mensajes.push('La analítica voluntaria está activa, pero no hubo eventos consentidos atribuibles en este periodo.');
+    }
+    if (mensajes.length) return mensajes.join(' ');
+    return cobertura.estado === 'completa'
+      ? 'La cobertura declarada está completa para el periodo. Los clics siguen siendo aproximados y no únicos.'
+      : 'La cobertura del periodo es parcial. Algunas lecturas pueden no estar disponibles.';
   }
 
   function pintarP5(d) {
@@ -95,9 +118,7 @@
     const t = d.totales, tasa = d.tasas.pedido_sobre_clic;
     const tasaTxt = tasa.disponible ? Number(tasa.valor).toLocaleString('es-CO', { maximumFractionDigits: 2 }) + '%' : 'No disponible';
     const distrib = d.distribucion.map((x) => ({ n: x.etiqueta, v: x.pedidos }));
-    const calidad = d.cobertura.estado === 'parcial'
-      ? 'Cobertura parcial: no se completan el histórico P3 sin fecha ni la población sin consentimiento.'
-      : 'Cobertura declarada completa para el periodo; los clics siguen siendo aproximados y no únicos.';
+    const calidad = lecturaCoberturaP5(d.cobertura);
     $('vt-p5').setAttribute('aria-busy', 'false');
     $('vt-p5-contenido').innerHTML =
       '<div class="mt-p5-kpis">' +
@@ -109,7 +130,7 @@
       '</div>' +
       '<div class="mt-p5-pie"><div><h3>Distribución de pedidos</h3><p>Precedencia exclusiva: enlace propio, Email legacy, Email aproximada, sin atribuir.</p>' +
         (distrib.some((x) => x.v > 0) ? reparto(distrib, { formato: num }) : vacio('Sin pedidos en el periodo', 'La distribución aparecerá cuando existan pedidos no anulados.')) +
-      '</div><aside><strong>Calidad de lectura</strong><p>' + esc(calidad) + '</p><small>P5 no dispone de impresiones; cada conversión declara su denominador.</small></aside></div>';
+      '</div><aside><strong>Cómo leer estos datos</strong><p>' + esc(calidad) + '</p><small>Los clics son aproximados. No mostramos tasa sobre impresiones porque MAGANDHI no registra cuántas veces se vio cada publicación.</small></aside></div>';
   }
 
   function pintar() {

@@ -1,7 +1,7 @@
 # PLANO · Fase comercial: Carrito + Promocionar
 
 **Decisión del dueño:** 16 de octubre de 2026
-**Estado por tramos (21-oct-2026):** **C1–C5 están cerrados estructuralmente en producción** con sus límites documentados; C4 quedó superado por C5. Carrito encendido y Wompi `prod`. Ningún tramo de carrito tiene cierre transaccional: falta un pago real autorizado. **P0–P3 están cerrados; P3 está cerrado FINAL. P4 está desplegado, activo, medido sin dinero y cerrado estructuralmente. P5 es el siguiente tramo.** La fase completa no está cerrada hasta el cierre transaccional y Promocionar P5.
+**Estado por tramos (21-oct-2026):** **C1–C5 están cerrados estructuralmente en producción** con sus límites documentados; C4 quedó superado por C5. Carrito encendido y Wompi `prod`. **P0 está cerrado como contrato documental, sin implementación ni producción. P1–P5 están desplegados y cerrados en sus alcances respectivos: P3 está cerrado FINAL; P4 está desplegado, activo, medido sin dinero y cerrado estructuralmente; P5 está desplegado y cerrado estructural/productivamente como lectura.** La fase completa no está cerrada monetaria/end-to-end: falta una compra real autorizada para el pendiente común C5/P4/P5. No hay P6 definido.
 **Superficies:** back-office `montaguth.institute`, tienda `magandhi.com` y backend compartido en Supabase.
 
 Este plano reúne los dos frentes comerciales elegidos para la siguiente evolución de MAGANDHI:
@@ -565,7 +565,7 @@ limpió el fragmento, creó una intención atribuida y llegó a Wompi sin pagar.
 Diagnóstico final: 1 intención atribuida, 0 pedidos, 0 divergencias y 0
 incidencias. No se afirma cierre transaccional ni webhook APPROVED.
 
-### P5 · TRAMO POSTERIOR · Lectura comercial
+### P5 · CERRADO ESTRUCTURALMENTE EN PRODUCCIÓN · Lectura comercial
 
 **Entrega:** panel accionable en Campañas/Métricas/Ventas.
 
@@ -582,11 +582,23 @@ Por enlace/pieza/producto/canal:
 
 Ventas muestra la procedencia validada. Los pedidos manuales pueden tener una fuente declarada por el operador, rotulada como manual y distinta de la atribución exacta.
 
+**Cierre estructural/productivo del 21-oct-2026:** implementación PR #308,
+merge `3205e1b0cfcd5fc98126ccf2f37aa3cb2bf914f1`; CI de rama run
+`39643360479` `success` con 88 migraciones, matriz 230/0 y suite final
+`Todo pasa.`; migración `20261110000000` ejecutada una sola vez según confirmó
+el dueño; Pages producción run `39645791554` `success` sobre el merge. El dueño
+recorrió Resultados, Métricas y Ventas y dijo «Todo en orden».
+
+No quedaron confirmados preflight ni postflight productivos separados. Tampoco se acreditaron categorías con datos
+reales, compra, pago `APPROVED`, pedido atribuido o ingreso. P5 queda cerrado
+como lectura, no monetaria ni end-to-end. Relevo vigente:
+`docs/RELEVO-PROMOCIONAR-P5-CIERRE-ESTRUCTURAL-2026-10-21.md`.
+
 ---
 
 ## 5. Orden de construcción
 
-Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual (21-oct-2026): C1–C5 cerrados estructuralmente en producción; falta el cierre transaccional por carrito. **P0–P3 están cerrados; P3 está cerrado FINAL. P4 está desplegado, activo, medido sin dinero y cerrado estructuralmente. P5 es el siguiente tramo.**
+Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato está completo. Estado actual (21-oct-2026): C1–C5 están cerrados estructuralmente en producción. P0 está cerrado como contrato documental, sin implementación ni producción. P1–P5 están desplegados y cerrados en sus alcances respectivos: P3 está cerrado FINAL; P4 permanece activo y cerrado estructuralmente; P5 está cerrado estructural/productivamente como lectura. Falta el cierre monetario común C5/P4/P5 mediante una compra real autorizada. No hay P6 definido.
 
 1. **Plano y arranque — cerrado.** Este documento y referencias de contexto.
 2. **C1 · cantidad inmediata — estructura lista.** Valor comercial rápido y cimiento de carrito; sin afirmar cierre transaccional de qty2.
@@ -606,12 +618,15 @@ Los dos frentes se desarrollan por PR y se activan solo cuando cada contrato est
     `204`, redirect con fragmento, captura por pestaña y una intención atribuida
     que llegó a Wompi sin pagar. Estado final: intención 1, pedidos 0,
     divergencias/incidencias 0. Falta cierre monetario intención → pedido.
-12. **P5 · lectura — siguiente tramo.** Incorpora tablero e ingresos.
+12. **P5 · lectura — cerrado estructural/productivamente el 21-oct-2026.** Incorpora tablero e ingresos sin inventar ventas.
 
 P2 está cerrado y aprobado. P3 está cerrado FINAL y solo entrega clics
-aproximados: CTR requiere impresiones. P4 quedó desplegado, activo y cerrado
-estructuralmente con una intención atribuida sin pago; no se atribuye pedido ni
-cierre monetario. **P5 es el siguiente tramo**, con tablero e ingresos.
+aproximados: una tasa sobre impresiones requiere registrar cuántas veces se vio
+cada publicación. P4 permanece desplegado, activo y cerrado estructuralmente
+con una intención atribuida sin pago; no se atribuye pedido ni cierre monetario.
+P5 está desplegado y cerrado como lectura. **No hay P6 definido.** El pendiente
+siguiente se decide entre una compra real autorizada para cerrar C5/P4/P5
+transaccionalmente o retomar otro frente pendiente.
 
 ---
 

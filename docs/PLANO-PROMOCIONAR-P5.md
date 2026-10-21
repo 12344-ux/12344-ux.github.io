@@ -1,8 +1,10 @@
 # MAGANDHI · Plano Promocionar P5 · lectura comercial
 
-**Estado:** construido en la rama `feat/promocionar-p5-lectura-comercial`, **NO desplegado**. Ninguna RPC P5, página o integración descrita aquí se considera disponible en producción hasta ejecutar el despliegue coordinado y acreditar sus postflight y recorridos.
+**Estado:** implementado en PR #308 y fusionado en `3205e1b0cfcd5fc98126ccf2f37aa3cb2bf914f1` el 21-oct-2026; SQL instalado y Pages publicado. P5 está **cerrado estructural y productivamente**, no monetaria ni end-to-end.
 
-**Base:** P0–P3 cerrados; P4 desplegado, activo y cerrado estructuralmente, todavía sin cierre transaccional por una compra real autorizada. P5 es una capa de solo lectura: no cambia enlaces, intenciones, pagos, pedidos, inventario ni contabilidad.
+**Base:** P0 está cerrado como contrato documental, sin implementación ni producción. P1–P5 están desplegados y cerrados en sus alcances respectivos: P3 está cerrado FINAL; P4 está desplegado, activo y cerrado estructuralmente, todavía sin cierre transaccional por una compra real autorizada; P5 está desplegado y cerrado estructural/productivamente como capa de solo lectura. P5 no cambia enlaces, intenciones, pagos, pedidos, inventario ni contabilidad. No hay P6 definido.
+
+**Relevo vigente:** `RELEVO-PROMOCIONAR-P5-CIERRE-ESTRUCTURAL-2026-10-21.md`.
 
 ## 1. Resultado y límites
 
@@ -135,49 +137,67 @@ El embudo separa aproximada, consentida y transaccional; no dibuja continuidad c
 
 Métricas y Ventas degradan P5 de forma independiente: una RPC P5 ausente o fallida no invalida `mt_ventas` ni la carga/operación de pedidos.
 
-## 10. Despliegue coordinado
+## 10. Cierre productivo y protocolo de referencia
 
-Estado actual: **NO desplegado, NO activo**. P5 no necesita gate de escritura porque es lectura, pero exige publicación coordinada para evitar contratos incompletos:
+Estado actual: P5 está desplegado y su cierre estructural/productivo fue aceptado: **despliegue productivo acreditado con evidencia limitada; protocolo completo no recorrido**. P5 no necesita gate de escritura porque es lectura.
 
-1. revisar este plano y ejecutar preflight P5 de solo lectura;
-2. aplicar una sola vez la migración forward `20261110000000_promocionar_p5_lectura_comercial.sql`;
-3. ejecutar postflight y estado; confirmar firmas, `SECURITY DEFINER`, search path fijo, grants nominales, cero exposición de tablas/PII y seguridad con datos vacíos;
-4. publicar Pages con Marketing, Métricas y Ventas en la misma ventana;
-5. recorrer sesión/permisos, campañas con y sin datos, periodos 7/30/90/365, compactación parcial, RPC ausente simulada y batch de pedidos;
-6. comparar agregados contra consultas controladas, incluidos anulados, cadena P4 exacta, legacy, aproximada y sin atribuir;
-7. registrar evidencia. Fusionar código o aplicar solo SQL no acredita despliegue coordinado.
+Evidencia exacta del cierre:
+
+1. implementación PR #308, merge `3205e1b0cfcd5fc98126ccf2f37aa3cb2bf914f1` el 21-oct-2026;
+2. CI de rama run `39643360479` `success`: 88 migraciones, matriz 230/0 y suite final `Todo pasa.`;
+3. el dueño confirmó que `20261110000000_promocionar_p5_lectura_comercial.sql` se ejecutó una sola vez;
+4. Pages producción run `39645791554` `success` sobre el merge;
+5. el dueño recorrió la prueba integral final de Resultados, Métricas y Ventas y dijo «Todo en orden»;
+6. el diagnóstico final quedó así:
+
+```text
+instalado=true
+P3: enlaces=1; detalle_desde=null; detalle_hasta=null; clics_detalle_filas=0; compactado=0
+P4: intenciones_atribuidas=1; convertidas_approved=0; pedidos_con_fk=0; ventas_exactas_autoritativas=0; divergencias_fk=0; incidencias_pendientes=0
+analítica consentida: activa=false; primer_evento=2026-10-08T18:34:59.188+00:00; ultimo_evento=2026-10-08T18:34:59.188+00:00
+intención sintética identificable=false
+```
+
+No quedaron confirmados preflight ni postflight productivos separados. Tampoco se acreditaron las categorías con datos reales, una compra, un pago `APPROVED`, un pedido atribuido ni un ingreso. No se afirma un recorrido individual de campañas con/sin datos, todos los periodos, compacto P3, RPC ausente o las cuatro categorías. Estos límites no reabren el cierre estructural/productivo acreditado, pero impiden llamar ejecutado al protocolo completo o considerarlo monetario o end-to-end.
+
+La secuencia diseñada —preflight, migración única, postflight/estado, Pages, recorridos y comparación controlada— se conserva como referencia en `../supabase/operacion/PROMOCIONAR-P5-DESPLIEGUE.md`; no se convierte retrospectivamente en evidencia ejecutada.
 
 Reversa UI: retirar/revertir la publicación de páginas sin borrar datos. Reversa SQL: no hacer `DROP` improvisado; cualquier corrección va en migración forward. Las RPC son read-only y no cambian gates P3/P4.
 
 ## 11. Criterios de cierre
 
+La marca `[x]` aparece solo donde la evidencia de este corte lo permite. Los casos sin marcar conservan valor como cobertura de referencia; no se presentan como recorridos productivos ejecutados.
+
 ### Contrato y datos
 
-- [ ] Migración P5 aplicada una sola vez después de `20261109000000`.
-- [ ] Tres RPC nominales y helper privado compilan sobre el orden actual y con tablas vacías.
-- [ ] Rangos inclusivos Colombia de 1–731 días (`hasta - desde <= 730`) validados.
-- [ ] Fórmulas, denominadores, moneda COP, anulaciones, cobertura y frescura presentes en payload.
-- [ ] Venta exacta exige intención `procesada`, Wompi `APPROVED`, `pedido_id` y FK coincidente en pedido.
-- [ ] Precedencia exclusiva exacta > legacy > aproximada > sin atribuir acreditada sin doble conteo.
-- [ ] Compacto P3 no se fecha ni se mezcla con series; periodos incompletos anulan tasas sobre clics.
-- [ ] Intención sintética permanece no identificable y solo puede caer entre intenciones no aprobadas.
+- [x] Migración P5 aplicada una sola vez después de `20261109000000`.
+- [x] Las tres RPC nominales constan instaladas en el diagnóstico (`instalado=true`).
+- [ ] Helper privado y corte con tablas vacías comprobados mediante postflight productivo separado.
+- [ ] Rangos inclusivos Colombia de 1–731 días (`hasta - desde <= 730`) recorridos por separado en producción.
+- [ ] Fórmulas, denominadores, moneda COP, anulaciones, cobertura y frescura contrastados por separado contra datos productivos controlados.
+- [ ] Venta exacta recorrida con intención `procesada`, Wompi `APPROVED`, `pedido_id` y FK coincidente en pedido.
+- [ ] Precedencia exclusiva exacta > legacy > aproximada > sin atribuir recorrida con las cuatro categorías de datos reales.
+- [ ] Compacto P3 recorrido en producción para acreditar que no se fecha ni se mezcla con series y que anula tasas incompletas sobre clics. El diagnóstico de cierre informó `compactado=0`.
+- [x] El diagnóstico registra `intención sintética identificable=false`; no se inventa una heurística para aislarla.
 
 ### Seguridad y privacidad
 
-- [ ] Todas las funciones P5 son `SECURITY DEFINER`, search path fijo y grants nominales verificados.
-- [ ] Helper sin acceso API; `anon` sin EXECUTE; ninguna tabla privada recibe grants/policies nuevas.
-- [ ] Marketing/Métricas no exponen PII, referencias de pago, ids de pedido, visitante, sesión o `mg_vid`.
-- [ ] Ventas recibe solo procedencia para el lote autorizado, máximo 500, en una llamada.
-- [ ] Analítica consentida no se usa para identificar o unir una persona con una compra.
+- [ ] `SECURITY DEFINER`, search path fijo y grants nominales comprobados mediante postflight productivo separado.
+- [ ] Helper sin acceso API, `anon` sin EXECUTE y ausencia de grants/policies nuevas en tablas privadas comprobados mediante postflight productivo separado.
+- [ ] Ausencia de PII, referencias de pago, ids de pedido, visitante, sesión o `mg_vid` contrastada mediante recorrido productivo específico de Marketing/Métricas.
+- [ ] Procedencia de Ventas para lote autorizado, máximo 500 y una sola llamada recorrida con datos reales.
+- [ ] Separación entre analítica consentida y persona/compra recorrida mediante un caso productivo específico.
 
 ### UX/UI y operación
 
-- [ ] Resultados conserva UUID, usa header Marketing y subnav Editor/Resultados, sin importar ni acoplarse al IIFE del editor.
-- [ ] Selector 7/30/90/365, cabecera, KPIs definidos, poblaciones separadas, serie accesible, desglose y calidad funcionan responsive.
-- [ ] Carga, error/reintento, vacío total, vacío de periodo, parcial y completo son distinguibles y accesibles.
-- [ ] Payload inválido falla cerrado; request-id/abort impiden carreras; render dinámico es seguro.
-- [ ] Métricas M1 y pedidos siguen operativos si P5 falla/no existe; Ventas dice “No disponible”.
-- [ ] No se presenta ninguna tasa basada en impresiones.
-- [ ] Cache-busting actualizado para todo CSS/JS cambiado.
-- [ ] Preflight, postflight, estado, validaciones sintácticas y suite existente apropiada quedan verdes.
-- [ ] Pages y SQL publicados coordinadamente, recorridos medidos y evidencia archivada antes de cambiar el estado de este plano.
+- [x] El dueño recorrió la prueba integral final de Resultados, Métricas y Ventas y dijo «Todo en orden».
+- [ ] Selector 7/30/90/365, responsive y cada estado de carga, error/reintento, vacío total, vacío de periodo, parcial y completo recorridos individualmente en producción.
+- [ ] RPC ausente simulada y degradación independiente de Métricas M1/Ventas recorridas en producción.
+- [ ] Las cuatro categorías de procedencia recorridas con datos reales en Ventas.
+- [x] No se presenta una tasa basada en impresiones; la interfaz declara que MAGANDHI no registra cuántas veces se vio cada publicación.
+- [x] El ajuste de copy en `metricas/ventas.html` es JavaScript inline; no requiere cache-busting de un asset externo.
+- [x] CI de rama run `39643360479` `success`: 88 migraciones, matriz 230/0 y suite final `Todo pasa.`
+- [ ] Preflight y postflight productivos separados ejecutados/confirmados.
+- [x] Pages producción run `39645791554` `success` sobre el merge, SQL aplicado una vez y recorrido integral final confirmado por el dueño.
+
+El cierre acreditado es estructural/productivo. El cierre transaccional común C5/P4/P5 sigue pendiente de una compra real expresamente autorizada.
