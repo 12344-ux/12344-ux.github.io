@@ -99,6 +99,12 @@
   .vt-correo-fila .vt-btn{padding:7px 12px;font-size:12.5px;white-space:nowrap;flex:none}
   .vt-correo-fila .vt-btn[disabled]{opacity:.45;cursor:not-allowed}
   .vt-msg.ok{color:#2E7D4F}
+  /* P5 · procedencia promocional, separada de pedidos.canal. */
+  .vt-proc{display:inline-flex;align-items:center;gap:6px;max-width:190px;padding:4px 9px;border:1px solid var(--vt-linea);border-radius:999px;color:var(--vt-marino);background:rgba(16,28,51,.045);font-size:10px;font-weight:600;line-height:1.25;white-space:normal}
+  .vt-proc::before{content:"";width:7px;height:7px;flex:none;border-radius:50%;background:var(--vt-azul-cl)}
+  .vt-proc.exacta_propia{background:rgba(194,138,58,.13);border-color:rgba(194,138,58,.35)}.vt-proc.exacta_propia::before{background:#C28A3A}
+  .vt-proc.legacy_email_utm::before{background:var(--vt-marino)}.vt-proc.aproximada_email{border-style:dashed}.vt-proc.sin_atribuir,.vt-proc.no_disponible{color:var(--vt-gris)}
+  .vt-proc-bloque{border-left:3px solid #C28A3A}.vt-proc-copy{margin:8px 0 0;color:var(--vt-gris);font-size:12px;line-height:1.5}.vt-proc-detalle{margin:8px 0 0;padding-top:8px;border-top:1px solid var(--vt-linea);font-size:11.5px;color:var(--vt-gris)}
 </style>
 </head>
 <body class="vt-body">
@@ -167,6 +173,13 @@
     entregado: 'Entregado',
     anulado: 'Anulado'
   };
+  const PROCEDENCIA_TXT = {
+    exacta_propia: 'Validada · enlace propio',
+    legacy_email_utm: 'Email legacy',
+    aproximada_email: 'Email aproximada',
+    sin_atribuir: 'Sin atribuir',
+    no_disponible: 'No disponible'
+  };
   // Iconos por estado (heredan currentColor, sin color propio).
   const ESTADO_ICO = {
     recibido: 'recibo',
@@ -193,6 +206,11 @@
 
   // Cache de pedidos cargados (por id) para abrir el detalle sin re-consultar.
   let pedidosPorId = new Map();
+  // P5 se consulta una sola vez por lote; su falla no bloquea pedidos.
+  let procedenciaPorId = new Map();
+  let procedenciaDisponible = false;
+  let procedenciaController = null;
+  let cargaId = 0;
   // false si la base aun no tiene la tabla de correos (migracion sin aplicar).
   let correosDisponibles = true;
 
@@ -200,6 +218,68 @@
     const ico = ICONOS[ESTADO_ICO[estado]] || '';
     return '<span class="vt-badge ' + escaparHTML(estado) + '">' + ico +
       escaparHTML(ESTADO_TXT[estado] || estado) + '</span>';
+  }
+
+  function procedenciaDe(id) {
+    if (!procedenciaDisponible) return { tipo: 'no_disponible', explicacion: 'La lectura P5 no está disponible. El pedido y su operación siguen intactos.' };
+    return procedenciaPorId.get(id) || { tipo: 'sin_atribuir', explicacion: 'No existe evidencia promocional bajo la precedencia P5.' };
+  }
+
+  function badgeProcedencia(id) {
+    const p = procedenciaDe(id);
+    const tipos = new Set(['exacta_propia','legacy_email_utm','aproximada_email','sin_atribuir','no_disponible']);
+    const tipo = tipos.has(p.tipo) ? p.tipo : 'no_disponible';
+    return '<span class="vt-proc ' + tipo + '">' + escaparHTML(PROCEDENCIA_TXT[tipo]) + '</span>';
+  }
+
+  function procedenciaHtmlDe(id) {
+    const proc = procedenciaDe(id);
+    const tipoProc = Object.hasOwn(PROCEDENCIA_TXT, proc.tipo) ? proc.tipo : 'no_disponible';
+    const detalleProc = [
+      proc.canal ? 'Canal: ' + proc.canal : '',
+      proc.pieza ? 'Pieza: ' + proc.pieza : '',
+      proc.producto_promovido ? 'Promovido: ' + proc.producto_promovido : '',
+      proc.campana ? 'Campaña: ' + proc.campana : ''
+    ].filter(Boolean).join(' · ');
+    return '<div class="vt-bloque vt-proc-bloque" id="vt-proc-drawer"><h3>Procedencia promocional</h3>' +
+      '<span class="vt-proc ' + tipoProc + '">' + escaparHTML(PROCEDENCIA_TXT[tipoProc]) + '</span>' +
+      '<p class="vt-proc-copy">' + escaparHTML(proc.explicacion || 'La lectura P5 no está disponible.') + '</p>' +
+      (detalleProc ? '<p class="vt-proc-detalle">' + escaparHTML(detalleProc) + '</p>' : '') +
+      '<p class="vt-proc-copy">Es independiente de la puerta manual/web del pedido. La aproximación Email no equivale a validación exacta.</p></div>';
+  }
+
+  function actualizarProcedenciasVisibles() {
+    lista.querySelectorAll('tr[data-id]').forEach((tr) => {
+      const celda = tr.children[4];
+      if (celda) celda.innerHTML = badgeProcedencia(tr.dataset.id);
+    });
+    if (!drawerFondo.hidden) {
+      const id = drawerFondo.dataset.pedidoId;
+      const bloque = drawerBody.querySelector('#vt-proc-drawer');
+      if (id && bloque && pedidosPorId.has(id)) bloque.outerHTML = procedenciaHtmlDe(id);
+    }
+  }
+
+  function validarProcedencias(payload, ids) {
+    const tipos = new Set(['exacta_propia','legacy_email_utm','aproximada_email','sin_atribuir']);
+    const permitidos = new Set(ids);
+    if (!payload || payload.contrato !== 'promocionar_p5_procedencia_v1' ||
+        !Number.isInteger(payload.solicitados) || payload.solicitados !== ids.length ||
+        !Number.isInteger(payload.devueltos) || payload.devueltos !== ids.length ||
+        !Array.isArray(payload.pedidos) || payload.pedidos.length !== ids.length) {
+      throw new Error('P5_CONTRATO_PROCEDENCIA_INVALIDO');
+    }
+    const mapa = new Map();
+    payload.pedidos.forEach((p) => {
+      const textoONulo = (v) => v === null || typeof v === 'string';
+      if (!p || !permitidos.has(p.pedido_id) || !tipos.has(p.tipo) || typeof p.etiqueta !== 'string' || typeof p.explicacion !== 'string' || typeof p.anulado !== 'boolean' || !['canal','pieza','campana','producto_promovido'].every((k) => textoONulo(p[k]))) throw new Error('P5_FILA_PROCEDENCIA_INVALIDA');
+      if (mapa.has(p.pedido_id)) throw new Error('P5_PROCEDENCIA_DUPLICADA');
+      mapa.set(p.pedido_id, p);
+    });
+    if (mapa.size !== permitidos.size || ids.some((id) => !mapa.has(id))) {
+      throw new Error('P5_PROCEDENCIA_INCOMPLETA');
+    }
+    return mapa;
   }
 
   // Resume los items de un pedido en un texto corto para el tablero:
@@ -219,7 +299,14 @@
   // CARGA DEL TABLERO
   // ----------------------------------------------------------
   async function cargar() {
+    const idCarga = ++cargaId;
+    if (procedenciaController) {
+      procedenciaController.abort();
+      procedenciaController = null;
+    }
     lista.innerHTML = '<p class="vt-empty">Cargando pedidos...</p>';
+    procedenciaPorId = new Map();
+    procedenciaDisponible = false;
 
     // Un solo select con relaciones: pedido -> cliente (contacto) y sus lineas
     // con el producto. PostgREST resuelve las FK declaradas en las migraciones.
@@ -251,6 +338,7 @@
       ({ data, error } = await consultar(false));
     }
 
+    if (idCarga !== cargaId) return;
     if (error) {
       lista.innerHTML = '<div class="vt-empty">No se pudieron cargar los pedidos. ' +
         '<strong>' + escaparHTML(error.message || 'Error') + '</strong></div>';
@@ -263,8 +351,42 @@
     const hayMas = todos.length > PEDIDOS_N;
     const pedidos = hayMas ? todos.slice(0, PEDIDOS_N) : todos;
 
+    // Publicar la operación apenas llegan los pedidos. P5 solo enriquece en
+    // segundo plano y empieza cerrado en «No disponible».
+    const ids = pedidos.map((p) => p.id);
     pedidosPorId = new Map(pedidos.map((p) => [p.id, p]));
+    if (!drawerFondo.hidden && !pedidosPorId.has(drawerFondo.dataset.pedidoId)) cerrarDetalle();
     pintar(pedidos, hayMas);
+    actualizarProcedenciasVisibles();
+
+    if (!ids.length) {
+      procedenciaDisponible = true;
+      return;
+    }
+
+    const p5Controller = new AbortController();
+    procedenciaController = p5Controller;
+    const p5Timeout = window.setTimeout(() => p5Controller.abort(), 5000);
+    void (async () => {
+      try {
+        const { data: p5, error: errorP5 } = await supabase
+          .rpc('promocionar_p5_procedencia_pedidos', { p_pedido_ids: ids })
+          .abortSignal(p5Controller.signal);
+        if (idCarga !== cargaId || procedenciaController !== p5Controller) return;
+        if (errorP5) throw errorP5;
+        procedenciaPorId = validarProcedencias(p5, ids);
+        procedenciaDisponible = true;
+        actualizarProcedenciasVisibles();
+      } catch (_) {
+        if (idCarga !== cargaId || procedenciaController !== p5Controller) return;
+        procedenciaPorId = new Map();
+        procedenciaDisponible = false;
+        actualizarProcedenciasVisibles();
+      } finally {
+        window.clearTimeout(p5Timeout);
+        if (procedenciaController === p5Controller) procedenciaController = null;
+      }
+    })();
   }
 
   function pintar(pedidos, hayMas) {
@@ -289,6 +411,7 @@
           '<td>' + resumenItems(p.items) + '</td>' +
           '<td class="fecha">' + escaparHTML(formatearFecha(p.fecha_orden)) + '</td>' +
           '<td class="num">' + formatearCOP(p.total) + '</td>' +
+          '<td>' + badgeProcedencia(p.id) + '</td>' +
           '<td>' + badge(p.estado) + '</td>' +
         '</tr>'
       );
@@ -301,6 +424,7 @@
           '<th>Producto(s)</th>' +
           '<th>Fecha</th>' +
           '<th class="num">Total</th>' +
+          '<th>Procedencia</th>' +
           '<th>Estado</th>' +
         '</tr></thead>' +
         '<tbody>' + filas + '</tbody>' +
@@ -482,6 +606,8 @@
       '</div>';
     }
 
+    const procedenciaHtml = procedenciaHtmlDe(p.id);
+
     drawerBody.innerHTML =
       (contacto.length ? '<div class="vt-bloque"><h3>Cliente</h3>' +
         contacto.map((d) => '<div class="vt-dato"><span class="k">' + escaparHTML(d.k) + '</span><span class="v">' + escaparHTML(d.v) + '</span></div>').join('') +
@@ -490,9 +616,10 @@
         '<div class="vt-dato" style="border-top:1px solid var(--vt-linea);margin-top:8px;padding-top:8px"><span class="k">Total</span><span class="v" style="font-weight:700;color:var(--vt-marino)">' + formatearCOP(p.total) + '</span></div>' +
       '</div>' +
       (p.notas ? '<div class="vt-bloque"><h3>Notas del pedido</h3><p style="margin:0;font-size:13px">' + escaparHTML(p.notas) + '</p></div>' : '') +
+      procedenciaHtml +
       '<div class="vt-bloque"><h3>Ciclo de vida</h3><ul class="vt-timeline">' + timelineHtml + '</ul>' +
         '<div class="vt-dato" style="margin-top:6px"><span class="k">Registrado</span><span class="v">' + escaparHTML(formatearMomento(p.creado)) + '</span></div>' +
-        '<div class="vt-dato"><span class="k">Canal</span><span class="v">' + escaparHTML(p.canal || 'manual') + '</span></div>' +
+        '<div class="vt-dato"><span class="k">Entrada del pedido</span><span class="v">' + escaparHTML(p.canal || 'manual') + '</span></div>' +
       '</div>' +
       avanceHtml +
       correosHtml;
@@ -620,11 +747,15 @@
       abrirDetalle(p.id);
     });
 
+    drawerFondo.dataset.pedidoId = p.id;
     drawerFondo.hidden = false;
     document.getElementById('vt-d-cerrar').focus();
   }
 
-  function cerrarDetalle() { drawerFondo.hidden = true; }
+  function cerrarDetalle() {
+    drawerFondo.hidden = true;
+    delete drawerFondo.dataset.pedidoId;
+  }
 
   // Llama a la Edge Function enviar-correo-pedido con la sesion del usuario y
   // devuelve { ok, data } o { ok:false, error } con el mensaje real del servidor.

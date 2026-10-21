@@ -1,20 +1,19 @@
 # Supabase · runbook operativo MAGANDHI / Impulse
 
 > **Estado al 21-oct-2026:** en producción están aplicadas todas las
-> migraciones hasta **`20261108000000` (Promocionar P3)**, salvo
+> migraciones hasta **`20261109000000` (Promocionar P4)**, salvo
 > `20261002000000`, que quedó **SUPERADA y no debe aplicarse** (ver §0). La
-> migración P3 se aplicó una sola vez; preflight, postflight y matriz verdes.
-> El proyecto **no tiene** `supabase_migrations.schema_migrations` (medido):
-> todas las migraciones se aplican a mano por SQL Editor, un Run por archivo y
-> una sola vez. **Nunca usar `supabase db push`.** Wompi F1–F4 y Dropshipping
-> D2c están operativos. Cuentas C1/C2 continúan desplegados; Comercial C1–C5
-> están cerrados estructuralmente, con carrito ENCENDIDO y Wompi `prod`, pero
-> sin cierre transaccional por pago real. **Promocionar P3 está desplegado,
-> activo, medido y cerrado FINAL; sus tres gates están ON. El hardening final
-> quedó fusionado en #304, el dueño confirmó el redespliegue desde ese merge y
-> la sonda mínima posterior quedó verde. P4 es el siguiente tramo; P5 viene
-> después.** Estado general:
-> `docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`,
+> migración P4 se aplicó una sola vez. El proyecto **no tiene**
+> `supabase_migrations.schema_migrations` (medido): todas las migraciones se
+> aplican a mano por SQL Editor, un Run por archivo y una sola vez. **Nunca usar
+> `supabase db push`.** Wompi F1–F4 y Dropshipping D2c están operativos. Cuentas
+> C1/C2 continúan desplegados; Comercial C1–C5 están cerrados estructuralmente,
+> con carrito ENCENDIDO y Wompi `prod`, pero sin cierre transaccional por pago
+> real. **Promocionar P3 está cerrado FINAL. Promocionar P4 está desplegado,
+> activo y cerrado estructuralmente, todavía sin cierre transaccional por una
+> compra real autorizada. Promocionar P5 es el siguiente tramo: está en
+> construcción y NO desplegado.** Estado general:
+> `docs/RELEVO-PROMOCIONAR-P4-CIERRE-ESTRUCTURAL-2026-10-21.md`,
 > `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md` y
 > `CONTEXTO-MAGANDHI.md` §9.
 >

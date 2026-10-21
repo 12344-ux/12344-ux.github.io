@@ -14,13 +14,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
-<link rel="stylesheet" href="campanas.css?v=p2-1">
-<link rel="stylesheet" href="promocionar.css?v=p3-2">
+<link rel="stylesheet" href="campanas.css?v=p5-1">
+<link rel="stylesheet" href="promocionar.css?v=p5-1">
 </head>
 <body class="mk-body pp-body">
 <script type="module" src="../../auth-guard.js"></script>
 
 <main class="mk-wrap pp-main" id="pp-main" hidden>
+  <nav class="pp-subnav" aria-label="Promocionar campaña">
+    <a id="pp-tab-editor" href="promocionar.html" aria-current="page">Editor</a>
+    <a id="pp-tab-resultados" href="promocionar-resultados.html">Resultados</a>
+  </nav>
   <section class="pp-producto" aria-labelledby="pp-producto-nombre">
     <div class="pp-producto-foto" id="pp-producto-foto" aria-hidden="true"><span data-ico="imagen"></span></div>
     <div class="pp-producto-info">
@@ -192,6 +196,14 @@
   <a class="pp-preview-flotante" id="pp-preview-flotante" href="#pp-preview-col" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg><span>Ver pieza</span></a>
 </main>
 
+<script type="module">
+  const id = new URLSearchParams(location.search).get('id') || '';
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    const query = '?id=' + encodeURIComponent(id);
+    document.getElementById('pp-tab-editor').href = 'promocionar.html' + query;
+    document.getElementById('pp-tab-resultados').href = 'promocionar-resultados.html' + query;
+  }
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" integrity="sha384-mZT2gIty7ZDdOGkxfP6joZcYdMW1Jvj9dRlfpTmaJAKKXTqzygtB22k7FLe+KZC1" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script type="module" src="promocionar.js?v=p3-4"></script>
 </body>

@@ -160,3 +160,11 @@
   .pp-preview-top{flex-wrap:wrap}
   .pp-preview-top .pp-volver-editor{margin-left:auto}
 }
+
+/* P5 · navegación hermana del editor. El UUID se completa en un módulo aislado. */
+.pp-subnav{display:flex;gap:5px;margin:0 0 16px;border-bottom:1px solid rgba(17,17,17,.13);overflow-x:auto}
+.pp-subnav a{position:relative;padding:11px 16px;color:var(--pp-gris);font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap}
+.pp-subnav a:hover{color:var(--pp-negro)}
+.pp-subnav a[aria-current="page"]{color:var(--pp-terracota-osc)}
+.pp-subnav a[aria-current="page"]::after{content:"";position:absolute;left:12px;right:12px;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:var(--pp-dorado)}
+.pp-subnav a:focus-visible{outline:3px solid rgba(194,138,58,.55);outline-offset:2px}

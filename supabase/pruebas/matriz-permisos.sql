@@ -5,8 +5,8 @@
 -- ejecutar cada tipo de persona:
 --   anon (visitante de la tienda) · cliente autenticado SIN perfil interno ·
 --   autenticado interno SIN modulo · Finanzas · Produccion/Inventario ·
---   Marketing · Ventas · admin · service_role (solo lo
---   que usa la Edge Function de pagos: catalogo y configuraciones).
+--   Marketing · Métricas · Ventas · admin · service_role (solo puertas
+--   nominales de servidor; sus expectativas se validan explícitamente).
 -- Para cada tabla/vista compara lo que ve la persona contra la VERDAD (lo que
 -- ve postgres, que salta la RLS) y lo clasifica:
 --   TODO    = ve exactamente lo mismo que la verdad
@@ -52,6 +52,7 @@ declare
   c_mkt   constant uuid := '7e570000-0000-4000-8000-000000000004';
   c_ven   constant uuid := '7e570000-0000-4000-8000-000000000005';
   c_adm   constant uuid := '7e570000-0000-4000-8000-000000000006';
+  c_met   constant uuid := '7e570000-0000-4000-8000-000000000007';
 
   -- Objetos a probar. Cada uno tiene su consulta de "huella": numero de filas
   -- + hash del contenido. perfiles usa una huella especial (PROPIA).
@@ -66,8 +67,8 @@ declare
   ];
 
   -- Personas: nombre, rol de base de datos, uid (null = sin sesion).
-  v_pers text[] := array['anon','cliente','sin_modulo','finanzas','produccion','marketing','ventas','admin','service_role'];
-  v_rol  text[] := array['anon','authenticated','authenticated','authenticated','authenticated','authenticated','authenticated','authenticated','service_role'];
+  v_pers text[] := array['anon','cliente','sin_modulo','finanzas','produccion','marketing','metricas','ventas','admin','service_role'];
+  v_rol  text[] := array['anon','authenticated','authenticated','authenticated','authenticated','authenticated','authenticated','authenticated','authenticated','service_role'];
   v_uid  uuid[];
 
   -- Resultados acumulados (sobreviven al rollback del bloque interno).
@@ -90,6 +91,7 @@ declare
   v_pedido   uuid;
   v_asiento  uuid;
   v_funcs_auth text[];
+  v_p5 record;
   v_lista_blanca text[] := array[
     'agregar_cuenta_puc','anular_asiento','anular_pedido','avanzar_estado_pedido',
     'balance_comprobacion','balance_general','buscar_candidatos_cliente',
@@ -124,7 +126,7 @@ declare
   ];
   v_extra text;
 begin
-  v_uid := array[null, c_cli, c_sin, c_fin, c_inv, c_mkt, c_ven, c_adm, null]::uuid[];
+  v_uid := array[null, c_cli, c_sin, c_fin, c_inv, c_mkt, c_met, c_ven, c_adm, null]::uuid[];
 
   begin  -- ===== bloque que SIEMPRE se deshace =====
 
@@ -225,6 +227,16 @@ begin
       ];
     end if;
 
+    -- Promocionar P5 expone exactamente tres lecturas autenticadas, cada una
+    -- con guardia de área. El agregador promocionar_p5__agregado permanece
+    -- privado y nunca entra en la superficie RPC.
+    if to_regprocedure('public.promocionar_p5_resultados(uuid,date,date)') is not null then
+      v_lista_blanca := v_lista_blanca || array[
+        'promocionar_p5_resultados', 'promocionar_p5_resumen_metricas',
+        'promocionar_p5_procedencia_pedidos'
+      ];
+    end if;
+
     -- F3 solo existe desde 202610200. Sus constructores internos siguen fuera
     -- de la lista; estas dos son las únicas puertas de panel.
     if to_regprocedure('public.fz_asientos_automaticos_pendientes()') is not null then
@@ -240,6 +252,7 @@ begin
       (c_fin, 'prueba-finanzas@tramo0.invalid'),
       (c_inv, 'prueba-produccion@tramo0.invalid'),
       (c_mkt, 'prueba-marketing@tramo0.invalid'),
+      (c_met, 'prueba-metricas@tramo0.invalid'),
       (c_ven, 'prueba-ventas@tramo0.invalid'),
       (c_adm, 'prueba-admin@tramo0.invalid');
     insert into perfiles (id, rol, modulos) values
@@ -247,6 +260,7 @@ begin
       (c_fin, 'prueba', '{finanzas}'),
       (c_inv, 'prueba', '{produccion}'),
       (c_mkt, 'prueba', '{marketing}'),
+      (c_met, 'prueba', '{metricas}'),
       (c_ven, 'prueba', '{ventas}'),
       (c_adm, 'admin',  '{}');
 
@@ -429,7 +443,16 @@ begin
                    )
                  )
                  or p.proname like 'promocionar\_p4\_\_%' escape '\'
-                 then 'SOBRA helper: '
+                 or p.proname in (
+                   'promocionar_p5__agregado',
+                   'promocionar_p5_resultados',
+                   'promocionar_p5_procedencia_pedidos'
+                 )
+                 then case
+                   when p.proname = 'promocionar_p5__agregado' then 'SOBRA helper: '
+                   when p.proname like 'promocionar\_p5\_%' escape '\' then 'SOBRA puerta P5 no-service: '
+                   else 'SOBRA helper: '
+                 end
                else 'FALTA puerta: '
              end || p.proname,
              ', ' order by p.proname
@@ -462,12 +485,44 @@ begin
              )
            )
            or p.proname like 'promocionar\_p4\_\_%' escape '\'
+           or p.proname in (
+             'promocionar_p5__agregado',
+             'promocionar_p5_resultados',
+             'promocionar_p5_procedencia_pedidos'
+           )
          ) = has_function_privilege('service_role', p.oid, 'execute')
        );
     r_pers := r_pers || 'service_role'::text;
     r_obj  := r_obj  || 'EXECUTE sobre puertas de public, sin helpers internos'::text;
     r_esp  := r_esp  || 'PUERTAS OK'::text;
     r_obt  := r_obt  || coalesce('DESAJUSTE: ' || v_extra, 'PUERTAS OK');
+
+    -- ---------- ACL nominal P5: tres puertas públicas y helper privado ----------
+    if to_regprocedure('public.promocionar_p5_resultados(uuid,date,date)') is not null then
+      for v_p5 in
+        select * from (values
+          ('promocionar_p5__agregado', 'public.promocionar_p5__agregado(date,date,uuid)', false, false, false),
+          ('promocionar_p5_resultados', 'public.promocionar_p5_resultados(uuid,date,date)', false, true, false),
+          ('promocionar_p5_resumen_metricas', 'public.promocionar_p5_resumen_metricas(date,date)', false, true, true),
+          ('promocionar_p5_procedencia_pedidos', 'public.promocionar_p5_procedencia_pedidos(uuid[])', false, true, false)
+        ) as x(nombre, firma, anon_e, authenticated_e, service_e)
+      loop
+        r_pers := r_pers || 'roles API'::text;
+        r_obj := r_obj || ('ACL P5 ' || v_p5.nombre);
+        r_esp := r_esp || format(
+          'anon=%s · authenticated=%s · service_role=%s',
+          case when v_p5.anon_e then 'SI' else 'NO' end,
+          case when v_p5.authenticated_e then 'SI' else 'NO' end,
+          case when v_p5.service_e then 'SI' else 'NO' end
+        );
+        r_obt := r_obt || format(
+          'anon=%s · authenticated=%s · service_role=%s',
+          case when has_function_privilege('anon', to_regprocedure(v_p5.firma), 'execute') then 'SI' else 'NO' end,
+          case when has_function_privilege('authenticated', to_regprocedure(v_p5.firma), 'execute') then 'SI' else 'NO' end,
+          case when has_function_privilege('service_role', to_regprocedure(v_p5.firma), 'execute') then 'SI' else 'NO' end
+        );
+      end loop;
+    end if;
 
     -- ---------- Comportamiento: el candado de las RPC sigue vivo ----------
     -- Una cuenta de cliente es authenticated, pero no tiene perfil ni modulo.

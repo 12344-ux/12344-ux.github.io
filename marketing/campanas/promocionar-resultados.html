@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAGANDHI · Resultados de promoción</title>
+<meta name="description" content="Lectura comercial de una campaña promocional MAGANDHI.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../favicon.png?v=2">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=2">
+<meta name="theme-color" content="#111111">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=2">
+<link rel="stylesheet" href="../marketing.css?v=3">
+<link rel="stylesheet" href="campanas.css?v=p5-1">
+<link rel="stylesheet" href="promocionar-resultados.css?v=p5-3">
+</head>
+<body class="mk-body pr-body">
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="mk-wrap pr-main" id="pr-main" hidden>
+  <nav class="pr-subnav" aria-label="Promocionar campaña">
+    <a id="pr-tab-editor" href="promocionar.html">Editor</a>
+    <a id="pr-tab-resultados" href="promocionar-resultados.html" aria-current="page">Resultados</a>
+  </nav>
+
+  <section class="pr-campana" aria-labelledby="pr-campana-nombre">
+    <div>
+      <span class="pr-eyebrow">LECTURA COMERCIAL · P5</span>
+      <h2 id="pr-campana-nombre">Preparando resultados…</h2>
+      <p id="pr-campana-meta">Consultando la campaña y sus fuentes autorizadas.</p>
+    </div>
+    <div class="pr-periodos" id="pr-periodos" role="group" aria-label="Periodo de resultados">
+      <button type="button" data-periodo="7">7 días</button>
+      <button type="button" data-periodo="30" aria-pressed="true">30 días</button>
+      <button type="button" data-periodo="90">90 días</button>
+      <button type="button" data-periodo="365">365 días</button>
+    </div>
+  </section>
+
+  <section class="pr-estado pr-carga" id="pr-carga" role="status" aria-live="polite" aria-busy="true">
+    <div class="pr-skeleton pr-skeleton--titulo"></div>
+    <div class="pr-skeleton-grid"><i></i><i></i><i></i><i></i></div>
+    <span>Reuniendo clics aproximados, actividad consentida y ventas exactas…</span>
+  </section>
+
+  <section class="pr-estado pr-error" id="pr-error" role="alert" hidden>
+    <span class="pr-estado-marca" aria-hidden="true">!</span>
+    <div><strong>No pudimos leer estos resultados</strong><p id="pr-error-texto"></p></div>
+    <button type="button" id="pr-reintentar">Reintentar</button>
+  </section>
+
+  <section class="pr-estado pr-vacio" id="pr-vacio-total" role="status" aria-live="polite" aria-atomic="true" hidden>
+    <span class="pr-estado-marca" aria-hidden="true">0</span>
+    <div><strong>Esta campaña aún no tiene historia promocional</strong><p>Crea y activa un enlace en el Editor. Los resultados aparecerán cuando existan hechos en las fuentes P3, analítica consentida o P4.</p></div>
+  </section>
+
+  <section class="pr-estado pr-vacio" id="pr-vacio-periodo" role="status" aria-live="polite" aria-atomic="true" hidden>
+    <span class="pr-estado-marca" aria-hidden="true">—</span>
+    <div><strong>Sin actividad en este periodo</strong><p>La campaña sí tiene enlaces o historia, pero no hay hechos dentro de la ventana elegida. Prueba un periodo más amplio.</p></div>
+  </section>
+
+  <section class="pr-estado pr-parcial" id="pr-parcial" role="status" hidden>
+    <span class="pr-estado-marca" aria-hidden="true">≈</span>
+    <div><strong>Lectura parcial, no estimada</strong><p id="pr-parcial-texto"></p></div>
+  </section>
+
+  <div id="pr-contenido" hidden>
+    <section aria-labelledby="pr-kpis-titulo">
+      <div class="pr-seccion-cab"><div><span>01 · PULSO</span><h2 id="pr-kpis-titulo">Lo esencial del periodo</h2></div><p id="pr-rango"></p></div>
+      <div class="pr-kpis" id="pr-kpis"></div>
+    </section>
+
+    <section class="pr-card pr-funnel-card" aria-labelledby="pr-embudo-titulo">
+      <div class="pr-seccion-cab"><div><span>02 · POBLACIONES</span><h2 id="pr-embudo-titulo">Tres lecturas, sin mezclar autoridades</h2></div></div>
+      <div class="pr-poblaciones" id="pr-poblaciones"></div>
+    </section>
+
+    <section class="pr-card" aria-labelledby="pr-serie-titulo">
+      <div class="pr-seccion-cab pr-serie-cab"><div><span>03 · RITMO</span><h2 id="pr-serie-titulo">Serie diaria</h2><p>Elige una medida. La tabla alternativa conserva todos los valores exactos.</p></div>
+        <div class="pr-serie-selector" id="pr-serie-selector" role="group" aria-label="Medida de la serie">
+          <button type="button" data-serie="clics_aproximados" aria-pressed="true">Clics aprox.</button>
+          <button type="button" data-serie="checkouts_consentidos">Checkouts</button>
+          <button type="button" data-serie="pedidos_exactos">Pedidos</button>
+        </div>
+      </div>
+      <div class="pr-grafica" id="pr-grafica"></div>
+      <details class="pr-tabla-alternativa"><summary>Ver tabla diaria accesible</summary><div class="pr-tabla-scroll"><table><thead><tr><th>Fecha</th><th>Clics aprox.</th><th>Sesiones consentidas</th><th>Checkouts</th><th>Intenciones</th><th>Pagos APPROVED</th><th>Pedidos exactos</th><th>Ingresos COP</th></tr></thead><tbody id="pr-serie-tabla"></tbody></table></div></details>
+    </section>
+
+    <section class="pr-card" aria-labelledby="pr-desglose-titulo">
+      <div class="pr-seccion-cab"><div><span>04 · COLOCACIONES</span><h2 id="pr-desglose-titulo">Por enlace, canal y pieza</h2><p>Cada fila conserva su estado y separa señales aproximadas, consentidas y exactas.</p></div></div>
+      <div class="pr-tabla-scroll" id="pr-desglose"></div>
+    </section>
+
+    <section class="pr-calidad" aria-labelledby="pr-calidad-titulo">
+      <div class="pr-calidad-intro"><span>05 · CALIDAD</span><h2 id="pr-calidad-titulo">Cobertura y frescura</h2><p>La ausencia de consentimiento, el histórico P3 compactado y la intención sintética se declaran; nunca se rellenan con supuestos.</p></div>
+      <dl id="pr-calidad-datos"></dl>
+    </section>
+  </div>
+</main>
+
+<script type="module" src="promocionar-resultados.js?v=p5-3"></script>
+</body>
+</html>
