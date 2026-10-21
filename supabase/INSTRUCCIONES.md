@@ -1,21 +1,20 @@
 # Supabase · runbook operativo MAGANDHI / Impulse
 
-> **Estado al 20-oct-2026:** en producción están aplicadas todas las
-> migraciones hasta **`20261106000100` (Comercial C5 + slug automático)**, salvo
-> `20261002000000`, que quedó **SUPERADA y no debe aplicarse** (ver §0). El
-> proyecto **no tiene** `supabase_migrations.schema_migrations` (medido): todas
-> las migraciones se aplican a mano por SQL Editor, un Run por archivo y una
-> sola vez. **Nunca usar `supabase db push`.** Wompi F1–F4 y Dropshipping D2c
-> están operativos. Cuentas C1/C2 continúan desplegados y Cuentas C2 está
-> cerrado técnicamente en preapertura; CAPTCHA activo, signup OFF y Google
-> Testing hasta publicar políticas. **Comercial C1–C5 están cerrados
-> estructuralmente**; C4 quedó superado por C5. Edge `crear-intencion-pago` y
-> `estado-pago` en versión C5. **El carrito quedó ENCENDIDO
-> (`carrito_habilitado=true`)** y Wompi en `prod`. No hubo pago real por
-> carrito: falta el cierre transaccional. Estado general:
-> `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md` y `CONTEXTO-MAGANDHI.md` §9;
-> para la futura apertura de cuentas conserva vigencia temática
-> `docs/RELEVO-CUENTAS-C2-2026-10-16.md`.
+> **Estado al 21-oct-2026:** en producción están aplicadas todas las
+> migraciones hasta **`20261108000000` (Promocionar P3)**, salvo
+> `20261002000000`, que quedó **SUPERADA y no debe aplicarse** (ver §0). La
+> migración P3 se aplicó una sola vez; preflight, postflight y matriz verdes.
+> El proyecto **no tiene** `supabase_migrations.schema_migrations` (medido):
+> todas las migraciones se aplican a mano por SQL Editor, un Run por archivo y
+> una sola vez. **Nunca usar `supabase db push`.** Wompi F1–F4 y Dropshipping
+> D2c están operativos. Cuentas C1/C2 continúan desplegados; Comercial C1–C5
+> están cerrados estructuralmente, con carrito ENCENDIDO y Wompi `prod`, pero
+> sin cierre transaccional por pago real. **Promocionar P3 está desplegado,
+> activo y medido; sus tres gates están ON. Su cierre es candidato y solo espera
+> merge + redespliegue del hardening del Worker + sonda mínima posterior.** Estado general:
+> `docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`,
+> `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md` y
+> `CONTEXTO-MAGANDHI.md` §9.
 >
 > **Archivo operativo acumulativo:** el estado de la cabecera y el relevo vigente
 > mandan. Todas las secciones históricas anteriores a Comercial C1 que dicen
@@ -5707,3 +5706,79 @@ La tienda #116 fue publicada y Pages run `39384518735` terminó correcto; seis
 shells, sitemap, robots y compatibilidad query/UUID responden HTTP 200. P1 queda
 cerrado estructuralmente. `noindex,follow` y sitemap solo home permanecen hasta
 políticas.
+
+# Promocionar P3 · registro y enlace corto · DESPLEGADO, ACTIVO Y MEDIDO
+
+**Estado productivo · 21-oct-2026:** P3 está operativo. El cierre documental es
+candidato y queda pendiente únicamente de merge, redespliegue del hardening de
+cuerpo vacío `302` del Worker y sonda mínima posterior. Relevo vigente:
+`docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`. Operación:
+`supabase/operacion/PROMOCIONAR-P3-DESPLIEGUE.md`.
+
+## PostgreSQL y cron
+
+- **Aplicada una sola vez:**
+  `20261108000000_promocionar_p3_enlaces.sql`. No volver a ejecutarla ni
+  editarla; cualquier corrección será una migración forward.
+- Preflight, postflight y matriz de privilegios quedaron verdes.
+- Se instalaron cinco tablas privadas.
+- Cron exacto: `promocionar-p3-mantenimiento-horario`, `7 * * * *`, comando
+  `select public.promocionar_p3_mantenimiento();`, misma base
+  (`current_database()`), activo. Último run medido: `succeeded` dentro de dos
+  horas. No inventar ni documentar `jobid`.
+
+## Edge, DNS y Worker
+
+- Edge `enlace-promocional` desplegada con Verify JWT OFF.
+- `PROMOCIONAR_IP_HEADER=x-real-ip` y `PROMOCIONAR_IP_SAL` configurado. **Nunca
+  copiar, mostrar ni registrar el valor de la sal.**
+- DNS autoritativo en Cloudflare: `rita.ns.cloudflare.com` y
+  `toby.ns.cloudflare.com`. Porkbun continúa como registrador; DNSSEC/DS se
+  mantuvo OFF durante el cambio.
+- 24 registros migrados: 4 A, 8 CNAME, 3 MX, 9 TXT. Todos los preexistentes
+  quedaron DNS only; GitHub Pages y Zoho/Resend se preservaron.
+- Worker `magandhi-go-p3` en Production y custom domain `go.magandhi.com`.
+- No borrar todavía los registros conservados en Porkbun.
+
+## Activación y evidencia
+
+Los gates `activacion_habilitada`, `redirect_habilitado` y
+`conteo_habilitado` nacieron OFF y están ON desde
+`2026-10-21 04:41:09.507253Z`. Política `false`/`null` fuera del gate, cuota
+600 y bitácora 2 al activar. Existe un enlace producto controlado activo.
+
+Sondas medidas: `302`, body 0, sin `Set-Cookie`, `Cache-Control: no-store`,
+`Location` MAGANDHI exacta; query `url`/`next` ignorada; `HEAD 302`,
+`OPTIONS 204`, `POST 405`, inválidos `404`; sin banner, popup, modal, aviso o
+consentimiento; TTFB 0,22–0,43 s. Las negativas dejaron 0 clics/0 ventanas. Dos
+GET positivos con IP falsa distinta dejaron 2 clics, 1 fila diaria y 1 ventana,
+acreditando overwrite de `x-real-ip`; histórico 0 e invariantes 0. **Los dos
+clics son sintéticos:** no usar el enlace controlado para métricas reales.
+
+## Código y banco pendiente de cierre final
+
+- PR/merge #300 `b2440c3`, #301 `11d8008`, #302 `b4f8acb`, #303 `23ea5a2`.
+- GitHub Actions run `39549981902` terminó `completed/success`. Su salida revisada
+  mostró `RESUMEN P3 SQL | 15 comprobaciones · 0 fallan`, Deno
+  `9 passed | 0 failed`, `RESUMEN P3 Worker | 7 comprobaciones · 0 fallan` y
+  veredicto `Todo pasa.`
+- El banco detectó y corrigió la defensa que descarta cualquier cuerpo accidental
+  junto a un `302`. Esa versión de `cloudflare/magandhi-go-p3/worker.js` todavía
+  requiere merge, redespliegue y sonda mínima posterior antes del cierre final.
+- No inventar version IDs, resultados de logs privados ni pruebas de UI no
+  ejecutadas.
+
+## Operación y reversa
+
+- Estado: `supabase/operacion/promocionar-p3-estado.sql`.
+- Pausa solo de conteo: `promocionar-p3-pausar-conteo.sql`; redirect permanece.
+- Reanudación: `promocionar-p3-reanudar-conteo.sql`, solo con cron/routing sanos.
+- Reversa: `promocionar-p3-desactivar.sql`, apagar los tres gates, comprobar
+  respuesta MAGANDHI no disponible y conservar cron, datos, códigos, histórico
+  y bitácora. Corregir SQL solo con migración forward.
+- Mantener DNS y Worker durante diagnóstico salvo aislamiento por incidente. No
+  borrar los registros de Porkbun ni los 24 migrados de Cloudflare.
+
+P3 produce **clics aproximados**. CTR necesita impresiones. Congelar el enlace
+en intención/pedido y atribuir conversión/pedidos empieza en P4; tablero e
+ingresos empiezan en P5.

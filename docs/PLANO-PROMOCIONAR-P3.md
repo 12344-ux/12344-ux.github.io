@@ -1,14 +1,12 @@
 # PLANO · Promocionar P3 · Registro y enlace corto
 
 **Decisión del dueño:** 20 de octubre de 2026
-**Estado:** **contrato de implementación en construcción; P3 no está desplegado**
+**Estado productivo · 21-oct-2026:** **desplegado, activo y medido; cierre candidato pendiente únicamente de merge + redespliegue del hardening del Worker + sonda mínima posterior**
 **Depende de:** P0 como contrato normativo, P1 como destino canónico y P2 como estudio aprobado.
-**URL cerrada:** `https://go.magandhi.com/<codigo>`; DNS, TLS y routing todavía no están desplegados.
-**Activación inicial:** `activacion_habilitada`, `redirect_habilitado` y
-`conteo_habilitado` permanecen **OFF**.
-**Banco automatizado P3:** pendiente; no fue solicitado ni agregado en este
-corte y su ausencia no bloquea por sí sola este corte con los tres gates OFF.
-Sí continúa siendo requisito antes de cerrar P3 o activar cualquier gate.
+**URL productiva:** `https://go.magandhi.com/<codigo>` mediante DNS autoritativo Cloudflare, Worker `magandhi-go-p3` y Edge `enlace-promocional`.
+**Activación actual:** `activacion_habilitada`, `redirect_habilitado` y
+`conteo_habilitado` están **ON** desde `2026-10-21 04:41:09.507253Z`. Los tres nacieron OFF; la bitácora quedó en 2 al activar.
+**Banco P3:** GitHub Actions run `39549981902` terminó `completed/success`. Su salida revisada mostró `RESUMEN P3 SQL | 15 comprobaciones · 0 fallan`, Deno `9 passed | 0 failed`, `RESUMEN P3 Worker | 7 comprobaciones · 0 fallan` y veredicto `Todo pasa.`
 **No incluye:** atribución transaccional P4, resultados/conversión P5, Meta Ads, Pixel, gasto o publicación automática.
 
 P3 registra enlaces propios, los resuelve mediante un redirect seguro y conserva
@@ -22,8 +20,15 @@ conteo. Abrirlo no usa cookies, no crea un perfil individual y no muestra banner
 popup, modal, consentimiento ni aviso intermedio. La explicación informativa se
 incorporará después a la política general y no bloquea el lanzamiento ni la
 activación P3; P4 y EM7 conservan sus gates propios. Esta es una decisión de
-producto y técnica, no una conclusión de asesoría jurídica. La implementación
-sigue en construcción: este corte no afirma despliegue, CI ni cierre de criterios.
+producto y técnica, no una conclusión de asesoría jurídica.
+
+La migración `20261108000000` se aplicó una sola vez; preflight, postflight y
+matriz quedaron verdes y hay cinco tablas. La Edge pública está desplegada con
+Verify JWT OFF; el DNS autoritativo y el Worker atienden `go.magandhi.com`; el
+cron horario está sano y los gates están ON. Las sondas productivas acreditan el
+redirect y conteo controlado descritos en §6. **P3 aún no tiene cierre final:**
+el banco detectó y corrigió la defensa de cuerpo vacío en `302`; esa versión del
+Worker aún requiere merge, redespliegue y sonda mínima posterior.
 
 ---
 
@@ -45,8 +50,9 @@ por enlace y fecha de Colombia. El redirect debe seguir funcionando si el
 contador o la cuota fallan; medir nunca puede bloquear la navegación.
 
 P3 no determina qué venta produjo el enlace. Guardar la referencia validada en
-una intención/pedido comienza en P4. Combinar clics, sesiones, checkout, pagos,
-pedidos, ingreso o conversión comienza en P5.
+una intención/pedido y atribuir conversión/pedidos comienza en P4. El tablero y
+la lectura de ingresos comienzan en P5. Un CTR requiere impresiones: P3 solo
+aporta clics aproximados y no permite calcularlo por sí solo.
 
 ## 2. Decisiones cerradas
 
@@ -60,9 +66,9 @@ pedidos, ingreso o conversión comienza en P5.
 - Un código activado nunca se recicla, reasigna o cambia de destino.
 - El registro server-side es la autoridad; `utm_*` continúa siendo descriptivo.
 
-P0 dejó el dominio condicionado a una decisión posterior. Este plano cierra la
-elección a favor de `go.magandhi.com`; **elegirlo no significa que DNS, TLS o
-routing ya existan**.
+P0 dejó el dominio condicionado a una decisión posterior. Este plano cerró la
+elección a favor de `go.magandhi.com`; el 21-oct-2026 quedaron medidos DNS,
+TLS, Worker, routing y el custom domain productivo.
 
 ### 2.2 Destino y redirect
 
@@ -164,7 +170,7 @@ integra en P4.
 
 ## 3. Capa SQL
 
-La migración P3 en construcción debe ser forward y compatible. El modelo mínimo conceptual es:
+La migración P3 instalada es forward y compatible. El modelo mínimo es:
 
 ```text
 atribucion_enlaces
@@ -348,49 +354,55 @@ Campañas deberá incorporar P3 sin romper el estudio P2:
 No se pierde el enlace largo seguro si P3 falla o si se apaga el redirect. El
 estudio no debe depender del redirector para seguir siendo útil.
 
-## 6. Capa de operación
+## 6. Capa de operación · ejecutada y medida
 
-Orden mínimo de despliegue futuro:
+La secuencia productiva concluyó el 21-oct-2026:
 
-1. cerrar la implementación en una rama/PR; el banco automatizado P3 puede
-   seguir pendiente en este corte con todos los gates OFF, pero debe agregarse,
-   ejecutarse y archivarse antes de cerrar P3 o activar cualquier gate;
-2. revisar diff, permisos, privacidad, retención y plan de reversa;
-3. fusionar el código; **este paso todavía no despliega P3**;
-4. ejecutar preflight de solo lectura;
-5. aplicar una vez la migración forward por el método manual vigente;
-6. ejecutar postflight y matriz de permisos;
-7. instalar el cron horario de retención dirigido a `current_database()` y
-   comprobar que su último run correcto se vincula por `jobid` al job nominal de
-   esa misma base, además de salud y cero filas vencidas pendientes;
-8. desplegar las funciones Edge y verificar su versión real;
-9. configurar y comprobar DNS, TLS y routing de `go.magandhi.com`;
-10. confirmar en producción los tres gates P3 OFF;
-11. ejecutar sondas controladas de código, lista blanca, `302`, `no-store`,
-    navegación positiva —incluidos `text/html` sin `q`, con `q>0`, `q=0` y `q`
-    inválida—, cabecera IP única, HMAC diario, cuota, fecha Colombia, fallas,
-    retención y degradación a P2 dentro de 3 segundos;
-12. solo con banco P3 archivado, infraestructura y sondas medidas, cron horario
-    sano en la base actual y cero vencidos, activar gates en una ventana
-    aprobada, medir producción y documentar el resultado.
+1. PR/merge #300 `b2440c3`, #301 `11d8008`, #302 `b4f8acb` y #303 `23ea5a2`;
+2. preflight verde;
+3. migración `20261108000000_promocionar_p3_enlaces.sql` aplicada una sola vez;
+4. postflight y matriz verdes; cinco tablas privadas presentes;
+5. cron exacto `promocionar-p3-mantenimiento-horario`, `7 * * * *`, misma base,
+   activo y con último run `succeeded` dentro de dos horas;
+6. Edge `enlace-promocional` desplegada con Verify JWT OFF,
+   `PROMOCIONAR_IP_HEADER=x-real-ip` y `PROMOCIONAR_IP_SAL` configurado sin
+   exponer su valor;
+7. DNS autoritativo movido de Porkbun a Cloudflare
+   (`rita.ns.cloudflare.com`, `toby.ns.cloudflare.com`), registrador aún
+   Porkbun y DNSSEC/DS OFF durante el cambio. Se migraron 24 registros (4 A,
+   8 CNAME, 3 MX y 9 TXT), preexistentes DNS only; GitHub Pages y Zoho/Resend
+   quedaron preservados;
+8. Worker `magandhi-go-p3` en Production y custom domain `go.magandhi.com`;
+9. gates ON desde `2026-10-21 04:41:09.507253Z`, política `false`/`null` fuera
+   del gate, cuota 600 y bitácora 2 al activar;
+10. un enlace producto controlado activo y sondas productivas medidas.
+
+El enlace activo respondió `302`, body 0, sin `Set-Cookie`, `no-store`, con
+`Location` MAGANDHI exacta y sin obedecer query `url`/`next`; `HEAD 302`,
+`OPTIONS 204`, `POST 405` e inválidos `404`. No apareció banner, popup, modal,
+aviso ni consentimiento. TTFB observado: 0,22–0,43 s. Las sondas negativas
+dejaron 0 clics/0 ventanas; dos `GET` positivos con IP falsa distinta dejaron
+2 clics, 1 fila diaria y 1 ventana, demostrando overwrite de `x-real-ip`.
+Histórico 0 e invariantes 0. **Esos dos clics son sintéticos y el enlace
+controlado no se usa para métricas reales.** No se atribuyen pruebas de UI
+interna no ejecutadas.
+
+GitHub Actions run `39549981902` terminó `completed/success`. La salida
+revisada mostró `RESUMEN P3 SQL | 15 comprobaciones · 0 fallan`, Deno
+`9 passed | 0 failed`, `RESUMEN P3 Worker | 7 comprobaciones · 0 fallan` y
+veredicto `Todo pasa.` El banco detectó y corrigió que el Worker debía descartar
+siempre el cuerpo de un `302`; esa versión todavía requiere merge, redespliegue
+y sonda mínima posterior antes del cierre final.
 
 La explicación del conteo aproximado, el procesamiento antiabuso temporal y la
-retención se incorporará después a la política general. Es una tarea informativa
-fuera del orden de activación: no es prerrequisito, gate ni autorización de P3 y
-no introduce interfaz alguna al visitante.
+retención se incorporará después a la política general. Sigue fuera de los
+gates P3 y no introduce interfaz al visitante.
 
-El banco automatizado P3 **no fue solicitado ni agregado en este corte** y
-permanece pendiente. Su ausencia no bloquea por sí sola este corte documental y
-de implementación con los tres gates OFF; sí bloquea declarar P3 cerrado o
-activar cualquiera de sus gates. Este plano no aporta evidencia de CI, SQL
-aplicado, Edge desplegada, DNS/TLS configurado, routing activo o feature gate
-ON. Cada capa requiere evidencia independiente. No se crea relevo de cierre P3
-hasta que exista despliegue y medición reales.
-
-Si la escritura del contador falla, se mantiene el redirect y se alerta la
-operación sin inventar datos. Si falla la resolución segura o la lista blanca,
-el enlace falla cerrado hacia la respuesta de marca; nunca acepta un destino del
-cliente como recuperación.
+Reversa: apagar juntos los tres gates con el SQL operativo, verificar la
+respuesta MAGANDHI no disponible, conservar cron/datos/códigos/bitácora y
+corregir SQL solo con migración forward. Mantener DNS y Worker mientras se
+diagnostica salvo necesidad de aislamiento. **No borrar todavía los registros
+conservados en Porkbun.**
 
 ## 7. Feature gates
 
@@ -401,6 +413,10 @@ Los tres nombres contractuales son fijos y su estado inicial es OFF:
 | `activacion_habilitada` | OFF | Permite crear, editar, eliminar y listar borradores privados sin código; impide asignar código y pasar a `activo` |
 | `redirect_habilitado` | OFF | Impide resolver códigos como tráfico productivo; la UI usa la salida larga P2 |
 | `conteo_habilitado` | OFF | Impide incrementar clics diarios o crear/actualizar cuota temporal; no cambia el redirect |
+
+**Estado actual · 21-oct-2026:** los tres están ON desde
+`2026-10-21 04:41:09.507253Z`. Nacieron OFF y la transición dejó bitácora 2;
+política `false`/`null` permanece fuera de estos gates.
 
 Ningún gate se enciende por fusionar código. Cada transición escribe una fila en
 la bitácora append-only con valor anterior/nuevo, actor/rol, razón y tiempo. No
@@ -453,86 +469,63 @@ ausencia de redirección abierta antes de cualquier activación.
 
 ## 9. Criterios de cierre
 
-P3 permanece **en construcción** hasta que todos estén completos y exista
-aprobación explícita del dueño:
+P3 está en **cierre candidato**. Se marca solo lo acreditado; las pruebas de UI
+interna no ejecutadas siguen abiertas. El merge + redespliegue del hardening del
+Worker + sonda mínima posterior son el único bloqueo para declarar cierre final.
 
-### Implementación y seguridad
+### Implementación, datos y seguridad
 
-- [ ] Esquema forward con checks, RLS/grants mínimos, los tres gates OFF y
-      bitácora de gates append-only.
-- [ ] CRUD/listado privado funciona con `activacion_habilitada=OFF`, siempre con
-      borradores sin código.
-- [ ] Todo borrador conserva campaña de origen y admite destino tipado ficha u
-      home; el reemplazo puede corregir tipo sin cambiar origen.
-- [ ] Edición de borrador usa `actualizado_en` como token CAS de edición y
-      rechaza un valor obsoleto sin sobrescribir; no se presenta como versión
-      numérica ni clave idempotente.
-- [ ] Creación idempotente devuelve el mismo borrador al reintentar la misma
-      clave/actor/payload y rechaza reutilizarla con otro payload.
-- [ ] Activación idempotente devuelve el mismo enlace/código al reintentar el
-      mismo `id` después de perder una respuesta.
-- [ ] Código Crockford de 16 caracteres/80 bits generado y único server-side.
-- [ ] Ciclo `borrador -> activo -> desactivado` e inmutabilidad impuestos en base.
-- [ ] Destino construido solo desde lista blanca; pruebas negativas de open redirect.
-- [ ] Redirect activo responde `302` + `Cache-Control: no-store`.
-- [ ] Código inválido/desactivado no cuenta, no atribuye y muestra respuesta MAGANDHI.
-- [ ] Falla de contador o cuota no bloquea un destino válido.
+- [x] Esquema forward, cinco tablas privadas, RLS/grants mínimos y bitácora append-only.
+- [x] Preflight, postflight y matriz verdes; migración aplicada una sola vez.
+- [x] Código Crockford, ciclo terminal, CAS, idempotencia, lista blanca, cuota y
+      separación redirect/conteo cubiertos por implementación y banco local.
+- [x] Cron nominal exacto en `current_database()`, último run `succeeded` dentro
+      de dos horas y cero invariantes reportadas.
+- [x] Edge con Verify JWT OFF, sal configurada sin exponer su valor y cabecera
+      única `x-real-ip` sobrescrita por el Worker.
+- [x] DNS, TLS, Worker, custom domain y routing medidos en producción.
+- [x] Gates nacieron OFF y están ON desde
+      `2026-10-21 04:41:09.507253Z`; bitácora 2 al activar.
+- [x] Política `false`/`null` confirmada fuera del gate y cuota 600.
 
-### Conteo y privacidad
+### Redirect, conteo y privacidad medidos
 
-- [ ] Incremento atómico por enlace y fecha `America/Bogota`.
-- [ ] Solo `GET` con `navigate`, `document` y un media range `text/html` con
-      calidad efectiva válida `> 0` puede contar (`q` ausente = `1`); `q=0`,
-      inválida o fuera de rango, HEAD/OPTIONS, bots, previews, prefetch y
-      herramientas automáticas no cuentan.
-- [ ] Operación verifica una sola cabecera IP autoritativa y Edge no usa fallbacks.
-- [ ] Llave HMAC diaria deriva de secreto maestro de al menos 32 bytes; secreto,
-      llave e IP cruda nunca se persisten.
-- [ ] Cuota inicial 600/h global por `hash_ip_dia`, sin `enlace_id`, comprobada.
-- [ ] Hash sin unión y purga antes de 48 horas comprobados.
-- [ ] Detalle diario conserva 13 meses, cuenta con índice encabezado por
-      `fecha_colombia` y luego pasa a total no fechado de forma idempotente.
-- [ ] UI y documentación dicen `clics aproximados`, nunca personas o únicos.
+- [x] Activo: `302`, body 0, sin `Set-Cookie`, `no-store` y `Location` MAGANDHI exacta.
+- [x] Query `url`/`next` ignorada; `HEAD 302`, `OPTIONS 204`, `POST 405` e inválidos `404`.
+- [x] Sin banner, popup, modal, aviso intermedio ni consentimiento; TTFB 0,22–0,43 s.
+- [x] Sondas negativas: 0 clics/0 ventanas.
+- [x] Dos `GET` positivos con IP falsa distinta: 2 clics, 1 fila diaria y 1
+      ventana; overwrite de `x-real-ip` demostrado. Histórico 0 e invariantes 0.
+- [x] Los dos clics están documentados como sintéticos y el enlace controlado
+      excluido de métricas reales.
+- [x] UI y documentación dicen `clics aproximados`, no personas, únicos ni CTR.
 
-### UI, operación y producción
+### UI y operación
 
-- [ ] P2 sigue funcionando con los tres gates P3 OFF, ante falla de P3 y al
-      apagar solo `redirect_habilitado`.
-- [ ] UI refresca configuración **e** historial/estado autoritativo al abrir,
-      recuperar foco/visibilidad, después de mutaciones y durante polling.
-- [ ] Antes de cada distribución, UI revalida configuración, enlace activo y
-      resolubilidad autoritativa con plazo total máximo de 3 segundos; un activo
-      local no basta y timeout/falla/respuesta inválida degrada sin espera al
-      enlace largo P2.
-- [ ] Una mutación con resultado incierto refresca historial autoritativo antes
-      de inferir resultado u ofrecer reintento.
-- [ ] UI cubre borrador privado, CAS/conflicto, activación idempotente por el
-      mismo `id`, campos congelados, desactivación, reemplazo y errores.
-- [ ] Apertura pública de un enlace activo redirige de inmediato, sin cookies,
-      perfil individual, banner, popup, modal, aviso intermedio o consentimiento;
-      conteo, cuota o métricas nunca bloquean la salida.
-- [ ] Cron horario de retención instalado para `current_database()`; su último
-      run correcto está unido por `jobid` al job nominal de esa misma base y el
-      postflight informa cero filas vencidas antes de habilitar activación.
-- [ ] Preflight, postflight, matriz y banco automatizado P3 ejecutados con
-      resultados archivados.
-- [ ] SQL aplicado, Edge desplegada y versión productiva verificados por separado.
-- [ ] DNS, TLS y routing de `go.magandhi.com` comprobados en producción.
-- [ ] Gates nacen OFF y toda transición queda en bitácora append-only.
-- [ ] HTTP productivo verifica código activo, inválido, desactivado, caché y lista blanca.
-- [ ] Retención/limpieza y reversa operativa quedan programadas y medidas.
-- [ ] P4/P5 continúan fuera del diff y no se afirma atribución o conversión.
-- [ ] Tras medir despliegue, plano de fase y contexto incorporan la evidencia
-      productiva; solo entonces se crea un relevo de cierre P3.
+- [ ] No se atribuyen recorridos de UI interna no ejecutados: CRUD visual,
+      polling, CAS/conflicto, revalidación previa a distribución y degradación P2
+      conservan el alcance contractual, pero este corte no inventa su prueba.
+- [x] Reversa documentada: gates OFF, respuesta de marca, cron/datos preservados,
+      corrección forward y sin borrar todavía registros de Porkbun.
+- [x] P4/P5 permanecen fuera: P4 empieza en intención/pedido y atribuye
+      conversión/pedidos; CTR requiere impresiones; tablero e ingresos empiezan
+      en P5.
+
+### Único bloqueo para cierre final
+
+- [x] Banco local core 9/0 y Worker 7/0.
+- [x] SQL reversible integrado al workflow.
+- [x] Run `39549981902` `completed/success`; salida revisada: SQL 15/0, Deno
+      9/0, Worker 7/0 y veredicto `Todo pasa.`
+- [ ] Hardening de cuerpo vacío `302` fusionado.
+- [ ] Worker `magandhi-go-p3` redesplegado con ese hardening.
+- [ ] Sonda mínima posterior confirma `302`, body 0, sin cookies y `no-store`.
+- [ ] Relevo candidato promovido a cierre final.
 
 **Tarea informativa posterior y no bloqueante:** la política general incorporará
 la explicación del conteo aproximado, el procesamiento antiabuso temporal y la
-retención. No es un criterio de cierre o activación P3 y no habilita ninguna UI
-para el visitante.
+retención. No es criterio de activación P3 y no habilita UI para el visitante.
 
-**Estado de este corte:** implementación y contrato en construcción; los tres
-gates permanecen OFF y ningún criterio se marca como completo. El banco
-automatizado P3 sigue pendiente porque no fue solicitado ni agregado; su
-ausencia no bloquea por sí sola este corte OFF, pero sí cualquier cierre o
-activación posterior. Este corte no acredita SQL aplicado, Edge, DNS, TLS,
-routing, despliegue o CI P3.
+**Estado de este corte:** P3 desplegado, activo y medido. Cierre candidato,
+pendiente únicamente de merge + redespliegue y sonda mínima posterior del
+hardening del Worker. Fuente de relevo: `docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`.

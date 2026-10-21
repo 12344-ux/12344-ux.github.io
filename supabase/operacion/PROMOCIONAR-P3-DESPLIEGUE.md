@@ -1,34 +1,52 @@
 # Promocionar P3 · despliegue PostgreSQL y operación
 
-**Estado de este corte:** artefactos preparados; migración no aplicada. Todos los gates nacen **OFF**.
-**Alcance:** solo la migración PostgreSQL P3 y su operación. Edge, UI, DNS, docs generales, pruebas y P4/P5 se gestionan por separado.
-**Método:** SQL Editor manual, un Run por archivo; no hay ledger productivo y no se usa `supabase db push`.
+**Estado productivo · 21-oct-2026:** migración aplicada una vez, cron sano, Edge/routing medidos y tres gates **ON**. Cierre candidato: faltan únicamente merge, redespliegue del hardening del Worker que fuerza cuerpo vacío en `302` y sonda mínima posterior.
+**Alcance:** migración PostgreSQL P3, cron, Edge, Worker/DNS, activación, observación y reversa. P4/P5 se gestionan por separado.
+**Método SQL:** SQL Editor manual, un Run por archivo; no hay ledger productivo y no se usa `supabase db push`.
 
-## Contrato que se instala
+## Evidencia productiva del corte
 
-- Cinco tablas privadas con RLS y cero acceso directo de `anon`, `authenticated` o `service_role`; la quinta, `promocionar_p3_config_bitacora`, conserva append-only el before/after de gates y evidencia. Su conteo sí es observable; actores, roles y razones no se muestran en estado/postflight.
-- Tres gates independientes: activación de enlaces, redirect y conteo. La operación global enciende o apaga los tres; el conteo también puede pausarse solo.
-- Todo enlace pertenece a una `campana_producto_id` obligatoria, incluso si apunta a home. `tipo_destino` es exactamente `producto_v1` o `home_v1`; home resuelve a la home y producto al slug vigente de esa campaña.
-- Crear: `promocionar_p3_crear_borrador(uuid,text,text,text,text,uuid,uuid)` con `(p_campana_producto_id,p_tipo_destino,p_canal_promocion,p_campaign_base,p_content,p_clave_idempotencia,p_reemplaza_enlace_id)`.
-- Editar: `promocionar_p3_editar_borrador(uuid,timestamptz,text,text,text,text)` con `(p_enlace_id,p_actualizado_en_esperado,p_tipo_destino,p_canal_promocion,p_campaign_base,p_content)`. El `actualizado_en` devuelto es el token CAS exacto; una versión obsoleta falla con `P3_BORRADOR_VERSION_CONFLICTO`.
-- Solo un borrador puede reemplazar directamente a cada enlace. El anterior debe estar desactivado y pertenecer a la misma campaña de origen; el reemplazo sí puede corregir `tipo_destino`.
-- Activar un enlace ya activo devuelve idempotentemente el mismo JSON/código. Un enlace desactivado es terminal y nunca se reactiva.
-- Todo JSON de enlace incluye el booleano obligatorio `resoluble`. Solo es `true` para un enlace activo que el redirect podría resolver ahora: gates de redirect/routing vigentes y, para `producto_v1`, campaña activa, publicada, no placeholder y con slug válido. Borradores, desactivados, productos no publicables o redirect apagado devuelven `false`; volver a ejecutar `promocionar_p3_listar` revalida este estado antes de distribuir.
-- Todos los `SECURITY DEFINER` fijan exactamente `public, pg_temp` o, donde se usa pgcrypto, `public, extensions, pg_temp`; los roles API no pueden crear objetos en `public` ni `extensions`.
+- `20261108000000_promocionar_p3_enlaces.sql` se aplicó **una sola vez**. No volver a ejecutarla ni editarla; toda corrección será forward.
+- Preflight, postflight y matriz de privilegios: verdes. Modelo instalado: cinco tablas privadas.
+- Cron exacto: `promocionar-p3-mantenimiento-horario`, schedule `7 * * * *`, comando `select public.promocionar_p3_mantenimiento();`, misma base (`current_database()`), activo y con último run `succeeded` dentro de dos horas. No se documenta `jobid`.
+- Edge `enlace-promocional`: desplegada, Verify JWT OFF, `PROMOCIONAR_IP_HEADER=x-real-ip` y `PROMOCIONAR_IP_SAL` configurado. Nunca incluir, consultar o registrar el valor de la sal.
+- DNS autoritativo en Cloudflare: `rita.ns.cloudflare.com` y `toby.ns.cloudflare.com`. Porkbun continúa como registrador; DNSSEC/DS se mantuvo OFF durante el cambio. Se migraron 24 registros: 4 A, 8 CNAME, 3 MX y 9 TXT. Todos los registros preexistentes quedaron DNS only; GitHub Pages y Zoho/Resend se preservaron.
+- Worker `magandhi-go-p3`: Production, custom domain `go.magandhi.com`.
+- Gates ON desde `2026-10-21 04:41:09.507253Z`; política `false`/`null` y fuera del gate, cuota 600, bitácora 2 al activar. Hay un enlace producto controlado activo.
+- HTTP medido: `GET 302`, body 0, sin `Set-Cookie`, `Cache-Control: no-store`, `Location` MAGANDHI exacta y query `url`/`next` ignorada; `HEAD 302`, `OPTIONS 204`, `POST 405`, inválidos `404`; sin banner, popup, modal, aviso ni consentimiento; TTFB 0,22–0,43 s.
+- Sondas negativas: 0 clics y 0 ventanas. Dos `GET` positivos con IP falsa distinta: 2 clics, 1 fila diaria y 1 ventana, lo que demuestra que la infraestructura sobrescribe `x-real-ip`. Histórico 0 e invariantes 0.
+- Los dos clics son **sintéticos**. El enlace controlado no se distribuye ni se usa para métricas reales.
 
-## Instalación estructural (una sola vez)
+## Estado de código y banco
 
-1. Confirmar backup/PITR, ventana del dueño y P1 aplicado hasta `20261107000100`.
-2. Ejecutar completo `promocionar-p3-preflight.sql`. Es solo lectura: una fila, todos los checks `true`, contadores de slug `0` y `listo_para_aplicar=true`.
-3. Ejecutar una sola vez `../migrations/20261108000000_promocionar_p3_enlaces.sql`. Si alcanza `COMMIT`, no volver a ejecutarla ni editarla en producción.
-4. Ejecutar `promocionar-p3-postflight.sql`. Es estructural y no exige cron porque la instalación termina OFF. Debe devolver todos los booleanos `true`, incluido `clics_fecha_idx_ok=true` para el índice nominal `(fecha_colombia, enlace_id)`, `enlaces_iniciales=0`, `clics_iniciales=0`, `limites_iniciales=0`, `bitacora_inicial=1` y `postflight_ok=true`.
-5. Se puede ejecutar `promocionar-p3-estado.sql` aquí: los tres gates deben estar `false`, los datos en cero y la bitácora en `1`. Las tres filas de cron mostrarán `PENDIENTE`, no una autorización para activar.
+- PR/merge de implementación: #300 `b2440c3`, #301 `11d8008`, #302 `b4f8acb` y #303 `23ea5a2`.
+- GitHub Actions run `39549981902` terminó `completed/success`. Su salida revisada mostró:
+  - `RESUMEN P3 SQL | 15 comprobaciones · 0 fallan`
+  - Deno `9 passed | 0 failed`
+  - `RESUMEN P3 Worker | 7 comprobaciones · 0 fallan`
+  - veredicto `Todo pasa.`
+- El banco detectó y corrigió en `cloudflare/magandhi-go-p3/worker.js` la defensa para que un `302` nunca propague cuerpo accidental de Edge. Esa revisión todavía necesita merge, redespliegue de `magandhi-go-p3` y sonda mínima posterior antes de declarar cierre final.
 
-Si algo falla antes de `COMMIT`, repetir primero el preflight para probar reversión completa. Si hubo `COMMIT` o estado parcial, preparar otra migración forward; no corregir a mano.
+## Contrato instalado
 
-## Mantenimiento obligatorio antes de activar
+- Cinco tablas privadas con RLS y cero acceso directo de `anon`, `authenticated` o `service_role`; `promocionar_p3_config_bitacora` conserva append-only el before/after de gates.
+- Tres gates independientes: activación, redirect y conteo. La operación global enciende o apaga los tres; el conteo puede pausarse solo.
+- Todo enlace pertenece a una campaña, aun si apunta a home. `tipo_destino` es `producto_v1` o `home_v1`; el destino se resuelve server-side desde lista blanca.
+- Crear y editar borradores usan idempotencia y CAS; un enlace activado conserva código/destino y un desactivado es terminal.
+- Todo JSON incluye `resoluble`; distribuir exige revalidación autoritativa. P2 continúa como degradación segura.
+- Los tres gates nacieron OFF. Ese hecho histórico no describe el estado actual: ahora están ON.
 
-La activación falla cerrada salvo que exista `pg_cron` y exactamente un job nominal con este contrato literal. El job debe apuntar a la misma base en la que se ejecutan el estado, la reanudación o la activación; un job homónimo de otra base no aporta evidencia válida.
+## Instalación estructural · ejecutada una vez
+
+1. Preflight de solo lectura: verde.
+2. Migración `../migrations/20261108000000_promocionar_p3_enlaces.sql`: aplicada una sola vez.
+3. Postflight y matriz: verdes; cinco tablas presentes.
+4. Estado inicial medido con gates OFF y bitácora inicial 1.
+5. No repetir ningún paso de escritura. Los SQL de estado, postflight y matriz siguen disponibles para diagnóstico de solo lectura.
+
+## Mantenimiento obligatorio
+
+El contrato literal vigente es:
 
 | Campo | Valor obligatorio |
 |---|---|
@@ -38,86 +56,40 @@ La activación falla cerrada salvo que exista `pg_cron` y exactamente un job nom
 | `schedule` | `7 * * * *` |
 | `command` | `select public.promocionar_p3_mantenimiento();` |
 
-1. Habilitar `pg_cron` por el procedimiento aprobado del proyecto.
-2. Comprobar primero que no exista un job nominal conflictivo y que cualquier coincidencia apunte a la base actual:
+Antes de reanudar conteo o reactivar tras una reversa, comprobar exactamente un job nominal en la base actual, último run de ese mismo job/base `succeeded` dentro de dos horas, y cero cuotas o detalle vencidos. Un run manual o uno homónimo de otra base no sirve. No registrar `jobid`, comandos privados, hashes o parámetros en documentación.
 
-   ```sql
-   select current_database() as base_actual,
-          count(*) as jobs_nominales,
-          bool_and(database = current_database()) as base_actual_exacta,
-          bool_and(active) as todos_activos,
-          bool_and(schedule = '7 * * * *') as schedule_exacto,
-          bool_and(btrim(command) = 'select public.promocionar_p3_mantenimiento();') as command_exacto
-     from cron.job
-    where jobname = 'promocionar-p3-mantenimiento-horario';
-   ```
+La función compacta detalle anterior a 13 meses en el histórico dentro de la misma transacción y purga cuotas vencidas. Las cuotas nacen a 47 horas; el job horario conserva el límite menor a 48 horas.
 
-   Si `jobs_nominales > 0` y cualquier contrato es falso —incluido `base_actual_exacta`—, detenerse y corregir el job aprobado conservando su identidad; no crear un duplicado ni cambiar el nombre. Un job que apunte a otra base nunca autoriza esta base.
-3. Solo si `jobs_nominales=0`, desde el SQL Editor conectado a la base objetivo confirmada por `current_database()`, agendar exactamente:
+## Frontera Edge, Worker y DNS
 
-   ```sql
-   select cron.schedule(
-     'promocionar-p3-mantenimiento-horario',
-     '7 * * * *',
-     'select public.promocionar_p3_mantenimiento();'
-   );
-   ```
+- Edge pública `enlace-promocional`: Verify JWT OFF. Solo ella usa el secreto `PROMOCIONAR_IP_SAL`; el repositorio nunca contiene su valor.
+- Cabecera única: `PROMOCIONAR_IP_HEADER=x-real-ip`. El Worker reemplaza cualquier valor del visitante por `CF-Connecting-IP`; no usa fallbacks.
+- Worker `magandhi-go-p3` fija un único origen, no sigue el `302`, filtra cabeceras, elimina cookies y fuerza `no-store`.
+- El hardening pendiente de cierre fuerza cuerpo nulo para `302` y elimina cabeceras de longitud/codificación asociadas; CI ya terminó `completed/success`, pero aún requiere merge, redespliegue y sonda mínima posterior.
+- Cloudflare es DNS autoritativo; Porkbun conserva el registro del dominio. Los 24 registros migrados y los servicios GitHub Pages/Zoho/Resend no se alteran durante P3.
 
-   Repetir la consulta contractual anterior y exigir `base_actual_exacta=true`; `cron.schedule` debe haber persistido `cron.job.database = current_database()`.
-4. Esperar a que el job nominal ejecute de verdad (el minuto 7 de la siguiente hora). Una llamada manual a la función puede limpiar, pero **no sustituye** la evidencia de `cron.job_run_details`.
-5. Medir el último run vinculado exclusivamente al job de la base actual, sin extraer comandos, hashes ni parámetros:
+## Activación global · ejecutada el 21-oct-2026
 
-   ```sql
-   select d.status, d.start_time, d.end_time,
-          d.end_time >= statement_timestamp() - interval '2 hours' as dentro_de_2h
-     from cron.job_run_details d
-     join cron.job j on j.jobid = d.jobid
-    where j.jobname = 'promocionar-p3-mantenimiento-horario'
-      and j.database = current_database()
-    order by d.runid desc
-    limit 1;
-   ```
+`promocionar-p3-activar.sql` se ejecutó después de validar instalación, cron, Edge y routing. Los tres gates pasaron a `true` en `2026-10-21 04:41:09.507253Z`; la bitácora quedó en 2. La política permaneció `false`/`null`, explícitamente fuera del gate. La cuota quedó en 600.
 
-   Debe ser `succeeded`, tener `end_time` y quedar dentro de las últimas dos horas. Un run de un job homónimo ligado a otra base se ignora y no puede autorizar activación ni reanudación.
-6. Ejecutar `promocionar-p3-estado.sql`: cron instalado/job/run de la base actual deben ser `true`; cuotas vencidas y detalle vencido para compactar deben ser `0`. `promocionar-p3-activar.sql` vuelve a comprobar dinámicamente todo esto y aborta si cambió.
-
-La función compacta detalle anterior a 13 meses en el histórico dentro de la misma transacción y purga cuotas vencidas. Las cuotas nacen a 47 horas; el job horario conserva el límite estricto menor a 48 horas.
-
-## Frontera Edge y routing (evidencia separada)
-
-Antes de activar:
-
-1. Desplegar y medir la Edge remota con **Verify JWT OFF** únicamente para este redirect público.
-2. Configurar `PROMOCIONAR_IP_SAL` como secreto maestro aleatorio de **mínimo 32 bytes UTF-8**. La Edge deriva una llave HMAC distinta por fecha de Colombia; nunca usa la `service_role` como sal.
-3. Configurar `PROMOCIONAR_IP_HEADER` con exactamente una de estas opciones: `cf-connecting-ip`, `x-real-ip` o `x-forwarded-for`. Elegirla solo después de demostrar que el último proxy la sobrescribe y que una cabecera enviada por el cliente no puede suplantarla; la Edge no prueba alternativas.
-4. Configurar DNS, TLS y proxy para `https://go.magandhi.com/<codigo>` y verificar que la query no selecciona destino.
-5. Medir lista blanca y ausencia de open redirect; `GET/HEAD/OPTIONS`; `302`; `Cache-Control: no-store`; CORS; código inválido/desactivado; y falla independiente del contador.
-6. Confirmar que solo cuenta un `GET` con `Sec-Fetch-Mode: navigate`, `Sec-Fetch-Dest: document`, `Accept` con `text/html`, UA humano y sin señales de preview/prefetch. La ausencia de cualquiera de las tres señales positivas no cuenta.
-7. Medir cuota, fecha Colombia, derivación diaria y logs sin IP/hash/URL/UA. La explicación se incorporará después a la política general y no bloquea P3. Verificar además que el enlace activo nunca muestre banner, popup, modal, aviso intermedio ni consentimiento.
-
-La presencia de archivos en Git no prueba ninguna de estas condiciones. Resolver y contar siguen separados: un fallo de conteo no cambia un destino ya resuelto. `redirect_habilitado` gobierna resolución; `conteo_habilitado`, conteo; `activacion_habilitada`, nuevas activaciones. Crear, editar y listar borradores funciona con gates OFF.
-
-## Activación global — no ejecutar aún
-
-Solo después de instalación, cron sano y evidencia Edge/routing:
-
-1. En `promocionar-p3-activar.sql`, cambiar individualmente a `true` las cuatro confirmaciones técnicas.
-2. Ejecutar el archivo completo. No exige ni modifica política: exige job nominal exacto apuntando a `current_database()`, último run de ese job/base exitoso dentro de dos horas, cero cuotas vencidas y cero detalle vencido.
-3. Exigir `activado_confirmado=true`; repetir `promocionar-p3-estado.sql` y luego activar un enlace controlado para las sondas productivas.
-
-La operación registra `auth.uid()` nullable, `current_user` y la razón `activacion_global_p3` en la bitácora. Repetirla sobre el mismo estado es un no-op idempotente, pero vuelve a exigir cron sano.
+Para diagnosticar usar `promocionar-p3-estado.sql`. No repetir activación como sustituto de diagnóstico. Un único enlace producto controlado permanece activo solo para operación; sus dos clics registrados son sintéticos y no deben mezclarse con métricas reales.
 
 ## Pausar y reanudar solo el conteo
 
-- Ejecutar `promocionar-p3-pausar-conteo.sql` para poner solo `conteo_habilitado=false`. Es idempotente y debe devolver `conteo_pausado_confirmado=true`. El lock espera los conteos ya autorizados y bloquea nuevos mientras confirma; redirect y activación no cambian.
-- Ejecutar `promocionar-p3-reanudar-conteo.sql` para volver a `true`. Es idempotente, pero siempre exige redirect y routing vigentes, job nominal exacto apuntando a `current_database()` y último run de ese job/base `succeeded` dentro de dos horas. También conserva el bloqueo si quedan cuotas o detalle vencidos. Debe devolver `conteo_reanudado_confirmado=true`.
-- Ambas operaciones registran razón, `auth.uid()` nullable y `current_user`; nunca borran historial.
+- `promocionar-p3-pausar-conteo.sql` pone solo `conteo_habilitado=false`; redirect y activación no cambian.
+- `promocionar-p3-reanudar-conteo.sql` exige redirect/routing vigentes, cron exacto de la base actual, último run `succeeded` dentro de dos horas y cero vencidos.
+- Ambas operaciones son idempotentes y registran una transición solo cuando cambia el estado; nunca borran historial.
 
 ## Desactivación y reversa
 
-Ante una falla de resolución segura, privacidad, retención o routing:
+Ante falla de resolución segura, privacidad, retención, routing o hardening:
 
-1. Ejecutar `promocionar-p3-desactivar.sql`. Es idempotente, apaga juntos los tres gates y debe devolver `apagado_confirmado=true`.
+1. Ejecutar `promocionar-p3-desactivar.sql`; debe apagar juntos los tres gates y devolver `apagado_confirmado=true`.
 2. Verificar por HTTP la respuesta MAGANDHI no disponible y ejecutar `promocionar-p3-estado.sql`.
-3. Conservar y seguir ejecutando el cron. La operación preserva enlaces, códigos, clics, histórico, política, routing y toda la bitácora.
-4. Corregir PostgreSQL mediante otra migración forward. No borrar/reutilizar códigos ni reactivar enlaces desactivados.
+3. Mantener activo el cron. Preservar enlaces, códigos, clics, histórico y bitácora.
+4. Mantener Worker y DNS mientras se diagnostica, salvo que el incidente exija aislar routing. **No borrar todavía los registros conservados en Porkbun**; tampoco borrar los 24 registros migrados de Cloudflare.
+5. Corregir PostgreSQL con migración forward y el Worker mediante revisión, CI y redespliegue. Nunca reejecutar la migración P3, reutilizar códigos ni reactivar enlaces desactivados.
+
+## Frontera P3/P4/P5
+
+P3 produce clics aproximados, no personas ni ventas. Un CTR necesita impresiones y no puede calcularse con clics solos. P4 comienza al congelar el enlace validado en intención/pedido y atribuye conversión/pedidos. P5 incorpora tablero e ingresos con denominadores explícitos.

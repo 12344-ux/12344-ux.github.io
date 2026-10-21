@@ -1,6 +1,10 @@
 # Relevo de sesión · Cierre aprobado de Promocionar P2 · 20 de octubre de 2026
 
-**Punto de arranque vigente del frente Promocionar.** Leer primero este archivo;
+> **Relevo histórico, superado el 21-oct-2026.** Conserva sin reescribir la
+> realidad observada al cerrar P2. El estado vigente de P3 está en
+> `docs/RELEVO-PROMOCIONAR-P3-CIERRE-2026-10-21.md`.
+
+**Punto de arranque que regía al cierre P2.** Leer primero este archivo;
 después `docs/PLANO-PROMOCIONAR-P2.md`,
 `docs/PLANO-PROMOCIONAR-P3.md` y el contrato normativo
 `docs/PLANO-PROMOCIONAR-P0.md`. El relevo Comercial C5 continúa gobernando
