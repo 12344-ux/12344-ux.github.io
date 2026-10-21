@@ -34,10 +34,14 @@ function cabecerasHaciaEdge(request) {
   return cabeceras;
 }
 
-function cabecerasHaciaVisitante(origen) {
+function cabecerasHaciaVisitante(origen, descartaCuerpo = false) {
   const cabeceras = new Headers(origen);
   cabeceras.delete("set-cookie");
   cabeceras.delete("set-cookie2");
+  if (descartaCuerpo) {
+    cabeceras.delete("content-length");
+    cabeceras.delete("content-encoding");
+  }
   cabeceras.set("cache-control", "no-store");
   cabeceras.set("referrer-policy", "no-referrer");
   cabeceras.set("x-content-type-options", "nosniff");
@@ -73,13 +77,19 @@ export default {
         redirect: "manual",
         cache: "no-store",
       });
+      // El redirect público es solo una instrucción de navegación: nunca
+      // propagamos un cuerpo accidental de Edge junto al Location.
       const sinCuerpo = request.method === "HEAD" ||
+        respuestaEdge.status === 302 ||
         [204, 205, 304].includes(respuestaEdge.status);
 
       return new Response(sinCuerpo ? null : respuestaEdge.body, {
         status: respuestaEdge.status,
         statusText: respuestaEdge.statusText,
-        headers: cabecerasHaciaVisitante(respuestaEdge.headers),
+        headers: cabecerasHaciaVisitante(
+          respuestaEdge.headers,
+          respuestaEdge.status === 302,
+        ),
       });
     } catch {
       // Falla cerrada: nunca intenta otro origen ni fabrica un destino.
