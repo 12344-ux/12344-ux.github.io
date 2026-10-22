@@ -1,6 +1,6 @@
 # MAGANDHI + Impulse · contexto operativo vigente
 
-**Corte:** 21 de octubre de 2026
+**Corte:** 22 de octubre de 2026
 **Producción interna:** `https://montaguth.institute`
 **Tienda pública:** `https://magandhi.com`
 
@@ -61,7 +61,7 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 > nunca bloquea el asiento, al contrario que el costo y el flete. Banco SQL
 > **613/613**, matriz **170/170**, pantalla **70/70**.
 >
-> **El estado actual de producción llega hasta la migración `20261110000000` (Promocionar P5), ejecutada una sola vez según confirmó el dueño. P0 está cerrado como contrato documental, sin implementación ni producción. P1–P5 están desplegados y cerrados en sus alcances respectivos: P3 permanece cerrado FINAL; P4 permanece activo y cerrado estructuralmente; P5 está cerrado estructural/productivamente como capa de lectura. El carrito continúa ENCENDIDO (`carrito_habilitado=true`) y Wompi en `prod`. No hay P6 definido; el pendiente monetario común C5/P4/P5 requiere una compra real expresamente autorizada. El proyecto no tiene tabla de ledger de migraciones: todo se aplica a mano y nunca con `supabase db push`.**
+> **El estado actual de producción llega al menos hasta `20261113000000` (Sistema Nervioso SN1), según confirmación del dueño. `20261111000000` (categorías oficiales), `20261112000000` (SN1 base) y `20261113000000` (cierre SN1) se aplicaron una vez y no deben repetirse. P1–P5 están desplegados y cerrados en sus alcances; SN1-A/B/C están cerrados productivamente. El carrito continúa ENCENDIDO (`carrito_habilitado=true`) y Wompi en `prod`. La telemetría consentida permanece apagada con política `borrador-0`, sin apagar el motor SN. No hay P6 definido; el pendiente monetario común C5/P4/P5 requiere una compra real expresamente autorizada. El proyecto no tiene tabla de ledger de migraciones: todo se aplica a mano y nunca con `supabase db push`.**
 >
 > **Hito · Promocionar P2 · 20-oct-2026 · desplegado, cerrado y aprobado por el dueño.** PR #298 y #299 quedaron fusionados; el cierre publicado corresponde a `90efd87ae1be07493fdf38aad5e140be558d38ac` y Pages run `39471770742` terminó `completed/success`. Los cinco assets productivos del estudio respondieron HTTP 200 y coincidieron exactamente, byte por byte, con ese merge. La aprobación fue **visual/funcional**: no se ejecutó ni se atribuye una suite automatizada P2, auditoría formal de accesibilidad, protocolo separado de teclado/foco o prueba independiente de escaneo QR. P2 fue solo frontend, sin SQL, Edge, backend o DNS. **Estado histórico de ese corte, ya superado: P3 era el siguiente tramo, con implementación y contrato en construcción y `activacion_habilitada`, `redirect_habilitado` y `conteo_habilitado` OFF.** El primer gate apagado permite preparar borradores privados sin código y solo impide publicarlos. El banco automatizado P3 sigue pendiente porque no fue solicitado/agregado: no bloquea por sí solo este corte con los tres gates OFF, pero será obligatorio antes de cerrar P3 o activar cualquiera. En ese corte todavía no se acreditaban despliegue o CI P3; el hito del 21-oct-2026 registrado a continuación supera ese estado y documenta el cierre FINAL.
 >
@@ -77,9 +77,11 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 >
 > **Hito · Promocionar P4 · 21-oct-2026 · desplegado, activo y cerrado estructuralmente.** Backend #306 (`75b14b4`) y tienda #118 (`1b22d24`) fusionados, CI/Pages verdes; migración `20261109000000` aplicada una vez y Edge `enlace-promocional`/`crear-intencion-pago` redesplegadas. Gate ON desde `2026-10-21T15:21:59.626776Z`. La prueba integral sin dinero confirmó validación `204`, `HEAD 302` con destino/UTM/fragmento propio y query hostil ignorada, captura exacta en `sessionStorage`, URL limpia, intención `200` y llegada a Wompi. Diagnóstico posterior: 1 intención atribuida sintética, 0 pedidos, 0 divergencias y 0 incidencias. No hubo pago/webhook/pedido; cierre estructural, no monetario. **P5 era el siguiente tramo en ese corte.** Relevo histórico: `docs/RELEVO-PROMOCIONAR-P4-CIERRE-ESTRUCTURAL-2026-10-21.md`.
 >
-> **Categorías de Campañas · 21-oct-2026 · EN RAMA / NO DESPLEGADO.** La migración forward `20261111000000_campanas_categorias_oficiales.sql` define exactamente ocho categorías iniciales oficiales, planas y en este orden: **Tecnología, Moda, Hogar, Deportes, Belleza, Accesorios, Mascotas y Juguetería**. Los códigos de prueba `cabello`, `belleza_fem`, `belleza_masc`, `cuidado_gral`, `alimentos` y `destacado` conservan su historia pero quedan inactivos y fuera de la tienda; solo los cuatro códigos de belleza se migran a `belleza` y no se inventa equivalencia para `alimentos`. La forward conserva `campana_producto.categoria_codigo`, las RPC C1 y el puente muchos-a-muchos con una principal, y añade `categoria_codigos`/`categorias` al final de las 24 columnas previas de `catalogo_publico`. `categorias_publicas` lista toda categoría activa/visible, incluidas las creadas después, sin colores ni ids privados. El panel de Campañas ofrece multiselección plana, distintivo **Oficial**, categoría principal, resumen de secundarias y un diálogo compartido para crear categorías con nombre, descripción e icono controlado; la banda pública se deriva con HTML/CSS y no usa uploads. Publicar exige clasificación pública válida; despublicar siempre sigue permitido y la migración no retira campañas históricas ya publicadas. **Estado: código en la rama `feat/categorias-oficiales`; migración no aplicada, frontend no desplegado y producción no acreditada.** Inventario no cambia; en Email Marketing solo se actualizan valores de reglas dinámicas que todavía nombraban las categorías retiradas de Belleza o `Hogar/limpieza`, para que apunten a `Belleza` o `Hogar` sin alterar modo, operador ni orden.
+> **Categorías de Campañas · estado histórico del 21-oct-2026, superado por el cierre SN1 del 22-oct.** La migración forward `20261111000000_campanas_categorias_oficiales.sql` define exactamente ocho categorías iniciales oficiales, planas y en este orden: **Tecnología, Moda, Hogar, Deportes, Belleza, Accesorios, Mascotas y Juguetería**. Los códigos de prueba `cabello`, `belleza_fem`, `belleza_masc`, `cuidado_gral`, `alimentos` y `destacado` conservan su historia pero quedan inactivos y fuera de la tienda; solo los cuatro códigos de belleza se migran a `belleza` y no se inventa equivalencia para `alimentos`. La forward conserva `campana_producto.categoria_codigo`, las RPC C1 y el puente muchos-a-muchos con una principal, y añade `categoria_codigos`/`categorias` al final de las 24 columnas previas de `catalogo_publico`. `categorias_publicas` lista toda categoría activa/visible, incluidas las creadas después, sin colores ni ids privados. El panel de Campañas ofrece multiselección plana, distintivo **Oficial**, categoría principal, resumen de secundarias y un diálogo compartido para crear categorías con nombre, descripción e icono controlado; la banda pública se deriva con HTML/CSS y no usa uploads. Publicar exige clasificación pública válida; despublicar siempre sigue permitido y la migración no retira campañas históricas ya publicadas. **Estado posterior:** migración aplicada, frontend desplegado y producción acreditada como baseline de SN1. Inventario no cambia; en Email Marketing solo se actualizan valores de reglas dinámicas que todavía nombraban las categorías retiradas de Belleza o `Hogar/limpieza`, para que apunten a `Belleza` o `Hogar` sin alterar modo, operador ni orden.
 >
 > **Hito · Promocionar P5 · 21-oct-2026 · cerrado estructural/productivamente.** La implementación PR #308 se fusionó como `3205e1b0cfcd5fc98126ccf2f37aa3cb2bf914f1`; CI de rama run `39643360479` terminó `success` con 88 migraciones, matriz 230/0 y suite final `Todo pasa.` El dueño confirmó que `20261110000000_promocionar_p5_lectura_comercial.sql` se ejecutó una sola vez; Pages producción run `39645791554` terminó `success` sobre el merge. El dueño recorrió la prueba integral final de Resultados, Métricas y Ventas y dijo «Todo en orden». Diagnóstico: `instalado=true`; P3 con 1 enlace, detalle desde/hasta nulo, 0 filas de detalle y 0 compactado; P4 con 1 intención atribuida, 0 convertidas `APPROVED`, 0 pedidos con FK, 0 ventas exactas autoritativas, 0 divergencias y 0 incidencias pendientes; analítica consentida `activa=false`, primer y último evento `2026-10-08T18:34:59.188+00:00`; intención sintética identificable `false`. No quedaron confirmados preflight ni postflight productivos separados. Tampoco se acreditaron categorías con datos reales, compra, pago `APPROVED`, pedido atribuido o ingreso. P5 queda cerrado como lectura, no monetaria ni end-to-end. No hay P6 definido. Relevo vigente: `docs/RELEVO-PROMOCIONAR-P5-CIERRE-ESTRUCTURAL-2026-10-21.md`.
+>
+> **Hito · Sistema Nervioso SN1 · 22-oct-2026 · cerrado productivamente.** El dueño confirmó aplicadas una sola vez `20261111000000_campanas_categorias_oficiales.sql`, `20261112000000_sistema_nervioso_sn1.sql` y `20261113000000_sistema_nervioso_sn1_cierre.sql`. `tienda-eventos` fue redesplegada con Verify JWT OFF y `SN_CONSULTA_SAL` configurada sin registrar el secreto. El postflight SQL fue correcto. Sondas anónimas externas verificaron búsqueda y recomendación con `modelo_version=sn1-reglas-1` y dos productos; home y búsqueda respondieron HTTP 200. El dueño confirmó correctas la purga manual, la configuración nominal de `sn-purgar-telemetria-diario` y la prueba visual. El motor está activo, pero la telemetría consentida permanece apagada deliberadamente: la Edge devuelve `activa=false` y `politica_version=borrador-0` hasta una política definitiva. No se compartió una fila exacta de `cron.job_run_details`; observar la primera corrida natural queda como seguimiento no bloqueante. Relevo: `docs/RELEVO-SISTEMA-NERVIOSO-SN1-CIERRE-2026-10-22.md`.
 >
 > **Cuentas de cliente C1 · DESPLEGADO · 15-oct-2026 (PR #268).** El dueño
 > decidió conservar compra como invitado y añadir inicio de sesión opcional en
@@ -342,7 +344,7 @@ Entrega del código: va en el correo de «Entregado», ya en producción. Opinio
 - Auto-RLS activado y exposición automática de tablas desactivada.
 - Las migraciones históricas son inmutables: nunca se reescriben ni se reejecutan para “corregir” producción.
 - Toda corrección nueva se hace con migración forward.
-- Las superficies anónimas deliberadas son cuatro y todas exponen lista blanca: `catalogo_publico`, `categorias_publicas`, `producto_rating_publico` y `opiniones_publicas`. Ninguna tabla base o vista interna adicional tiene acceso para `anon`. `categorias_publicas` pertenece al frente que sigue **EN RAMA / NO DESPLEGADO** hasta aplicar `20261111000000`.
+- Las superficies anónimas deliberadas exponen listas blancas: `catalogo_publico`, `categorias_publicas`, `producto_rating_publico`, `opiniones_publicas`, `sn_assets_publicos_v1` y las RPC públicas SN. Ninguna tabla base o vista interna adicional tiene acceso directo para `anon`. `20261111000000` y las dos migraciones SN1 están aplicadas.
 - Las vistas internas sensibles son `security_invoker`.
 - Tramo 0 fue verificado en producción: matriz de permisos completa, anon bloqueado en vistas/RPC internas y catálogo público disponible.
 
@@ -357,7 +359,7 @@ Entrega del código: va en el correo de «Entregado», ya en producción. Opinio
 - Identidad del producto y costo interno: `productos`.
 - Stock: suma de `movimientos_inventario`.
 - Presentación y precio web: `campana_producto`.
-- Catálogo anónimo: `catalogo_publico`; catálogo plano de categorías: `categorias_publicas` (**ambos cambios de categorías siguen EN RAMA / NO DESPLEGADOS**).
+- Catálogo anónimo: `catalogo_publico`; catálogo plano de categorías: `categorias_publicas`, ambos desplegados con el baseline de SN1.
 - Cliente/pedido: `clientes`, `pedidos`, `pedido_items`, `pedido_bitacora`.
 - Opiniones: `opiniones`; superficies anónimas `producto_rating_publico` y `opiniones_publicas`; código de verificación en `pedidos.codigo_resena`.
 
@@ -365,9 +367,9 @@ Entrega del código: va en el correo de «Entregado», ya en producción. Opinio
 
 Expone datos necesarios para home/producto, el booleano `agotado` y
 `max_comprable` (`0..20`), ya limitado por el máximo de Campañas y la
-disponibilidad autoritativa. La forward de categorías, todavía **EN RAMA / NO
-DESPLEGADA**, conserva esas 24 columnas y añade al final `categoria_codigos`
-(`text[]`) y `categorias` (`jsonb`) con la clasificación plana pública. Nunca expone:
+disponibilidad autoritativa. La forward de categorías aplicada conserva esas 24
+columnas y añade al final `categoria_codigos` (`text[]`) y `categorias`
+(`jsonb`) con la clasificación plana pública. Nunca expone:
 
 - existencias exactas;
 - costo o proveedor;
@@ -439,6 +441,8 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 
 - `CONTEXTO-MAGANDHI.md`: fotografía operativa actual **y** trabajo pendiente (§9). Es el punto de partida de cualquier sesión.
 - `supabase/INSTRUCCIONES.md`: runbook acumulativo. Sus capítulos antiguos son historia y no autorizan reaplicar migraciones.
+- `docs/PLANO-SISTEMA-NERVIOSO.md`: contrato y estado productivo de SN1; separa el motor activo de la telemetría consentida apagada.
+- `docs/RELEVO-SISTEMA-NERVIOSO-SN1-CIERRE-2026-10-22.md`: relevo vigente de SN1, evidencia exacta, límites de telemetría/cron y continuidad.
 - `docs/PLANO-PAGOS.md`: diseño de pagos web F1 a F4 y los dos asientos (venta y liquidación).
 - `docs/PLANO-EMAIL-MARKETING.md` y `docs/PLANO-METRICAS.md`: diseño vigente de esas áreas.
 - `docs/PLANO-INVENTARIO.md`, `docs/PLANO-VENTAS.md`, `docs/PLANO-OPINIONES.md` y `docs/PLANO-CORREO.md`: memoria histórica de diseño, no DDL operativo.
@@ -517,6 +521,8 @@ Wompi abonó $66.862,71: descontó 2,65 % + $700 más el IVA de la comisión, si
 - `supabase/pruebas/diagnostico-produccion.sql`: diagnóstico de solo lectura para medir producción sin fiarse de los documentos.
 - `supabase/pruebas/local/herramientas/LEEME.md`: banco de pruebas local (también corre en GitHub Actions en cada rama).
 
+El relevo más reciente del proyecto es `docs/RELEVO-SISTEMA-NERVIOSO-SN1-CIERRE-2026-10-22.md`: SN1-A/B/C están cerrados productivamente; el motor está activo y la telemetría consentida permanece apagada hasta política definitiva.
+
 El relevo vigente de Promocionar es
 `docs/RELEVO-PROMOCIONAR-P5-CIERRE-ESTRUCTURAL-2026-10-21.md`: P5 está
 fusionado, publicado, instalado y recorrido en Resultados, Métricas y Ventas;
@@ -532,6 +538,10 @@ histórica y evita repetir migración, SMTP, plantillas o configuración Google 
 retomar esa apertura. No hay P6 definido.
 
 ## 9. Pendientes vigentes
+
+### Sistema Nervioso SN1 · seguimientos no bloqueantes
+
+SN1-A/B/C están cerrados productivamente y no requieren otra migración ni redespliegue. Quedan dos seguimientos operativos: registrar la primera corrida natural de `sn-purgar-telemetria-diario` desde `cron.job_run_details`; y, solo cuando exista una política definitiva, registrar su nueva versión, activar analítica y probar el circuito consentido. SN1-D —evaluación y futura aplicación— permanece como evolución opcional.
 
 ### Fase comercial aprobada · 16-oct-2026 · estado por tramos
 
