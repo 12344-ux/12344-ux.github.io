@@ -137,6 +137,9 @@ begin
        and to_regclass('public.categorias_publicas') is not null then
       v_obj := v_obj || array['campana_producto_categoria', 'categorias_publicas'];
     end if;
+    if to_regclass('public.campana_categoria_bitacora') is not null then
+      v_obj := v_obj || array['campana_categoria_bitacora'];
+    end if;
 
     -- C1 de cuentas publicas. En fotos historicas la tabla no existe: solo se
     -- agrega cuando el esquema realmente contiene el puente.
@@ -266,6 +269,11 @@ begin
     end if;
     if to_regprocedure('public.cm_crear_categoria(text,text,text)') is not null then
       v_lista_blanca := v_lista_blanca || array['cm_crear_categoria'];
+    end if;
+    if to_regprocedure('public.cm_listar_categorias_admin_v1()') is not null then
+      v_lista_blanca := v_lista_blanca || array[
+        'cm_listar_categorias_admin_v1', 'cm_guardar_categoria_v1'
+      ];
     end if;
 
     -- F3 solo existe desde 202610200. Sus constructores internos siguen fuera
@@ -492,7 +500,11 @@ begin
                    'cm__validar_categoria_publicada_legacy',
                    'cm__validar_categorias_seleccion',
                    'cm__validar_principal_puente',
-                   'cm_crear_categoria'
+                   'cm__categoria_estado',
+                   'cm__proteger_categoria_temporada',
+                   'cm_crear_categoria',
+                   'cm_listar_categorias_admin_v1',
+                   'cm_guardar_categoria_v1'
                  )
                  or (
                    p.proname like 'promocionar\_p3\_%' escape '\'
@@ -555,7 +567,11 @@ begin
              'cm__validar_categoria_publicada_legacy',
              'cm__validar_categorias_seleccion',
              'cm__validar_principal_puente',
-             'cm_crear_categoria'
+             'cm__categoria_estado',
+             'cm__proteger_categoria_temporada',
+             'cm_crear_categoria',
+             'cm_listar_categorias_admin_v1',
+             'cm_guardar_categoria_v1'
            )
            or (
              p.proname like 'promocionar\_p3\_%' escape '\'

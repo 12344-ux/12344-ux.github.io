@@ -2,9 +2,9 @@
 // MAGANDHI · Campañas · administración compartida de categorías
 // ------------------------------------------------------------
 // Una sola implementación para agregar.html, editar.html e index.html:
-// - consulta la lista blanca de categorías planas activas/visibles;
-// - pinta multiselección con una principal;
-// - abre el diálogo accesible de alta mediante cm_crear_categoria;
+// - consulta el catálogo administrativo, incluidas temporadas fuera de ventana;
+// - pinta multiselección con una principal siempre permanente;
+// - abre el diálogo accesible de alta permanente mediante cm_guardar_categoria_v1;
 // - muestra una banda HTML/CSS derivada de nombre, descripción e icono.
 // No recibe archivos ni escribe tablas directamente.
 // ============================================================
@@ -102,35 +102,47 @@ export function iconoCategoria(codigo) {
   return ICONOS_POR_CODIGO.get(String(codigo || ''))?.svg || ICONO_FALLBACK;
 }
 
-function normalizarCategoria(fila) {
+export function normalizarCategoria(fila) {
   if (!fila || !fila.codigo) return null;
+  const tipo = fila.tipo === 'temporada' ? 'temporada' : 'permanente';
+  const estado = String(fila.estado || (tipo === 'permanente' ? 'permanente' : 'programada'));
   return {
     codigo: String(fila.codigo),
     nombre: String(fila.nombre || fila.codigo),
     icono_codigo: String(fila.icono_codigo || ''),
     descripcion: String(fila.descripcion || ''),
     orden: Number.isFinite(Number(fila.orden)) ? Number(fila.orden) : 0,
-    es_oficial: fila.es_oficial === true
+    es_oficial: fila.es_oficial === true,
+    tipo,
+    visible_desde: fila.visible_desde ? String(fila.visible_desde) : null,
+    visible_hasta: fila.visible_hasta ? String(fila.visible_hasta) : null,
+    fijada_primera: fila.fijada_primera === true,
+    activo: fila.activo !== false,
+    visible_tienda: fila.visible_tienda !== false,
+    estado,
+    seleccionable: fila.seleccionable !== false,
+    principales: Number(fila.principales) || 0,
+    secundarias: Number(fila.secundarias) || 0
   };
 }
 
 function ordenarCategorias(lista) {
   return [...lista].sort((a, b) =>
+    Number(b.tipo === 'temporada' && b.fijada_primera) -
+      Number(a.tipo === 'temporada' && a.fijada_primera) ||
     a.orden - b.orden || a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })
   );
 }
 
 export async function cargarCategoriasPublicas() {
-  const { data, error } = await supabase
-    .from('categorias_publicas')
-    .select('codigo, nombre, icono_codigo, descripcion, orden, es_oficial')
-    .order('orden', { ascending: true });
-
+  const { data, error } = await supabase.rpc('cm_listar_categorias_admin_v1');
   return {
     data: ordenarCategorias((data || []).map(normalizarCategoria).filter(Boolean)),
     error
   };
 }
+
+export const cargarCategoriasAdmin = cargarCategoriasPublicas;
 
 export function mensajeErrorCategoria(error) {
   const bruto = String(error?.message || error || '').trim();
@@ -138,8 +150,26 @@ export function mensajeErrorCategoria(error) {
   if (bruto.startsWith('CM_CATEGORIAS_PUBLICACION_REQUERIDAS')) {
     return 'Elige y guarda al menos una categoría activa y visible, incluida una principal, antes de publicar.';
   }
+  if (bruto.startsWith('CM_CATEGORIA_CODIGO_EXISTE')) {
+    return 'Ya existe una categoría con ese nombre o código. Edítala desde Gestionar categorías.';
+  }
+  if (bruto.startsWith('CM_CATEGORIA_NO_EXISTE')) {
+    return 'La categoría ya no existe. Recarga la lista antes de continuar.';
+  }
   if (bruto.startsWith('CM_CATEGORIA_NO_PUBLICA')) {
-    return 'Una categoría elegida ya no está activa o visible. Actualiza la selección e inténtalo de nuevo.';
+    return 'Una categoría elegida ya no está habilitada. Actualiza la selección e inténtalo de nuevo.';
+  }
+  if (bruto.startsWith('CM_CATEGORIA_PRINCIPAL_TEMPORAL')) {
+    return 'Las categorías de temporada solo pueden ser secundarias. Elige una categoría permanente como principal.';
+  }
+  if (bruto.startsWith('CM_CATEGORIA_PRINCIPAL_EN_USO')) {
+    return 'Esta categoría es principal en una o más campañas. Reasígnalas antes de ocultarla o convertirla en temporada.';
+  }
+  if (bruto.startsWith('CM_CATEGORIA_FIJADA_SOLAPADA')) {
+    return 'Ya existe otra temporada fijada como primera durante parte de esas fechas.';
+  }
+  if (bruto.startsWith('CM_CATEGORIA_TEMPORADA_FECHAS_INVALIDAS')) {
+    return 'Elige un inicio y un final válidos para la temporada.';
   }
   return bruto.replace(/^CM_[A-Z_]+:\s*/, '');
 }
@@ -204,11 +234,13 @@ export function crearSelectorCategorias({
   }
 
   function sincronizarRadios() {
+    if (principal && categoria(principal)?.tipo === 'temporada') principal = null;
     contenedor.querySelectorAll('.cm-categoria-opcion').forEach((opcion) => {
       const check = opcion.querySelector('.cm-categoria-check input');
       const radio = opcion.querySelector('.cm-categoria-principal input');
-      radio.disabled = !check.checked;
-      radio.checked = check.checked && check.value === principal;
+      const item = categoria(check.value);
+      radio.disabled = !check.checked || item?.tipo === 'temporada';
+      radio.checked = !radio.disabled && check.value === principal;
     });
   }
 
@@ -224,6 +256,10 @@ export function crearSelectorCategorias({
     check.type = 'checkbox';
     check.value = item.codigo;
     check.checked = seleccion.has(item.codigo);
+    check.disabled = !item.seleccionable && !check.checked;
+    if (check.disabled && item.tipo === 'temporada') {
+      check.setAttribute('aria-describedby', `cm-categoria-estado-${id}-${item.codigo}`);
+    }
 
     const marca = document.createElement('span');
     marca.className = 'cm-tag-check';
@@ -247,6 +283,15 @@ export function crearSelectorCategorias({
       oficial.textContent = 'Oficial';
       identidad.appendChild(oficial);
     }
+    if (item.tipo === 'temporada') {
+      const temporada = document.createElement('span');
+      temporada.className = `cm-categoria-temporada estado-${item.estado}`;
+      temporada.id = `cm-categoria-estado-${id}-${item.codigo}`;
+      temporada.textContent = item.estado === 'vigente'
+        ? (item.fijada_primera ? 'Temporada · Primera' : 'Temporada vigente')
+        : `Temporada · ${item.estado}`;
+      identidad.appendChild(temporada);
+    }
 
     checkLabel.append(check, marca, icono, identidad);
 
@@ -256,17 +301,19 @@ export function crearSelectorCategorias({
     radio.type = 'radio';
     radio.name = nombreRadio;
     radio.value = item.codigo;
-    radio.setAttribute('aria-label', 'Categoría principal: ' + item.nombre);
-    radio.disabled = !check.checked;
-    radio.checked = check.checked && principal === item.codigo;
+    radio.setAttribute('aria-label', item.tipo === 'temporada'
+      ? item.nombre + ': categoría de temporada, solo secundaria'
+      : 'Categoría principal: ' + item.nombre);
+    radio.disabled = !check.checked || item.tipo === 'temporada';
+    radio.checked = !radio.disabled && principal === item.codigo;
     const principalTexto = document.createElement('span');
-    principalTexto.textContent = 'Principal';
+    principalTexto.textContent = item.tipo === 'temporada' ? 'Solo secundaria' : 'Principal';
     principalLabel.append(radio, principalTexto);
 
     check.addEventListener('change', () => {
       if (check.checked) {
         seleccion.add(item.codigo);
-        if (!principal) principal = item.codigo;
+        if (!principal && item.tipo !== 'temporada') principal = item.codigo;
       } else {
         seleccion.delete(item.codigo);
         if (principal === item.codigo) principal = null;
@@ -311,8 +358,10 @@ export function crearSelectorCategorias({
     seleccion = new Set((codigos || []).map(String));
     principal = codigoPrincipal ? String(codigoPrincipal) : null;
     codigosHistoricos = [...new Set((opciones.historicas || []).map(String))];
-    if ((!principal || !seleccion.has(principal)) && seleccion.size) {
-      principal = catalogo.find((item) => seleccion.has(item.codigo))?.codigo || null;
+    if ((!principal || !seleccion.has(principal) || categoria(principal)?.tipo === 'temporada') && seleccion.size) {
+      principal = catalogo.find((item) =>
+        seleccion.has(item.codigo) && item.tipo === 'permanente'
+      )?.codigo || null;
     }
     pintar();
   }
@@ -325,7 +374,7 @@ export function crearSelectorCategorias({
       nueva
     ]);
     if (seleccionarNueva) seleccion.add(nueva.codigo);
-    if (!principal && seleccionarNueva) principal = nueva.codigo;
+    if (!principal && seleccionarNueva && nueva.tipo === 'permanente') principal = nueva.codigo;
     pintar();
     const control = [...contenedor.querySelectorAll('.cm-categoria-check input')]
       .find((input) => input.value === nueva.codigo);
@@ -352,7 +401,14 @@ export function crearSelectorCategorias({
     if (!actual.principal || !actual.codigos.includes(actual.principal)) {
       return {
         ok: false,
-        mensaje: 'Marca una de las categorías elegidas como principal.',
+        mensaje: 'Marca una de las categorías permanentes elegidas como principal.',
+        elemento: contenedor.querySelector('.cm-categoria-principal input:not(:disabled)')
+      };
+    }
+    if (categoria(actual.principal)?.tipo === 'temporada') {
+      return {
+        ok: false,
+        mensaje: 'Una categoría de temporada solo puede ser secundaria.',
         elemento: contenedor.querySelector('.cm-categoria-principal input:not(:disabled)')
       };
     }
@@ -605,10 +661,19 @@ export function crearDialogoCategoria({ botonAbrir = null, onCreada = () => {} }
     let data;
     let error;
     try {
-      ({ data, error } = await supabase.rpc('cm_crear_categoria', {
-        nombre,
-        descripcion,
-        icono_codigo
+      ({ data, error } = await supabase.rpc('cm_guardar_categoria_v1', {
+        p_codigo: null,
+        p_nombre: nombre,
+        p_descripcion: descripcion,
+        p_icono_codigo: icono_codigo,
+        p_orden: null,
+        p_tipo: 'permanente',
+        p_visible_desde: null,
+        p_visible_hasta: null,
+        p_fijada_primera: false,
+        p_activo: true,
+        p_visible_tienda: true,
+        p_razon: 'alta_desde_selector_campana'
       }));
     } catch (fallo) {
       error = fallo;
