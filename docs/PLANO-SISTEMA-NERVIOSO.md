@@ -156,7 +156,11 @@ Tipos permitidos:
 
 Cada receta fija orden, peso, título, subtítulo y roles fotográficos requeridos. Solo puede haber una versión activa por superficie y slot.
 
-### 4.6 `sn_assets_publicos_v1`
+### 4.6 `sn_catalogo_seguro_v1`
+
+Vista pública de respaldo que conserva exactamente los campos de `catalogo_publico`, pero vuelve a filtrar campaña publicada/activa/no-placeholder, `agotado=false`, `max_comprable>0` y la ventana editorial SN. No aplica ranking ni personalización y deliberadamente no depende del gate global: permite mantener la tienda operativa con un orden editorial seguro cuando el ranker está apagado o no responde. El cliente solo cae a `catalogo_publico` directamente durante el orden de despliegue anterior a que esta vista exista; una vez instalada, cualquier otro error de la vista falla cerrado.
+
+### 4.7 `sn_assets_publicos_v1`
 
 Es la única vista pública de assets SN. Expone exclusivamente:
 
@@ -616,6 +620,6 @@ Comprobar manualmente:
 
 ### 12.5 Emergencia y reversa
 
-La reversa operativa es apagar el gate global mediante `sn_configurar_v1(false, ..., razon)` con una cuenta admin. Esto hace que recomendaciones respondan `SN_APAGADO`, que búsqueda entregue lista vacía y que la vista pública de assets SN quede vacía, sin tocar `catalogo_publico` ni borrar historia.
+La reversa operativa es apagar el gate global mediante `sn_configurar_v1(false, ..., razon)` con una cuenta admin. Recomendaciones y búsqueda responden `SN_APAGADO`, los assets SN dejan de enumerarse y el cliente cambia al orden editorial de `sn_catalogo_seguro_v1`: la tienda continúa mostrando únicamente campañas publicadas, activas, no-placeholder, comprables y dentro de su ventana. No se borra historia ni se desactiva el catálogo comercial.
 
 No se recomienda un downgrade destructivo: relaciones, assets, versiones y bitácoras son historia. Corregir mediante una nueva migración forward y reactivar solo después de verificar la causa.

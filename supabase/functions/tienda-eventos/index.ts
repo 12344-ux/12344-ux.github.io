@@ -126,6 +126,7 @@ function limpiar(e: unknown, visitante: string, sesion: string) {
     if (typeof cantidad !== "number" || !Number.isInteger(cantidad) || cantidad < 0 || cantidad > 10_000) return null;
     if (slot !== undefined && slot !== null && slot !== "") return null;
     if (posicion !== undefined && posicion !== null && posicion !== "") return null;
+    if (layout !== undefined && layout !== null && layout !== "") return null;
     if (razon !== undefined && razon !== null && razon !== "") return null;
     out.cantidad_resultados = cantidad;
     return out;

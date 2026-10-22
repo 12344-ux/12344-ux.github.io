@@ -79,6 +79,7 @@ begin
      or to_regclass('public.sn_producto_relacion') is not null
      or to_regclass('public.sn_asset') is not null
      or to_regclass('public.sn_layout') is not null
+     or to_regclass('public.sn_catalogo_seguro_v1') is not null
      or to_regclass('public.sn_assets_publicos_v1') is not null then
     raise exception using errcode = 'P0001', message = 'SN1_REQUIERE_AUSENCIA_LIMPIA';
   end if;
@@ -775,7 +776,41 @@ create policy sn_layout_select_marketing on public.sn_layout
   for select to authenticated using (public.tiene_acceso_marketing());
 
 -- ----------------------------------------------------------------------------
--- (D) Única superficie pública de assets. La vista no confía solo en el asset:
+-- (D) Catálogo de respaldo seguro. No depende del gate del algoritmo porque su
+-- propósito es mantener la tienda operativa durante una caída o apagado de SN;
+-- sí conserva todos los filtros duros, incluida la ventana editorial.
+-- ----------------------------------------------------------------------------
+create view public.sn_catalogo_seguro_v1
+with (security_barrier = true)
+as
+select catalogo.*
+from public.catalogo_publico catalogo
+join public.campana_producto cp
+  on cp.id = catalogo.id
+ and cp.publicado
+ and cp.activo
+ and not cp.es_placeholder
+left join public.sn_producto_config pc
+  on pc.campana_producto_id = catalogo.id
+where catalogo.agotado = false
+  and catalogo.max_comprable > 0
+  and (pc.disponible_desde is null
+       or pc.disponible_desde at time zone 'America/Bogota'
+          <= statement_timestamp() at time zone 'America/Bogota')
+  and (pc.disponible_hasta is null
+       or pc.disponible_hasta at time zone 'America/Bogota'
+          > statement_timestamp() at time zone 'America/Bogota');
+
+comment on view public.sn_catalogo_seguro_v1 is
+  'SN1 · respaldo público de catálogo para fallos/apagado del ranker. Conserva publicación, actividad, no-placeholder, max_comprable>0 y ventana editorial; no personaliza ni expone campos adicionales.';
+
+revoke all on table public.sn_catalogo_seguro_v1
+  from public, anon, authenticated, service_role;
+grant select on table public.sn_catalogo_seguro_v1
+  to anon, authenticated, service_role;
+
+-- ----------------------------------------------------------------------------
+-- (D.2) Única superficie pública de assets. La vista no confía solo en el asset:
 -- vuelve a cruzar catalogo_publico y los candados físicos de campaña.
 -- ----------------------------------------------------------------------------
 create view public.sn_assets_publicos_v1
@@ -809,7 +844,6 @@ join public.campana_producto cp
 left join public.sn_producto_config pc
   on pc.campana_producto_id = catalogo.id
 where a.activo
-  and public.sn__alt_seguro(a.alt)
   and (pc.disponible_desde is null
        or pc.disponible_desde at time zone 'America/Bogota'
           <= statement_timestamp() at time zone 'America/Bogota')
@@ -2450,7 +2484,7 @@ alter table public.tienda_eventos
       and superficie = 'busqueda'
       and modelo_version is not null
       and cantidad_resultados is not null
-      and slot is null and posicion is null and razon is null
+      and slot is null and posicion is null and layout_codigo is null and razon is null
       and ruta is null and slug is null and origen is null
       and entrada = false and utm_campaign is null and dispositivo is null
     )
@@ -2658,7 +2692,7 @@ begin
           'recomendacion_impresion','recomendacion_click'
         ) then nullif(e->>'posicion', '')::integer end,
         case when e->>'tipo' in (
-          'recomendacion_impresion','recomendacion_click','busqueda_resultados'
+          'recomendacion_impresion','recomendacion_click'
         ) then nullif(e->>'layout_codigo', '') end,
         case when e->>'tipo' in (
           'recomendacion_impresion','recomendacion_click','busqueda_resultados'
@@ -2863,6 +2897,12 @@ begin
     'foco_x','foco_y','alt','version'
   ]::text[] then
     raise exception using errcode = 'P0001', message = 'SN1_ASSETS_PUBLICOS_ALLOWLIST_INVALIDA';
+  end if;
+
+  if not has_table_privilege('anon', 'public.sn_catalogo_seguro_v1', 'select')
+     or not has_table_privilege('authenticated', 'public.sn_catalogo_seguro_v1', 'select')
+     or not has_table_privilege('service_role', 'public.sn_catalogo_seguro_v1', 'select') then
+    raise exception using errcode = 'P0001', message = 'SN1_CATALOGO_SEGURO_ACL_INVALIDA';
   end if;
 
   if not has_table_privilege('anon', 'public.sn_assets_publicos_v1', 'select')

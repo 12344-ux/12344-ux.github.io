@@ -1598,7 +1598,7 @@ function cablearPagina() {
 }
 
 (async () => {
-  campanaId = new URLSearchParams(window.location.search).get('id') || '';
+  campanaId = String(new URLSearchParams(window.location.search).get('id') || '').trim().toLowerCase();
   const acceso = await asegurarAcceso(document.body, '../index.html');
   if (!acceso) return;
 
