@@ -14,6 +14,12 @@ const TOLERANCIA_PROPORCION = 0.03;
 const MAX_ARCHIVO_BYTES = 30 * 1024 * 1024;
 const MAX_BORDE_GRANDE = 2200;
 const MAX_BORDE_LIVIANO = 900;
+const ASSET_REGISTRO_TIMEOUT_MS = 8000;
+const ASSET_REINTENTO_ESPERA_MS = 300;
+const ASSET_RECONCILIACION_MAX_MS = 6000;
+const ASSET_RECONCILIACION_LECTURA_TIMEOUT_MS = 1800;
+const ASSET_RECONCILIACION_MARCAS_MS = Object.freeze([0, 400, 1200, 2600]);
+const ASSET_RECHAZOS_SQL_DEFINITIVOS = new Set(['22023', '23505', '42501', 'P0001', 'P0002']);
 const TIPOS_IMAGEN = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif']);
 const TIPOS_RELACION = [
   ['complementa', 'Complementa'],
@@ -1184,30 +1190,162 @@ async function limpiarSubidas(keys) {
   }
 }
 
-async function reconciliarRegistroAsset(storagePath, rolEsperado) {
-  try {
-    const { data, error } = await supabase
-      .from('sn_asset')
-      .select('id, campana_producto_id, rol, storage_path, activo, retirado_en')
-      .eq('storage_path', storagePath)
-      .limit(2);
-    if (error) return { estado: 'indeterminado', error };
-    if (!Array.isArray(data)) {
-      return { estado: 'indeterminado', error: new Error('Respuesta de reconciliación incompleta.') };
-    }
-    if (data.length === 0) return { estado: 'ausente' };
-    if (data.length !== 1) return { estado: 'divergente', filas: data };
+function esperarAsset(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
-    const fila = data[0];
-    const coincide = String(fila?.storage_path || '') === storagePath &&
-      String(fila?.campana_producto_id || '').toLowerCase() === campanaId.toLowerCase() &&
-      normalizarRol(fila?.rol) === rolEsperado;
-    if (coincide && fila?.activo === true) return { estado: 'activa_coincidente', fila };
-    if (coincide && fila?.activo === false) return { estado: 'historica', fila };
-    return { estado: 'divergente', fila };
+function errorTimeoutAsset(operacion) {
+  const error = new Error(`SN_ASSET_TIMEOUT_${operacion}`);
+  error.name = 'AssetTimeoutError';
+  error.code = 'SN_ASSET_TIMEOUT';
+  return error;
+}
+
+async function rpcAssetAcotada(nombre, argumentos, timeoutMs, operacion) {
+  const controlador = new AbortController();
+  const errorTimeout = errorTimeoutAsset(operacion);
+  let temporizador = null;
+  const limite = new Promise((_, reject) => {
+    temporizador = window.setTimeout(() => {
+      controlador.abort(errorTimeout);
+      reject(errorTimeout);
+    }, timeoutMs);
+  });
+  try {
+    const peticion = supabase.rpc(nombre, argumentos).abortSignal(controlador.signal);
+    return await Promise.race([Promise.resolve(peticion), limite]);
+  } finally {
+    if (temporizador !== null) window.clearTimeout(temporizador);
+  }
+}
+
+function esRechazoSqlDefinitivoAsset(error) {
+  const codigo = String(error?.code || '').toUpperCase();
+  const mensaje = String(error?.message || '').toUpperCase();
+  return ASSET_RECHAZOS_SQL_DEFINITIVOS.has(codigo) && /\bSN_[A-Z0-9_]+\b/.test(mensaje);
+}
+
+async function invocarRegistroAsset(argumentos) {
+  try {
+    const respuesta = await rpcAssetAcotada(
+      'sn_registrar_asset_v1',
+      argumentos,
+      ASSET_REGISTRO_TIMEOUT_MS,
+      'REGISTRO'
+    );
+    if (!respuesta || typeof respuesta !== 'object') {
+      return { estado: 'ambiguo', error: new Error('Respuesta de registro incompleta.') };
+    }
+    if (!respuesta.error) return { estado: 'confirmado', data: respuesta.data };
+    return {
+      estado: esRechazoSqlDefinitivoAsset(respuesta.error) ? 'rechazo_sql_definitivo' : 'ambiguo',
+      error: respuesta.error
+    };
+  } catch (error) {
+    return { estado: 'ambiguo', error };
+  }
+}
+
+async function registrarAssetIdempotente(argumentos, estado) {
+  const primerIntento = await invocarRegistroAsset(argumentos);
+  if (primerIntento.estado !== 'ambiguo') {
+    return { ...primerIntento, intentos: 1, huboAmbiguedad: false };
+  }
+
+  // La key y toda la metadata están congeladas: el único retry automático usa
+  // exactamente la misma RPC idempotente y nunca crea una versión alternativa.
+  estado.procesando = 'Respuesta ambigua; reintentando el mismo registro…';
+  actualizarTarjetaAsset(estado);
+  await esperarAsset(ASSET_REINTENTO_ESPERA_MS);
+  const segundoIntento = await invocarRegistroAsset(argumentos);
+  return {
+    ...segundoIntento,
+    intentos: 2,
+    huboAmbiguedad: true,
+    errorInicial: primerIntento.error
+  };
+}
+
+function assetDetalleCoincide(fila, argumentos) {
+  const focoX = Number(fila?.foco_x);
+  const focoY = Number(fila?.foco_y);
+  return String(fila?.path || fila?.storage_path || '') === argumentos.p_storage_path &&
+    normalizarRol(fila?.rol) === argumentos.p_rol &&
+    String(fila?.mime || '').toLowerCase() === argumentos.p_mime &&
+    Number(fila?.ancho) === argumentos.p_ancho &&
+    Number(fila?.alto) === argumentos.p_alto &&
+    Number.isFinite(focoX) && Math.abs(focoX - argumentos.p_foco_x) < 0.00005 &&
+    Number.isFinite(focoY) && Math.abs(focoY - argumentos.p_foco_y) < 0.00005 &&
+    String(fila?.alt || '') === argumentos.p_alt;
+}
+
+async function leerReconciliacionAsset(argumentos, timeoutMs) {
+  try {
+    const respuesta = await rpcAssetAcotada(
+      'sn_campana_detalle_v1',
+      { p_campana_id: campanaId },
+      timeoutMs,
+      'RECONCILIACION'
+    );
+    if (!respuesta || typeof respuesta !== 'object' || respuesta.error) {
+      return { estado: 'indeterminado', error: respuesta?.error || new Error('Respuesta de reconciliación incompleta.') };
+    }
+
+    const raiz = objetoDetalle(respuesta.data);
+    const campana = raiz.campana || raiz.campana_producto || raiz.producto || raiz;
+    const idCampana = String(campana?.id || raiz.campana_id || '');
+    const assets = raiz.assets;
+    if (idCampana.toLowerCase() !== campanaId.toLowerCase() || !assets || typeof assets !== 'object' ||
+        !Object.prototype.hasOwnProperty.call(assets, 'activos') ||
+        !Object.prototype.hasOwnProperty.call(assets, 'historicos')) {
+      return { estado: 'indeterminado', error: new Error('Detalle autoritativo incompleto.') };
+    }
+
+    const filas = [
+      ...aLista(assets.activos).map((fila) => ({ fila, activo: true })),
+      ...aLista(assets.historicos).map((fila) => ({ fila, activo: false }))
+    ].filter(({ fila }) => String(fila?.path || fila?.storage_path || '') === argumentos.p_storage_path);
+
+    if (filas.length === 0) return { estado: 'ausente' };
+    if (filas.length !== 1 || !assetDetalleCoincide(filas[0].fila, argumentos)) {
+      return { estado: 'divergente', filas: filas.map(({ fila }) => fila) };
+    }
+    return filas[0].activo
+      ? { estado: 'activa_coincidente', fila: filas[0].fila }
+      : { estado: 'historica', fila: filas[0].fila };
   } catch (error) {
     return { estado: 'indeterminado', error };
   }
+}
+
+async function reconciliarRegistroAsset(argumentos) {
+  const iniciado = Date.now();
+  let ausencias = 0;
+  let ultimoEstado = 'indeterminado';
+  let ultimoError = null;
+
+  // Varias lecturas del detalle autorizado dan tiempo a asentarse al intento
+  // ambiguo. El deadline global evita polling o esperas sin límite.
+  for (const marca of ASSET_RECONCILIACION_MARCAS_MS) {
+    const espera = marca - (Date.now() - iniciado);
+    if (espera > 0) await esperarAsset(espera);
+    const restante = ASSET_RECONCILIACION_MAX_MS - (Date.now() - iniciado);
+    if (restante <= 0) break;
+
+    const lectura = await leerReconciliacionAsset(
+      argumentos,
+      Math.min(ASSET_RECONCILIACION_LECTURA_TIMEOUT_MS, restante)
+    );
+    ultimoEstado = lectura.estado;
+    ultimoError = lectura.error || ultimoError;
+    if (lectura.estado === 'activa_coincidente' || lectura.estado === 'historica' ||
+        lectura.estado === 'divergente') return lectura;
+    if (lectura.estado === 'ausente') ausencias += 1;
+  }
+
+  return ausencias >= 2 && ultimoEstado === 'ausente'
+    ? { estado: 'ausente_confirmada', lecturas: ausencias }
+    : { estado: 'indeterminado', error: ultimoError };
 }
 
 function errorSubidaConContexto(error, parejaSubida) {
@@ -1240,7 +1378,8 @@ async function subirPareja(estado) {
     subidas.push(keyLiviana);
     return { keyGrande, keyLiviana, subidas };
   } catch (error) {
-    // La decisión de compensar se toma fuera y solo después de consultar sn_asset.
+    // Todavía no existe intento de registro: el llamador solo puede compensar
+    // las keys cuya subida confirmó esta operación.
     throw errorSubidaConContexto(error, { keyGrande, keyLiviana, subidas: [...subidas] });
   }
 }
@@ -1279,6 +1418,8 @@ async function guardarAsset(estado) {
   actualizarTarjetaAsset(estado);
 
   let pareja = null;
+  let argumentosRegistro = null;
+  let resultadoRegistro = null;
   let registroIntentado = false;
   let registroConfirmado = false;
   let etapa = 'storage';
@@ -1291,11 +1432,7 @@ async function guardarAsset(estado) {
     const alto = Number(fuente.alto) || estado.refs.imagen.naturalHeight || 0;
     if (!ancho || !alto) throw errorUsuario('No pudimos confirmar las dimensiones. Elige el archivo de nuevo para reemplazar este activo.');
 
-    etapa = 'guardar';
-    estado.procesando = 'Registrando activo…';
-    actualizarTarjetaAsset(estado);
-    registroIntentado = true;
-    const { error } = await supabase.rpc('sn_registrar_asset_v1', {
+    argumentosRegistro = Object.freeze({
       p_campana_id: campanaId,
       p_rol: estado.spec.rol,
       p_storage_path: storagePath,
@@ -1306,7 +1443,15 @@ async function guardarAsset(estado) {
       p_foco_y: focoY / 100,
       p_alt: alt
     });
-    if (error) throw error;
+
+    etapa = 'guardar';
+    estado.procesando = 'Registrando activo…';
+    actualizarTarjetaAsset(estado);
+    registroIntentado = true;
+    resultadoRegistro = await registrarAssetIdempotente(argumentosRegistro, estado);
+    if (resultadoRegistro.estado !== 'confirmado') {
+      throw resultadoRegistro.error || new Error('El registro no tuvo una respuesta concluyente.');
+    }
 
     registroConfirmado = true;
     etapa = 'refrescar';
@@ -1314,11 +1459,18 @@ async function guardarAsset(estado) {
     actualizarTarjetaAsset(estado);
     await refrescarActivoDesdeServidor(
       estado.spec.rol,
-      `${estado.spec.nombre} se subió en tamaño grande y liviano y quedó registrado.`,
+      resultadoRegistro.huboAmbiguedad
+        ? `${estado.spec.nombre} quedó registrado mediante el retry idempotente de la misma operación.`
+        : `${estado.spec.nombre} se subió en tamaño grande y liviano y quedó registrado.`,
       storagePath
     );
   } catch (error) {
     const parejaPendiente = pareja || error?.parejaSubida || null;
+    const huboAmbiguedadRegistro = resultadoRegistro?.huboAmbiguedad === true ||
+      resultadoRegistro?.estado === 'ambiguo';
+    const rechazoSqlDefinitivo = resultadoRegistro?.estado === 'rechazo_sql_definitivo' &&
+      !huboAmbiguedadRegistro;
+    const falloSubidaPrevioRegistro = !registroIntentado && Boolean(error?.parejaSubida);
     let mensaje = textoError(error, etapa);
     let requiereAviso = false;
 
@@ -1327,22 +1479,30 @@ async function guardarAsset(estado) {
         ? error.message
         : 'El registro quedó confirmado, pero no se pudo refrescar la vista desde el servidor. No se borró ningún objeto; recarga y revisa el activo antes de reintentar.';
       requiereAviso = true;
-    } else if (parejaPendiente?.subidas?.length) {
-      estado.procesando = 'Reconciliando registro…';
+    } else if (falloSubidaPrevioRegistro && parejaPendiente?.subidas?.length) {
+      // Sin intento SQL no hay una fila que pueda referenciar estas keys. Solo
+      // se compensan las subidas que esta operación alcanzó a confirmar.
+      const errorLimpieza = await limpiarSubidas(parejaPendiente.subidas);
+      const parejaCompleta = parejaPendiente.subidas.length === 2;
+      if (errorLimpieza) {
+        mensaje = `La subida falló antes de intentar el registro y no se pudo completar la limpieza de ${parejaCompleta ? 'los dos objetos' : 'el objeto confirmado'}. Revisa Storage antes de reintentar.`;
+        requiereAviso = true;
+      } else {
+        mensaje = `La subida falló antes de intentar el registro. Se compensaron ${parejaCompleta ? 'los dos objetos confirmados' : 'el objeto confirmado'} de esta operación.`;
+      }
+    } else if (registroIntentado && argumentosRegistro && parejaPendiente) {
+      estado.procesando = 'Esperando y reconciliando el registro…';
       actualizarTarjetaAsset(estado);
-      const reconciliacion = await reconciliarRegistroAsset(
-        parejaPendiente.keyGrande,
-        estado.spec.rol
-      );
+      const reconciliacion = await reconciliarRegistroAsset(argumentosRegistro);
 
-      if (registroIntentado && reconciliacion.estado === 'activa_coincidente') {
+      if (reconciliacion.estado === 'activa_coincidente') {
         registroConfirmado = true;
         estado.procesando = 'Refrescando registro reconciliado…';
         actualizarTarjetaAsset(estado);
         try {
           await refrescarActivoDesdeServidor(
             estado.spec.rol,
-            `${estado.spec.nombre} quedó registrado. La respuesta inicial fue ambigua, pero se confirmó el registro activo y se refrescó desde el servidor.`,
+            `${estado.spec.nombre} quedó registrado; la reconciliación autoritativa confirmó el mismo path y metadata.`,
             parejaPendiente.keyGrande
           );
           return;
@@ -1353,25 +1513,35 @@ async function guardarAsset(estado) {
           requiereAviso = true;
         }
       } else if (reconciliacion.estado === 'historica') {
-        mensaje = 'La respuesta del registro fue ambigua y se encontró una fila histórica para este path. Se conservaron ambos objetos; revisa el historial antes de reintentar.';
+        mensaje = 'La reconciliación encontró este mismo path y metadata como fila histórica. Se conservaron ambos objetos; revisa el historial antes de reintentar.';
         requiereAviso = true;
-      } else if (reconciliacion.estado === 'divergente' || reconciliacion.estado === 'activa_coincidente') {
-        mensaje = 'Se encontró una fila para este path, pero no es el registro activo coincidente esperado para esta campaña y rol. Se conservaron los objetos; se requiere revisión antes de reintentar.';
+      } else if (reconciliacion.estado === 'divergente') {
+        mensaje = 'La reconciliación encontró una fila divergente para este path. Se conservaron los objetos; se requiere revisión antes de reintentar.';
         requiereAviso = true;
-      } else if (reconciliacion.estado === 'ausente') {
+      } else if (rechazoSqlDefinitivo && reconciliacion.estado === 'ausente_confirmada') {
+        // Única compensación posterior a llamar la RPC: rechazo SQL concluyente,
+        // sin ningún intento ambiguo, y ausencia repetida en detalle autorizado.
         const errorLimpieza = await limpiarSubidas(parejaPendiente.subidas);
-        const parejaCompleta = parejaPendiente.subidas.length === 2;
-        const contextoFallo = registroIntentado ? 'El registro falló' : 'La subida no se completó';
         if (errorLimpieza) {
-          mensaje = `${contextoFallo} y se confirmó que no existe una fila para este path, pero no se pudo completar la limpieza de ${parejaCompleta ? 'los dos objetos' : 'el objeto subido'}. Revisa Storage antes de reintentar.`;
+          mensaje = 'El registro tuvo un rechazo SQL definitivo y su ausencia quedó confirmada, pero no se pudo limpiar la pareja de Storage. Revísala antes de reintentar.';
           requiereAviso = true;
         } else {
-          mensaje = `${contextoFallo}. Se confirmó que no existe una fila para este path y se compensaron ${parejaCompleta ? 'los dos objetos subidos' : 'el objeto subido'} de forma segura.`;
+          mensaje = 'El registro tuvo un rechazo SQL definitivo; tras confirmar su ausencia se compensaron los dos objetos subidos.';
         }
+      } else if (huboAmbiguedadRegistro) {
+        mensaje = reconciliacion.estado === 'ausente_confirmada'
+          ? 'Se reintentó una vez exactamente el mismo registro y las lecturas no encontraron la fila, pero al menos un intento tuvo resultado de transporte ambiguo. Por seguridad no se borró ningún objeto; recarga y revisa el historial antes de reintentar.'
+          : 'Se reintentó una vez exactamente el mismo registro, pero su resultado y la reconciliación no fueron concluyentes. Por seguridad no se borró ningún objeto; recarga y revisa el historial antes de reintentar.';
+        requiereAviso = true;
       } else {
-        mensaje = 'La operación falló y la consulta de reconciliación no pudo confirmar la ausencia de un registro. Por seguridad no se borró ningún objeto; recarga y revisa el historial antes de reintentar.';
+        mensaje = 'La operación no permitió confirmar de forma acotada un registro coincidente ni una ausencia compensable. Por seguridad no se borró ningún objeto; recarga y revisa el historial antes de reintentar.';
         requiereAviso = true;
       }
+    } else if (parejaPendiente?.subidas?.length) {
+      // Una falla local posterior a subir no es una falla de subida ni un
+      // rechazo SQL: queda fuera de las dos condiciones de compensación.
+      mensaje = 'Los objetos se subieron, pero el registro no llegó a intentarse por una falla local posterior. No se borró ningún objeto; revisa Storage antes de reintentar.';
+      requiereAviso = true;
     }
 
     if (estadosAssets.get(estado.spec.rol) === estado) {
