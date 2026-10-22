@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Categorías de campaña</title>
+<meta name="description" content="Gestionar categorías permanentes y de temporada de MAGANDHI.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/marketing.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=2">
+<meta name="theme-color" content="#101C33">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=2">
+<link rel="stylesheet" href="../marketing.css?v=3">
+<link rel="stylesheet" href="campanas.css?v=categorias-temporada">
+</head>
+<body class="mk-body">
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="mk-wrap" id="ct-main" hidden>
+  <section class="cm-seccion ct-intro">
+    <div class="cm-seccion-cab">
+      <span class="cm-seccion-num">1</span>
+      <div>
+        <h2 class="cm-seccion-tit">Categorías estables, temporadas visibles</h2>
+        <p class="cm-seccion-sub">Las permanentes organizan el catálogo. Las temporadas son siempre secundarias: aparecen solo durante sus fechas y pueden fijarse primero sin despublicar productos al finalizar.</p>
+      </div>
+    </div>
+    <div class="ct-reglas">
+      <span>La categoría principal siempre es permanente</span>
+      <span>Las fechas se interpretan en Colombia</span>
+      <span>No hay reordenación personal de categorías</span>
+    </div>
+  </section>
+
+  <section class="cm-seccion" id="ct-editor">
+    <div class="cm-seccion-cab">
+      <span class="cm-seccion-num">2</span>
+      <div>
+        <h2 class="cm-seccion-tit" id="ct-editor-title">Crear categoría</h2>
+        <p class="cm-seccion-sub" id="ct-editor-copy">Crea una categoría permanente o programa una temporada reutilizable.</p>
+      </div>
+    </div>
+
+    <form id="ct-form" class="ct-form" novalidate>
+      <input type="hidden" id="ct-codigo">
+      <div class="ct-grid">
+        <label class="cm-campo">
+          <span class="cm-campo-lbl">Nombre *</span>
+          <input class="mk-input" id="ct-nombre" type="text" minlength="2" maxlength="80" required placeholder="Ej. Navidad">
+          <span class="cm-campo-ayuda" id="ct-codigo-ayuda">El código estable se deriva en el servidor.</span>
+        </label>
+        <label class="cm-campo">
+          <span class="cm-campo-lbl">Ícono *</span>
+          <select class="mk-input" id="ct-icono" required></select>
+        </label>
+        <label class="cm-campo">
+          <span class="cm-campo-lbl">Tipo *</span>
+          <select class="mk-input" id="ct-tipo">
+            <option value="permanente">Permanente</option>
+            <option value="temporada">Temporada</option>
+          </select>
+        </label>
+        <label class="cm-campo">
+          <span class="cm-campo-lbl">Orden editorial *</span>
+          <input class="mk-input" id="ct-orden" type="number" min="-1000" max="1000000" step="1" value="100" required>
+          <span class="cm-campo-ayuda">Menor número aparece primero cuando no hay una temporada fijada.</span>
+        </label>
+        <label class="cm-campo ct-descripcion">
+          <span class="cm-campo-lbl">Descripción pública *</span>
+          <textarea class="mk-input" id="ct-descripcion" maxlength="240" rows="3" required placeholder="Qué reúne esta categoría."></textarea>
+          <span class="cm-campo-ayuda"><span id="ct-contador">0</span> / 240</span>
+        </label>
+      </div>
+
+      <fieldset class="ct-temporada" id="ct-temporada" hidden>
+        <legend>Ventana de temporada</legend>
+        <div class="ct-grid">
+          <label class="cm-campo">
+            <span class="cm-campo-lbl">Visible desde · Colombia *</span>
+            <input class="mk-input" id="ct-desde" type="date">
+          </label>
+          <label class="cm-campo">
+            <span class="cm-campo-lbl">Visible hasta · Colombia *</span>
+            <input class="mk-input" id="ct-hasta" type="date">
+          </label>
+        </div>
+        <label class="ct-check">
+          <input id="ct-fijada" type="checkbox">
+          <span><b>Fijar primera mientras esté vigente</b><small>La temporada antecede al orden editorial; las demás categorías conservan posiciones estables.</small></span>
+        </label>
+      </fieldset>
+
+      <div class="ct-switches">
+        <label class="ct-check"><input id="ct-activa" type="checkbox" checked><span><b>Activa internamente</b><small>Permite asociarla a campañas.</small></span></label>
+        <label class="ct-check"><input id="ct-visible" type="checkbox" checked><span><b>Habilitada para tienda</b><small>La ventana sigue gobernando una temporada.</small></span></label>
+      </div>
+
+      <label class="cm-campo">
+        <span class="cm-campo-lbl">Razón del cambio *</span>
+        <input class="mk-input" id="ct-razon" type="text" minlength="3" maxlength="240" required placeholder="Ej. Programación Navidad 2026">
+      </label>
+
+      <p class="cm-form-msg" id="ct-msg" role="alert" hidden></p>
+      <div class="ct-acciones">
+        <button class="cm-btn-secundario" type="button" id="ct-cancelar" hidden>Cancelar edición</button>
+        <button class="cm-btn-primario" type="submit" id="ct-guardar">Crear categoría</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="cm-seccion">
+    <div class="cm-seccion-cab">
+      <span class="cm-seccion-num">3</span>
+      <div>
+        <h2 class="cm-seccion-tit">Catálogo de categorías</h2>
+        <p class="cm-seccion-sub">Incluye permanentes, programadas, vigentes, finalizadas, ocultas e inactivas. Nada se elimina.</p>
+      </div>
+    </div>
+    <div id="ct-resumen" class="ct-resumen" aria-live="polite"></div>
+    <div id="ct-lista" class="ct-lista" aria-live="polite"></div>
+  </section>
+</main>
+
+<script type="module" src="./categorias-gestionar.js?v=1"></script>
+</body>
+</html>
