@@ -2616,10 +2616,10 @@ begin
   for e in select value from jsonb_array_elements(p_eventos) as j(value)
   loop
     begin
-      v_cuando := coalesce(public.em__ts(e->>'cuando'), statement_timestamp());
-      if v_cuando > statement_timestamp()
-         or v_cuando < statement_timestamp() - interval '10 minutes' then
-        v_cuando := statement_timestamp();
+      v_cuando := coalesce(public.em__ts(e->>'cuando'), now());
+      if v_cuando > now()
+         or v_cuando < now() - interval '10 minutes' then
+        v_cuando := now();
       end if;
 
       -- Un clic solo cuenta si esta misma sesión ya registró la impresión del
