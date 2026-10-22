@@ -193,7 +193,7 @@ grant select on ids to authenticated;
 select pg_temp.chk(
   pg_temp.err_como('7e5a0000-0000-4000-8000-000000000003',
     $$select cm_editar_campana(p_id => (select campana from ids), p_nombre => 'Bafle curado', p_precio_venta => 99000,
-        p_product_id_ref => (select producto from ids))$$) = 'SIN ERROR',
+        p_categoria_codigo => 'tecnologia', p_product_id_ref => (select producto from ids))$$) = 'SIN ERROR',
   'guardar en el editor conservando el mismo producto proveedor funciona');
 select pg_temp.chk(
   (select nombre = 'Bafle curado' and precio_venta = 99000 from campana_producto where id = (select campana from ids)),

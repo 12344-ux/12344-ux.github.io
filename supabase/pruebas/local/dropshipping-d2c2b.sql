@@ -57,11 +57,11 @@ insert into productos (id, sku, nombre, origen) values
   on conflict (id) do nothing;
 
 select set_config('impulse.ds_importando', 'on', true);
-insert into campana_producto (id, nombre, slug, product_id_ref, precio_venta, publicado, activo)
+insert into campana_producto (id, nombre, slug, categoria_codigo, product_id_ref, precio_venta, publicado, activo)
 values
-  ('eb000000-0000-4000-8000-00000000000b', 'Camp serum', 'camp-serum',
+  ('eb000000-0000-4000-8000-00000000000b', 'Camp serum', 'camp-serum', 'belleza',
    'e0000000-0000-4000-8000-00000000000b', 59900, false, true),
-  ('eb000000-0000-4000-8000-00000000000f', 'Camp huerfana', 'camp-huerfana',
+  ('eb000000-0000-4000-8000-00000000000f', 'Camp huerfana', 'camp-huerfana', 'belleza',
    'e0000000-0000-4000-8000-00000000000f', 49900, false, true)
   on conflict (id) do nothing;
 select set_config('impulse.ds_importando', 'off', true);

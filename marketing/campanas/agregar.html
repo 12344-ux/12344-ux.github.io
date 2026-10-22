@@ -15,15 +15,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
-<link rel="stylesheet" href="campanas.css?v=d2b-casilla">
+<link rel="stylesheet" href="campanas.css?v=categorias-admin">
 
 <!--
   MAGANDHI · Area de Marketing · Sub-area CAMPANAS · AGREGAR (alta).
   Aqui un producto se "viste" para salir a la tienda: DOS secciones
   (1 Banner hook + 2 Producto) más el distintivo de tarjeta. Al guardar,
-  toda la escritura pasa por la RPC cm_crear_campana (unica via; ver
-  supabase/migrations/20250501000500_campanas_funciones.sql). El cliente NUNCA
-  hace insert/update directo a las tablas.
+  toda la escritura pasa por la RPC wrapper
+  cm_crear_campana_con_categorias, que delega en la RPC C1 vigente y guarda el
+  puente de categorías en la misma transacción. Las RPC anteriores se conservan
+  para clientes viejos. El cliente NUNCA hace insert/update directo a tablas.
 
   Profundidad de rutas: esta pagina vive DOS niveles bajo la raiz
   (marketing/campanas/), por eso auth-guard sube '../../', marca.css '../../',
@@ -37,8 +38,9 @@
   base por compatibilidad histórica. El AVISO DE URGENCIA sigue siendo manual y
   solo se activa con una cantidad comprobada; nunca reemplaza el stock real.
 
-  La categoria clasifica el producto. La tienda pública usa una paleta fija de
-  marca (terracota, negro, dorado y arena); no cambia de color por categoria.
+  Las categorías clasifican el producto; una queda como principal y las demás
+  amplían su descubrimiento. La tienda pública usa una paleta fija de marca
+  (terracota, negro, dorado y arena); no cambia de color por categoría.
 -->
 </head>
 <body class="mk-body">
@@ -62,13 +64,18 @@
           </div>
         </div>
         <div class="cm-campos">
-          <div class="cm-campo">
-            <label for="cm-categoria" class="cm-campo-lbl">Categoría</label>
-            <select id="cm-categoria" class="mk-select">
-              <option value="">Sin categoría</option>
-            </select>
-            <span class="cm-campo-ayuda">Clasifica el producto para organización y análisis. La tienda conserva la paleta fija de MAGANDHI.</span>
-          </div>
+          <fieldset class="cm-categorias-fieldset" aria-describedby="cm-categorias-ayuda cm-categorias-estado">
+            <legend class="cm-campo-lbl">Categorías *</legend>
+            <span class="cm-campo-ayuda" id="cm-categorias-ayuda">Elige una o varias categorías planas y marca una como principal. Las ocho iniciales llevan el distintivo Oficial; las nuevas quedan disponibles de inmediato.</span>
+            <div id="cm-categorias" class="cm-categorias" role="group" aria-label="Categorías de la campaña"></div>
+            <div class="cm-categorias-pie">
+              <span id="cm-categorias-estado" class="cm-categorias-estado" aria-live="polite"></span>
+              <button type="button" class="cm-categoria-crear-btn" id="cm-crear-categoria">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                <span>Crear nueva categoría</span>
+              </button>
+            </div>
+          </fieldset>
           <div class="cm-campo">
             <label for="cm-producto" class="cm-campo-lbl">Producto de Inventario</label>
             <select id="cm-producto" class="mk-select">
@@ -304,6 +311,9 @@
     supabase, escaparHTML, formatearNumero,
     optimizarImagen, optimizarDosTamanos, BUCKET_CAMPANAS
   } from '../marketing-core.js';
+  import {
+    cargarCategoriasPublicas, crearDialogoCategoria, crearSelectorCategorias
+  } from './categorias-admin.js';
 
   // ============================================================
   //  Estado en memoria de los editores dinamicos (ficha y galeria).
@@ -340,15 +350,16 @@
   // tocado a mano. En cuanto lo edita, se respeta su valor y no se pisa.
   let slugTocado = false;
 
-  let categorias = [];   // [{codigo,nombre,orden}]
+  let categorias = [];   // planas, activas y visibles desde categorias_publicas
+  let selectorCategorias = null;
   let productos = [];    // [{id,sku,nombre,activo}] de Inventario
 
   // ------------------------------------------------------------
   // D2b · CONFIRMACIÓN SIMPLE DEL PRODUCTO
   // ------------------------------------------------------------
   // La casilla pertenece a esta presentación comercial. La UI solo orienta:
-  // cm_crear_campana, cm_editar_campana, cm_publicar_campana y el gatillo SQL
-  // vuelven a imponer la misma regla.
+  // las RPC vigentes/wrappers, cm_publicar_campana y el gatillo SQL vuelven a
+  // imponer la misma regla.
   function mensajeErrorCuraduria(error) {
     const bruto = String(error?.message || error || '').trim();
     if (bruto.startsWith('CM_PRUEBA_SIN_PRODUCTO')) {
@@ -674,12 +685,30 @@
   }
 
   // ------------------------------------------------------------
+  // CATEGORÍAS PLANAS (selector y diálogo compartidos)
+  // ------------------------------------------------------------
+  function categoriaPrincipal() {
+    return selectorCategorias?.valor().principal || null;
+  }
+
+  function categoriaPorCodigo(codigo) {
+    return selectorCategorias?.categoria(codigo) || null;
+  }
+
+  function validarCategorias() {
+    const resultado = selectorCategorias?.validar();
+    if (!resultado?.ok) {
+      mostrarMsg(resultado?.mensaje || 'No se pudieron validar las categorías.');
+      resultado?.elemento?.focus();
+      return null;
+    }
+    return { codigos: resultado.codigos, principal: resultado.principal };
+  }
+
+  // ------------------------------------------------------------
   // VISTA PREVIA EN VIVO (misma paleta fija de la tienda publica)
   // ------------------------------------------------------------
   const preview = $('cm-preview');
-  function categoriaPorCodigo(cod) {
-    return categorias.find((c) => c.codigo === cod) || null;
-  }
   function tipoDistintivo() {
     return document.querySelector('input[name="cm-distintivo"]:checked')?.value || 'ninguno';
   }
@@ -687,7 +716,7 @@
     return cantidad === 1 ? 'ÚLTIMA DISPONIBLE' : 'ÚLTIMAS ' + formatearNumero(cantidad) + ' DISPONIBLES';
   }
   function refrescarPreview() {
-    const cat = categoriaPorCodigo($('cm-categoria').value);
+    const cat = categoriaPorCodigo(categoriaPrincipal());
     preview.style.setProperty('--cm-acento', '#C28A3A');
     preview.style.setProperty('--cm-acento-cl', '#D9AE6E');
     preview.style.setProperty('--cm-acento-sombra', 'rgba(194,138,58,.16)');
@@ -746,7 +775,7 @@
 
     // Campos de texto/select que alimentan la vista previa (el banner ya no es
     // un input de texto: se refresca desde el cargador de imagenes).
-    ['cm-categoria', 'cm-nombre', 'cm-detalle', 'cm-precio']
+    ['cm-nombre', 'cm-detalle', 'cm-precio']
       .forEach((id) => {
         const el = $(id);
         el.addEventListener('input', refrescarPreview);
@@ -806,8 +835,9 @@
   function ocultarMsg() { msg.hidden = true; msg.textContent = ''; }
 
   // ------------------------------------------------------------
-  // GUARDAR: valida en cliente y llama a la RPC cm_crear_campana.
-  // Los nombres de parametro coinciden EXACTAMENTE con la firma SQL.
+  // GUARDAR: valida en cliente y llama al wrapper atómico
+  // cm_crear_campana_con_categorias. Los nombres de parámetro coinciden con
+  // la firma SQL; la RPC conserva categoria_codigo como principal.
   // ------------------------------------------------------------
   async function guardar(e) {
     e.preventDefault();
@@ -819,6 +849,9 @@
       $('cm-nombre').focus();
       return;
     }
+
+    const seleccionCategorias = validarCategorias();
+    if (!seleccionCategorias) return;
 
     // Precio: entero >= 0 (o vacio = sin precio).
     let precio = null;
@@ -939,9 +972,10 @@
       }
     }
 
-    const { data, error } = await supabase.rpc('cm_crear_campana', {
+    const { data, error } = await supabase.rpc('cm_crear_campana_con_categorias', {
       p_nombre: nombre,
-      p_categoria_codigo: $('cm-categoria').value || null,
+      p_categoria_codigos: seleccionCategorias.codigos,
+      p_categoria_principal: seleccionCategorias.principal,
       p_detalle_presentacion: $('cm-detalle').value.trim() || null,
       p_imagen_banner_path: bannerPath,
       p_caracteristica_adicional: $('cm-caracteristica').value.trim() || null,
@@ -1037,11 +1071,9 @@
       el.innerHTML = ICONOS[el.dataset.ico] || '';
     });
 
-    // Cargar categorias (clasificacion), etiquetas y productos de Inventario.
+    // Cargar categorías públicas planas, etiquetas y productos de Inventario.
     const [catRes, tagRes, prodRes] = await Promise.all([
-      supabase.from('campana_categoria')
-        .select('codigo, nombre, orden')
-        .order('orden', { ascending: true }),
+      cargarCategoriasPublicas(),
       supabase.from('campana_etiqueta')
         .select('codigo, nombre, orden')
         .eq('activo', true)
@@ -1057,17 +1089,23 @@
         .order('nombre', { ascending: true })
     ]);
 
-    if (catRes.error) {
-      mostrarMsg('No se pudieron cargar las categorías: ' + (catRes.error.message || 'error.'));
-    } else {
-      categorias = catRes.data || [];
-      const sel = $('cm-categoria');
-      for (const c of categorias) {
-        const opt = document.createElement('option');
-        opt.value = c.codigo;
-        opt.textContent = c.nombre;
-        sel.appendChild(opt);
+    categorias = catRes.data || [];
+    selectorCategorias = crearSelectorCategorias({
+      contenedor: $('cm-categorias'),
+      estado: $('cm-categorias-estado'),
+      categorias,
+      onChange: () => refrescarPreview()
+    });
+    crearDialogoCategoria({
+      botonAbrir: $('cm-crear-categoria'),
+      onCreada: (nueva) => {
+        selectorCategorias.agregarCategoria(nueva, { seleccionarNueva: true });
+        categorias = selectorCategorias.lista();
+        refrescarPreview();
       }
+    });
+    if (catRes.error) {
+      mostrarMsg('No se pudieron cargar las categorías: ' + (catRes.error.message || 'error. Puedes intentar crear una nueva.'));
     }
 
     if (tagRes.error) {

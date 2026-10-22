@@ -130,6 +130,13 @@ begin
 
   begin  -- ===== bloque que SIEMPRE se deshace =====
 
+    -- La matriz también se usa contra fotografías históricas. Los objetos de
+    -- categorías se agregan solo cuando la forward que los crea está presente.
+    if to_regclass('public.campana_producto_categoria') is not null
+       and to_regclass('public.categorias_publicas') is not null then
+      v_obj := v_obj || array['campana_producto_categoria', 'categorias_publicas'];
+    end if;
+
     -- C1 de cuentas publicas. En fotos historicas la tabla no existe: solo se
     -- agrega cuando el esquema realmente contiene el puente.
     if to_regclass('public.cuentas_cliente') is not null then
@@ -237,6 +244,17 @@ begin
       ];
     end if;
 
+    -- Categorías planas: wrappers atómicos y alta del catálogo para usuarios
+    -- autenticados. Los helpers cm__* continúan privados y no entran aquí.
+    if to_regprocedure('public.cm_crear_campana_con_categorias(text,text,text,text,bigint,text,text,text,jsonb,jsonb,boolean,boolean,integer,boolean,integer,text[],uuid,text,integer,boolean,integer,text[],text)') is not null then
+      v_lista_blanca := v_lista_blanca || array[
+        'cm_crear_campana_con_categorias', 'cm_editar_campana_con_categorias'
+      ];
+    end if;
+    if to_regprocedure('public.cm_crear_categoria(text,text,text)') is not null then
+      v_lista_blanca := v_lista_blanca || array['cm_crear_categoria'];
+    end if;
+
     -- F3 solo existe desde 202610200. Sus constructores internos siguen fuera
     -- de la lista; estas dos son las únicas puertas de panel.
     if to_regprocedure('public.fz_asientos_automaticos_pendientes()') is not null then
@@ -314,7 +332,7 @@ begin
         -- servidor necesita hoy (auto-expose OFF, ver 20250605000000): el
         -- catalogo y las dos configuraciones. El resto no se le evalua.
         if v_pers[j] = 'service_role'
-           and v_obj[i] not in ('catalogo_publico','pagos_config','contabilidad_config') then
+           and v_obj[i] not in ('catalogo_publico','categorias_publicas','pagos_config','contabilidad_config') then
           continue;
         end if;
 
@@ -344,8 +362,8 @@ begin
 
         -- ---------- Lo ESPERADO por el diseno ----------
         v_esp := case
-          -- La tienda: todo el mundo ve el catalogo publico.
-          when v_obj[i] = 'catalogo_publico' then 'TODO'
+          -- La tienda: todo el mundo ve las dos listas blancas públicas.
+          when v_obj[i] in ('catalogo_publico', 'categorias_publicas') then 'TODO'
           -- service_role (Edge Function de pagos) lee las dos configuraciones.
           when v_pers[j] = 'service_role' then 'TODO'
           -- Cada integrante del personal ve SOLO su perfil. Un cliente Auth no
@@ -434,7 +452,13 @@ begin
                  or p.proname in (
                    'crear_pedido_c3_base','crear_pedido_c4',
                    'cm__asignar_slug_automatico','cm__validar_slug_no_reasignado',
-                   'cm__registrar_slug_historial'
+                   'cm__registrar_slug_historial',
+                   'cm__proteger_clave_producto_categoria',
+                   'cm__sincronizar_categoria_principal_legado',
+                   'cm__validar_categoria_publicada_legacy',
+                   'cm__validar_categorias_seleccion',
+                   'cm__validar_principal_puente',
+                   'cm_crear_categoria'
                  )
                  or (
                    p.proname like 'promocionar\_p3\_%' escape '\'
@@ -450,6 +474,7 @@ begin
                  )
                  then case
                    when p.proname = 'promocionar_p5__agregado' then 'SOBRA helper: '
+                   when p.proname = 'cm_crear_categoria' then 'SOBRA puerta solo-panel: '
                    when p.proname like 'promocionar\_p5\_%' escape '\' then 'SOBRA puerta P5 no-service: '
                    else 'SOBRA helper: '
                  end
@@ -476,7 +501,13 @@ begin
            or p.proname in (
              'crear_pedido_c3_base','crear_pedido_c4',
              'cm__asignar_slug_automatico','cm__validar_slug_no_reasignado',
-             'cm__registrar_slug_historial'
+             'cm__registrar_slug_historial',
+             'cm__proteger_clave_producto_categoria',
+             'cm__sincronizar_categoria_principal_legado',
+             'cm__validar_categoria_publicada_legacy',
+             'cm__validar_categorias_seleccion',
+             'cm__validar_principal_puente',
+             'cm_crear_categoria'
            )
            or (
              p.proname like 'promocionar\_p3\_%' escape '\'
@@ -522,6 +553,81 @@ begin
           case when has_function_privilege('service_role', to_regprocedure(v_p5.firma), 'execute') then 'SI' else 'NO' end
         );
       end loop;
+    end if;
+
+    -- ---------- ACL nominal de categorías planas ----------
+    if to_regclass('public.categorias_publicas') is not null then
+      r_pers := r_pers || 'roles API'::text;
+      r_obj := r_obj || 'ACL categorias_publicas: solo SELECT'::text;
+      r_esp := r_esp || 'anon/authenticated/service_role=SELECT; PUBLIC=NADA'::text;
+      r_obt := r_obt || (case
+        when has_table_privilege('anon', 'public.categorias_publicas', 'select')
+         and has_table_privilege('authenticated', 'public.categorias_publicas', 'select')
+         and has_table_privilege('service_role', 'public.categorias_publicas', 'select')
+         and not exists (
+           select 1
+             from pg_class c
+             cross join lateral aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) acl
+             left join pg_roles rol on rol.oid = acl.grantee
+            where c.oid = 'public.categorias_publicas'::regclass
+              and (acl.grantee = 0 or rol.rolname in ('anon', 'authenticated', 'service_role'))
+              and (acl.grantee = 0 or acl.privilege_type <> 'SELECT')
+         )
+          then 'anon/authenticated/service_role=SELECT; PUBLIC=NADA'
+        else 'DESAJUSTE'
+      end)::text;
+
+      r_pers := r_pers || 'roles API'::text;
+      r_obj := r_obj || 'ACL campana_producto_categoria'::text;
+      r_esp := r_esp || 'authenticated=SELECT+RLS; anon/service_role/PUBLIC=NADA'::text;
+      r_obt := r_obt || (case
+        when has_table_privilege('authenticated', 'public.campana_producto_categoria', 'select')
+         and (select c.relrowsecurity from pg_class c where c.oid = 'public.campana_producto_categoria'::regclass)
+         and not exists (
+           select 1
+             from pg_class c
+             cross join lateral aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) acl
+             left join pg_roles rol on rol.oid = acl.grantee
+            where c.oid = 'public.campana_producto_categoria'::regclass
+              and (
+                acl.grantee = 0
+                or rol.rolname in ('anon', 'service_role')
+                or (rol.rolname = 'authenticated' and acl.privilege_type <> 'SELECT')
+              )
+         )
+          then 'authenticated=SELECT+RLS; anon/service_role/PUBLIC=NADA'
+        else 'DESAJUSTE'
+      end)::text;
+
+      r_pers := r_pers || 'roles API'::text;
+      r_obj := r_obj || 'ACL cm_crear_categoria'::text;
+      r_esp := r_esp || 'anon=NO · authenticated=SI · service_role=NO'::text;
+      r_obt := r_obt || format(
+        'anon=%s · authenticated=%s · service_role=%s',
+        case when has_function_privilege('anon', 'public.cm_crear_categoria(text,text,text)', 'execute') then 'SI' else 'NO' end,
+        case when has_function_privilege('authenticated', 'public.cm_crear_categoria(text,text,text)', 'execute') then 'SI' else 'NO' end,
+        case when has_function_privilege('service_role', 'public.cm_crear_categoria(text,text,text)', 'execute') then 'SI' else 'NO' end
+      );
+    end if;
+
+    -- La puerta de alta tiene EXECUTE para authenticated, pero una cuenta de
+    -- cliente sin perfil interno debe ser rechazada por la guardia Marketing.
+    if to_regprocedure('public.cm_crear_categoria(text,text,text)') is not null then
+      execute 'set local role authenticated';
+      perform set_config('request.jwt.claims', json_build_object('sub', c_cli, 'role', 'authenticated')::text, true);
+      begin
+        perform 1
+          from cm_crear_categoria('Categoría indebida', 'No debe crearse.', 'hogar')
+         limit 1;
+        v_obt := 'PERMITIDO';
+      exception when others then
+        v_obt := case when sqlerrm like 'Acceso denegado%' then 'RECHAZADO' else 'ERROR: ' || sqlerrm end;
+      end;
+      execute 'reset role';
+      r_pers := r_pers || 'cliente'::text;
+      r_obj  := r_obj || 'llamar cm_crear_categoria sin Marketing'::text;
+      r_esp  := r_esp || 'RECHAZADO'::text;
+      r_obt  := r_obt || v_obt;
     end if;
 
     -- ---------- Comportamiento: el candado de las RPC sigue vivo ----------

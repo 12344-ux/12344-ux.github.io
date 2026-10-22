@@ -206,11 +206,11 @@ select pg_temp.chk(
 -- Esta prueba compara la vista con la única regla de campaña, sin volver a
 -- inferir el contrato público desde existencias exactas.
 select set_config('impulse.ds_importando', 'on', true);
-insert into campana_producto (id, nombre, slug, product_id_ref, precio_venta, publicado, activo)
+insert into campana_producto (id, nombre, slug, categoria_codigo, product_id_ref, precio_venta, publicado, activo)
 values
-  ('cb000000-0000-4000-8000-00000000000b', 'Camp proveedor', 'camp-prov',
+  ('cb000000-0000-4000-8000-00000000000b', 'Camp proveedor', 'camp-prov', 'belleza',
    'd0000000-0000-4000-8000-00000000000b', 59900, true, true),
-  ('cb000000-0000-4000-8000-00000000000c', 'Camp vencida', 'camp-venc',
+  ('cb000000-0000-4000-8000-00000000000c', 'Camp vencida', 'camp-venc', 'belleza',
    'd0000000-0000-4000-8000-00000000000c', 49900, true, true)
   on conflict (id) do nothing;
 select set_config('impulse.ds_importando', 'off', true);

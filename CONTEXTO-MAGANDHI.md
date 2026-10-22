@@ -77,6 +77,8 @@ Este archivo es la entrada única para entender dónde está parado el proyecto:
 >
 > **Hito · Promocionar P4 · 21-oct-2026 · desplegado, activo y cerrado estructuralmente.** Backend #306 (`75b14b4`) y tienda #118 (`1b22d24`) fusionados, CI/Pages verdes; migración `20261109000000` aplicada una vez y Edge `enlace-promocional`/`crear-intencion-pago` redesplegadas. Gate ON desde `2026-10-21T15:21:59.626776Z`. La prueba integral sin dinero confirmó validación `204`, `HEAD 302` con destino/UTM/fragmento propio y query hostil ignorada, captura exacta en `sessionStorage`, URL limpia, intención `200` y llegada a Wompi. Diagnóstico posterior: 1 intención atribuida sintética, 0 pedidos, 0 divergencias y 0 incidencias. No hubo pago/webhook/pedido; cierre estructural, no monetario. **P5 era el siguiente tramo en ese corte.** Relevo histórico: `docs/RELEVO-PROMOCIONAR-P4-CIERRE-ESTRUCTURAL-2026-10-21.md`.
 >
+> **Categorías de Campañas · 21-oct-2026 · EN RAMA / NO DESPLEGADO.** La migración forward `20261111000000_campanas_categorias_oficiales.sql` define exactamente ocho categorías iniciales oficiales, planas y en este orden: **Tecnología, Moda, Hogar, Deportes, Belleza, Accesorios, Mascotas y Juguetería**. Los códigos de prueba `cabello`, `belleza_fem`, `belleza_masc`, `cuidado_gral`, `alimentos` y `destacado` conservan su historia pero quedan inactivos y fuera de la tienda; solo los cuatro códigos de belleza se migran a `belleza` y no se inventa equivalencia para `alimentos`. La forward conserva `campana_producto.categoria_codigo`, las RPC C1 y el puente muchos-a-muchos con una principal, y añade `categoria_codigos`/`categorias` al final de las 24 columnas previas de `catalogo_publico`. `categorias_publicas` lista toda categoría activa/visible, incluidas las creadas después, sin colores ni ids privados. El panel de Campañas ofrece multiselección plana, distintivo **Oficial**, categoría principal, resumen de secundarias y un diálogo compartido para crear categorías con nombre, descripción e icono controlado; la banda pública se deriva con HTML/CSS y no usa uploads. Publicar exige clasificación pública válida; despublicar siempre sigue permitido y la migración no retira campañas históricas ya publicadas. **Estado: código en la rama `feat/categorias-oficiales`; migración no aplicada, frontend no desplegado y producción no acreditada.** Inventario no cambia; en Email Marketing solo se actualizan valores de reglas dinámicas que todavía nombraban las categorías retiradas de Belleza o `Hogar/limpieza`, para que apunten a `Belleza` o `Hogar` sin alterar modo, operador ni orden.
+>
 > **Hito · Promocionar P5 · 21-oct-2026 · cerrado estructural/productivamente.** La implementación PR #308 se fusionó como `3205e1b0cfcd5fc98126ccf2f37aa3cb2bf914f1`; CI de rama run `39643360479` terminó `success` con 88 migraciones, matriz 230/0 y suite final `Todo pasa.` El dueño confirmó que `20261110000000_promocionar_p5_lectura_comercial.sql` se ejecutó una sola vez; Pages producción run `39645791554` terminó `success` sobre el merge. El dueño recorrió la prueba integral final de Resultados, Métricas y Ventas y dijo «Todo en orden». Diagnóstico: `instalado=true`; P3 con 1 enlace, detalle desde/hasta nulo, 0 filas de detalle y 0 compactado; P4 con 1 intención atribuida, 0 convertidas `APPROVED`, 0 pedidos con FK, 0 ventas exactas autoritativas, 0 divergencias y 0 incidencias pendientes; analítica consentida `activa=false`, primer y último evento `2026-10-08T18:34:59.188+00:00`; intención sintética identificable `false`. No quedaron confirmados preflight ni postflight productivos separados. Tampoco se acreditaron categorías con datos reales, compra, pago `APPROVED`, pedido atribuido o ingreso. P5 queda cerrado como lectura, no monetaria ni end-to-end. No hay P6 definido. Relevo vigente: `docs/RELEVO-PROMOCIONAR-P5-CIERRE-ESTRUCTURAL-2026-10-21.md`.
 >
 > **Cuentas de cliente C1 · DESPLEGADO · 15-oct-2026 (PR #268).** El dueño
@@ -340,7 +342,7 @@ Entrega del código: va en el correo de «Entregado», ya en producción. Opinio
 - Auto-RLS activado y exposición automática de tablas desactivada.
 - Las migraciones históricas son inmutables: nunca se reescriben ni se reejecutan para “corregir” producción.
 - Toda corrección nueva se hace con migración forward.
-- Las superficies anónimas deliberadas son tres y todas exponen lista blanca: `catalogo_publico`, `producto_rating_publico` y `opiniones_publicas`. Ninguna otra tabla o vista interna tiene acceso para `anon`.
+- Las superficies anónimas deliberadas son cuatro y todas exponen lista blanca: `catalogo_publico`, `categorias_publicas`, `producto_rating_publico` y `opiniones_publicas`. Ninguna tabla base o vista interna adicional tiene acceso para `anon`. `categorias_publicas` pertenece al frente que sigue **EN RAMA / NO DESPLEGADO** hasta aplicar `20261111000000`.
 - Las vistas internas sensibles son `security_invoker`.
 - Tramo 0 fue verificado en producción: matriz de permisos completa, anon bloqueado en vistas/RPC internas y catálogo público disponible.
 
@@ -355,7 +357,7 @@ Entrega del código: va en el correo de «Entregado», ya en producción. Opinio
 - Identidad del producto y costo interno: `productos`.
 - Stock: suma de `movimientos_inventario`.
 - Presentación y precio web: `campana_producto`.
-- Catálogo anónimo: `catalogo_publico`.
+- Catálogo anónimo: `catalogo_publico`; catálogo plano de categorías: `categorias_publicas` (**ambos cambios de categorías siguen EN RAMA / NO DESPLEGADOS**).
 - Cliente/pedido: `clientes`, `pedidos`, `pedido_items`, `pedido_bitacora`.
 - Opiniones: `opiniones`; superficies anónimas `producto_rating_publico` y `opiniones_publicas`; código de verificación en `pedidos.codigo_resena`.
 
@@ -363,7 +365,9 @@ Entrega del código: va en el correo de «Entregado», ya en producción. Opinio
 
 Expone datos necesarios para home/producto, el booleano `agotado` y
 `max_comprable` (`0..20`), ya limitado por el máximo de Campañas y la
-disponibilidad autoritativa. Nunca expone:
+disponibilidad autoritativa. La forward de categorías, todavía **EN RAMA / NO
+DESPLEGADA**, conserva esas 24 columnas y añade al final `categoria_codigos`
+(`text[]`) y `categorias` (`jsonb`) con la clasificación plana pública. Nunca expone:
 
 - existencias exactas;
 - costo o proveedor;
