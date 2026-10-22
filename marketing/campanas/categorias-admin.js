@@ -2,9 +2,10 @@
 // MAGANDHI · Campañas · administración compartida de categorías
 // ------------------------------------------------------------
 // Una sola implementación para agregar.html, editar.html e index.html:
-// - consulta la lista blanca de categorías planas activas/visibles;
-// - pinta multiselección con una principal;
-// - abre el diálogo accesible de alta mediante cm_crear_categoria;
+// - consulta el catálogo administrativo protegido por RLS;
+// - pinta multiselección con una principal permanente;
+// - conserva temporadas secundarias aunque estén ocultas de la tienda;
+// - crea categorías permanentes o temporales mediante RPC;
 // - muestra una banda HTML/CSS derivada de nombre, descripción e icono.
 // No recibe archivos ni escribe tablas directamente.
 // ============================================================
@@ -104,18 +105,23 @@ export function iconoCategoria(codigo) {
 
 function normalizarCategoria(fila) {
   if (!fila || !fila.codigo) return null;
+  const tipo = fila.tipo === 'temporal' ? 'temporal' : 'permanente';
   return {
     codigo: String(fila.codigo),
     nombre: String(fila.nombre || fila.codigo),
     icono_codigo: String(fila.icono_codigo || ''),
     descripcion: String(fila.descripcion || ''),
     orden: Number.isFinite(Number(fila.orden)) ? Number(fila.orden) : 0,
-    es_oficial: fila.es_oficial === true
+    es_oficial: fila.es_oficial === true,
+    tipo,
+    activo: fila.activo !== false,
+    visible_tienda: fila.visible_tienda !== false
   };
 }
 
 function ordenarCategorias(lista) {
   return [...lista].sort((a, b) =>
+    Number(b.tipo === 'temporal') - Number(a.tipo === 'temporal') ||
     a.orden - b.orden || a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })
   );
 }
@@ -123,13 +129,26 @@ function ordenarCategorias(lista) {
 export async function cargarCategoriasPublicas() {
   const { data, error } = await supabase
     .from('categorias_publicas')
-    .select('codigo, nombre, icono_codigo, descripcion, orden, es_oficial')
+    .select('codigo, nombre, icono_codigo, descripcion, orden, es_oficial, tipo')
     .order('orden', { ascending: true });
 
   return {
     data: ordenarCategorias((data || []).map(normalizarCategoria).filter(Boolean)),
     error
   };
+}
+
+export async function cargarCategoriasAdministrables() {
+  const { data, error } = await supabase
+    .from('campana_categoria')
+    .select('codigo, nombre, icono_codigo, descripcion, orden, es_oficial, tipo, activo, visible_tienda')
+    .eq('activo', true)
+    .order('orden', { ascending: true });
+
+  const categorias = (data || []).map(normalizarCategoria).filter((categoria) =>
+    categoria && (categoria.visible_tienda || categoria.tipo === 'temporal')
+  );
+  return { data: ordenarCategorias(categorias), error };
 }
 
 export function mensajeErrorCategoria(error) {
@@ -139,7 +158,13 @@ export function mensajeErrorCategoria(error) {
     return 'Elige y guarda al menos una categoría activa y visible, incluida una principal, antes de publicar.';
   }
   if (bruto.startsWith('CM_CATEGORIA_NO_PUBLICA')) {
-    return 'Una categoría elegida ya no está activa o visible. Actualiza la selección e inténtalo de nuevo.';
+    return 'Una categoría permanente elegida ya no está activa o visible. Las temporadas ocultas sí se conservan como secundarias.';
+  }
+  if (bruto.startsWith('CM_CATEGORIA_TEMPORAL_PRINCIPAL')) {
+    return 'Una categoría temporal solo puede ser secundaria. Marca una categoría permanente y visible como principal.';
+  }
+  if (bruto.startsWith('CM_CATEGORIA_NO_TEMPORAL')) {
+    return 'Este interruptor solo puede usarse con categorías temporales.';
   }
   return bruto.replace(/^CM_[A-Z_]+:\s*/, '');
 }
@@ -205,10 +230,12 @@ export function crearSelectorCategorias({
 
   function sincronizarRadios() {
     contenedor.querySelectorAll('.cm-categoria-opcion').forEach((opcion) => {
+      const item = categoria(opcion.dataset.codigo);
       const check = opcion.querySelector('.cm-categoria-check input');
       const radio = opcion.querySelector('.cm-categoria-principal input');
-      radio.disabled = !check.checked;
-      radio.checked = check.checked && check.value === principal;
+      const puedeSerPrincipal = item?.tipo !== 'temporal' && item?.visible_tienda !== false;
+      radio.disabled = !check.checked || !puedeSerPrincipal;
+      radio.checked = check.checked && puedeSerPrincipal && check.value === principal;
     });
   }
 
@@ -247,6 +274,13 @@ export function crearSelectorCategorias({
       oficial.textContent = 'Oficial';
       identidad.appendChild(oficial);
     }
+    if (item.tipo === 'temporal') {
+      const temporal = document.createElement('span');
+      temporal.className = 'cm-categoria-temporal';
+      temporal.textContent = item.visible_tienda ? 'Temporal' : 'Temporal · Oculta';
+      identidad.appendChild(temporal);
+      opcion.classList.toggle('es-temporal-oculta', !item.visible_tienda);
+    }
 
     checkLabel.append(check, marca, icono, identidad);
 
@@ -256,17 +290,19 @@ export function crearSelectorCategorias({
     radio.type = 'radio';
     radio.name = nombreRadio;
     radio.value = item.codigo;
-    radio.setAttribute('aria-label', 'Categoría principal: ' + item.nombre);
-    radio.disabled = !check.checked;
-    radio.checked = check.checked && principal === item.codigo;
+    radio.setAttribute('aria-label', item.tipo === 'temporal'
+      ? item.nombre + ' es temporal y no puede ser principal'
+      : 'Categoría principal: ' + item.nombre);
+    radio.disabled = !check.checked || item.tipo === 'temporal' || !item.visible_tienda;
+    radio.checked = check.checked && item.tipo !== 'temporal' && check.value === principal;
     const principalTexto = document.createElement('span');
-    principalTexto.textContent = 'Principal';
+    principalTexto.textContent = item.tipo === 'temporal' ? 'Solo secundaria' : 'Principal';
     principalLabel.append(radio, principalTexto);
 
     check.addEventListener('change', () => {
       if (check.checked) {
         seleccion.add(item.codigo);
-        if (!principal) principal = item.codigo;
+        if (!principal && item.tipo !== 'temporal' && item.visible_tienda) principal = item.codigo;
       } else {
         seleccion.delete(item.codigo);
         if (principal === item.codigo) principal = null;
@@ -312,7 +348,9 @@ export function crearSelectorCategorias({
     principal = codigoPrincipal ? String(codigoPrincipal) : null;
     codigosHistoricos = [...new Set((opciones.historicas || []).map(String))];
     if ((!principal || !seleccion.has(principal)) && seleccion.size) {
-      principal = catalogo.find((item) => seleccion.has(item.codigo))?.codigo || null;
+      principal = catalogo.find((item) =>
+        seleccion.has(item.codigo) && item.tipo !== 'temporal' && item.visible_tienda
+      )?.codigo || null;
     }
     pintar();
   }
@@ -325,7 +363,9 @@ export function crearSelectorCategorias({
       nueva
     ]);
     if (seleccionarNueva) seleccion.add(nueva.codigo);
-    if (!principal && seleccionarNueva) principal = nueva.codigo;
+    if (!principal && seleccionarNueva && nueva.tipo !== 'temporal' && nueva.visible_tienda) {
+      principal = nueva.codigo;
+    }
     pintar();
     const control = [...contenedor.querySelectorAll('.cm-categoria-check input')]
       .find((input) => input.value === nueva.codigo);
@@ -349,10 +389,12 @@ export function crearSelectorCategorias({
         elemento: contenedor.querySelector('.cm-categoria-check input:checked')
       };
     }
-    if (!actual.principal || !actual.codigos.includes(actual.principal)) {
+    const principalElegida = categoria(actual.principal);
+    if (!actual.principal || !actual.codigos.includes(actual.principal) ||
+        !principalElegida || principalElegida.tipo === 'temporal' || !principalElegida.visible_tienda) {
       return {
         ok: false,
-        mensaje: 'Marca una de las categorías elegidas como principal.',
+        mensaje: 'Marca una categoría permanente y visible como principal.',
         elemento: contenedor.querySelector('.cm-categoria-principal input:not(:disabled)')
       };
     }
@@ -376,6 +418,7 @@ export function crearDialogoCategoria({ botonAbrir = null, onCreada = () => {} }
   const tituloId = 'cm-categoria-dialogo-titulo-' + id;
   const ayudaId = 'cm-categoria-dialogo-ayuda-' + id;
   const nombreIconos = 'cm-categoria-icono-' + id;
+  const nombreTipo = 'cm-categoria-tipo-' + id;
   let guardando = false;
 
   const dialogo = document.createElement('dialog');
@@ -398,7 +441,7 @@ export function crearDialogoCategoria({ botonAbrir = null, onCreada = () => {} }
   titulo.textContent = 'Crear nueva categoría';
   const ayuda = document.createElement('p');
   ayuda.id = ayudaId;
-  ayuda.textContent = 'Quedará activa y visible de inmediato. El código web se deriva de forma segura en el servidor.';
+  ayuda.textContent = 'Elige si será permanente o temporal. Las temporales solo acompañan a una categoría principal y pueden ocultarse sin retirar productos.';
   titulos.append(kicker, titulo, ayuda);
 
   const cerrar = document.createElement('button');
@@ -445,6 +488,36 @@ export function crearDialogoCategoria({ botonAbrir = null, onCreada = () => {} }
   contador.textContent = '0 / 240';
   campoDescripcion.append(etiquetaDescripcion, inputDescripcion, contador);
 
+  const tipoFieldset = document.createElement('fieldset');
+  tipoFieldset.className = 'cm-categoria-tipo-fieldset';
+  const tipoLegend = document.createElement('legend');
+  tipoLegend.className = 'cm-campo-lbl';
+  tipoLegend.textContent = 'Tipo *';
+  const tipoOpciones = document.createElement('div');
+  tipoOpciones.className = 'cm-categoria-tipos';
+  [
+    { valor: 'permanente', titulo: 'Permanente', ayuda: 'Puede ser categoría principal.' },
+    { valor: 'temporal', titulo: 'Temporal', ayuda: 'Solo secundaria; se puede mostrar u ocultar.' }
+  ].forEach((item, indice) => {
+    const label = document.createElement('label');
+    label.className = 'cm-categoria-tipo-opcion';
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = nombreTipo;
+    radio.value = item.valor;
+    radio.defaultChecked = indice === 0;
+    radio.checked = indice === 0;
+    const copy = document.createElement('span');
+    const tituloTipo = document.createElement('b');
+    tituloTipo.textContent = item.titulo;
+    const ayudaTipo = document.createElement('small');
+    ayudaTipo.textContent = item.ayuda;
+    copy.append(tituloTipo, ayudaTipo);
+    label.append(radio, copy);
+    tipoOpciones.appendChild(label);
+  });
+  tipoFieldset.append(tipoLegend, tipoOpciones);
+
   const iconosFieldset = document.createElement('fieldset');
   iconosFieldset.className = 'cm-categoria-iconos-fieldset';
   const iconosLegend = document.createElement('legend');
@@ -475,7 +548,7 @@ export function crearDialogoCategoria({ botonAbrir = null, onCreada = () => {} }
     iconosGrid.appendChild(label);
   });
   iconosFieldset.append(iconosLegend, iconosAyuda, iconosGrid);
-  campos.append(campoNombre, campoDescripcion, iconosFieldset);
+  campos.append(campoNombre, campoDescripcion, tipoFieldset, iconosFieldset);
 
   const previewCol = document.createElement('div');
   previewCol.className = 'cm-categoria-alta-preview-col';
@@ -521,12 +594,20 @@ export function crearDialogoCategoria({ botonAbrir = null, onCreada = () => {} }
     return formulario.querySelector('input[name="' + nombreIconos + '"]:checked')?.value || '';
   }
 
+  function tipoElegido() {
+    return formulario.querySelector('input[name="' + nombreTipo + '"]:checked')?.value || 'permanente';
+  }
+
   function actualizarPreview() {
     const codigoIcono = iconoElegido() || ICONOS_CATEGORIA[0].codigo;
+    const esTemporal = tipoElegido() === 'temporal';
     previewIcono.innerHTML = iconoCategoria(codigoIcono);
     previewNombre.textContent = inputNombre.value.trim() || 'Nombre de la categoría';
     previewDescripcion.textContent = inputDescripcion.value.trim() ||
-      'La descripción aparecerá aquí como apoyo para explorar la tienda.';
+      (esTemporal
+        ? 'Temporada secundaria que podrás mostrar u ocultar sin retirar productos.'
+        : 'La descripción aparecerá aquí como apoyo para explorar la tienda.');
+    preview.dataset.tipo = esTemporal ? 'temporal' : 'permanente';
     contador.textContent = inputDescripcion.value.length + ' / 240';
   }
 
@@ -565,6 +646,7 @@ export function crearDialogoCategoria({ botonAbrir = null, onCreada = () => {} }
 
   inputNombre.addEventListener('input', actualizarPreview);
   inputDescripcion.addEventListener('input', actualizarPreview);
+  tipoOpciones.addEventListener('change', actualizarPreview);
   iconosGrid.addEventListener('change', actualizarPreview);
   cerrar.addEventListener('click', cerrarDialogo);
   cancelar.addEventListener('click', cerrarDialogo);
@@ -584,6 +666,7 @@ export function crearDialogoCategoria({ botonAbrir = null, onCreada = () => {} }
     const nombre = inputNombre.value.trim();
     const descripcion = inputDescripcion.value.trim();
     const icono_codigo = iconoElegido();
+    const tipo = tipoElegido();
 
     if (nombre.length < 2 || nombre.length > 80) {
       mostrarError('El nombre debe tener entre 2 y 80 caracteres.');
@@ -600,12 +683,18 @@ export function crearDialogoCategoria({ botonAbrir = null, onCreada = () => {} }
       iconosGrid.querySelector('input')?.focus();
       return;
     }
+    if (!['permanente', 'temporal'].includes(tipo)) {
+      mostrarError('Elige si la categoría será permanente o temporal.');
+      tipoOpciones.querySelector('input')?.focus();
+      return;
+    }
 
     cambiarGuardando(true);
     let data;
     let error;
     try {
-      ({ data, error } = await supabase.rpc('cm_crear_categoria', {
+      const rpc = tipo === 'temporal' ? 'cm_crear_categoria_temporal' : 'cm_crear_categoria';
+      ({ data, error } = await supabase.rpc(rpc, {
         nombre,
         descripcion,
         icono_codigo

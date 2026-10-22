@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
-<link rel="stylesheet" href="campanas.css?v=categorias-admin">
+<link rel="stylesheet" href="campanas.css?v=temporadas1">
 
 <!--
   MAGANDHI · Area de Marketing · Sub-area CAMPANAS · HOME/LISTA.
@@ -67,6 +67,20 @@
   </div>
   <p id="cm-categoria-alta-estado" class="cm-categoria-alta-estado" role="status" aria-live="polite" hidden></p>
 
+  <section class="cm-temporadas" aria-labelledby="cm-temporadas-titulo">
+    <div class="cm-temporadas-cab">
+      <div>
+        <span class="cm-temporadas-kicker">VISIBILIDAD MANUAL</span>
+        <h2 id="cm-temporadas-titulo">Categorías de temporada</h2>
+        <p>Una temporada visible ocupa el primer acceso de categorías en la tienda. Al ocultarla, sus productos y asignaciones permanecen intactos.</p>
+      </div>
+    </div>
+    <div id="cm-temporadas-lista" class="cm-temporadas-lista" aria-live="polite">
+      <span class="cm-temporadas-vacio">Cargando temporadas…</span>
+    </div>
+    <p id="cm-temporadas-msg" class="cm-temporadas-msg" role="status" aria-live="polite" hidden></p>
+  </section>
+
   <!-- La lista se pinta por JS tras confirmar acceso. -->
   <div id="cm-lista" class="cm-lista" aria-live="polite"></div>
 </main>
@@ -77,8 +91,9 @@
     supabase, escaparHTML, formatearNumero, urlPublicaImagen
   } from '../marketing-core.js';
   import {
-    crearDialogoCategoria, iconoCategoria, mensajeErrorCategoria
-  } from './categorias-admin.js';
+    cargarCategoriasAdministrables, crearDialogoCategoria, iconoCategoria,
+    mensajeErrorCategoria
+  } from './categorias-admin.js?v=temporadas1';
 
   // ----------------------------------------------------------
   // Deriva la key de la version LIVIANA (-sm) de una imagen a partir del path
@@ -119,6 +134,80 @@
   };
 
   const lista = document.getElementById('cm-lista');
+  const listaTemporadas = document.getElementById('cm-temporadas-lista');
+  const mensajeTemporadas = document.getElementById('cm-temporadas-msg');
+
+  function mostrarMensajeTemporadas(texto, tipo = 'ok') {
+    if (!mensajeTemporadas) return;
+    mensajeTemporadas.textContent = texto;
+    mensajeTemporadas.className = 'cm-temporadas-msg ' + tipo;
+    mensajeTemporadas.hidden = !texto;
+  }
+
+  async function cargarTemporadas() {
+    if (!listaTemporadas) return;
+    listaTemporadas.innerHTML = '<span class="cm-temporadas-vacio">Cargando temporadas…</span>';
+    const { data, error } = await cargarCategoriasAdministrables();
+    if (error) {
+      listaTemporadas.innerHTML = '<span class="cm-temporadas-vacio err">No se pudieron cargar las temporadas.</span>';
+      mostrarMensajeTemporadas(mensajeErrorCategoria(error), 'err');
+      return;
+    }
+
+    const temporadas = (data || []).filter((categoria) => categoria.tipo === 'temporal');
+    if (!temporadas.length) {
+      listaTemporadas.innerHTML = '<span class="cm-temporadas-vacio">Aún no hay categorías temporales. Créala con “Nueva categoría”.</span>';
+      return;
+    }
+
+    listaTemporadas.innerHTML = temporadas.map((categoria) => {
+      const visible = categoria.visible_tienda === true;
+      return '<article class="cm-temporada' + (visible ? ' visible' : ' oculta') + '">' +
+        '<span class="cm-temporada-icono" aria-hidden="true">' + iconoCategoria(categoria.icono_codigo) + '</span>' +
+        '<div class="cm-temporada-copy">' +
+          '<div class="cm-temporada-identidad"><strong>' + escaparHTML(categoria.nombre) + '</strong>' +
+            '<span class="cm-temporada-estado">' + (visible ? 'Visible en la tienda' : 'Oculta') + '</span></div>' +
+          '<p>' + escaparHTML(categoria.descripcion || 'Categoría temporal') + '</p>' +
+          '<small>Sus productos conservan siempre sus categorías permanentes.</small>' +
+        '</div>' +
+        '<button type="button" class="cm-temporada-toggle" data-temporada="' + escaparHTML(categoria.codigo) + '" data-visible="' + String(!visible) + '">' +
+          (visible ? 'Ocultar de la tienda' : 'Mostrar en la tienda') +
+        '</button>' +
+      '</article>';
+    }).join('');
+
+    listaTemporadas.querySelectorAll('[data-temporada]').forEach((boton) => {
+      boton.addEventListener('click', async () => {
+        const mostrar = boton.dataset.visible === 'true';
+        const codigo = boton.dataset.temporada;
+        if (!mostrar) {
+          const confirmar = window.confirm(
+            'Ocultar esta categoría de temporada de la tienda.\n\n' +
+            'Los productos seguirán publicados y sus asociaciones quedarán guardadas. ¿Continuar?'
+          );
+          if (!confirmar) return;
+        }
+        boton.disabled = true;
+        mostrarMensajeTemporadas('');
+        const { error: errorToggle } = await supabase.rpc('cm_configurar_categoria_temporal', {
+          p_codigo: codigo,
+          p_visible_tienda: mostrar
+        });
+        if (errorToggle) {
+          boton.disabled = false;
+          mostrarMensajeTemporadas('No se pudo actualizar la temporada: ' + mensajeErrorCategoria(errorToggle), 'err');
+          return;
+        }
+        mostrarMensajeTemporadas(
+          mostrar
+            ? 'Temporada visible. Ya ocupa la primera posición de categorías en la tienda.'
+            : 'Temporada oculta. Sus productos y asignaciones se conservaron.',
+          'ok'
+        );
+        await cargarTemporadas();
+      });
+    });
+  }
 
   function mensajeErrorCuraduria(error) {
     const bruto = String(error?.message || error || '').trim();
@@ -163,10 +252,10 @@
         'id, nombre, categoria_codigo, imagen_banner_path, precio_venta, sello_elegido, ' +
         'aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, activo, es_placeholder, orden, ' +
         'categoria_legada:campana_categoria!campana_producto_categoria_codigo_fkey ' +
-          '( codigo, nombre, icono_codigo, es_oficial, orden ), ' +
+          '( codigo, nombre, icono_codigo, es_oficial, tipo, visible_tienda, orden ), ' +
         'campana_producto_categoria ( categoria_codigo, es_principal, ' +
           'categoria:campana_categoria!campana_producto_categoria_categoria_codigo_fkey ' +
-            '( codigo, nombre, icono_codigo, es_oficial, orden ) )'
+            '( codigo, nombre, icono_codigo, es_oficial, tipo, visible_tienda, orden ) )'
       )
       .order('orden', { ascending: true });
 
@@ -260,6 +349,8 @@
         nombre: detalle?.nombre || codigo,
         icono_codigo: detalle?.icono_codigo || '',
         es_oficial: detalle?.es_oficial === true,
+        tipo: detalle?.tipo === 'temporal' ? 'temporal' : 'permanente',
+        visible_tienda: detalle?.visible_tienda !== false,
         orden: Number(detalle?.orden || 0),
         es_principal: asociacion.es_principal === true
       });
@@ -272,6 +363,8 @@
         nombre: legado?.nombre || campana.categoria_codigo,
         icono_codigo: legado?.icono_codigo || '',
         es_oficial: legado?.es_oficial === true,
+        tipo: legado?.tipo === 'temporal' ? 'temporal' : 'permanente',
+        visible_tienda: legado?.visible_tienda !== false,
         orden: Number(legado?.orden || 0),
         es_principal: true
       });
@@ -289,7 +382,9 @@
         ...principal,
         nombre: legado.nombre || principal.nombre,
         icono_codigo: legado.icono_codigo || principal.icono_codigo,
-        es_oficial: legado.es_oficial === true || principal.es_oficial
+        es_oficial: legado.es_oficial === true || principal.es_oficial,
+        tipo: legado.tipo === 'temporal' ? 'temporal' : principal.tipo,
+        visible_tienda: legado.visible_tienda !== false
       };
     }
 
@@ -317,6 +412,9 @@
           '<span class="cm-card-categoria-secundaria">' +
             '<span class="cm-card-categoria-secundaria-icono" aria-hidden="true">' + iconoCategoria(categoria.icono_codigo) + '</span>' +
             '<span class="cm-card-categoria-secundaria-nombre">' + escaparHTML(categoria.nombre) + '</span>' +
+            (categoria.tipo === 'temporal'
+              ? '<span class="cm-card-categoria-temporal">' + (categoria.visible_tienda ? 'Temporal' : 'Oculta') + '</span>'
+              : '') +
           '</span>'
         ).join('')
       : '<span class="cm-card-categorias-vacio">Sin secundarias</span>';
@@ -650,12 +748,17 @@
       botonAbrir: document.getElementById('cm-nueva-categoria'),
       onCreada: (nueva) => {
         const estado = document.getElementById('cm-categoria-alta-estado');
-        estado.textContent = 'Categoría «' + nueva.nombre + '» creada y visible. Ya puedes elegirla al agregar o editar una campaña.';
+        const esTemporal = nueva.tipo === 'temporal';
+        estado.textContent = 'Categoría «' + nueva.nombre + '» creada y visible. ' +
+          (esTemporal
+            ? 'Aparecerá primero en la tienda y solo podrá asignarse como secundaria.'
+            : 'Ya puedes elegirla como categoría principal o secundaria.');
         estado.hidden = false;
+        if (esTemporal) void cargarTemporadas();
       }
     });
 
-    await cargarCampanas();
+    await Promise.all([cargarTemporadas(), cargarCampanas()]);
     main.hidden = false;
   })();
 </script>
