@@ -219,8 +219,8 @@ select pg_temp.chk(
 -- (gatillo ds_campana_vinculo_proveedor). El fixture simula esa vía abriendo
 -- la misma compuerta local de transacción; sin D2a instalada no tiene efecto.
 select set_config('impulse.ds_importando', 'on', true);
-insert into campana_producto (id, nombre, slug, precio_venta, product_id_ref, publicado, activo) values
-  ('d2300000-0000-4000-8000-000000000021', 'Campaña proveedor D1', 'd1-proveedor', 30000, 'd2300000-0000-4000-8000-000000000002', false, true);
+insert into campana_producto (id, nombre, slug, categoria_codigo, precio_venta, product_id_ref, publicado, activo) values
+  ('d2300000-0000-4000-8000-000000000021', 'Campaña proveedor D1', 'd1-proveedor', 'hogar', 30000, 'd2300000-0000-4000-8000-000000000002', false, true);
 select set_config('impulse.ds_importando', 'off', true);
 -- ACTUALIZADO EN D2c.2b: aqui se exigia DS_PUBLICACION_PENDIENTE, que era el
 -- contrato de D1. D2c.2b levanto ese candado a proposito, porque ya existe

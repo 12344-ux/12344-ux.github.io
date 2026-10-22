@@ -106,13 +106,13 @@ select pg_temp.chk(
 -- (11) comprueba después que el candado de PUBLICACIÓN sigue cerrado.
 select set_config('impulse.ds_importando', 'on', true);
 
-insert into campana_producto (id, nombre, slug, product_id_ref, precio_venta, publicado, activo)
+insert into campana_producto (id, nombre, slug, categoria_codigo, product_id_ref, precio_venta, publicado, activo)
 values
-  ('ca000000-0000-4000-8000-00000000000b', 'Campaña proveedor profundo', 'prov-profundo',
+  ('ca000000-0000-4000-8000-00000000000b', 'Campaña proveedor profundo', 'prov-profundo', 'belleza',
    'c0000000-0000-4000-8000-00000000000b', 59900, true, true),
-  ('ca000000-0000-4000-8000-00000000000c', 'Campaña proveedor flaco', 'prov-flaco',
+  ('ca000000-0000-4000-8000-00000000000c', 'Campaña proveedor flaco', 'prov-flaco', 'belleza',
    'c0000000-0000-4000-8000-00000000000c', 49900, true, true),
-  ('ca000000-0000-4000-8000-00000000000a', 'Campaña propia', 'propia-control',
+  ('ca000000-0000-4000-8000-00000000000a', 'Campaña propia', 'propia-control', 'hogar',
    'c0000000-0000-4000-8000-00000000000a', 39900, true, true)
   on conflict (id) do nothing;
 

@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
-<link rel="stylesheet" href="campanas.css?v=p5-1">
+<link rel="stylesheet" href="campanas.css?v=categorias-admin">
 
 <!--
   MAGANDHI · Area de Marketing · Sub-area CAMPANAS · HOME/LISTA.
@@ -32,8 +32,10 @@
       (supabase-config / auth-guard) relativos a SI MISMO, asi que una sola
       copia del nucleo sirve a esta profundidad tambien.
 
-  El candado real es RLS server-side (tiene_acceso_marketing); ocultar UI es
-  solo comodidad de UX. Toda ESCRITURA pasa por RPC (aqui: cm_publicar_campana).
+  El candado real es RLS/RPC server-side (tiene_acceso_marketing); ocultar UI
+  es solo comodidad de UX. Toda ESCRITURA pasa por RPC (aquí:
+  cm_publicar_campana, cm_retirar_placeholder, cm_reordenar_campanas y
+  cm_crear_categoria).
 -->
 </head>
 <body class="mk-body">
@@ -49,6 +51,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18M3 12h18M3 17h18"/><path d="m7 3 2 2 2-2M7 21l2-2 2 2"/></svg>
         <span id="cm-reordenar-txt">Reordenar productos</span>
       </button>
+      <button type="button" class="cm-btn-secundario" id="cm-nueva-categoria">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/><path d="M4 4h5M4 8h3"/></svg>
+        <span>Nueva categoría</span>
+      </button>
       <a class="cm-btn-secundario" href="etiquetas.html">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>
         <span>Gestionar etiquetas</span>
@@ -59,6 +65,7 @@
       </a>
     </div>
   </div>
+  <p id="cm-categoria-alta-estado" class="cm-categoria-alta-estado" role="status" aria-live="polite" hidden></p>
 
   <!-- La lista se pinta por JS tras confirmar acceso. -->
   <div id="cm-lista" class="cm-lista" aria-live="polite"></div>
@@ -69,6 +76,9 @@
     asegurarAcceso, montarHeader, ICONOS,
     supabase, escaparHTML, formatearNumero, urlPublicaImagen
   } from '../marketing-core.js';
+  import {
+    crearDialogoCategoria, iconoCategoria, mensajeErrorCategoria
+  } from './categorias-admin.js';
 
   // ----------------------------------------------------------
   // Deriva la key de la version LIVIANA (-sm) de una imagen a partir del path
@@ -111,6 +121,9 @@
 
   function mensajeErrorCuraduria(error) {
     const bruto = String(error?.message || error || '').trim();
+    if (bruto.startsWith('CM_CATEGORIA') || bruto.startsWith('CM_CATEGORIAS')) {
+      return mensajeErrorCategoria(error);
+    }
     if (bruto.startsWith('CM_PRUEBA_SIN_PRODUCTO')) {
       return 'Liga un producto antes de marcarlo como probado por MAGANDHI.';
     }
@@ -137,15 +150,23 @@
   const txtReordenar = document.getElementById('cm-reordenar-txt');
 
   // ----------------------------------------------------------
-  // Carga la lista de campanas con su categoria (nombre + terna de color).
-  // Ordena por 'orden'. Cada fila trae el join a campana_categoria.
+  // Carga campañas con categoría principal y puente de secundarias.
+  // Ordena por 'orden'; los joins conservan también clasificaciones históricas.
   // ----------------------------------------------------------
   async function cargarCampanas() {
     lista.innerHTML = '<div class="cm-empty">Cargando campañas…</div>';
 
     const { data, error } = await supabase
       .from('campana_producto')
-      .select('id, nombre, categoria_codigo, imagen_banner_path, precio_venta, sello_elegido, aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, activo, es_placeholder, orden, campana_categoria ( nombre )')
+      .select(
+        'id, nombre, categoria_codigo, imagen_banner_path, precio_venta, sello_elegido, ' +
+        'aviso_urgencia_activo, aviso_urgencia_cantidad, publicado, activo, es_placeholder, orden, ' +
+        'categoria_legada:campana_categoria!campana_producto_categoria_codigo_fkey ' +
+          '( codigo, nombre, icono_codigo, es_oficial, orden ), ' +
+        'campana_producto_categoria ( categoria_codigo, es_principal, ' +
+          'categoria:campana_categoria!campana_producto_categoria_categoria_codigo_fkey ' +
+            '( codigo, nombre, icono_codigo, es_oficial, orden ) )'
+      )
       .order('orden', { ascending: true });
 
     if (error) {
@@ -220,13 +241,84 @@
     });
   }
 
+  function relacionUnica(valor) {
+    return Array.isArray(valor) ? (valor[0] || null) : (valor || null);
+  }
+
+  function clasificacionCampana(campana) {
+    const porCodigo = new Map();
+    const asociaciones = Array.isArray(campana.campana_producto_categoria)
+      ? campana.campana_producto_categoria : [];
+
+    asociaciones.forEach((asociacion) => {
+      const detalle = relacionUnica(asociacion.categoria);
+      const codigo = String(asociacion.categoria_codigo || detalle?.codigo || '');
+      if (!codigo) return;
+      porCodigo.set(codigo, {
+        codigo,
+        nombre: detalle?.nombre || codigo,
+        icono_codigo: detalle?.icono_codigo || '',
+        es_oficial: detalle?.es_oficial === true,
+        orden: Number(detalle?.orden || 0),
+        es_principal: asociacion.es_principal === true
+      });
+    });
+
+    const legado = relacionUnica(campana.categoria_legada);
+    if (campana.categoria_codigo && !porCodigo.has(campana.categoria_codigo)) {
+      porCodigo.set(campana.categoria_codigo, {
+        codigo: campana.categoria_codigo,
+        nombre: legado?.nombre || campana.categoria_codigo,
+        icono_codigo: legado?.icono_codigo || '',
+        es_oficial: legado?.es_oficial === true,
+        orden: Number(legado?.orden || 0),
+        es_principal: true
+      });
+    }
+
+    const todas = [...porCodigo.values()].sort((a, b) =>
+      Number(b.es_principal) - Number(a.es_principal) ||
+      a.orden - b.orden || a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })
+    );
+    let principal = todas.find((item) => item.es_principal) ||
+      todas.find((item) => item.codigo === campana.categoria_codigo) || todas[0] || null;
+
+    if (principal && legado && principal.codigo === campana.categoria_codigo) {
+      principal = {
+        ...principal,
+        nombre: legado.nombre || principal.nombre,
+        icono_codigo: legado.icono_codigo || principal.icono_codigo,
+        es_oficial: legado.es_oficial === true || principal.es_oficial
+      };
+    }
+
+    return {
+      principal,
+      secundarias: todas.filter((item) => item.codigo !== principal?.codigo)
+    };
+  }
+
   // ----------------------------------------------------------
   // Devuelve el HTML de una tarjeta. La paleta es FIJA (dorado de marca), igual
   // que la tienda publica: la categoria solo clasifica, no cambia el color.
   // ----------------------------------------------------------
   function pintarTarjeta(c, indice) {
-    const cat = c.campana_categoria || null;
-    const catNombre = cat?.nombre || 'Sin categoría';
+    const clasificacion = clasificacionCampana(c);
+    const catPrincipal = clasificacion.principal;
+    const catNombre = catPrincipal?.nombre || 'Sin categoría';
+    const catPrincipalHtml = catPrincipal
+      ? '<span class="cm-cat-icono" aria-hidden="true">' + iconoCategoria(catPrincipal.icono_codigo) + '</span>' +
+        '<span class="cm-cat-nombre">' + escaparHTML(catNombre) + '</span>' +
+        '<span class="cm-cat-rol">Principal</span>'
+      : '<span>' + escaparHTML(catNombre) + '</span>';
+    const secundariasHtml = clasificacion.secundarias.length
+      ? clasificacion.secundarias.map((categoria) =>
+          '<span class="cm-card-categoria-secundaria">' +
+            '<span class="cm-card-categoria-secundaria-icono" aria-hidden="true">' + iconoCategoria(categoria.icono_codigo) + '</span>' +
+            '<span class="cm-card-categoria-secundaria-nombre">' + escaparHTML(categoria.nombre) + '</span>' +
+          '</span>'
+        ).join('')
+      : '<span class="cm-card-categorias-vacio">Sin secundarias</span>';
 
     const style =
       '--cm-acento:#C28A3A;' +
@@ -316,11 +408,15 @@
         '<a class="cm-banner" href="' + hrefEditar + '">' +
           imagen +
           '<span class="cm-banner-cont">' +
-            '<span class="cm-cat">' + escaparHTML(catNombre) + '</span>' +
+            '<span class="cm-cat">' + catPrincipalHtml + '</span>' +
             '<h3 class="cm-nombre">' + escaparHTML(c.nombre) + '</h3>' +
           '</span>' +
         '</a>' +
         '<div class="cm-cuerpo">' +
+          '<div class="cm-card-categorias">' +
+            '<span class="cm-card-categorias-lbl">Secundarias</span>' +
+            '<div class="cm-card-categorias-lista">' + secundariasHtml + '</div>' +
+          '</div>' +
           '<div class="cm-precio-fila">' + precio + '</div>' +
           '<div class="cm-chips">' + chips.join('') + '</div>' +
         '</div>' +
@@ -535,7 +631,7 @@
     montarHeader({
       titulo: 'Campañas',
       kicker: 'PRESENTACIÓN DE PRODUCTOS',
-      lead: 'Campañas es donde un producto se viste para salir a la tienda: le pones su gancho, su foto, su ficha y su precio, y desde aquí lo publicas en magandhi.com. Cada tarjeta lleva el color de su categoría.',
+      lead: 'Campañas es donde un producto se viste para salir a la tienda: le pones su gancho, su foto, su ficha, su precio y sus categorías, y desde aquí lo publicas en magandhi.com.',
       sesion: acceso.sesion,
       areaLabel: 'ÁREA DE MARKETING',
       volverHref: '../index.html',
@@ -545,6 +641,15 @@
     // Los data-ico del header/tarjetas de navegacion (si hubiera) se pintan aqui.
     document.querySelectorAll('[data-ico]').forEach((el) => {
       el.innerHTML = ICONOS[el.dataset.ico] || '';
+    });
+
+    crearDialogoCategoria({
+      botonAbrir: document.getElementById('cm-nueva-categoria'),
+      onCreada: (nueva) => {
+        const estado = document.getElementById('cm-categoria-alta-estado');
+        estado.textContent = 'Categoría «' + nueva.nombre + '» creada y visible. Ya puedes elegirla al agregar o editar una campaña.';
+        estado.hidden = false;
+      }
     });
 
     await cargarCampanas();

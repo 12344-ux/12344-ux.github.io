@@ -4,15 +4,14 @@
    Se carga DESPUES de marca.css y de ../marketing.css (Campanas es sub-area
    de Marketing y HEREDA su header institucional azul marino #101C33, el
    wordmark MAGANDHI, el menu de perfil, el estado denegado y el sello
-   "Con tecnologia Impulse"). Aqui SOLO viven los estilos propios de la lista
-   de campanas.
+   "Con tecnologia Impulse"). Aqui viven los estilos propios de la lista,
+   los formularios y el diálogo compartido de categorías.
 
    IDENTIDAD DE CAMPANAS (decision del dueno):
    · Sigue el azul marino del back-office (NADA de color nuevo de area).
-   · La DIFERENCIA es que cada tarjeta se "viste" con el COLOR DE SU CATEGORIA
-     (la misma familia calida del home de la tienda) via variables inline
-     --cm-acento / --cm-acento-cl / --cm-acento-sombra, igual que --acento en
-     la tienda. Asi el panel se ve "coleccion curada", nunca un arcoiris.
+   · Categorías y bandas usan únicamente la paleta fija MAGANDHI: terracota,
+     negro, dorado y arena. Los colores históricos del catálogo no gobiernan
+     esta interfaz ni se exponen a la tienda.
    · Diseno nivel Finanzas: es PILAR INNEGOCIABLE.
 
    Prefijo de clase: cm-
@@ -48,6 +47,11 @@
 .cm-btn-primario svg{width:18px;height:18px;flex:none}
 /* Grupo de acciones de la barra (Gestionar etiquetas + Agregar campana). */
 .cm-barra-acciones{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cm-categoria-alta-estado{
+  margin:-8px 0 18px;padding:10px 13px;border-radius:10px;
+  color:#2F6E4E;background:rgba(47,110,78,.10);font-size:12.5px;line-height:1.45;
+}
+.cm-categoria-alta-estado[hidden]{display:none}
 /* Boton secundario sobrio (borde), para acciones no primarias como
    "Gestionar etiquetas". Mismo tamano y forma que el primario. */
 .cm-btn-secundario{
@@ -68,8 +72,7 @@
   grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
 }
 
-/* Tarjeta de campana: banner arriba (color de categoria) + cuerpo + acciones.
-   Cada tarjeta recibe sus variables --cm-acento* inline segun su categoria. */
+/* Tarjeta de campana: banner de paleta fija + cuerpo + acciones. */
 .cm-card{
   display:flex;flex-direction:column;
   background:var(--mk-tarjeta);border:1px solid var(--mk-linea);
@@ -83,9 +86,9 @@
 }
 
 /* ------------------------------------------------------------
-   PREVISUALIZACION DEL BANNER-HOOK (vestido con el color de categoria)
-   Espejo del sentir de la tarjeta de la tienda: fondo calido de la categoria,
-   nombre grande, hook corto. Enlaza a editar.html?id=... (toda la tarjeta).
+   PREVISUALIZACION DEL BANNER-HOOK (paleta fija MAGANDHI)
+   Espejo del sentir de la tarjeta de la tienda: fondo calido de marca,
+   nombre grande y categoria principal. Enlaza a editar.html?id=....
    ------------------------------------------------------------ */
 .cm-banner{
   display:block;text-decoration:none;color:inherit;
@@ -102,10 +105,31 @@
 .cm-banner-cont{position:relative;display:flex;flex-direction:column;gap:8px}
 /* Chip de categoria: relleno con el color fuerte de la categoria. */
 .cm-cat{
-  align-self:flex-start;display:inline-flex;align-items:center;gap:6px;
+  align-self:flex-start;display:inline-flex;align-items:center;gap:6px;max-width:100%;min-width:0;
   font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
   color:#fff;background:var(--cm-acento);border-radius:999px;padding:4px 11px;
 }
+.cm-cat-nombre{min-width:0;overflow-wrap:anywhere;line-height:1.25}
+.cm-cat-icono{display:inline-flex;width:14px;height:14px;flex:none}
+.cm-cat-icono svg{width:100%;height:100%}
+.cm-cat-rol{
+  margin-left:2px;padding-left:7px;border-left:1px solid rgba(255,255,255,.42);
+  font-size:8.5px;letter-spacing:.08em;opacity:.9;
+}
+.cm-card-categorias{display:flex;flex-direction:column;gap:6px}
+.cm-card-categorias-lbl{
+  font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mk-gris);
+}
+.cm-card-categorias-lista{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cm-card-categoria-secundaria{
+  display:inline-flex;align-items:center;gap:5px;max-width:100%;min-width:0;padding:4px 8px;
+  border:1px solid var(--mk-linea);border-radius:999px;background:rgba(16,28,51,.035);
+  color:var(--mk-marino);font-size:10.5px;font-weight:600;line-height:1.2;
+}
+.cm-card-categoria-secundaria-icono{display:inline-flex;width:12px;height:12px;flex:none}
+.cm-card-categoria-secundaria-icono svg{width:100%;height:100%}
+.cm-card-categoria-secundaria-nombre{min-width:0;overflow-wrap:anywhere}
+.cm-card-categorias-vacio{font-size:11.5px;color:var(--mk-gris);font-style:italic}
 .cm-nombre{
   margin:0;font-size:17px;font-weight:600;line-height:1.25;color:var(--mk-marino);
 }
@@ -222,8 +246,7 @@
    ------------------------------------------------------------
    Un producto se "viste" aqui: DOS secciones (Banner hook + Producto) con
    todos sus campos, más el DISTINTIVO DE TARJETA (una opción excluyente).
-   A la derecha, una VISTA PREVIA en vivo del banner-hook que toma el color de
-   la categoría elegida.
+   A la derecha, una VISTA PREVIA en vivo del banner-hook con paleta fija.
 
    Diseno nivel Finanzas (PILAR INNEGOCIABLE): campos limpios, switches
    pulcros tipo toggle, chips seleccionables sobrios, azul marino heredado.
@@ -400,8 +423,7 @@
 
 /* ------------------------------------------------------------
    VISTA PREVIA DEL BANNER-HOOK (columna derecha, pegajosa)
-   Espejo de la tarjeta de la tienda: color de categoria en vivo via
-   --cm-acento*. Refleja imagen/nombre/detalle/hook/sello/estrella/aviso.
+   Espejo de la tarjeta de la tienda con paleta fija --cm-acento*.
    ------------------------------------------------------------ */
 .cm-preview-col{position:sticky;top:84px;display:flex;flex-direction:column;gap:10px}
 .cm-preview-lbl{
@@ -713,7 +735,7 @@
   .cm-ficha-fila{grid-template-columns:1fr auto}
   .cm-et-campos{grid-template-columns:1fr}
   .cm-barra-acciones{width:100%}
-  .cm-barra-acciones a{flex:1;justify-content:center}
+  .cm-barra-acciones a,.cm-barra-acciones button{flex:1;justify-content:center}
 }
 
 
@@ -755,31 +777,29 @@
 }
 
 /* ============================================================
-   CATEGORÍAS OFICIALES · multiselección jerárquica
-   Paleta exclusivamente de back-office; los colores históricos de categoría
-   no gobiernan esta interfaz ni la tienda pública.
+   CATEGORÍAS · selector plano + alta compartida
+   Paleta exclusivamente de back-office. Cada opción muestra icono, nombre,
+   distintivo Oficial cuando corresponde y control de principal.
    ============================================================ */
 .cm-categorias-fieldset{
-  min-width:0;margin:0;padding:0;border:0;display:flex;flex-direction:column;gap:7px;
+  min-width:0;margin:0;padding:0;border:0;display:flex;flex-direction:column;gap:8px;
 }
 .cm-categorias-fieldset > legend{padding:0;margin:0 0 1px}
 .cm-categorias{
-  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:3px;
-}
-.cm-categoria-grupo{
-  min-width:0;border:1px solid var(--mk-linea);border-radius:12px;
-  background:var(--mk-tarjeta);overflow:hidden;
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:4px;
 }
 .cm-categoria-opcion{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
-  min-height:48px;padding:9px 11px;
+  min-width:0;min-height:66px;padding:10px 11px;
+  border:1px solid var(--mk-linea);border-radius:12px;background:var(--mk-tarjeta);
+  transition:border-color .15s ease,background-color .15s ease,box-shadow .15s ease;
 }
-.cm-categoria-opcion.es-hija{
-  min-height:43px;padding-left:25px;background:rgba(16,28,51,.018);
-  border-top:1px solid var(--mk-linea);
+.cm-categoria-opcion:hover{border-color:var(--mk-azul-cl);box-shadow:0 3px 10px rgba(16,28,51,.06)}
+.cm-categoria-opcion:has(.cm-categoria-check input:checked){
+  border-color:var(--mk-marino);background:rgba(16,28,51,.035);
 }
 .cm-categoria-check{
-  position:relative;display:flex;align-items:center;gap:8px;min-width:0;
+  position:relative;display:flex;align-items:center;gap:8px;min-width:0;flex:1;
   color:var(--mk-marino);font-size:12.5px;font-weight:600;cursor:pointer;
 }
 .cm-categoria-check input{
@@ -794,7 +814,19 @@
 .cm-categoria-check input:checked ~ .cm-tag-check{background:var(--mk-marino);border-color:var(--mk-marino)}
 .cm-categoria-check input:checked ~ .cm-tag-check svg{opacity:1}
 .cm-categoria-check input:focus-visible ~ .cm-tag-check{box-shadow:0 0 0 3px rgba(143,163,196,.55)}
+.cm-categoria-icono{
+  width:32px;height:32px;flex:none;border-radius:9px;display:inline-flex;
+  align-items:center;justify-content:center;color:var(--mk-marino);
+  background:rgba(194,138,58,.13);border:1px solid rgba(194,138,58,.24);
+}
+.cm-categoria-icono svg{width:18px;height:18px}
+.cm-categoria-identidad{display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap}
 .cm-categoria-nombre{overflow-wrap:anywhere;line-height:1.25}
+.cm-categoria-oficial{
+  display:inline-flex;padding:2px 6px;border-radius:999px;
+  color:#8A5A00;background:rgba(194,138,58,.15);font-size:8.5px;
+  font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+}
 .cm-categoria-principal{
   position:relative;display:inline-flex;align-items:center;gap:5px;flex:none;
   font-size:10.5px;font-weight:600;color:var(--mk-gris);cursor:pointer;
@@ -807,15 +839,113 @@
 }
 .cm-categoria-principal:has(input:disabled){opacity:.45;cursor:not-allowed}
 .cm-categoria-principal:has(input:focus-visible){outline:3px solid rgba(143,163,196,.55);outline-offset:2px}
-.cm-categoria-opcion:has(.cm-categoria-check input:checked){background:rgba(16,28,51,.035)}
-.cm-categorias-estado{min-height:17px;font-size:11.5px;color:#2F6E4E;line-height:1.4}
+.cm-categorias-pie{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.cm-categorias-estado{min-height:17px;flex:1;font-size:11.5px;color:#2F6E4E;line-height:1.4}
 .cm-categorias-estado.err{color:var(--mk-acento)}
-
-@media(max-width:700px){
-  .cm-categorias{grid-template-columns:1fr}
+.cm-categoria-crear-btn{
+  display:inline-flex;align-items:center;gap:7px;flex:none;
+  border:0;background:transparent;color:var(--mk-marino);padding:6px 2px;
+  font-family:inherit;font-size:12px;font-weight:600;line-height:1.2;cursor:pointer;
+  text-decoration:underline;text-decoration-color:rgba(16,28,51,.28);text-underline-offset:3px;
 }
-@media(max-width:420px){
-  .cm-categoria-opcion{align-items:flex-start;flex-direction:column;gap:7px}
-  .cm-categoria-opcion.es-hija{padding-left:20px}
-  .cm-categoria-principal{margin-left:25px}
+.cm-categoria-crear-btn:hover{text-decoration-color:currentColor}
+.cm-categoria-crear-btn svg{width:15px;height:15px}
+.cm-categoria-crear-btn:focus-visible{outline:3px solid rgba(143,163,196,.55);outline-offset:3px;border-radius:6px}
+
+/* Diálogo nativo: se inyecta una sola vez desde categorias-admin.js. */
+.cm-categoria-dialogo{
+  width:min(880px,calc(100vw - 28px));max-height:min(760px,calc(100vh - 28px));
+  margin:auto;padding:0;border:0;border-radius:18px;background:var(--mk-tarjeta);
+  color:var(--mk-carbon);box-shadow:0 24px 80px rgba(16,28,51,.3);overflow-x:hidden;overflow-y:auto;
+}
+.cm-categoria-dialogo:not([open]){display:none}
+.cm-categoria-dialogo::backdrop{background:rgba(16,28,51,.62);backdrop-filter:blur(3px)}
+.cm-categoria-dialogo-form{display:flex;flex-direction:column;min-width:0}
+.cm-categoria-dialogo-cab{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:18px;
+  padding:22px 24px 18px;border-bottom:1px solid var(--mk-linea);
+}
+.cm-categoria-dialogo-kicker{
+  display:block;margin-bottom:4px;color:#9A6B12;font-size:10px;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;
+}
+.cm-categoria-dialogo-cab h2{margin:0;color:var(--mk-marino);font-size:20px;line-height:1.25}
+.cm-categoria-dialogo-cab p{margin:6px 0 0;max-width:620px;color:var(--mk-gris);font-size:12.5px;line-height:1.5}
+.cm-categoria-dialogo-cerrar{
+  width:34px;height:34px;flex:none;display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid var(--mk-linea);border-radius:9px;background:transparent;cursor:pointer;
+  color:var(--mk-marino);font-family:inherit;font-size:25px;font-weight:400;line-height:1;
+}
+.cm-categoria-dialogo-cerrar:hover{background:rgba(16,28,51,.05)}
+.cm-categoria-dialogo-cerrar:disabled{opacity:.5;cursor:wait;background:transparent}
+.cm-categoria-dialogo-cerrar:focus-visible{outline:3px solid rgba(143,163,196,.55);outline-offset:2px}
+.cm-categoria-dialogo-cuerpo{
+  display:grid;grid-template-columns:minmax(0,1.25fr) minmax(240px,.75fr);
+  gap:22px;padding:22px 24px;
+}
+.cm-categoria-dialogo-campos{display:flex;flex-direction:column;gap:16px;min-width:0}
+.cm-categoria-dialogo-campos textarea{resize:vertical;min-height:92px}
+.cm-categoria-contador{align-self:flex-end;color:var(--mk-gris);font-size:10.5px}
+.cm-categoria-iconos-fieldset{min-width:0;margin:0;padding:0;border:0}
+.cm-categoria-iconos-fieldset legend{padding:0;margin:0 0 4px}
+.cm-categoria-iconos{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:8px}
+.cm-categoria-icono-opcion{
+  position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;
+  min-width:0;padding:10px 6px;border:1px solid var(--mk-linea);border-radius:10px;
+  color:var(--mk-gris);background:#fff;font-size:9.5px;font-weight:600;
+  text-align:center;cursor:pointer;transition:border-color .15s ease,background-color .15s ease;
+}
+.cm-categoria-icono-opcion input{position:absolute;width:1px;height:1px;opacity:0}
+.cm-categoria-icono-dibujo{
+  width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;
+  border-radius:9px;color:var(--mk-marino);background:rgba(194,138,58,.12);
+}
+.cm-categoria-icono-dibujo svg{width:18px;height:18px}
+.cm-categoria-icono-opcion:has(input:checked){
+  color:var(--mk-marino);border-color:var(--mk-marino);background:rgba(16,28,51,.045);
+}
+.cm-categoria-icono-opcion:has(input:focus-visible){outline:3px solid rgba(143,163,196,.55);outline-offset:2px}
+.cm-categoria-alta-preview-col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.cm-categoria-alta-preview{
+  position:sticky;top:18px;display:flex;align-items:center;gap:14px;min-height:150px;
+  padding:22px;border-radius:14px;overflow:hidden;color:#fff;
+  background:linear-gradient(145deg,#101C33 0%,#1B2A47 58%,#A6332E 140%);
+  box-shadow:inset 0 -4px 0 #C28A3A,0 8px 24px rgba(16,28,51,.14);
+}
+.cm-categoria-alta-preview::after{
+  content:"";position:absolute;width:150px;height:150px;border-radius:50%;
+  right:-68px;top:-80px;background:rgba(217,174,110,.2);
+}
+.cm-categoria-alta-preview > *{position:relative;z-index:1}
+.cm-categoria-alta-preview-icono{
+  width:52px;height:52px;flex:none;display:inline-flex;align-items:center;justify-content:center;
+  border-radius:15px;color:#101C33;background:#FAF7F2;border:1px solid rgba(255,255,255,.35);
+}
+.cm-categoria-alta-preview-icono svg{width:28px;height:28px}
+.cm-categoria-alta-preview div{display:flex;flex-direction:column;gap:5px;min-width:0}
+.cm-categoria-alta-preview strong{font-size:16px;line-height:1.25;overflow-wrap:anywhere}
+.cm-categoria-alta-preview div span{color:rgba(255,255,255,.78);font-size:11.5px;line-height:1.45;overflow-wrap:anywhere}
+.cm-categoria-dialogo-msg{margin:0 24px}
+.cm-categoria-dialogo-acciones{
+  display:flex;align-items:center;justify-content:flex-end;gap:10px;
+  padding:18px 24px 22px;
+}
+.cm-categoria-dialogo-acciones button:disabled{opacity:.55;cursor:not-allowed;transform:none}
+
+@media(max-width:760px){
+  .cm-categorias{grid-template-columns:1fr}
+  .cm-categoria-dialogo-cuerpo{grid-template-columns:1fr}
+  .cm-categoria-alta-preview{position:static;min-height:124px}
+}
+@media(max-width:520px){
+  .cm-categoria-opcion{align-items:flex-start;flex-direction:column;gap:8px}
+  .cm-categoria-principal{margin-left:57px}
+  .cm-categorias-pie{align-items:flex-start;flex-direction:column}
+  .cm-categoria-iconos{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .cm-categoria-dialogo-cab,.cm-categoria-dialogo-cuerpo{padding-left:17px;padding-right:17px}
+  .cm-categoria-dialogo-acciones{padding-left:17px;padding-right:17px;align-items:stretch;flex-direction:column-reverse}
+  .cm-categoria-dialogo-acciones button{justify-content:center}
+}
+@media(max-width:340px){
+  .cm-categoria-iconos{grid-template-columns:repeat(2,minmax(0,1fr))}
 }

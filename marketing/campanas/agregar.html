@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../marca.css?v=2">
 <link rel="stylesheet" href="../marketing.css?v=3">
-<link rel="stylesheet" href="campanas.css?v=categorias-oficiales">
+<link rel="stylesheet" href="campanas.css?v=categorias-admin">
 
 <!--
   MAGANDHI · Area de Marketing · Sub-area CAMPANAS · AGREGAR (alta).
@@ -66,9 +66,15 @@
         <div class="cm-campos">
           <fieldset class="cm-categorias-fieldset" aria-describedby="cm-categorias-ayuda cm-categorias-estado">
             <legend class="cm-campo-lbl">Categorías *</legend>
-            <span class="cm-campo-ayuda" id="cm-categorias-ayuda">Elige una o varias categorías. Marca una como principal; las subcategorías aparecen agrupadas bajo su categoría oficial. La tienda conserva la paleta fija de MAGANDHI.</span>
+            <span class="cm-campo-ayuda" id="cm-categorias-ayuda">Elige una o varias categorías planas y marca una como principal. Las ocho iniciales llevan el distintivo Oficial; las nuevas quedan disponibles de inmediato.</span>
             <div id="cm-categorias" class="cm-categorias" role="group" aria-label="Categorías de la campaña"></div>
-            <span id="cm-categorias-estado" class="cm-categorias-estado" aria-live="polite"></span>
+            <div class="cm-categorias-pie">
+              <span id="cm-categorias-estado" class="cm-categorias-estado" aria-live="polite"></span>
+              <button type="button" class="cm-categoria-crear-btn" id="cm-crear-categoria">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                <span>Crear nueva categoría</span>
+              </button>
+            </div>
           </fieldset>
           <div class="cm-campo">
             <label for="cm-producto" class="cm-campo-lbl">Producto de Inventario</label>
@@ -305,6 +311,9 @@
     supabase, escaparHTML, formatearNumero,
     optimizarImagen, optimizarDosTamanos, BUCKET_CAMPANAS
   } from '../marketing-core.js';
+  import {
+    cargarCategoriasPublicas, crearDialogoCategoria, crearSelectorCategorias
+  } from './categorias-admin.js';
 
   // ============================================================
   //  Estado en memoria de los editores dinamicos (ficha y galeria).
@@ -341,7 +350,8 @@
   // tocado a mano. En cuanto lo edita, se respeta su valor y no se pisa.
   let slugTocado = false;
 
-  let categorias = [];   // activas: [{codigo,nombre,parent_codigo,orden}]
+  let categorias = [];   // planas, activas y visibles desde categorias_publicas
+  let selectorCategorias = null;
   let productos = [];    // [{id,sku,nombre,activo}] de Inventario
 
   // ------------------------------------------------------------
@@ -675,110 +685,30 @@
   }
 
   // ------------------------------------------------------------
-  // CATEGORÍAS OFICIALES (multiselección + una principal)
+  // CATEGORÍAS PLANAS (selector y diálogo compartidos)
   // ------------------------------------------------------------
-  const categoriasCont = $('cm-categorias');
-  const categoriasEstado = $('cm-categorias-estado');
-
-  function opcionCategoria(categoria, esHija) {
-    const codigo = escaparHTML(categoria.codigo);
-    return '<div class="cm-categoria-opcion' + (esHija ? ' es-hija' : '') + '">' +
-      '<label class="cm-categoria-check">' +
-        '<input type="checkbox" value="' + codigo + '">' +
-        '<span class="cm-tag-check">' + SVG_CHECK + '</span>' +
-        '<span class="cm-categoria-nombre">' + escaparHTML(categoria.nombre) + '</span>' +
-      '</label>' +
-      '<label class="cm-categoria-principal">' +
-        '<input type="radio" name="cm-categoria-principal" value="' + codigo + '" disabled>' +
-        '<span>Principal</span>' +
-      '</label>' +
-    '</div>';
-  }
-
-  function pintarCategorias(lista) {
-    if (!lista?.length) {
-      categoriasCont.innerHTML = '<span class="cm-campo-ayuda">No hay categorías activas disponibles.</span>';
-      return;
-    }
-    const raices = lista.filter((c) => !c.parent_codigo);
-    const huerfanas = lista.filter((c) => c.parent_codigo && !lista.some((r) => r.codigo === c.parent_codigo));
-    categoriasCont.innerHTML = raices.map((raiz) => {
-      const hijas = lista.filter((c) => c.parent_codigo === raiz.codigo);
-      return '<section class="cm-categoria-grupo" aria-label="' + escaparHTML(raiz.nombre) + '">' +
-        opcionCategoria(raiz, false) +
-        (hijas.length ? '<div class="cm-categoria-hijas">' + hijas.map((c) => opcionCategoria(c, true)).join('') + '</div>' : '') +
-      '</section>';
-    }).join('') + (huerfanas.length
-      ? '<section class="cm-categoria-grupo">' + huerfanas.map((c) => opcionCategoria(c, true)).join('') + '</section>'
-      : '');
-    cablearCategorias();
-    actualizarEstadoCategorias();
-  }
-
-  function recolectarCategorias() {
-    return [...categoriasCont.querySelectorAll('.cm-categoria-check input:checked')].map((c) => c.value);
-  }
-
   function categoriaPrincipal() {
-    return categoriasCont.querySelector('input[name="cm-categoria-principal"]:checked')?.value || null;
+    return selectorCategorias?.valor().principal || null;
   }
 
-  function actualizarEstadoCategorias() {
-    const elegidas = recolectarCategorias();
-    const principal = categoriaPrincipal();
-    categoriasEstado.textContent = elegidas.length
-      ? elegidas.length + (elegidas.length === 1 ? ' categoría elegida' : ' categorías elegidas') +
-        (principal ? ' · principal: ' + (categoriaPorCodigo(principal)?.nombre || principal) : ' · elige la principal')
-      : 'Debes elegir al menos una categoría.';
-    categoriasEstado.classList.toggle('err', !elegidas.length || !principal);
-  }
-
-  function cablearCategorias() {
-    categoriasCont.querySelectorAll('.cm-categoria-opcion').forEach((opcion) => {
-      const check = opcion.querySelector('.cm-categoria-check input');
-      const radio = opcion.querySelector('.cm-categoria-principal input');
-      check.addEventListener('change', () => {
-        radio.disabled = !check.checked;
-        if (!check.checked && radio.checked) radio.checked = false;
-        if (check.checked && !categoriaPrincipal()) radio.checked = true;
-        actualizarEstadoCategorias();
-        refrescarPreview();
-      });
-      radio.addEventListener('change', () => {
-        actualizarEstadoCategorias();
-        refrescarPreview();
-      });
-    });
+  function categoriaPorCodigo(codigo) {
+    return selectorCategorias?.categoria(codigo) || null;
   }
 
   function validarCategorias() {
-    const elegidas = recolectarCategorias();
-    const principal = categoriaPrincipal();
-    if (!elegidas.length) {
-      mostrarMsg('Elige al menos una categoría para guardar la campaña.');
-      categoriasCont.querySelector('input[type="checkbox"]')?.focus();
+    const resultado = selectorCategorias?.validar();
+    if (!resultado?.ok) {
+      mostrarMsg(resultado?.mensaje || 'No se pudieron validar las categorías.');
+      resultado?.elemento?.focus();
       return null;
     }
-    if (elegidas.length > 12) {
-      mostrarMsg('Elige como máximo 12 categorías.');
-      categoriasCont.querySelector('.cm-categoria-check input:checked')?.focus();
-      return null;
-    }
-    if (!principal || !elegidas.includes(principal)) {
-      mostrarMsg('Marca una de las categorías elegidas como principal.');
-      categoriasCont.querySelector('input[name="cm-categoria-principal"]:not(:disabled)')?.focus();
-      return null;
-    }
-    return { codigos: elegidas, principal };
+    return { codigos: resultado.codigos, principal: resultado.principal };
   }
 
   // ------------------------------------------------------------
   // VISTA PREVIA EN VIVO (misma paleta fija de la tienda publica)
   // ------------------------------------------------------------
   const preview = $('cm-preview');
-  function categoriaPorCodigo(cod) {
-    return categorias.find((c) => c.codigo === cod) || null;
-  }
   function tipoDistintivo() {
     return document.querySelector('input[name="cm-distintivo"]:checked')?.value || 'ninguno';
   }
@@ -1141,12 +1071,9 @@
       el.innerHTML = ICONOS[el.dataset.ico] || '';
     });
 
-    // Cargar categorias (clasificacion), etiquetas y productos de Inventario.
+    // Cargar categorías públicas planas, etiquetas y productos de Inventario.
     const [catRes, tagRes, prodRes] = await Promise.all([
-      supabase.from('campana_categoria')
-        .select('codigo, nombre, parent_codigo, icono_codigo, descripcion, orden')
-        .eq('activo', true)
-        .order('orden', { ascending: true }),
+      cargarCategoriasPublicas(),
       supabase.from('campana_etiqueta')
         .select('codigo, nombre, orden')
         .eq('activo', true)
@@ -1162,13 +1089,23 @@
         .order('nombre', { ascending: true })
     ]);
 
+    categorias = catRes.data || [];
+    selectorCategorias = crearSelectorCategorias({
+      contenedor: $('cm-categorias'),
+      estado: $('cm-categorias-estado'),
+      categorias,
+      onChange: () => refrescarPreview()
+    });
+    crearDialogoCategoria({
+      botonAbrir: $('cm-crear-categoria'),
+      onCreada: (nueva) => {
+        selectorCategorias.agregarCategoria(nueva, { seleccionarNueva: true });
+        categorias = selectorCategorias.lista();
+        refrescarPreview();
+      }
+    });
     if (catRes.error) {
-      categorias = [];
-      pintarCategorias([]);
-      mostrarMsg('No se pudieron cargar las categorías: ' + (catRes.error.message || 'error.'));
-    } else {
-      categorias = catRes.data || [];
-      pintarCategorias(categorias);
+      mostrarMsg('No se pudieron cargar las categorías: ' + (catRes.error.message || 'error. Puedes intentar crear una nueva.'));
     }
 
     if (tagRes.error) {
