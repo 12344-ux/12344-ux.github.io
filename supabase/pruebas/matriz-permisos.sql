@@ -267,6 +267,11 @@ begin
     if to_regprocedure('public.cm_crear_categoria(text,text,text)') is not null then
       v_lista_blanca := v_lista_blanca || array['cm_crear_categoria'];
     end if;
+    if to_regprocedure('public.cm_crear_categoria_temporal(text,text,text)') is not null then
+      v_lista_blanca := v_lista_blanca || array[
+        'cm_crear_categoria_temporal', 'cm_configurar_categoria_temporal'
+      ];
+    end if;
 
     -- F3 solo existe desde 202610200. Sus constructores internos siguen fuera
     -- de la lista; estas dos son las únicas puertas de panel.
@@ -492,7 +497,10 @@ begin
                    'cm__validar_categoria_publicada_legacy',
                    'cm__validar_categorias_seleccion',
                    'cm__validar_principal_puente',
-                   'cm_crear_categoria'
+                   'cm__proteger_tipo_categoria',
+                   'cm_crear_categoria',
+                   'cm_crear_categoria_temporal',
+                   'cm_configurar_categoria_temporal'
                  )
                  or (
                    p.proname like 'promocionar\_p3\_%' escape '\'
@@ -515,7 +523,10 @@ begin
                      'sn_configurar_v1','sn_resumen_v1'
                    ) then 'SOBRA puerta SN solo-panel: '
                    when p.proname = 'promocionar_p5__agregado' then 'SOBRA helper: '
-                   when p.proname = 'cm_crear_categoria' then 'SOBRA puerta solo-panel: '
+                   when p.proname in (
+                     'cm_crear_categoria', 'cm_crear_categoria_temporal',
+                     'cm_configurar_categoria_temporal'
+                   ) then 'SOBRA puerta solo-panel: '
                    when p.proname like 'promocionar\_p5\_%' escape '\' then 'SOBRA puerta P5 no-service: '
                    else 'SOBRA helper: '
                  end
@@ -555,7 +566,10 @@ begin
              'cm__validar_categoria_publicada_legacy',
              'cm__validar_categorias_seleccion',
              'cm__validar_principal_puente',
-             'cm_crear_categoria'
+             'cm__proteger_tipo_categoria',
+             'cm_crear_categoria',
+             'cm_crear_categoria_temporal',
+             'cm_configurar_categoria_temporal'
            )
            or (
              p.proname like 'promocionar\_p3\_%' escape '\'
