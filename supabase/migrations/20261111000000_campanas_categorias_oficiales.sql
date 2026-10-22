@@ -468,7 +468,7 @@ comment on function public.cm__validar_categorias_seleccion(text[], text) is
 revoke all on function public.cm__validar_categorias_seleccion(text[], text)
   from public, anon, authenticated, service_role;
 
-create function public.cm_crear_campana_con_categorias(
+create or replace function public.cm_crear_campana_con_categorias(
   p_nombre                   text,
   p_detalle_presentacion     text default null,
   p_imagen_banner_path       text default null,
@@ -535,7 +535,7 @@ $fn$;
 comment on function public.cm_crear_campana_con_categorias(text, text, text, text, bigint, text, text, text, jsonb, jsonb, boolean, boolean, integer, boolean, integer, text[], uuid, text, integer, boolean, integer, text[], text) is
   'Wrapper atómico de cm_crear_campana C1: valida categorías públicas, conserva categoria_codigo como principal y reemplaza el puente en la misma transacción.';
 
-create function public.cm_editar_campana_con_categorias(
+create or replace function public.cm_editar_campana_con_categorias(
   p_id                       uuid,
   p_nombre                   text,
   p_detalle_presentacion     text default null,
@@ -880,7 +880,7 @@ grant select on table public.catalogo_publico
 -- ----------------------------------------------------------------------------
 -- (F) Alta autenticada de categorías no oficiales, plana y sin uploads.
 -- ----------------------------------------------------------------------------
-create function public.cm_crear_categoria(
+create or replace function public.cm_crear_categoria(
   nombre text,
   descripcion text,
   icono_codigo text
