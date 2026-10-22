@@ -558,9 +558,9 @@ begin
     -- ---------- ACL nominal de categorías planas ----------
     if to_regclass('public.categorias_publicas') is not null then
       r_pers := r_pers || 'roles API'::text;
-      r_obj := r_obj || 'ACL categorias_publicas: solo SELECT';
-      r_esp := r_esp || 'anon/authenticated/service_role=SELECT; PUBLIC=NADA';
-      r_obt := r_obt || case
+      r_obj := r_obj || 'ACL categorias_publicas: solo SELECT'::text;
+      r_esp := r_esp || 'anon/authenticated/service_role=SELECT; PUBLIC=NADA'::text;
+      r_obt := r_obt || (case
         when has_table_privilege('anon', 'public.categorias_publicas', 'select')
          and has_table_privilege('authenticated', 'public.categorias_publicas', 'select')
          and has_table_privilege('service_role', 'public.categorias_publicas', 'select')
@@ -575,12 +575,12 @@ begin
          )
           then 'anon/authenticated/service_role=SELECT; PUBLIC=NADA'
         else 'DESAJUSTE'
-      end;
+      end)::text;
 
       r_pers := r_pers || 'roles API'::text;
-      r_obj := r_obj || 'ACL campana_producto_categoria';
-      r_esp := r_esp || 'authenticated=SELECT+RLS; anon/service_role/PUBLIC=NADA';
-      r_obt := r_obt || case
+      r_obj := r_obj || 'ACL campana_producto_categoria'::text;
+      r_esp := r_esp || 'authenticated=SELECT+RLS; anon/service_role/PUBLIC=NADA'::text;
+      r_obt := r_obt || (case
         when has_table_privilege('authenticated', 'public.campana_producto_categoria', 'select')
          and (select c.relrowsecurity from pg_class c where c.oid = 'public.campana_producto_categoria'::regclass)
          and not exists (
@@ -597,11 +597,11 @@ begin
          )
           then 'authenticated=SELECT+RLS; anon/service_role/PUBLIC=NADA'
         else 'DESAJUSTE'
-      end;
+      end)::text;
 
       r_pers := r_pers || 'roles API'::text;
-      r_obj := r_obj || 'ACL cm_crear_categoria';
-      r_esp := r_esp || 'anon=NO · authenticated=SI · service_role=NO';
+      r_obj := r_obj || 'ACL cm_crear_categoria'::text;
+      r_esp := r_esp || 'anon=NO · authenticated=SI · service_role=NO'::text;
       r_obt := r_obt || format(
         'anon=%s · authenticated=%s · service_role=%s',
         case when has_function_privilege('anon', 'public.cm_crear_categoria(text,text,text)', 'execute') then 'SI' else 'NO' end,
@@ -625,7 +625,7 @@ begin
       end;
       execute 'reset role';
       r_pers := r_pers || 'cliente'::text;
-      r_obj  := r_obj || 'llamar cm_crear_categoria sin Marketing';
+      r_obj  := r_obj || 'llamar cm_crear_categoria sin Marketing'::text;
       r_esp  := r_esp || 'RECHAZADO'::text;
       r_obt  := r_obt || v_obt;
     end if;
