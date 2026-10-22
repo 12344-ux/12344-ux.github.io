@@ -644,6 +644,9 @@ as $fn$
 declare
   v_resultado jsonb;
 begin
+  if not public.tiene_acceso_marketing() then
+    raise exception 'Acceso denegado: se requiere el modulo marketing.';
+  end if;
   v_resultado := public.cm_guardar_categoria_v1(
     null, nombre, descripcion, icono_codigo, null, 'permanente',
     null, null, false, true, true, 'alta_rpc_legacy_cm_crear_categoria'
