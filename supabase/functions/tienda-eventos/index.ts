@@ -1,26 +1,43 @@
 // ============================================================================
-// MAGANDHI · Edge Function · tienda-eventos (Metricas M1 · analitica propia, EM7)
+// MAGANDHI · Edge Function · tienda-eventos (Métricas M1 + Sistema Nervioso SN1)
 // ----------------------------------------------------------------------------
-// La llama la TIENDA, sin sesion, SOLO para visitantes que aceptaron el aviso.
-//   config     {}                                        -> {activa}
-//   registrar  {visitante, sesion, eventos:[{tipo, ruta, slug, origen,
-//               entrada, utm_campaign, dispositivo, cuando}]}  (max 30)
+// La llama la TIENDA, sin sesión obligatoria, SOLO después del consentimiento.
+//   config     {} -> {activa}
+//   registrar  {visitante, sesion, eventos:[...]} (máximo 30)
 //
 // PRIVACIDAD Y SEGURIDAD:
 //   * Verify JWT APAGADO; escribe solo por mt_registrar_eventos (service_role).
 //   * La IP nunca se guarda: solo un hash con sal diaria para limitar abuso.
-//   * No se guarda el navegador: el user-agent solo se mira aqui para descartar
-//     bots y no sale de esta funcion.
-//   * Lista blanca de campos: lo que no esta en ella se descarta antes de la
-//     base (que ademas valida cada valor con CHECK).
-//   * Respuestas cortas y logs sin ids de visitante, IP ni rutas.
+//   * No se guarda el navegador: el user-agent solo descarta bots.
+//   * Lista blanca tipada. No se acepta consulta cruda, uid ni customer_id.
+//   * consulta_hash se re-HMACea con SN_CONSULTA_SAL; sin secreto se omite.
+//   * Respuestas cortas y logs únicamente con código técnico, nunca payload/PII.
 // ============================================================================
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.116.0";
 
-const MAX_BYTES = 16 * 1024;
+const MAX_BYTES = 32 * 1024;
 const ORIGENES = new Set(["https://magandhi.com", "https://www.magandhi.com", "https://12344-ux.github.io"]);
 const BOTS = /bot|crawl|spider|slurp|headless|lighthouse|pagespeed|preview|facebookexternalhit|whatsapp|telegram|curl|wget|python|axios|node-fetch|go-http/i;
-const CAMPOS = ["tipo", "ruta", "slug", "origen", "entrada", "utm_campaign", "dispositivo", "cuando"] as const;
+const CAMPOS = [
+  "tipo", "ruta", "slug", "origen", "entrada", "utm_campaign", "dispositivo", "cuando",
+  "request_id", "superficie", "slot", "posicion", "layout_codigo", "modelo_version",
+  "razon", "cantidad_resultados", "consulta_hash",
+] as const;
+const TIPOS_RECOMENDACION = new Set(["recomendacion_impresion", "recomendacion_click"]);
+const SUPERFICIES = new Set([
+  "home_principal", "home_descubrimiento", "categoria", "producto_final", "carrito", "busqueda",
+]);
+const RAZONES = new Set([
+  "coincidencia_nombre", "coincidencia_categoria", "coincidencia_contenido", "coincidencia_busqueda",
+  "afinidad_cuenta", "misma_categoria", "complemento", "alternativa", "continuacion", "rutina",
+  "popular", "novedad", "descubrimiento", "exploracion",
+]);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const CODIGO_80 = /^[a-z0-9][a-z0-9_-]{0,79}$/;
+const LAYOUT = /^[a-z0-9][a-z0-9_-]{2,79}$/;
+const MODELO = /^[a-z0-9][a-z0-9._-]{0,59}$/;
+const HASH = /^[0-9a-f]{64}$/;
+const SLUG = /^[a-z0-9-]{1,180}$/;
 
 function cors(origin: string | null) {
   return {
@@ -38,17 +55,96 @@ async function sha256hex(s: string) {
   const d = new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(s)));
   return [...d].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
-function limpiar(e: unknown) {
+async function hmac256hex(secret: string, value: string) {
+  const key = await crypto.subtle.importKey(
+    "raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+  );
+  const d = new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(value)));
+  return [...d].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function limpiar(e: unknown, visitante: string, sesion: string) {
   if (!e || typeof e !== "object" || Array.isArray(e)) return null;
   const o = e as Record<string, unknown>;
-  const out: Record<string, unknown> = {};
-  for (const k of CAMPOS) {
-    const v = o[k];
-    if (v === undefined || v === null || v === "") continue;
-    if (k === "entrada") { out[k] = v === true; continue; }
-    out[k] = String(v).slice(0, k === "ruta" ? 120 : 80);
+  if (o.tipo === undefined || o.tipo === null || o.tipo === "") return null;
+
+  const tipo = String(o.tipo).slice(0, 80);
+  const esRecomendacion = TIPOS_RECOMENDACION.has(tipo);
+  const esBusqueda = tipo === "busqueda_resultados";
+
+  if (!esRecomendacion && !esBusqueda) {
+    // Contrato histórico intacto: mismos ocho campos, coerción y topes. Los
+    // campos SN se ignoran para tipos anteriores o desconocidos.
+    const out: Record<string, unknown> = {};
+    for (const k of CAMPOS.slice(0, 8)) {
+      const v = o[k];
+      if (v === undefined || v === null || v === "") continue;
+      if (k === "entrada") { out[k] = v === true; continue; }
+      out[k] = String(v).slice(0, k === "ruta" ? 120 : 80);
+    }
+    return out.tipo ? out : null;
   }
-  return out.tipo ? out : null;
+
+  // Un evento SN se construye desde cero: ruta, origen, UTM, dispositivo y
+  // cualquier clave libre se descartan antes de alcanzar service_role.
+  const out: Record<string, unknown> = { tipo };
+  const requestId = o.request_id;
+  const superficie = o.superficie;
+  const slot = o.slot;
+  const posicion = o.posicion;
+  const layout = o.layout_codigo;
+  const modelo = o.modelo_version;
+  const razon = o.razon;
+  const cantidad = o.cantidad_resultados;
+  const consultaHash = o.consulta_hash;
+  const slug = o.slug;
+  const cuando = o.cuando;
+
+  if (typeof requestId !== "string" || !UUID.test(requestId)) return null;
+  if (requestId.toLowerCase() === visitante.toLowerCase() || requestId.toLowerCase() === sesion.toLowerCase()) return null;
+  if (typeof superficie !== "string" || !SUPERFICIES.has(superficie)) return null;
+  if (typeof modelo !== "string" || !MODELO.test(modelo)) return null;
+  if (cuando !== undefined && cuando !== null && cuando !== "") {
+    if (typeof cuando !== "string" || cuando.length > 80) return null;
+    out.cuando = cuando;
+  }
+  out.request_id = requestId.toLowerCase();
+  out.superficie = superficie;
+  out.modelo_version = modelo;
+
+  if (layout !== undefined && layout !== null && layout !== "") {
+    if (typeof layout !== "string" || !LAYOUT.test(layout)) return null;
+    out.layout_codigo = layout;
+  }
+  if (consultaHash !== undefined && consultaHash !== null && consultaHash !== "") {
+    if (typeof consultaHash !== "string" || !HASH.test(consultaHash)) return null;
+    out.consulta_hash = consultaHash;
+  }
+
+  if (esBusqueda) {
+    if (superficie !== "busqueda") return null;
+    if (typeof cantidad !== "number" || !Number.isInteger(cantidad) || cantidad < 0 || cantidad > 10_000) return null;
+    if (slot !== undefined && slot !== null && slot !== "") return null;
+    if (posicion !== undefined && posicion !== null && posicion !== "") return null;
+    if (razon !== undefined && razon !== null && razon !== "") return null;
+    out.cantidad_resultados = cantidad;
+    return out;
+  }
+
+  if (typeof slot !== "string" || !CODIGO_80.test(slot)) return null;
+  if (typeof posicion !== "number" || !Number.isInteger(posicion) || posicion < 1 || posicion > 100) return null;
+  if (typeof layout !== "string" || !LAYOUT.test(layout)) return null;
+  if (typeof razon !== "string" || !RAZONES.has(razon)) return null;
+  if (typeof slug !== "string" || !SLUG.test(slug)) return null;
+  if (cantidad !== undefined && cantidad !== null && cantidad !== "") return null;
+  if (consultaHash !== undefined && consultaHash !== null && consultaHash !== "") return null;
+
+  out.slug = slug;
+  out.slot = slot;
+  out.posicion = posicion;
+  out.layout_codigo = layout;
+  out.razon = razon;
+  return out;
 }
 
 Deno.serve(async (req) => {
@@ -60,6 +156,10 @@ Deno.serve(async (req) => {
   const llave = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !llave) return json({ error: "Configuración incompleta." }, 503, c);
 
+  const largoDeclarado = Number(req.headers.get("content-length") ?? "0");
+  if (Number.isFinite(largoDeclarado) && largoDeclarado > MAX_BYTES) {
+    return json({ error: "Demasiado grande." }, 413, c);
+  }
   const crudo = await req.text();
   if (enc.encode(crudo).length > MAX_BYTES) return json({ error: "Demasiado grande." }, 413, c);
   let body: Record<string, unknown>;
@@ -73,30 +173,58 @@ Deno.serve(async (req) => {
 
   if (body.modo === "config") {
     const { data, error } = await sb.rpc("mt_publico_config");
-    if (error) { console.error("[tienda-eventos] config", JSON.stringify({ code: error.code ?? null })); return json({ activa: false }, 200, c); }
+    if (error) {
+      console.error("[tienda-eventos] config", JSON.stringify({ code: error.code ?? null }));
+      return json({ activa: false }, 200, c);
+    }
     return json({ activa: !!(data as { activa?: boolean })?.activa }, 200, c);
   }
   if (body.modo !== "registrar") return json({ error: "Modo inválido." }, 400, c);
 
-  // Bots: se responde 202 sin registrar (no se les da pistas).
+  // Bots: se responde 202 sin registrar y sin dar pistas.
   if (BOTS.test(req.headers.get("user-agent") ?? "")) return json({ ok: true }, 202, c);
 
-  const eventos = (Array.isArray(body.eventos) ? body.eventos : []).slice(0, 30).map(limpiar).filter(Boolean);
+  const visitante = String(body.visitante ?? "").slice(0, 40);
+  const sesion = String(body.sesion ?? "").slice(0, 40);
+  const eventos = (Array.isArray(body.eventos) ? body.eventos : [])
+    .slice(0, 30)
+    .map((evento) => limpiar(evento, visitante, sesion))
+    .filter((evento): evento is Record<string, unknown> => evento !== null);
   if (!eventos.length) return json({ error: "Sin eventos." }, 400, c);
 
-  const ip = (req.headers.get("cf-connecting-ip") || req.headers.get("x-real-ip") || (req.headers.get("x-forwarded-for") ?? "").split(",")[0] || "").trim() || "desconocida";
+  // El navegador nunca decide el valor persistido: si trae un digest de
+  // consulta, la Edge lo vuelve HMAC con secreto propio. Sin secreto se omite.
+  const consultaSal = Deno.env.get("SN_CONSULTA_SAL");
+  await Promise.all(eventos.map(async (evento) => {
+    if (typeof evento.consulta_hash !== "string") return;
+    if (!consultaSal || consultaSal.length < 16) {
+      delete evento.consulta_hash;
+      return;
+    }
+    evento.consulta_hash = await hmac256hex(
+      consultaSal,
+      `sn1-consulta-v1|${evento.consulta_hash}`,
+    );
+  }));
+
+  const ip = (req.headers.get("cf-connecting-ip") || req.headers.get("x-real-ip") ||
+    (req.headers.get("x-forwarded-for") ?? "").split(",")[0] || "").trim() || "desconocida";
   const sal = Deno.env.get("EM_IP_SAL") ?? llave;
   const ipHash = await sha256hex(`${sal}|eventos|${new Date().toISOString().slice(0, 10)}|${ip}`);
 
   const { data, error } = await sb.rpc("mt_registrar_eventos", {
-    p_visitante: String(body.visitante ?? "").slice(0, 40), p_sesion: String(body.sesion ?? "").slice(0, 40), p_eventos: eventos, p_ip_hash: ipHash,
+    p_visitante: visitante,
+    p_sesion: sesion,
+    p_eventos: eventos,
+    p_ip_hash: ipHash,
   });
   if (error) {
     const m = error.message ?? "";
     if (/MT_ANALITICA_APAGADA/.test(m)) return json({ ok: false, apagada: true }, 409, c);
     if (/MT_DEMASIADOS_EVENTOS/.test(m)) return json({ ok: false }, 429, c);
     if (/MT_(VISITANTE|EVENTOS)_INVALID/.test(m)) return json({ error: "Inválido." }, 400, c);
-    console.error("[tienda-eventos] registrar", JSON.stringify({ code: error.code ?? null, message: m.slice(0, 120) }));
+    // No registrar message: un error de base nunca debe volcar entrada pública.
+    console.error("[tienda-eventos] registrar", JSON.stringify({ code: error.code ?? null }));
     return json({ ok: false }, 500, c);
   }
   const r = data as { aceptados?: number; descartados?: number };
