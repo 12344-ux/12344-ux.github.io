@@ -6,7 +6,8 @@
 
 **SN1-A (backend), SN1-B (integración web) y SN1-C (consola editorial) están implementadas en esta entrega; permanecen pendientes de aplicación y despliegue manual.**
 
-- Migración: `supabase/migrations/20261112000000_sistema_nervioso_sn1.sql`.
+- Migración base publicada: `supabase/migrations/20261112000000_sistema_nervioso_sn1.sql`.
+- Migración forward de cierre: `supabase/migrations/20261113000000_sistema_nervioso_sn1_cierre.sql`.
 - Edge Function ampliada: `supabase/functions/tienda-eventos/index.ts`.
 - Baseline obligatorio: `20261111000000_campanas_categorias_oficiales.sql` y sus dependencias de cuentas, carrito, pedidos, opiniones y Métricas M1.
 - Versión inicial del motor: `sn1-reglas-1`.
@@ -158,7 +159,7 @@ Cada receta fija orden, peso, título, subtítulo y roles fotográficos requerid
 
 ### 4.6 `sn_catalogo_seguro_v1`
 
-Vista pública de respaldo que conserva exactamente los campos de `catalogo_publico`, pero vuelve a filtrar campaña publicada/activa/no-placeholder, `agotado=false`, `max_comprable>0` y la ventana editorial SN. No aplica ranking ni personalización y deliberadamente no depende del gate global: permite mantener la tienda operativa con un orden editorial seguro cuando el ranker está apagado o no responde. El cliente solo cae a `catalogo_publico` directamente durante el orden de despliegue anterior a que esta vista exista; una vez instalada, cualquier otro error de la vista falla cerrado.
+Vista pública de respaldo que conserva exactamente los campos de `catalogo_publico`, pero vuelve a filtrar campaña publicada/activa/no-placeholder, `agotado=false`, `max_comprable>0` y la ventana editorial SN. No aplica ranking ni personalización y deliberadamente no depende del gate global: permite mantener la tienda operativa con un orden editorial seguro cuando el ranker está apagado o no responde. Su existencia es precondición del frontend SN1: el cliente nunca cae directamente a `catalogo_publico`, nunca inventa `max_comprable` y vuelve a consultar esta vista en cada fallback no concurrente para no conservar elegibilidad obsoleta.
 
 ### 4.7 `sn_assets_publicos_v1`
 
@@ -249,7 +250,7 @@ sn_configurar_v1(
 ) -> jsonb
 ```
 
-Solo `admin`. Toda llamada exige razón de `3..500` caracteres y genera bitácora. Apagar SN no modifica `catalogo_publico`: la tienda puede seguir usando el catálogo tradicional.
+Solo `admin`. Toda llamada exige razón de `3..500` caracteres y genera bitácora. Apagar SN no modifica `catalogo_publico`: la tienda continúa por `sn_catalogo_seguro_v1`, que conserva la misma frontera comercial y añade las ventanas SN.
 
 ### 5.4 Búsqueda
 
@@ -283,7 +284,8 @@ Reglas:
 - consulta máxima de 120 caracteres;
 - NFKD real, retiro de acentos, minúsculas y espacios normalizados;
 - consulta vacía permitida (`categoria` o `exploracion`); toda respuesta exitosa conserva `consulta` como string y usa `""` en esos modos;
-- el filtro y la relevancia textual usan **exclusivamente** campos públicos de `catalogo_publico`: nombre, slug, categorías, detalle/presentación, característica, `hook_largo`, por qué MAGANDHI, sobre el producto y ficha técnica;
+- el filtro y la relevancia textual usan **exclusivamente** campos públicos visibles de `catalogo_publico`: nombre, slug, nombre/códigos de categorías, detalle/presentación, característica, `hook_largo`, por qué MAGANDHI, sobre el producto y los valores visibles `clave`/`valor` de ficha técnica;
+- los objetos JSON no se serializan: nombres estructurales como `clave`, `valor`, `nombre` o `principal` no generan coincidencias por sí solos. El helper privado `sn__ficha_tecnica_texto_publico` tolera formas inválidas, proyecta solo strings visibles de `clave` y `valor` y no tiene `EXECUTE` para roles API;
 - `hook_corto`, intenciones y etiquetas internas no incluyen ni ordenan resultados de búsqueda y, por tanto, no forman un oráculo anónimo; las etiquetas pueden seguir como afinidad no textual dentro de recomendaciones;
 - nombre/frase y coincidencia textual se ordenan antes que personalización por categorías públicas, prioridad, popularidad, rating, novedad o desempate;
 - paginación determinista con `p_semilla` y máximo 60 por página;
@@ -303,6 +305,8 @@ sn_recomendar_v1(
 ```
 
 Disponible para `anon`, `authenticated` y `service_role`.
+
+En esta RPC, `p_semilla` es solo entropía cliente opcional: se recorta, admite como máximo 80 caracteres ASCII alfanuméricos, guion o guion bajo y nunca sustituye el contexto autoritativo. El servidor compone **siempre** la semilla interna con entropía + superficie + slug + categoría + consulta normalizada + fecha civil de Bogotá; añade `auth.uid()` únicamente cuando `v_personaliza=true`. En modo contextual/anónimo no incorpora identidad ni un sentinel de identidad. Así, reutilizar el mismo `p_semilla` no puede neutralizar superficie, contexto, día ni partición personalizada.
 
 `p_contexto` solo admite:
 
@@ -365,7 +369,7 @@ descubrimiento, afinidad_cuenta, misma_categoria, popular, novedad, exploracion
 
 La razón no revela etiquetas, pesos, historial, score, stock, proveedor ni identidad.
 
-Con el gate apagado, la respuesta estable es `ok=false`, `codigo=SN_APAGADO`; no se toca ni se rompe el catálogo tradicional.
+Con el gate apagado, la respuesta estable es `ok=false`, `codigo=SN_APAGADO`; el consumidor continúa por `sn_catalogo_seguro_v1` sin relajar publicación, actividad, placeholder, compra posible ni ventanas.
 
 ### 5.6 Resumen interno
 
@@ -373,7 +377,7 @@ Con el gate apagado, la respuesta estable es `ok=false`, `codigo=SN_APAGADO`; no
 sn_resumen_v1(p_desde date, p_hasta date) -> jsonb
 ```
 
-Exige Marketing y acepta hasta 730 días. Devuelve únicamente agregados consentidos: impresiones, clics, CTR, búsquedas, promedio de resultados y cortes por superficie/modelo. Nunca devuelve visitante, sesión, `request_id`, `consulta_hash` o slug individual.
+Exige Marketing y acepta hasta 730 días. Devuelve únicamente agregados de eventos aceptados por ingestión: impresiones, clics, CTR, búsquedas, promedio de resultados y cortes por superficie/modelo. Solo pueden denominarse consentidos cuando el storefront cumplió la precondición de `politica_version`. Nunca devuelve visitante, sesión, `request_id`, `consulta_hash` o slug individual.
 
 ## 6. Producto JSON común
 
@@ -424,19 +428,19 @@ Para participar correctamente en todas las composiciones, cada campaña debería
 
 `panoramico` y `recorte` completan las composiciones de home y fallback. Si falta el rol requerido, el producto conserva sus campos públicos y `asset` puede ser `null`; el consumidor puede usar `imagen_banner_path`, que ya pertenece al contrato de `catalogo_publico`. SN nunca publica una variante retirada ni toma un asset privado por fuera de `sn_assets_publicos_v1`.
 
-El registro en base no sube, consulta ni borra archivos de Storage. La consola debe subir primero la pareja inmutable: `<rol>-<timestamp>-<random>.webp` y `<rol>-<timestamp>-<random>-sm.webp`; después registra metadata únicamente para el archivo grande. Al retirar una versión interna, la fila histórica permanece y deja de enumerarse o devolverse por `sn_assets_publicos_v1`, búsqueda, recomendación y tienda. La eliminación física queda fuera de SN1: al ser un bucket público, quien ya conozca una URL histórica podría seguir accediéndola. El contrato es retirar exposición en superficies, no revocar físicamente el objeto.
+El registro en base no sube, consulta ni borra archivos de Storage. La consola debe subir primero la pareja inmutable: `<rol>-<timestamp>-<random>.webp` y `<rol>-<timestamp>-<random>-sm.webp`; después registra metadata únicamente para el archivo grande. Ante transporte ambiguo repite una sola vez exactamente la misma RPC idempotente —mismo path y metadata— y reconcilia mediante lecturas acotadas del detalle autoritativo. Nunca borra objetos después de un intento de registro ambiguo. La compensación solo procede si una subida falló antes de intentar registrar, o si hubo un rechazo SQL definitivo sin ambigüedad y varias lecturas confirmaron ausencia. Al retirar una versión interna, la fila histórica permanece y deja de enumerarse o devolverse por `sn_assets_publicos_v1`, búsqueda, recomendación y tienda. La eliminación física queda fuera de SN1: al ser un bucket público, quien ya conozca una URL histórica podría seguir accediéndola. El contrato es retirar exposición en superficies, no revocar físicamente el objeto.
 
 ## 8. Ranking, determinismo y diversidad
 
-SN1 es un modelo de reglas auditable, no un modelo opaco. `modelo_version` identifica el conjunto de reglas. La misma entrada y semilla producen el mismo desempate mientras no cambien catálogo, stock, ventanas, eventos comerciales, relaciones o configuración.
+SN1 es un modelo de reglas auditable, no un modelo opaco. `modelo_version` identifica el conjunto de reglas. La misma entrada y entropía producen el mismo desempate mientras no cambien catálogo, stock, ventanas, eventos comerciales, relaciones, configuración ni la fecha civil que forma parte de la semilla interna.
 
-La exploración es determinista por semilla, superficie, fecha Bogotá y contexto. El porcentaje indica qué candidatos reciben oportunidad de descubrimiento; nunca salta los filtros duros. La diversidad intercala categorías antes de repetirlas. En búsqueda, la relevancia textual es la primera llave de orden y no puede ser superada por personalización.
+En recomendación la exploración es determinista sobre la semilla compuesta por el servidor: `p_semilla` solo agrega entropía y siempre se combina con superficie, slug, categoría, consulta y fecha Bogotá, más identidad exclusivamente cuando la llamada personaliza. El porcentaje indica qué candidatos reciben oportunidad de descubrimiento; nunca salta los filtros duros. La diversidad intercala categorías antes de repetirlas. En búsqueda, la relevancia textual es la primera llave de orden y no puede ser superada por personalización.
 
 Los pedidos anulados o con estado `anulado` no aportan popularidad ni afinidad. La popularidad global solo agrega `pedido_items` de las últimas 365 fechas civiles (hoy y 364 días previos) según `pedidos.fecha_orden` en Colombia. La afinidad de cuenta conserva su historial no anulado, pero parte desde pedidos ya filtrados por el `customer_id` derivado de `auth.uid()`; carrito se filtra por ese UID desde el origen. En ambos recorridos se usa primero `pedido_items.campana_id` y solo las líneas históricas sin ese dato resuelven el fallback por `product_id`. Así cada llamada evita construir una tabla intermedia sobre todo el historial global. Las opiniones ocultas o de prueba quedan fuera porque la señal usa `producto_rating_publico`.
 
 `sn_buscar_v1` y `sn_recomendar_v1` leen el singleton sin `FOR SHARE`: una consulta larga no bloquea el kill switch. La sentencia de ranking vuelve a cruzar `sn_config.activo`; una petición que ya estaba en vuelo puede terminar con el snapshot de su sentencia, mientras las siguientes observan el apagado.
 
-## 9. Privacidad y telemetría consentida
+## 9. Privacidad y contrato de telemetría
 
 SN1 amplía `tienda_eventos` sin cambiar la firma:
 
@@ -466,7 +470,8 @@ consulta_hash
 
 Reglas de privacidad:
 
-- la captura sigue exigiendo analítica activa, política publicada y consentimiento del navegador;
+- la Edge expone en modo `config` `{activa, politica_version}` y valida la versión con el contrato publicado (`1..40` caracteres recortados y distinta de `pendiente`); si la RPC falla, la forma es inválida o no hay versión válida, responde `activa=false` y `politica_version=null`;
+- para telemetría SN1, una decisión afirmativa solo es vigente cuando conserva exactamente esa `politica_version`; una decisión sin versión o de otra versión se trata como ausencia de consentimiento, no puede crear `mg_vid`, encolar ni enviar eventos y obliga a solicitar una aceptación nueva;
 - la Edge Function no acepta ni reenvía `consulta`, `uid`, `customer_id`, correo, teléfono, referrer o payload libre;
 - `request_id` es aleatorio por respuesta y no puede ser `mg_vid` ni sesión; para recomendación se reutiliza el UUID devuelto por el servidor y para el evento de búsqueda el cliente crea uno nuevo con `crypto.randomUUID()` al recibir esa respuesta;
 - `razon`, `superficie`, `slot`, layout y modelo son códigos controlados;
@@ -477,6 +482,8 @@ Reglas de privacidad:
 - un clic sin impresión equivalente ya aceptada se descarta; los retries que chocan con cualquiera de esas claves también se cuentan como descartados sin tumbar el lote;
 - se mantienen límite de 30 eventos por lote y control temporal de 600/h por hash diario de IP;
 - la retención objetivo es 13 meses para eventos y 48 horas para límites: el mantenimiento programado es la vía principal y la purga probabilística del 1% durante ingestión queda solo como respaldo.
+
+La integración web guarda `mg_analitica` como `{v,en,politica_version}`, confirma la configuración con la Edge en cada carga e invalida cualquier decisión sin versión o de otra versión antes de crear identificadores. Cada lote envía la versión aceptada; la Edge exige que coincida con `mt_publico_config`, la inyecta en el JSON ya saneado y `mt_registrar_eventos` vuelve a compararla dentro de la transacción. La RPC toma `FOR SHARE` sobre la fila vigente de `em_config` hasta terminar el lote: si el cambio administrativo llegó primero, la lectura observa la versión nueva; si el lote llegó primero, el cambio espera su finalización. Así no existe una confirmación concurrente de política entre la validación y el alta. La metadata se usa solo como guardia y no se persiste en `tienda_eventos`.
 
 Forma de `busqueda_resultados`:
 
@@ -509,7 +516,7 @@ Forma de impresión/clic:
 
 Los eventos históricos ignoran campos SN y conservan su contrato anterior. Para eventos SN, la Edge construye el objeto desde cero: no reenvía `ruta`, origen, UTM, dispositivo ni `entrada`; solo recomendación admite el `slug` público (hasta 180 caracteres). El `id` del módulo se copia tanto a `slot` como a `layout_codigo`, ambos con máximo 80 caracteres.
 
-Esta telemetría es **consentida, aproximada y rate-limited**, no una fuente autoritativa. Visitante, sesión y `request_id` llegan desde cliente; la correlación y los índices reducen dobles conteos accidentales, pero no demuestran una impresión humana ni evitan que un cliente permitido fabrique eventos. Por eso CTR y búsquedas sirven para tendencia operativa, no para contabilidad, facturación ni decisiones individuales.
+Cuando el storefront cumple la precondición de versión, esta telemetría sigue siendo **aproximada y rate-limited**, no una fuente autoritativa ni una prueba server-side del consentimiento. Visitante, sesión y `request_id` llegan desde cliente; la correlación y los índices reducen dobles conteos accidentales, pero no demuestran una impresión humana ni evitan que un cliente permitido fabrique eventos. Por eso CTR y búsquedas sirven para tendencia operativa, no para contabilidad, facturación ni decisiones individuales.
 
 ### 9.1 Purga operativa
 
@@ -549,21 +556,21 @@ La operación no se considera cerrada solo por crear el job. Primero ejecutar `s
 - assets/versiones/layouts;
 - búsqueda y recomendaciones públicas;
 - resumen interno;
-- telemetría consentida compatible.
+- backend de telemetría compatible, con configuración pública versionada, precheck por lote y guardia transaccional contra cambios de política;
 
 ### SN1-B · integración web — implementada en esta entrega; pendiente de despliegue
 
 - consumo de `sn_buscar_v1` y `sn_recomendar_v1`;
 - renderizado de módulos por `tipo`;
-- telemetría emitida solo tras consentimiento;
 - estados accesibles de vacío, error y `SN_APAGADO`;
-- fallback al catálogo tradicional.
+- fallback exclusivamente por `sn_catalogo_seguro_v1`, sin degradación directa ni elegibilidad sintética;
+- consentimiento local ligado a la `politica_version` vigente, revalidación por lote en Edge y guardia transaccional ante cambios concurrentes.
 
 ### SN1-C · consola editorial — implementada en esta entrega; pendiente de despliegue
 
 - UI para prioridades, intenciones, ventanas, relaciones y assets;
 - subida inmutable de la pareja grande/liviana a Storage antes de registrar la metadata maestra;
-- vista previa por superficie.
+- previsualización local de cada archivo/asset por rol, con proporción y foco, más estado de cobertura de los cinco roles; no existe preview compuesto ni render real de una superficie.
 
 ### SN1-D · futura aplicación/evaluación
 
@@ -578,18 +585,26 @@ La operación no se considera cerrada solo por crear el job. Primero ejecutar `s
 
 1. Confirmar que `20261111000000_campanas_categorias_oficiales.sql` fue aplicada.
 2. Confirmar que existen `catalogo_publico`, cuentas, carrito, pedidos, opiniones, Métricas M1 y `mt_registrar_eventos(text,text,jsonb,text)`.
-3. Confirmar una ventana sin escrituras administrativas de Campañas/Métricas; la migración usa `lock_timeout=5s` y revierte completa si no obtiene locks.
+3. Confirmar una ventana sin escrituras administrativas de Campañas/Métricas. La migración base usa `lock_timeout=5s`, toma locks explícitos y revierte completa si no los obtiene; la migración de cierre conserva timeout y serialización transaccional sin repetir esos locks de instalación.
 4. Conservar una copia del resultado actual de los grants de `mt_registrar_eventos`.
+5. Confirmar una política definitiva con versión válida y preparar el despliegue conjunto de Edge y storefront: cualquier decisión local anterior o sin versión será invalidada y exigirá una aceptación nueva antes de crear identificadores o enviar telemetría.
 
 ### 12.2 Base de datos
 
-En Supabase SQL Editor, ejecutar **una sola vez y completo**:
+En una **instalación nueva**, ejecutar una sola vez, completos y en este orden:
 
 ```text
 supabase/migrations/20261112000000_sistema_nervioso_sn1.sql
+supabase/migrations/20261113000000_sistema_nervioso_sn1_cierre.sql
 ```
 
-La forward es transaccional. Si falla baseline, lock, constraint o gate, no debe quedar un SN parcial.
+Si `20261112000000_sistema_nervioso_sn1.sql` **ya está aplicada**, ejecutar únicamente:
+
+```text
+supabase/migrations/20261113000000_sistema_nervioso_sn1_cierre.sql
+```
+
+No volver a ejecutar ni modificar la migración base publicada. Ambas migraciones son transaccionales; la de cierre exige el baseline SN1 ya instalado y, si falla preflight, timeout o postflight, revierte completa sin dejar las recreaciones a medias.
 
 ### 12.3 Edge Function
 
@@ -599,9 +614,9 @@ Desplegar el contenido de:
 supabase/functions/tienda-eventos/index.ts
 ```
 
-Nombre exacto: `tienda-eventos`. Mantener **Verify JWT apagado**, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, el secreto recomendado `EM_IP_SAL` y el secreto dedicado `SN_CONSULTA_SAL` de al menos 16 caracteres. Si falta este último, la Edge omite `consulta_hash` en vez de persistir un digest no protegido. La función pública eleva solo para invocar la RPC service-role; CORS no se considera autorización.
+Nombre exacto: `tienda-eventos`. Mantener **Verify JWT apagado**, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, el secreto recomendado `EM_IP_SAL` y el secreto dedicado `SN_CONSULTA_SAL` de al menos 16 caracteres. Si falta este último, la Edge omite `consulta_hash` en vez de persistir un digest no protegido. En modo `config`, la respuesta incluye la `politica_version` validada y fuerza `activa=false` si falta o no cumple el contrato; el consumidor debe exigir que coincida con la versión aceptada. La función pública eleva solo para invocar la RPC service-role; CORS no se considera autorización.
 
-Orden recomendado: migración primero, Edge Function después. Una Edge antigua descartaría los campos SN; una Edge nueva antes de la migración produciría eventos que la restricción histórica rechazaría.
+Orden recomendado: migraciones aplicables primero —base y cierre en una instalación nueva, o solo cierre si la base ya existe— y Edge Function después. Una Edge antigua descartaría los campos SN; una Edge nueva antes de la migración de cierre mantendría el precheck HTTP, pero la RPC histórica aún no haría la comprobación transaccional de `politica_version`.
 
 ### 12.4 Postflight operativo
 
@@ -611,8 +626,11 @@ Comprobar manualmente:
 - cada una de las seis superficies tiene tres layouts activos;
 - `anon` puede ejecutar únicamente `sn_buscar_v1` y `sn_recomendar_v1` de SN, además del máximo público seguro ya usado por catálogo, y puede leer `sn_assets_publicos_v1`, pero no tablas base;
 - `authenticated` tiene las ocho RPC SN nominales y sus guardias internas siguen separando Marketing/admin; `service_role` solo tiene como puertas SN búsqueda y recomendación;
-- solo `service_role` ejecuta `mt_registrar_eventos`; ningún rol API ejecuta helpers `sn__*` ni `sn_purgar_telemetria`, que conserva `postgres`;
-- un retry idéntico de asset devuelve la fila activa existente; metadata divergente o path histórico se rechazan;
+- solo `service_role` ejecuta `mt_registrar_eventos`; ningún rol API ejecuta helpers `sn__*` —incluido `sn__ficha_tecnica_texto_publico`— ni `sn_purgar_telemetria`, que conserva `postgres`;
+- el modo `config` devuelve la versión vigente validada y queda inactivo ante versión ausente, `pendiente`, no recortada o fuera del límite;
+- sin decisión, con rechazo, con una decisión sin versión o con una versión anterior no se crea `mg_vid` ni se emite telemetría; solo una aceptación nueva de la versión vigente habilita emisión;
+- cada lote sin versión, con versión anterior o cambiado durante el alta recibe `412`/`MT_CONSENTIMIENTO_DESACTUALIZADO` y no inserta eventos; un lote con la aceptación vigente sí registra, y esa metadata de guardia no queda persistida;
+- un retry idéntico de asset devuelve la fila activa existente; un resultado ambiguo provoca exactamente un retry de la misma RPC y reconciliación acotada, nunca borrado; metadata divergente o path histórico se rechazan;
 - una impresión/clic y una búsqueda duplicadas se descartan, y un clic sin impresión equivalente no se inserta;
 - una campaña agotada, despublicada o inactiva no aparece en búsqueda, recomendación ni assets públicos;
 - una cuenta solo cambia a modo personalizado con sesión propia y gate permitido;

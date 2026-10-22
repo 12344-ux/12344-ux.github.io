@@ -1,9 +1,13 @@
 // ============================================================================
 // MAGANDHI · Edge Function · tienda-eventos (Métricas M1 + Sistema Nervioso SN1)
 // ----------------------------------------------------------------------------
-// La llama la TIENDA, sin sesión obligatoria, SOLO después del consentimiento.
-//   config     {} -> {activa}
-//   registrar  {visitante, sesion, eventos:[...]} (máximo 30)
+// La llama la TIENDA, sin sesión obligatoria.
+//   config     {} -> {activa: boolean, politica_version: string | null}
+//                puede consultarse antes de decidir; activa solo puede ser true
+//                con una versión de política válida.
+//   registrar  {visitante, sesion, politica_version, eventos:[...]} (máximo 30)
+//                SOLO después de aceptar la politica_version vigente; la Edge
+//                y la transacción vuelven a exigir esa misma versión.
 //
 // PRIVACIDAD Y SEGURIDAD:
 //   * Verify JWT APAGADO; escribe solo por mt_registrar_eventos (service_role).
@@ -38,6 +42,27 @@ const LAYOUT = /^[a-z0-9][a-z0-9_-]{2,79}$/;
 const MODELO = /^[a-z0-9][a-z0-9._-]{0,59}$/;
 const HASH = /^[0-9a-f]{64}$/;
 const SLUG = /^[a-z0-9-]{1,180}$/;
+
+// Replica el contrato publicado por em_config_politica: una política publicada
+// tiene versión recortada de 1..40 caracteres y nunca usa el valor "pendiente".
+function validarPoliticaVersion(valor: unknown): string | null {
+  if (typeof valor !== "string") return null;
+  const version = valor.trim();
+  const longitud = Array.from(version).length;
+  if (version !== valor || longitud < 1 || longitud > 40) return null;
+  return version.toLowerCase() === "pendiente" ? null : version;
+}
+
+function normalizarConfigPublica(data: unknown) {
+  const config = data && typeof data === "object" && !Array.isArray(data)
+    ? data as Record<string, unknown>
+    : null;
+  const politicaVersion = validarPoliticaVersion(config?.politica_version);
+  return {
+    activa: config?.activa === true && politicaVersion !== null,
+    politicaVersion,
+  };
+}
 
 function cors(origin: string | null) {
   return {
@@ -176,14 +201,39 @@ Deno.serve(async (req) => {
     const { data, error } = await sb.rpc("mt_publico_config");
     if (error) {
       console.error("[tienda-eventos] config", JSON.stringify({ code: error.code ?? null }));
-      return json({ activa: false }, 200, c);
+      return json({ activa: false, politica_version: null }, 200, c);
     }
-    return json({ activa: !!(data as { activa?: boolean })?.activa }, 200, c);
+    const config = normalizarConfigPublica(data);
+    return json({
+      activa: config.activa,
+      politica_version: config.politicaVersion,
+    }, 200, c);
   }
   if (body.modo !== "registrar") return json({ error: "Modo inválido." }, 400, c);
 
   // Bots: se responde 202 sin registrar y sin dar pistas.
   if (BOTS.test(req.headers.get("user-agent") ?? "")) return json({ ok: true }, 202, c);
+
+  // La versión se comprueba otra vez en cada lote. Además de invalidar una
+  // decisión antigua, se inyecta en el JSON limpio para que la RPC detecte un
+  // cambio de política ocurrido entre esta lectura y la transacción de alta.
+  const versionAceptada = validarPoliticaVersion(body.politica_version);
+  const { data: configData, error: configError } = await sb.rpc("mt_publico_config");
+  if (configError) {
+    console.error("[tienda-eventos] registrar_config", JSON.stringify({ code: configError.code ?? null }));
+    return json({ ok: false }, 503, c);
+  }
+  const configRegistro = normalizarConfigPublica(configData);
+  if (!configRegistro.activa) {
+    return json({ ok: false, apagada: true, politica_version: configRegistro.politicaVersion }, 409, c);
+  }
+  if (!versionAceptada || versionAceptada !== configRegistro.politicaVersion) {
+    return json({
+      ok: false,
+      consentimiento_desactualizado: true,
+      politica_version: configRegistro.politicaVersion,
+    }, 412, c);
+  }
 
   const visitante = String(body.visitante ?? "").slice(0, 40);
   const sesion = String(body.sesion ?? "").slice(0, 40);
@@ -192,6 +242,7 @@ Deno.serve(async (req) => {
     .map((evento) => limpiar(evento, visitante, sesion))
     .filter((evento): evento is Record<string, unknown> => evento !== null);
   if (!eventos.length) return json({ error: "Sin eventos." }, 400, c);
+  eventos.forEach((evento) => { evento.politica_version = versionAceptada; });
 
   // El navegador nunca decide el valor persistido: si trae un digest de
   // consulta, la Edge lo vuelve HMAC con secreto propio. Sin secreto se omite.
@@ -222,6 +273,9 @@ Deno.serve(async (req) => {
   if (error) {
     const m = error.message ?? "";
     if (/MT_ANALITICA_APAGADA/.test(m)) return json({ ok: false, apagada: true }, 409, c);
+    if (/MT_CONSENTIMIENTO_DESACTUALIZADO/.test(m)) {
+      return json({ ok: false, consentimiento_desactualizado: true }, 412, c);
+    }
     if (/MT_DEMASIADOS_EVENTOS/.test(m)) return json({ ok: false }, 429, c);
     if (/MT_(VISITANTE|EVENTOS)_INVALID/.test(m)) return json({ error: "Inválido." }, 400, c);
     // No registrar message: un error de base nunca debe volcar entrada pública.
