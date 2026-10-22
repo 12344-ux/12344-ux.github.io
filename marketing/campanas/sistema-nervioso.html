@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magandhi · Sistema nervioso de campaña</title>
+<meta name="description" content="Configuración semántica, relaciones y activos multiformato de una campaña MAGANDHI.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../../marca-areas/marketing.png?v=1">
+<link rel="apple-touch-icon" href="../../icono-app-180.png?v=2">
+<meta name="theme-color" content="#101C33">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../marca.css?v=2">
+<link rel="stylesheet" href="../marketing.css?v=3">
+<link rel="stylesheet" href="campanas.css?v=categorias-admin">
+<link rel="stylesheet" href="sistema-nervioso.css?v=sn1">
+</head>
+<body class="mk-body sn-body">
+<script type="module" src="../../auth-guard.js"></script>
+
+<main class="mk-wrap sn-admin" id="sn-admin" hidden>
+  <section class="sn-estado sn-carga" id="sn-carga" role="status" aria-live="polite" aria-busy="true">
+    <span class="sn-carga-marca" aria-hidden="true"></span>
+    <div>
+      <strong>Conectando la campaña</strong>
+      <p>Estamos leyendo su configuración, relaciones y activos vigentes.</p>
+    </div>
+  </section>
+
+  <section class="sn-estado sn-error" id="sn-error" role="alert" tabindex="-1" hidden>
+    <span class="sn-estado-icono" data-ico="info" aria-hidden="true"></span>
+    <div>
+      <strong>No pudimos abrir el sistema nervioso</strong>
+      <p id="sn-error-texto">Revisa el enlace e inténtalo de nuevo.</p>
+      <div class="sn-estado-acciones">
+        <button class="cm-btn-secundario" id="sn-reintentar" type="button">Reintentar</button>
+        <a class="cm-cancelar" href="index.html">Volver a Campañas</a>
+      </div>
+    </div>
+  </section>
+
+  <p class="sn-flash" id="sn-flash" role="status" aria-live="polite" tabindex="-1" hidden></p>
+
+  <div class="sn-contenido" id="sn-contenido" hidden>
+    <section class="sn-regla" aria-labelledby="sn-regla-titulo">
+      <span class="sn-regla-icono" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/></svg>
+      </span>
+      <div>
+        <p class="sn-eyebrow">REGLA DE PUBLICACIÓN</p>
+        <h2 id="sn-regla-titulo">Publicar incorpora el producto automáticamente</h2>
+        <p>No existe una activación manual por producto. El sistema considera esta configuración cuando la campaña se publica y mantiene una regla de seguridad simple: un producto agotado, una campaña despublicada o una campaña inactiva jamás se muestra.</p>
+      </div>
+    </section>
+
+    <section class="sn-resumen" aria-labelledby="sn-resumen-titulo">
+      <div class="sn-resumen-principal">
+        <p class="sn-eyebrow">CAMPAÑA CONECTADA</p>
+        <h2 id="sn-resumen-titulo">Campaña</h2>
+        <div class="sn-chips" id="sn-campana-chips" aria-label="Estado de la campaña"></div>
+        <p class="sn-resumen-id"><span>Identidad</span><code id="sn-campana-id">—</code></p>
+      </div>
+      <div class="sn-preparacion">
+        <span class="sn-preparacion-etiqueta">Estado de preparación</span>
+        <strong id="sn-preparacion-estado">En preparación</strong>
+        <p id="sn-preparacion-detalle">Completa la configuración semántica y los formatos recomendados.</p>
+        <div class="sn-progreso" aria-hidden="true"><span id="sn-preparacion-barra"></span></div>
+      </div>
+      <dl class="sn-resumen-datos">
+        <div><dt>Intenciones</dt><dd id="sn-resumen-intenciones">0</dd></div>
+        <div><dt>Relaciones</dt><dd id="sn-resumen-relaciones">0</dd></div>
+        <div><dt>Activos</dt><dd id="sn-resumen-activos">0/5</dd></div>
+        <div><dt>Ventana</dt><dd id="sn-resumen-ventana">Siempre disponible</dd></div>
+      </dl>
+      <ul class="sn-checklist" id="sn-checklist" aria-label="Comprobaciones de preparación"></ul>
+    </section>
+
+    <form id="sn-config-form" class="sn-config" novalidate>
+      <section class="cm-seccion" aria-labelledby="sn-semantica-titulo">
+        <div class="cm-seccion-cab">
+          <span class="cm-seccion-num">1</span>
+          <div>
+            <h2 class="cm-seccion-tit" id="sn-semantica-titulo">Configuración semántica</h2>
+            <p class="cm-seccion-sub">Describe cuándo y para qué puede aparecer esta campaña. Son señales editoriales, no perfiles de personas.</p>
+          </div>
+        </div>
+        <div class="cm-campos">
+          <div class="cm-campo sn-prioridad-campo">
+            <label for="sn-prioridad" class="cm-campo-lbl">Prioridad</label>
+            <input id="sn-prioridad" class="mk-input" type="number" min="-20" max="20" step="1" inputmode="numeric" value="0" aria-describedby="sn-prioridad-ayuda">
+            <span class="cm-campo-ayuda" id="sn-prioridad-ayuda">De −20 a 20. Cero es neutral; la prioridad no salta las reglas de publicación y disponibilidad.</span>
+          </div>
+
+          <div class="cm-campo">
+            <label for="sn-intenciones" class="cm-campo-lbl">Intenciones o casos de uso</label>
+            <textarea id="sn-intenciones" class="mk-input" rows="5" maxlength="800" placeholder="regalo de cumpleaños&#10;rutina de cuidado&#10;detalle para agradecer" aria-describedby="sn-intenciones-ayuda sn-intenciones-contador"></textarea>
+            <span class="cm-campo-ayuda" id="sn-intenciones-ayuda">Una por línea o separadas por coma. Se limpian espacios, se pasan a minúsculas y se eliminan duplicados antes de guardar.</span>
+            <div class="sn-intenciones-meta">
+              <div class="sn-intenciones-chips" id="sn-intenciones-chips" aria-label="Intenciones normalizadas"></div>
+              <span id="sn-intenciones-contador" class="sn-contador" aria-live="polite">0/12</span>
+            </div>
+          </div>
+
+          <div class="sn-fechas">
+            <div class="cm-campo">
+              <label for="sn-disponible-desde" class="cm-campo-lbl">Disponible desde (opcional)</label>
+              <input id="sn-disponible-desde" class="mk-input" type="datetime-local" step="60">
+              <span class="cm-campo-ayuda">Vacío significa sin inicio programado.</span>
+            </div>
+            <div class="cm-campo">
+              <label for="sn-disponible-hasta" class="cm-campo-lbl">Disponible hasta (opcional)</label>
+              <input id="sn-disponible-hasta" class="mk-input" type="datetime-local" step="60">
+              <span class="cm-campo-ayuda">Vacío significa sin cierre programado.</span>
+            </div>
+          </div>
+
+          <aside class="sn-privacidad" aria-label="Límite de segmentación">
+            <span data-ico="info" aria-hidden="true"></span>
+            <div><strong>Sin controles demográficos</strong><p>La composición usa intención, contexto editorial, relaciones y disponibilidad. Esta superficie no clasifica personas por edad, género u otros atributos personales.</p></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="cm-seccion" aria-labelledby="sn-relaciones-titulo">
+        <div class="cm-seccion-cab">
+          <span class="cm-seccion-num">2</span>
+          <div>
+            <h2 class="cm-seccion-tit" id="sn-relaciones-titulo">Relaciones entre campañas</h2>
+            <p class="cm-seccion-sub">Conecta esta campaña con otras campañas reales y activas. Las filas se guardan junto con la configuración en una sola operación atómica.</p>
+          </div>
+        </div>
+        <div id="sn-relaciones" class="sn-relaciones"></div>
+        <p class="sn-relaciones-vacio" id="sn-relaciones-vacio">Aún no hay relaciones. Son opcionales.</p>
+        <button type="button" class="cm-agregar" id="sn-relacion-agregar">
+          <span data-ico="mas" aria-hidden="true"></span>
+          <span>Añadir relación</span>
+        </button>
+        <p class="cm-campo-ayuda sn-relaciones-ayuda" id="sn-relaciones-ayuda">El peso va de 1 a 100 y ordena la fuerza editorial. Una campaña puede tener tipos distintos; no repitas la misma combinación de destino y tipo.</p>
+      </section>
+
+      <p id="sn-config-mensaje" class="cm-form-msg" role="status" aria-live="polite" tabindex="-1" hidden></p>
+      <div class="cm-guardar-barra sn-guardar-barra">
+        <button type="submit" id="sn-config-guardar" class="cm-btn-primario">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+          <span>Guardar configuración y relaciones</span>
+        </button>
+        <span class="sn-atomicidad">Una RPC · todo se confirma o nada cambia</span>
+      </div>
+    </form>
+
+    <section class="cm-seccion sn-activos-seccion" aria-labelledby="sn-activos-titulo">
+      <div class="cm-seccion-cab sn-activos-cab">
+        <span class="cm-seccion-num">3</span>
+        <div>
+          <h2 class="cm-seccion-tit" id="sn-activos-titulo">Centro de activos</h2>
+          <p class="cm-seccion-sub">Cinco composiciones maestras, optimizadas en este navegador y registradas por rol. Los tres primeros formatos dan la cobertura recomendada.</p>
+        </div>
+        <div class="sn-cobertura" aria-label="Cobertura de activos">
+          <span>Cobertura</span>
+          <strong id="sn-cobertura-valor">0/5</strong>
+          <progress id="sn-cobertura-progreso" max="5" value="0" aria-label="Activos registrados">0 de 5</progress>
+        </div>
+      </div>
+
+      <div class="sn-layouts" id="sn-layouts" aria-label="Layouts habilitados"></div>
+      <aside class="sn-activos-nota">
+        <span data-ico="info" aria-hidden="true"></span>
+        <p><strong>Metadatos visuales solamente.</strong> El texto alternativo describe lo que se ve y el foco indica el centro editorial. Los activos y sus textos no incorporan información comercial u operativa.</p>
+      </aside>
+      <div class="sn-activos" id="sn-activos"></div>
+    </section>
+  </div>
+</main>
+
+<script type="module" src="./sistema-nervioso.js?v=sn1"></script>
+</body>
+</html>

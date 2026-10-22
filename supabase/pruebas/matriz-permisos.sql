@@ -92,6 +92,7 @@ declare
   v_asiento  uuid;
   v_funcs_auth text[];
   v_p5 record;
+  v_sn record;
   v_lista_blanca text[] := array[
     'agregar_cuenta_puc','anular_asiento','anular_pedido','avanzar_estado_pedido',
     'balance_comprobacion','balance_general','buscar_candidatos_cliente',
@@ -191,6 +192,18 @@ begin
     -- catalogo_publico necesita poder ejecutarlo bajo anon/authenticated.
     if to_regprocedure('public.ventas_max_comprable_campana(uuid)') is not null then
       v_lista_blanca := v_lista_blanca || array['ventas_max_comprable_campana'];
+    end if;
+
+    -- SN1 añade ocho RPC nominales authenticated. Se condicionan por el
+    -- singleton para conservar la matriz sobre fotografías anteriores a SN1;
+    -- helpers y purga permanecen fuera de esta superficie.
+    if to_regclass('public.sn_config') is not null then
+      v_lista_blanca := v_lista_blanca || array[
+        'sn_campana_detalle_v1', 'sn_guardar_campana_v1',
+        'sn_registrar_asset_v1', 'sn_retirar_asset_v1',
+        'sn_configurar_v1', 'sn_buscar_v1', 'sn_recomendar_v1',
+        'sn_resumen_v1'
+      ];
     end if;
     -- D2c.2b (20261028000000): las dos puertas del despacho manual. Ventas las
     -- necesita para ver qué falta transcribir a Dropi y para anotar el número
@@ -410,16 +423,29 @@ begin
       execute 'reset role';
     end loop;
 
-    -- ---------- EXECUTE: anon solo el máximo público seguro de C1 ----------
-    -- catalogo_publico necesita ejecutar esta función y su retorno está acotado
-    -- a 0..20; no expone stock, piso, reservas, origen ni proveedor. Cualquier
-    -- otra función pública ejecutable por anon continúa siendo una falla.
+    -- ---------- EXECUTE: anon solo puertas públicas nominales ----------
+    -- Siempre se permite el máximo seguro (0..20) usado por catalogo_publico.
+    -- Cuando SN1 existe se permiten, además, únicamente sus firmas públicas de
+    -- búsqueda/recomendación; un overload o cualquier otra función sigue rojo.
     select string_agg(p.proname, ', ' order by p.proname) into v_extra
       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = 'public'
        and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
        and has_function_privilege('anon', p.oid, 'execute')
-       and p.proname <> 'ventas_max_comprable_campana';
+       and p.proname <> 'ventas_max_comprable_campana'
+       and (
+         to_regclass('public.sn_config') is null
+         or (
+           p.oid <> coalesce(
+             to_regprocedure('public.sn_buscar_v1(text,text,text,integer,integer)')::oid,
+             0::oid
+           )
+           and p.oid <> coalesce(
+             to_regprocedure('public.sn_recomendar_v1(text,jsonb,text,integer)')::oid,
+             0::oid
+           )
+         )
+       );
     r_pers := r_pers || 'anon'::text;
     r_obj  := r_obj  || 'EXECUTE no permitido sobre funciones de public'::text;
     r_esp  := r_esp  || 'NINGUNA'::text;
@@ -443,12 +469,20 @@ begin
     end;
 
     -- ---------- EXECUTE: service_role solo puertas, nunca helpers internos ----------
-    -- Los helpers co__*/pw__*, los triggers privados de slug y los dos núcleos
-    -- de pedido se alcanzan como propietario desde SECURITY DEFINER o triggers;
-    -- no son RPC de la Edge.
+    -- Los helpers co__*/pw__*/sn__*, los triggers privados, mantenimientos y
+    -- núcleos internos se alcanzan como propietario desde SECURITY DEFINER o
+    -- triggers. Las seis RPC administrativas SN son solo-panel; únicamente
+    -- sn_buscar_v1/sn_recomendar_v1 son puertas service de SN.
     select string_agg(
              case
                when left(p.proname, 4) in ('co__','pw__')
+                 or p.proname like 'sn\_\_%' escape '\'
+                 or p.proname in (
+                   'sn_campana_detalle_v1','sn_guardar_campana_v1',
+                   'sn_registrar_asset_v1','sn_retirar_asset_v1',
+                   'sn_configurar_v1','sn_resumen_v1',
+                   'sn_purgar_telemetria'
+                 )
                  or p.proname in (
                    'crear_pedido_c3_base','crear_pedido_c4',
                    'cm__asignar_slug_automatico','cm__validar_slug_no_reasignado',
@@ -473,6 +507,13 @@ begin
                    'promocionar_p5_procedencia_pedidos'
                  )
                  then case
+                   when p.proname like 'sn\_\_%' escape '\' then 'SOBRA helper SN privado: '
+                   when p.proname = 'sn_purgar_telemetria' then 'SOBRA mantenimiento SN privado: '
+                   when p.proname in (
+                     'sn_campana_detalle_v1','sn_guardar_campana_v1',
+                     'sn_registrar_asset_v1','sn_retirar_asset_v1',
+                     'sn_configurar_v1','sn_resumen_v1'
+                   ) then 'SOBRA puerta SN solo-panel: '
                    when p.proname = 'promocionar_p5__agregado' then 'SOBRA helper: '
                    when p.proname = 'cm_crear_categoria' then 'SOBRA puerta solo-panel: '
                    when p.proname like 'promocionar\_p5\_%' escape '\' then 'SOBRA puerta P5 no-service: '
@@ -498,6 +539,13 @@ begin
        and (
          (
            left(p.proname, 4) in ('co__','pw__')
+           or p.proname like 'sn\_\_%' escape '\'
+           or p.proname in (
+             'sn_campana_detalle_v1','sn_guardar_campana_v1',
+             'sn_registrar_asset_v1','sn_retirar_asset_v1',
+             'sn_configurar_v1','sn_resumen_v1',
+             'sn_purgar_telemetria'
+           )
            or p.proname in (
              'crear_pedido_c3_base','crear_pedido_c4',
              'cm__asignar_slug_automatico','cm__validar_slug_no_reasignado',
@@ -527,6 +575,69 @@ begin
     r_obj  := r_obj  || 'EXECUTE sobre puertas de public, sin helpers internos'::text;
     r_esp  := r_esp  || 'PUERTAS OK'::text;
     r_obt  := r_obt  || coalesce('DESAJUSTE: ' || v_extra, 'PUERTAS OK');
+
+    -- ---------- ACL nominal SN1 ----------
+    if to_regclass('public.sn_config') is not null then
+      for v_sn in
+        select * from (values
+          ('sn_campana_detalle_v1', 'public.sn_campana_detalle_v1(uuid)', false, true, false),
+          ('sn_guardar_campana_v1', 'public.sn_guardar_campana_v1(uuid,integer,text[],timestamptz,timestamptz,jsonb)', false, true, false),
+          ('sn_registrar_asset_v1', 'public.sn_registrar_asset_v1(uuid,text,text,text,integer,integer,numeric,numeric,text)', false, true, false),
+          ('sn_retirar_asset_v1', 'public.sn_retirar_asset_v1(uuid)', false, true, false),
+          ('sn_configurar_v1', 'public.sn_configurar_v1(boolean,boolean,integer,text)', false, true, false),
+          ('sn_buscar_v1', 'public.sn_buscar_v1(text,text,text,integer,integer)', true, true, true),
+          ('sn_recomendar_v1', 'public.sn_recomendar_v1(text,jsonb,text,integer)', true, true, true),
+          ('sn_resumen_v1', 'public.sn_resumen_v1(date,date)', false, true, false)
+        ) as x(nombre, firma, anon_e, authenticated_e, service_e)
+      loop
+        r_pers := r_pers || 'roles API'::text;
+        r_obj := r_obj || ('ACL SN1 ' || v_sn.nombre);
+        r_esp := r_esp || format(
+          'anon=%s · authenticated=%s · service_role=%s',
+          case when v_sn.anon_e then 'SI' else 'NO' end,
+          case when v_sn.authenticated_e then 'SI' else 'NO' end,
+          case when v_sn.service_e then 'SI' else 'NO' end
+        );
+        r_obt := r_obt || format(
+          'anon=%s · authenticated=%s · service_role=%s',
+          case when has_function_privilege('anon', to_regprocedure(v_sn.firma), 'execute') then 'SI' else 'NO' end,
+          case when has_function_privilege('authenticated', to_regprocedure(v_sn.firma), 'execute') then 'SI' else 'NO' end,
+          case when has_function_privilege('service_role', to_regprocedure(v_sn.firma), 'execute') then 'SI' else 'NO' end
+        );
+      end loop;
+
+      r_pers := r_pers || 'roles API/postgres'::text;
+      r_obj := r_obj || 'ACL helpers SN1 y sn_purgar_telemetria'::text;
+      r_esp := r_esp || 'helpers API=NO · purga API=NO · purga postgres=SI'::text;
+      r_obt := r_obt || case
+        when not exists (
+          select 1
+            from pg_proc p
+            join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public'
+             and p.proname like 'sn\_\_%' escape '\'
+             and (
+               has_function_privilege('anon', p.oid, 'execute')
+               or has_function_privilege('authenticated', p.oid, 'execute')
+               or has_function_privilege('service_role', p.oid, 'execute')
+             )
+        )
+         and not coalesce(has_function_privilege(
+           'anon', to_regprocedure('public.sn_purgar_telemetria()'), 'execute'
+         ), false)
+         and not coalesce(has_function_privilege(
+           'authenticated', to_regprocedure('public.sn_purgar_telemetria()'), 'execute'
+         ), false)
+         and not coalesce(has_function_privilege(
+           'service_role', to_regprocedure('public.sn_purgar_telemetria()'), 'execute'
+         ), false)
+         and coalesce(has_function_privilege(
+           'postgres', to_regprocedure('public.sn_purgar_telemetria()'), 'execute'
+         ), false)
+          then 'helpers API=NO · purga API=NO · purga postgres=SI'
+        else 'DESAJUSTE'
+      end;
+    end if;
 
     -- ---------- ACL nominal P5: tres puertas públicas y helper privado ----------
     if to_regprocedure('public.promocionar_p5_resultados(uuid,date,date)') is not null then
