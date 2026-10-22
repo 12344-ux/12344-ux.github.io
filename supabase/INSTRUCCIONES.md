@@ -1,22 +1,21 @@
 # Supabase · runbook operativo MAGANDHI / Impulse
 
-> **Estado al 21-oct-2026:** en producción están aplicadas todas las
-> migraciones hasta **`20261110000000` (Promocionar P5)**, salvo
-> `20261002000000`, que quedó **SUPERADA y no debe aplicarse** (ver §0). Las
-> migraciones P4 y P5 se aplicaron una sola vez. El proyecto **no tiene**
-> `supabase_migrations.schema_migrations` (medido): todas las migraciones se
-> aplican a mano por SQL Editor, un Run por archivo y una sola vez. **Nunca usar
-> `supabase db push`.** Wompi F1–F4 y Dropshipping D2c están operativos. Cuentas
-> C1/C2 continúan desplegados; Comercial C1–C5 están cerrados estructuralmente,
-> con carrito ENCENDIDO y Wompi `prod`, pero sin cierre transaccional por pago
-> real. **Promocionar P0 está cerrado como contrato documental, sin
-> implementación ni producción. P1–P5 están desplegados y cerrados en sus
-> alcances respectivos: P3 está cerrado FINAL; P4 está desplegado, activo y
-> cerrado estructuralmente; P5 está desplegado y cerrado
-> estructural/productivamente como capa de lectura. No hay P6 definido.** El pendiente monetario común C5/P4/P5 requiere una compra real
-> expresamente autorizada. Estado general:
-> `docs/RELEVO-PROMOCIONAR-P5-CIERRE-ESTRUCTURAL-2026-10-21.md`,
-> `docs/RELEVO-COMERCIAL-C5-CIERRE-2026-10-20.md` y
+> **Estado al 22-oct-2026:** en producción están aplicadas todas las
+> migraciones hasta **`20261113000000` (Sistema Nervioso SN1)**, salvo
+> `20261002000000`, que quedó **SUPERADA y no debe aplicarse** (ver §0).
+> `20261111000000` (categorías oficiales), `20261112000000` (SN1 base) y
+> `20261113000000` (cierre SN1) fueron ejecutadas una sola vez y no deben
+> repetirse. El proyecto **no tiene** `supabase_migrations.schema_migrations`
+> (medido): las migraciones se aplican a mano por SQL Editor, un Run por archivo
+> y una sola vez. **Nunca usar `supabase db push`.** Wompi F1–F4 y Dropshipping
+> D2c están operativos. Cuentas C1/C2 continúan desplegados; Comercial C1–C5
+> están cerrados estructuralmente, con carrito ENCENDIDO y Wompi `prod`, pero
+> sin cierre transaccional por pago real. Promocionar P1–P5 y SN1-A/B/C están
+> desplegados y cerrados en sus alcances documentados. La telemetría consentida
+> permanece apagada con política `borrador-0`; esto no apaga el motor SN. El
+> pendiente monetario común C5/P4/P5 requiere una compra real expresamente
+> autorizada. Estado general: `docs/RELEVO-SISTEMA-NERVIOSO-SN1-CIERRE-2026-10-22.md`,
+> `docs/RELEVO-PROMOCIONAR-P5-CIERRE-ESTRUCTURAL-2026-10-21.md` y
 > `CONTEXTO-MAGANDHI.md` §9.
 >
 > **Archivo operativo acumulativo:** el estado de la cabecera y el relevo vigente

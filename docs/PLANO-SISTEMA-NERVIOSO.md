@@ -4,19 +4,21 @@
 
 ## 1. Estado y corte
 
-**SN1-A (backend), SN1-B (integración web) y SN1-C (consola editorial) están implementadas en esta entrega; permanecen pendientes de aplicación y despliegue manual.**
+**Corte productivo · 22-oct-2026. SN1-A (backend), SN1-B (integración web) y SN1-C (consola editorial) están instaladas, desplegadas y cerradas productivamente.** El dueño confirmó la aplicación ordenada de las tres migraciones, el redespliegue de `tienda-eventos`, el postflight SQL, la purga manual, la configuración del cron y la prueba visual. Las sondas externas anónimas de búsqueda y recomendación respondieron con `modelo_version=sn1-reglas-1` y dos productos; home y búsqueda respondieron HTTP 200.
 
-- Migración base publicada: `supabase/migrations/20261112000000_sistema_nervioso_sn1.sql`.
-- Migración forward de cierre: `supabase/migrations/20261113000000_sistema_nervioso_sn1_cierre.sql`.
-- Edge Function ampliada: `supabase/functions/tienda-eventos/index.ts`.
-- Baseline obligatorio: `20261111000000_campanas_categorias_oficiales.sql` y sus dependencias de cuentas, carrito, pedidos, opiniones y Métricas M1.
-- Versión inicial del motor: `sn1-reglas-1`.
-- Gate inicial: `activo=true`, por decisión explícita del dueño.
-- Personalización de cuenta inicial: `true`.
-- Exploración inicial: `12%`.
+- Baseline aplicado: `supabase/migrations/20261111000000_campanas_categorias_oficiales.sql`.
+- Migración base aplicada: `supabase/migrations/20261112000000_sistema_nervioso_sn1.sql`.
+- Migración forward de cierre aplicada: `supabase/migrations/20261113000000_sistema_nervioso_sn1_cierre.sql`.
+- Edge Function `tienda-eventos` redesplegada con Verify JWT apagado y `SN_CONSULTA_SAL` configurada sin registrar su valor.
+- Versión del motor: `sn1-reglas-1`.
+- Gate del motor: `activo=true`.
+- Personalización de cuenta: `true`.
+- Exploración: `12%`.
 - Zona civil para ventanas y reportes: `America/Bogota`.
 
-SN1 no cambia `catalogo_publico`, no crea una segunda fuente de stock, no modifica migraciones históricas y no requiere extensiones nuevas.
+El gate del motor y el de analítica son independientes. Búsqueda, recomendación y consola están activas; la telemetría consentida permanece apagada deliberadamente: `tienda-eventos` devuelve `activa=false` y `politica_version=borrador-0` hasta que exista una política definitiva. Esto evita crear identificadores o registrar eventos nuevos, pero no apaga SN1.
+
+SN1 no crea una segunda fuente de stock, no modifica migraciones históricas y no requiere extensiones nuevas.
 
 ## 2. Invariante absoluta y frontera pública
 
@@ -534,6 +536,8 @@ select cron.schedule(
 
 La operación no se considera cerrada solo por crear el job. Primero ejecutar `select public.sn_purgar_telemetria();`, cronometrarlo y registrar los dos conteos que devuelve; después confirmar al menos una corrida programada `succeeded` y su duración en `cron.job_run_details`. Debe medirse con el volumen real y revisarse si bloquea ingestión o crece de forma sostenida. El muestreo probabilístico del 1% en `mt_registrar_eventos` sigue activo exclusivamente como respaldo si el job deja de correr.
 
+**Estado al cierre del 22-oct-2026.** El dueño confirmó como correctas la purga manual y la instalación/configuración nominal de `sn-purgar-telemetria-diario`. No se compartieron los conteos, duración ni una fila individual de `cron.job_run_details`; por eso no se afirma que la primera corrida automática haya sido observada con estado `succeeded`. Registrar esa primera corrida natural queda como seguimiento operativo no bloqueante y no reabre el cierre productivo del motor.
+
 ## 10. Seguridad
 
 - Todas las tablas SN tienen RLS activa.
@@ -549,7 +553,7 @@ La operación no se considera cerrada solo por crear el job. Primero ejecutar `s
 
 ## 11. Fases
 
-### SN1-A · backend estructural — implementada en esta entrega; pendiente de despliegue
+### SN1-A · backend estructural — desplegada y cerrada productivamente el 22-oct-2026
 
 - gate global y auditoría;
 - configuración editorial y relaciones;
@@ -558,7 +562,7 @@ La operación no se considera cerrada solo por crear el job. Primero ejecutar `s
 - resumen interno;
 - backend de telemetría compatible, con configuración pública versionada, precheck por lote y guardia transaccional contra cambios de política;
 
-### SN1-B · integración web — implementada en esta entrega; pendiente de despliegue
+### SN1-B · integración web — publicada y verificada externamente el 22-oct-2026
 
 - consumo de `sn_buscar_v1` y `sn_recomendar_v1`;
 - renderizado de módulos por `tipo`;
@@ -566,7 +570,7 @@ La operación no se considera cerrada solo por crear el job. Primero ejecutar `s
 - fallback exclusivamente por `sn_catalogo_seguro_v1`, sin degradación directa ni elegibilidad sintética;
 - consentimiento local ligado a la `politica_version` vigente, revalidación por lote en Edge y guardia transaccional ante cambios concurrentes.
 
-### SN1-C · consola editorial — implementada en esta entrega; pendiente de despliegue
+### SN1-C · consola editorial — publicada y verificada visualmente el 22-oct-2026
 
 - UI para prioridades, intenciones, ventanas, relaciones y assets;
 - subida inmutable de la pareja grande/liviana a Storage antes de registrar la metadata maestra;
@@ -581,13 +585,15 @@ La operación no se considera cerrada solo por crear el job. Primero ejecutar `s
 
 ## 12. Despliegue manual
 
+> **Ejecutado en producción para SN1 el 22-oct-2026; no repetir.** Esta sección queda como referencia para recuperación o una instalación nueva. Toda corrección futura debe usar una migración forward.
+
 ### 12.1 Preflight
 
 1. Confirmar que `20261111000000_campanas_categorias_oficiales.sql` fue aplicada.
 2. Confirmar que existen `catalogo_publico`, cuentas, carrito, pedidos, opiniones, Métricas M1 y `mt_registrar_eventos(text,text,jsonb,text)`.
 3. Confirmar una ventana sin escrituras administrativas de Campañas/Métricas. La migración base usa `lock_timeout=5s`, toma locks explícitos y revierte completa si no los obtiene; la migración de cierre conserva timeout y serialización transaccional sin repetir esos locks de instalación.
 4. Conservar una copia del resultado actual de los grants de `mt_registrar_eventos`.
-5. Confirmar una política definitiva con versión válida y preparar el despliegue conjunto de Edge y storefront: cualquier decisión local anterior o sin versión será invalidada y exigirá una aceptación nueva antes de crear identificadores o enviar telemetría.
+5. Confirmar una política definitiva antes de **activar telemetría consentida**, no antes de instalar el núcleo SN. Mientras la política sea `borrador-0`, mantener analítica apagada; cualquier decisión local anterior o sin la versión futura será invalidada cuando cambie la política.
 
 ### 12.2 Base de datos
 
@@ -635,6 +641,8 @@ Comprobar manualmente:
 - una campaña agotada, despublicada o inactiva no aparece en búsqueda, recomendación ni assets públicos;
 - una cuenta solo cambia a modo personalizado con sesión propia y gate permitido;
 - eventos anteriores siguen registrándose sin campos SN.
+
+En el cierre productivo se acreditaron el postflight SQL informado, las sondas anónimas, HTTP 200 y la prueba visual. Los casos de consentimiento e ingesta que requieren `activa=true` quedan diferidos hasta publicar una política definitiva; no se consideran fallidos ni bloquean el motor.
 
 ### 12.5 Emergencia y reversa
 
