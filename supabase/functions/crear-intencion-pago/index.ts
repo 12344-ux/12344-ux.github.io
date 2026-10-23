@@ -76,7 +76,11 @@ function json(
 ): Response {
   return new Response(JSON.stringify(cuerpo), {
     status,
-    headers: { ...cors, "Content-Type": "application/json; charset=utf-8" },
+    headers: {
+      ...cors,
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
   });
 }
 
@@ -150,13 +154,61 @@ type Obj = Record<string, unknown>;
 const esObjeto = (v: unknown): v is Obj =>
   !!v && typeof v === "object" && !Array.isArray(v);
 const FORMATO_CODIGO_ATRIBUCION = /^[0-9a-hjkmnp-tv-z]{16}$/;
+const FORMATO_CAPACIDAD_REANUDACION = /^[A-Za-z0-9_-]{43}$/;
+const FORMATO_UUID_AUTH =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+async function sha256Hex(valor: string): Promise<string> {
+  const hash = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(valor),
+  );
+  return Array.from(new Uint8Array(hash))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+type AutenticacionOpcional = {
+  uid: string | null;
+  invalida: boolean;
+};
+
+async function autenticacionOpcional(
+  req: Request,
+  supabaseUrl: string,
+  publicKey: string | null,
+): Promise<AutenticacionOpcional> {
+  const jwt = (req.headers.get("authorization") ?? "")
+    .replace(/^Bearer\s+/i, "")
+    .trim();
+  const credencialPublica = (req.headers.get("apikey") ?? "").trim();
+  if (
+    !jwt || jwt === publicKey ||
+    (credencialPublica && jwt === credencialPublica)
+  ) {
+    return { uid: null, invalida: false };
+  }
+  if (!publicKey) return { uid: null, invalida: true };
+  const supabaseUsuario = createClient(supabaseUrl, publicKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${jwt}` } },
+  });
+  const { data, error } = await supabaseUsuario.auth.getUser(jwt);
+  const uid = data?.user?.id ?? "";
+  if (error || !FORMATO_UUID_AUTH.test(uid)) {
+    return { uid: null, invalida: true };
+  }
+  return { uid, invalida: false };
+}
 
 function codigoAtribucion(valor: unknown): string | null {
   if (typeof valor !== "string" || valor !== valor.trim()) return null;
   return FORMATO_CODIGO_ATRIBUCION.test(valor) ? valor : null;
 }
 
-function permiteFallbackP4(error: { code?: string; message?: string } | null): boolean {
+function permiteFallbackP4(
+  error: { code?: string; message?: string } | null,
+): boolean {
   const codigo = String(error?.code ?? "");
   const mensaje = String(error?.message ?? "");
   return ["PGRST202", "PGRST204", "42883"].includes(codigo) ||
@@ -517,6 +569,112 @@ function errorCarrito(
   return null;
 }
 
+async function responderDirectaC6(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  snapshot: Obj,
+  cors: Record<string, string>,
+): Promise<Response> {
+  const referencia = String(snapshot.referencia ?? "");
+  const monto = String(snapshot.monto_centavos ?? "");
+  const moneda = String(snapshot.moneda ?? "");
+  const entorno = String(snapshot.entorno ?? "");
+  const expiraEn = String(snapshot.expira_en ?? "");
+  const campanaId = String(snapshot.campana_id ?? "");
+  const cantidad = Number(snapshot.cantidad);
+  const slug = typeof snapshot.slug === "string" ? snapshot.slug : "";
+  const nombre = typeof snapshot.nombre === "string"
+    ? snapshot.nombre
+    : "Compra";
+  const comprador = compradorCarritoValido(snapshot.comprador);
+  const cuenta = typeof snapshot.auth_user_id === "string" &&
+    FORMATO_UUID_AUTH.test(snapshot.auth_user_id);
+  if (
+    snapshot.tipo !== "directo" || snapshot.estado !== "creada" ||
+    snapshot.tiene_transaccion !== false ||
+    !/^[A-Za-z0-9_-]{6,64}$/.test(referencia) ||
+    !/^(?!0)\d{1,18}$/.test(monto) || moneda !== "COP" ||
+    !["sandbox", "prod"].includes(entorno) ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(expiraEn) ||
+    !Number.isFinite(Date.parse(expiraEn)) ||
+    Date.parse(expiraEn) <= Date.now() ||
+    !pareceUuid(campanaId) || !Number.isSafeInteger(cantidad) ||
+    cantidad < 1 || cantidad > 20 || !comprador
+  ) {
+    return json(
+      {
+        error: "No se pudo validar la intención de pago.",
+        codigo: "ERROR_SERVIDOR",
+      },
+      500,
+      cors,
+    );
+  }
+
+  const { data: configFilas, error: errorConfig } = await supabase.rpc(
+    "pagos_config_para_intencion",
+  );
+  const config = Array.isArray(configFilas) ? configFilas[0] : configFilas;
+  const llavePublica = String(config?.llave_publica ?? "");
+  const secreto = Deno.env.get(
+    entorno === "prod" ? "WOMPI_INTEGRITY_PROD" : "WOMPI_INTEGRITY_SANDBOX",
+  );
+  if (
+    errorConfig || !config || String(config.entorno ?? "") !== entorno ||
+    !llavePublica || !secreto
+  ) {
+    return json(
+      {
+        error: "La configuración de pagos no está disponible.",
+        codigo: "CONFIGURACION_PAGO",
+      },
+      500,
+      cors,
+    );
+  }
+
+  const destinoProducto = slug
+    ? `slug=${encodeURIComponent(slug)}`
+    : `id=${encodeURIComponent(campanaId)}`;
+  const urlRedireccion = cuenta
+    ? `https://magandhi.com/carrito/?ref=${
+      encodeURIComponent(referencia)
+    }&cuenta=compras`
+    : `https://magandhi.com/producto/?${destinoProducto}&ref=${
+      encodeURIComponent(referencia)
+    }`;
+  const firma = await calcularFirmaIntegridad(
+    referencia,
+    monto,
+    moneda,
+    secreto,
+    expiraEn,
+  );
+  return json(
+    {
+      referencia,
+      monto_en_centavos: monto,
+      moneda,
+      firma_integridad: firma,
+      expira_en: expiraEn,
+      llave_publica: llavePublica,
+      url_redireccion: urlRedireccion,
+      nombre_producto: nombre,
+      comprador,
+      checkout: {
+        tipo: "compra",
+        referencia,
+        recargar: true,
+        origen: "directo",
+        gestion: cuenta ? "mis_compras" : "local",
+      },
+      recuperacion_cuenta: cuenta,
+    },
+    200,
+    cors,
+  );
+}
+
 async function procesarIntencion(
   req: Request,
   body: Record<string, unknown>,
@@ -526,13 +684,22 @@ async function procesarIntencion(
   const referencia = typeof intencion?.referencia === "string"
     ? intencion.referencia.trim()
     : "";
+  const capacidad = typeof intencion?.capacidad === "string"
+    ? intencion.capacidad.trim()
+    : "";
   if (
     !intencion || Object.keys(body).some((k) => k !== "intencion") ||
-    Object.keys(intencion).some((k) => k !== "referencia") ||
-    !/^[A-Za-z0-9_-]{6,64}$/.test(referencia)
+    Object.keys(intencion).some((k) =>
+      !["referencia", "capacidad"].includes(k)
+    ) ||
+    !/^[A-Za-z0-9_-]{6,64}$/.test(referencia) ||
+    (capacidad !== "" && !FORMATO_CAPACIDAD_REANUDACION.test(capacidad))
   ) {
     return json(
-      { error: "La intención solicitada no es válida.", codigo: "INTENCION_INVALIDA" },
+      {
+        error: "La intención solicitada no es válida.",
+        codigo: "INTENCION_INVALIDA",
+      },
       400,
       cors,
     );
@@ -543,38 +710,77 @@ async function procesarIntencion(
     Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? req.headers.get("apikey");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !publicKey || !serviceRoleKey) {
-    return json({ error: "Configuración del servidor incompleta.", codigo: "ERROR_SERVIDOR" }, 500, cors);
+    return json(
+      {
+        error: "Configuración del servidor incompleta.",
+        codigo: "ERROR_SERVIDOR",
+      },
+      500,
+      cors,
+    );
   }
 
-  const jwt = (req.headers.get("authorization") ?? "")
-    .replace(/^Bearer\s+/i, "")
-    .trim();
-  if (!jwt) {
-    return json({ error: "Inicia sesión para continuar tu pago.", codigo: "SESION_REQUERIDA" }, 401, cors);
+  const autenticacion = await autenticacionOpcional(
+    req,
+    supabaseUrl,
+    publicKey,
+  );
+  if (autenticacion.invalida) {
+    return json(
+      { error: "Tu sesión no es válida.", codigo: "SESION_REQUERIDA" },
+      401,
+      cors,
+    );
   }
-  const supabaseUsuario = createClient(supabaseUrl, publicKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: { headers: { Authorization: `Bearer ${jwt}` } },
-  });
-  const { data: sesion, error: errorSesion } = await supabaseUsuario.auth.getUser(jwt);
-  if (errorSesion || !sesion?.user) {
-    return json({ error: "Tu sesión no es válida.", codigo: "SESION_REQUERIDA" }, 401, cors);
+  const authUserId = autenticacion.uid;
+  if (!authUserId && !capacidad) {
+    return json(
+      {
+        error:
+          "Inicia sesión o vuelve desde el navegador donde empezaste la compra.",
+        codigo: "SESION_REQUERIDA",
+      },
+      401,
+      cors,
+    );
   }
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${serviceRoleKey}` } },
   });
-  const { data: reaperturaBruta, error: errorReapertura } = await supabase.rpc(
-    "mc_reabrir_intencion_c5",
-    { p_referencia: referencia, p_auth_user_id: sesion.user.id },
+  const capacidadHash = capacidad ? await sha256Hex(capacidad) : null;
+  let { data: reaperturaBruta, error: errorReapertura } = await supabase.rpc(
+    "mc_reabrir_intencion_c6",
+    {
+      p_referencia: referencia,
+      p_auth_user_id: authUserId,
+      p_capacidad_hash: capacidadHash,
+    },
   );
+
+  // Durante un despliegue Edge -> migración, C5 sigue reabriendo por su puerta
+  // anterior. La compra directa invitada nunca degrada a posesión de referencia.
+  if (
+    errorReapertura && authUserId && !capacidad &&
+    ["PGRST202", "42883"].includes(String(errorReapertura.code ?? ""))
+  ) {
+    const anterior = await supabase.rpc("mc_reabrir_intencion_c5", {
+      p_referencia: referencia,
+      p_auth_user_id: authUserId,
+    });
+    reaperturaBruta = anterior.data;
+    errorReapertura = anterior.error;
+  }
+
   if (errorReapertura) {
-    const noReabrible = /MC_INTENCION_NO_(?:DISPONIBLE|REABRIBLE)/.test(errorReapertura.message ?? "");
+    const noReabrible = /MC_INTENCION_NO_(?:DISPONIBLE|REABRIBLE)/.test(
+      errorReapertura.message ?? "",
+    );
     return json(
       {
         error: noReabrible
-          ? "Esta compra ya no se puede continuar; revisa su estado en Mis compras."
+          ? "Esta compra ya no se puede continuar; revisa su estado vigente."
           : "No se pudo continuar el pago.",
         codigo: noReabrible ? "INTENCION_NO_REABRIBLE" : "ERROR_SERVIDOR",
       },
@@ -589,28 +795,63 @@ async function procesarIntencion(
   );
   const config = Array.isArray(configFilas) ? configFilas[0] : configFilas;
   const entorno = String(reapertura?.entorno ?? "");
+  const referenciaReapertura = String(reapertura?.referencia ?? "");
   const monto = String(reapertura?.monto_centavos ?? "");
   const moneda = String(reapertura?.moneda ?? "");
   const expiraEn = String(reapertura?.expira_en ?? "");
   const expiraMs = Date.parse(expiraEn);
   if (
     errorConfig || !config || String(config.entorno ?? "") !== entorno ||
+    referenciaReapertura !== referencia ||
     !["sandbox", "prod"].includes(entorno) || !/^\d{1,18}$/.test(monto) ||
     monto === "0" || moneda !== "COP" ||
     !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(expiraEn) ||
     !Number.isFinite(expiraMs) || expiraMs <= Date.now()
   ) {
-    return json({ error: "No se pudo validar la intención de pago.", codigo: "ERROR_SERVIDOR" }, 500, cors);
+    return json(
+      {
+        error: "No se pudo validar la intención de pago.",
+        codigo: "ERROR_SERVIDOR",
+      },
+      500,
+      cors,
+    );
   }
   const llavePublica = String(config.llave_publica ?? "");
   const secreto = Deno.env.get(
     entorno === "prod" ? "WOMPI_INTEGRITY_PROD" : "WOMPI_INTEGRITY_SANDBOX",
   );
   if (!llavePublica || !secreto) {
-    return json({ error: "La configuración de pagos no está disponible.", codigo: "CONFIGURACION_PAGO" }, 500, cors);
+    return json(
+      {
+        error: "La configuración de pagos no está disponible.",
+        codigo: "CONFIGURACION_PAGO",
+      },
+      500,
+      cors,
+    );
   }
 
-  const firma = await calcularFirmaIntegridad(referencia, monto, moneda, secreto, expiraEn);
+  const esDirecta = reapertura?.tipo === "directo";
+  const gestion = reapertura?.gestion === "local" ? "local" : "mis_compras";
+  const slug = typeof reapertura?.slug === "string" ? reapertura.slug : "";
+  const destinoProducto = slug
+    ? `slug=${encodeURIComponent(slug)}`
+    : `id=${encodeURIComponent(String(reapertura?.campana_id ?? ""))}`;
+  const urlRedireccion = esDirecta && gestion === "local"
+    ? `https://magandhi.com/producto/?${destinoProducto}&ref=${
+      encodeURIComponent(referencia)
+    }`
+    : `https://magandhi.com/carrito/?ref=${
+      encodeURIComponent(referencia)
+    }&cuenta=compras`;
+  const firma = await calcularFirmaIntegridad(
+    referencia,
+    monto,
+    moneda,
+    secreto,
+    expiraEn,
+  );
   return json(
     {
       referencia,
@@ -619,12 +860,19 @@ async function procesarIntencion(
       firma_integridad: firma,
       expira_en: expiraEn,
       llave_publica: llavePublica,
-      url_redireccion: `https://magandhi.com/carrito/?ref=${encodeURIComponent(referencia)}&cuenta=compras`,
+      url_redireccion: urlRedireccion,
       nombre_producto: typeof reapertura?.nombre_producto === "string"
         ? reapertura.nombre_producto
+        : typeof reapertura?.nombre === "string"
+        ? reapertura.nombre
         : "Compra",
       comprador: esObjeto(reapertura?.comprador) ? reapertura.comprador : {},
-      checkout: { tipo: "compra", referencia, recargar: true },
+      checkout: {
+        tipo: "compra",
+        referencia,
+        recargar: true,
+        ...(esDirecta ? { origen: "directo", gestion } : {}),
+      },
     },
     200,
     cors,
@@ -1282,6 +1530,22 @@ Deno.serve(async (req: Request): Promise<Response> => {
     ? vidBruto
     : null;
   const atribucionCodigo = codigoAtribucion(body?.atribucion_codigo);
+  const capacidadReanudacion = typeof body?.reanudacion === "string"
+    ? body.reanudacion.trim()
+    : "";
+  if (
+    Object.prototype.hasOwnProperty.call(body, "reanudacion") &&
+    !FORMATO_CAPACIDAD_REANUDACION.test(capacidadReanudacion)
+  ) {
+    return json(
+      {
+        error: "La recuperación del pago no es válida.",
+        codigo: "REANUDACION_INVALIDA",
+      },
+      400,
+      cors,
+    );
+  }
 
   // DIAGNOSTICO: marca de entrada para correlacionar la invocacion en los logs.
   // Solo datos no sensibles (que producto se pidio y cuantas unidades).
@@ -1293,7 +1557,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // --- Cliente Supabase server-side (SERVICE_ROLE, inyectada por el runtime) -
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !serviceRoleKey) {
+  const publicKey = Deno.env.get("SUPABASE_ANON_KEY") ??
+    Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? req.headers.get("apikey");
+  if (!supabaseUrl || !serviceRoleKey || (capacidadReanudacion && !publicKey)) {
     // No se filtra el valor; solo se informa que falta la configuracion.
     return json(
       { error: "Configuracion del servidor incompleta (Supabase)." },
@@ -1311,6 +1577,95 @@ Deno.serve(async (req: Request): Promise<Response> => {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${serviceRoleKey}` } },
   });
+  const autenticacion = capacidadReanudacion
+    ? await autenticacionOpcional(req, supabaseUrl, publicKey)
+    : { uid: null, invalida: false };
+  if (autenticacion.invalida) {
+    return json(
+      { error: "Tu sesión no es válida.", codigo: "SESION_REQUERIDA" },
+      401,
+      cors,
+    );
+  }
+  const authUserId = autenticacion.uid;
+  const capacidadHash = capacidadReanudacion
+    ? await sha256Hex(capacidadReanudacion)
+    : null;
+
+  // La idempotencia se resuelve antes de catálogo, precio, Dropi o configuración
+  // mutable. Si la primera respuesta se perdió, se vuelve a firmar el snapshot
+  // ya persistido aunque la campaña haya cambiado después.
+  if (capacidadHash) {
+    const recuperada = await supabase.rpc("pw_recuperar_registro_directa_c6", {
+      p_capacidad_hash: capacidadHash,
+      p_auth_user_id: authUserId,
+    });
+    if (recuperada.error) {
+      const codigo = String(recuperada.error.code ?? "");
+      const mensaje = String(recuperada.error.message ?? "");
+      if (["PGRST202", "42883"].includes(codigo)) {
+        return json(
+          {
+            error: "La recuperación de pagos todavía no está disponible.",
+            codigo: "RECUPERACION_NO_DISPONIBLE",
+          },
+          503,
+          cors,
+        );
+      }
+      if (/PW_DIRECTA_C6_(?:NO_REABRIBLE|NO_DISPONIBLE)/.test(mensaje)) {
+        return json(
+          {
+            error: "Este intento ya no se puede continuar.",
+            codigo: "INTENCION_NO_REABRIBLE",
+          },
+          409,
+          cors,
+        );
+      }
+      if (/PW_CUENTA_NO_DISPONIBLE/.test(mensaje)) {
+        return json(
+          {
+            error: "Tu cuenta no está disponible.",
+            codigo: "CUENTA_NO_DISPONIBLE",
+          },
+          409,
+          cors,
+        );
+      }
+      console.error(
+        "[crear-intencion-pago] No se pudo resolver la idempotencia C6:",
+        JSON.stringify({ code: codigo }),
+      );
+      return json(
+        {
+          error: "No se pudo recuperar el intento de pago.",
+          codigo: "ERROR_SERVIDOR",
+        },
+        500,
+        cors,
+      );
+    }
+    const snapshotRecuperado = esObjeto(recuperada.data)
+      ? recuperada.data
+      : null;
+    if (snapshotRecuperado) {
+      const mismoProducto =
+        String(snapshotRecuperado.campana_id ?? "") === producto ||
+        String(snapshotRecuperado.slug ?? "") === producto;
+      if (!mismoProducto || Number(snapshotRecuperado.cantidad) !== cantidad) {
+        return json(
+          {
+            error: "La recuperación no corresponde a esta compra.",
+            codigo: "REANUDACION_INVALIDA",
+          },
+          409,
+          cors,
+        );
+      }
+      return await responderDirectaC6(supabase, snapshotRecuperado, cors);
+    }
+  }
 
   // --- (1) Releer el producto de catalogo_publico server-side ---------------
   // catalogo_publico expone únicamente el máximo ya acotado por Campañas y
@@ -1559,18 +1914,48 @@ Deno.serve(async (req: Request): Promise<Response> => {
     p_mg_vid: mgVid,
     p_moneda: moneda,
   };
-  let respuestaIntencion = await supabase.rpc(
-    "pw_registrar_intencion_p4",
-    { ...argumentosIntencion, p_atribucion_codigo: atribucionCodigo },
-  );
-  if (respuestaIntencion.error && permiteFallbackP4(respuestaIntencion.error)) {
-    // La puerta histórica conserva ventas durante despliegues parciales o una
-    // falla P4. Reutiliza exactamente la misma referencia para ser idempotente.
-    registrarFallbackP4("inmediata", respuestaIntencion.error);
+  let respuestaIntencion;
+  if (capacidadReanudacion) {
     respuestaIntencion = await supabase.rpc(
-      "pw_registrar_intencion",
-      argumentosIntencion,
+      "pw_registrar_intencion_directa_c6",
+      {
+        ...argumentosIntencion,
+        p_atribucion_codigo: atribucionCodigo,
+        p_auth_user_id: authUserId,
+        p_capacidad_hash: capacidadHash,
+      },
     );
+    if (
+      respuestaIntencion.error &&
+      ["PGRST202", "42883"].includes(
+        String(respuestaIntencion.error.code ?? ""),
+      )
+    ) {
+      return json(
+        {
+          error: "La recuperación de pagos todavía no está disponible.",
+          codigo: "RECUPERACION_NO_DISPONIBLE",
+        },
+        503,
+        cors,
+      );
+    }
+  } else {
+    respuestaIntencion = await supabase.rpc(
+      "pw_registrar_intencion_p4",
+      { ...argumentosIntencion, p_atribucion_codigo: atribucionCodigo },
+    );
+    if (
+      respuestaIntencion.error && permiteFallbackP4(respuestaIntencion.error)
+    ) {
+      // La puerta histórica conserva ventas durante despliegues parciales o una
+      // falla P4. Reutiliza exactamente la misma referencia para ser idempotente.
+      registrarFallbackP4("inmediata", respuestaIntencion.error);
+      respuestaIntencion = await supabase.rpc(
+        "pw_registrar_intencion",
+        argumentosIntencion,
+      );
+    }
   }
   const { data: intencion, error: errorIntencion } = respuestaIntencion;
   if (errorIntencion) {
@@ -1587,6 +1972,32 @@ Deno.serve(async (req: Request): Promise<Response> => {
             "La disponibilidad cambió; ajusta la cantidad e intenta de nuevo.",
           codigo: "MAX_COMPRABLE",
           max_comprable: maxActual,
+        },
+        409,
+        cors,
+      );
+    }
+    if (/PW_DIRECTA_C6_ACTIVA/.test(errorIntencion.message ?? "")) {
+      return json(
+        {
+          error:
+            "Ya tienes un pago de este producto en proceso. Revísalo en Mis compras.",
+          codigo: "COMPRA_DIRECTA_EN_PROCESO",
+        },
+        409,
+        cors,
+      );
+    }
+    if (
+      /PW_DIRECTA_C6_(?:NO_REABRIBLE|CAPACIDAD_REUTILIZADA)/.test(
+        errorIntencion.message ?? "",
+      )
+    ) {
+      return json(
+        {
+          error:
+            "Este intento ya no se puede volver a abrir. Consulta su estado o inicia uno nuevo cuando termine.",
+          codigo: "INTENCION_NO_REABRIBLE",
         },
         409,
         cors,
@@ -1612,9 +2023,30 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const intencionRegistrada = esObjeto(intencion) ? intencion : null;
   const montoFirmado = String(intencionRegistrada?.monto_centavos ?? "");
   const monedaFirmada = String(intencionRegistrada?.moneda ?? "");
+  const esDirectaC6 = intencionRegistrada?.tipo === "directo";
+  const campanaFirmada = String(intencionRegistrada?.campana_id ?? "");
+  const cantidadFirmada = Number(intencionRegistrada?.cantidad);
+  const referenciaFirmada = esDirectaC6
+    ? String(intencionRegistrada?.referencia ?? "")
+    : referencia;
+  const expiraEn = esDirectaC6
+    ? String(intencionRegistrada?.expira_en ?? "")
+    : "";
+  const expiraMs = expiraEn ? Date.parse(expiraEn) : NaN;
   if (
-    !/^\d+$/.test(montoFirmado) || montoFirmado !== montoEnCentavos ||
-    monedaFirmada !== moneda
+    !/^(?!0)\d{1,18}$/.test(montoFirmado) ||
+    (!esDirectaC6 && montoFirmado !== montoEnCentavos) ||
+    monedaFirmada !== moneda ||
+    !/^[A-Za-z0-9_-]{6,64}$/.test(referenciaFirmada) ||
+    (!esDirectaC6 && referenciaFirmada !== referencia) ||
+    (esDirectaC6 && (
+      campanaFirmada !== String(fila.id ?? "") ||
+      cantidadFirmada !== cantidad ||
+      intencionRegistrada?.estado !== "creada" ||
+      intencionRegistrada?.tiene_transaccion !== false ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(expiraEn) ||
+      !Number.isFinite(expiraMs) || expiraMs <= Date.now()
+    ))
   ) {
     console.error(
       "[crear-intencion-pago] Snapshot autoritativo inconsistente.",
@@ -1626,43 +2058,61 @@ Deno.serve(async (req: Request): Promise<Response> => {
     );
   }
 
-  // --- Calcular la firma de integridad (server-side) ------------------------
-  // Se firma el monto que devolvió la RPC después de repetir las reglas bajo
-  // lock; nunca una cifra calculada solo desde la primera lectura pública.
+  // C6 firma también el vencimiento exacto. Las respuestas históricas durante
+  // una ventana de despliegue conservan la firma anterior sin expiration-time.
   const firmaIntegridad = await calcularFirmaIntegridad(
-    referencia,
+    referenciaFirmada,
     montoFirmado,
     monedaFirmada,
     secretoIntegridad,
+    esDirectaC6 ? expiraEn : undefined,
   );
 
-  // --- URL de redireccion tras el pago --------------------------------------
-  // PROVISIONAL hasta F2.3 (pagina de gracias). Mientras no exista /gracias/,
-  // redirigimos a la pagina del producto con la referencia como parametro, para
-  // que el comprador vuelva a un lugar conocido de la tienda.
-  const destinoProducto = fila.slug
-    ? `slug=${encodeURIComponent(String(fila.slug))}`
-    : `id=${encodeURIComponent(String(fila.id ?? ""))}`;
-  const urlRedireccion = `https://magandhi.com/producto/?${destinoProducto}` +
-    `&ref=${encodeURIComponent(referencia)}`;
+  const slugRetorno =
+    esDirectaC6 && typeof intencionRegistrada?.slug === "string"
+      ? intencionRegistrada.slug
+      : String(fila.slug ?? "");
+  const destinoProducto = slugRetorno
+    ? `slug=${encodeURIComponent(slugRetorno)}`
+    : `id=${encodeURIComponent(campanaFirmada || String(fila.id ?? ""))}`;
+  const urlRedireccion = esDirectaC6 && authUserId
+    ? `https://magandhi.com/carrito/?ref=${
+      encodeURIComponent(referenciaFirmada)
+    }&cuenta=compras`
+    : `https://magandhi.com/producto/?${destinoProducto}&ref=${
+      encodeURIComponent(referenciaFirmada)
+    }`;
 
-  // --- Respuesta 200: SOLO datos publicos -----------------------------------
-  // NUNCA se incluye el secreto de integridad ni la service_role.
-  // monto_en_centavos se devuelve como STRING: es EXACTAMENTE la misma cadena
-  // sobre la que se calculo la firma (montoEnCentavosBig.toString()). Asi se
-  // elimina toda asimetria entre lo firmado y lo enviado a Wompi: no pasa por
-  // Number(), que podria redondear montos por encima de 2^53 centavos y hacer
-  // que la firma que rehashea Wompi no coincida con la firmada aqui. Wompi
-  // acepta amount-in-cents como texto.
+  // Respuesta pública: la capacidad nunca vuelve desde servidor. El navegador
+  // conserva la que generó; la BD solo recibió su hash.
   return json(
     {
-      referencia,
+      referencia: referenciaFirmada,
       monto_en_centavos: montoFirmado,
       moneda: monedaFirmada,
       firma_integridad: firmaIntegridad,
+      ...(esDirectaC6 ? { expira_en: expiraEn } : {}),
       llave_publica: llavePublica,
       url_redireccion: urlRedireccion,
-      nombre_producto: fila.nombre ?? "",
+      nombre_producto:
+        esDirectaC6 && typeof intencionRegistrada?.nombre === "string"
+          ? intencionRegistrada.nombre
+          : fila.nombre ?? "",
+      ...(esDirectaC6
+        ? {
+          checkout: {
+            tipo: "compra",
+            referencia: referenciaFirmada,
+            recargar: true,
+            origen: "directo",
+            gestion: authUserId ? "mis_compras" : "local",
+          },
+          recuperacion_cuenta: !!authUserId,
+          comprador: esObjeto(intencionRegistrada?.comprador)
+            ? intencionRegistrada.comprador
+            : {},
+        }
+        : {}),
     },
     200,
     cors,

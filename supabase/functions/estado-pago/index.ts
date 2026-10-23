@@ -74,6 +74,9 @@ type CheckoutPublico =
     tipo: "compra";
     referencia: string;
     recargar: boolean;
+    origen?: "directo";
+    gestion?: "local" | "mis_compras";
+    puede_continuar?: boolean;
   };
 
 function checkoutSeguro(valor: unknown): CheckoutPublico | null {
@@ -86,10 +89,22 @@ function checkoutSeguro(valor: unknown): CheckoutPublico | null {
       !FORMATO_REFERENCIA.test(bruto.referencia) ||
       typeof bruto.recargar !== "boolean"
     ) return null;
+    const origen = bruto.origen === "directo" ? "directo" : undefined;
+    const gestion = bruto.gestion === "local" || bruto.gestion === "mis_compras"
+      ? bruto.gestion
+      : undefined;
+    const puedeContinuar = typeof bruto.puede_continuar === "boolean"
+      ? bruto.puede_continuar
+      : undefined;
     return {
       tipo: "compra",
       referencia: bruto.referencia,
       recargar: bruto.recargar,
+      ...(origen ? { origen } : {}),
+      ...(gestion ? { gestion } : {}),
+      ...(puedeContinuar !== undefined
+        ? { puede_continuar: puedeContinuar }
+        : {}),
     };
   }
 
@@ -142,7 +157,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const publicKey = Deno.env.get("SUPABASE_ANON_KEY") ??
     Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? req.headers.get("apikey");
-  if (!supabaseUrl || !serviceRoleKey) {
+  if (!supabaseUrl || !serviceRoleKey || !publicKey) {
     return json(
       { error: "Configuracion del servidor incompleta (Supabase)." },
       500,
@@ -156,16 +171,23 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const jwt = (req.headers.get("authorization") ?? "")
     .replace(/^Bearer\s+/i, "")
     .trim();
-  if (jwt && publicKey) {
+  const credencialPublica = (req.headers.get("apikey") ?? "").trim();
+  if (
+    jwt && jwt !== publicKey &&
+    (!credencialPublica || jwt !== credencialPublica)
+  ) {
     const supabaseUsuario = createClient(supabaseUrl, publicKey, {
       auth: { persistSession: false, autoRefreshToken: false },
       global: { headers: { Authorization: `Bearer ${jwt}` } },
     });
     const { data: sesion, error: errorSesion } = await supabaseUsuario.auth
       .getUser(jwt);
-    if (!errorSesion && sesion?.user?.id && FORMATO_UUID.test(sesion.user.id)) {
-      authUserId = sesion.user.id;
+    if (
+      errorSesion || !sesion?.user?.id || !FORMATO_UUID.test(sesion.user.id)
+    ) {
+      return json({ error: "Tu sesión no es válida." }, 401, cors);
     }
+    authUserId = sesion.user.id;
   }
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
@@ -202,7 +224,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   const bruto = typeof fila.estado === "string" ? fila.estado : "";
-  const estado = ESTADOS_PUBLICOS.has(bruto) ? bruto : "pendiente";
+  if (!ESTADOS_PUBLICOS.has(bruto)) {
+    console.error("[estado-pago] Estado público fuera de contrato.");
+    return json(
+      { error: "No se pudo validar el estado del pago." },
+      500,
+      cors,
+    );
+  }
+  const estado = bruto;
   const respuesta: Record<string, unknown> = {
     estado,
     nombre_producto: typeof fila.nombre_producto === "string"
