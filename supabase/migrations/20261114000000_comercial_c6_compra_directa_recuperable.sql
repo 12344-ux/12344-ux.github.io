@@ -468,8 +468,8 @@ grant execute on function pw_estado_checkout_publico(text, uuid) to service_role
 -- (E) Mis compras. Envuelve C5 para sumar directas autenticadas y deduplicar el
 --     alias histórico del pedido materializado.
 -- ----------------------------------------------------------------------------
-alter function mc_compras_listar() rename to mc__compras_listar_c5;
-revoke all on function mc__compras_listar_c5()
+alter function mc_compras_listar() rename to pw__compras_listar_c5;
+revoke all on function pw__compras_listar_c5()
   from public, anon, authenticated, service_role;
 
 create function mc_compras_listar()
@@ -486,7 +486,7 @@ declare
   v_ref text;
 begin
   -- El cuerpo C5 conserva su validación de cuenta, expiración y proyección.
-  v_base := mc__compras_listar_c5();
+  v_base := pw__compras_listar_c5();
 
   for v_ref in
     select pi.referencia from pagos_intencion pi
@@ -624,8 +624,8 @@ grant execute on function mc_compras_listar() to authenticated, service_role;
 -- service_role y el contexto no falsificable que ya abre el procesador.
 -- ----------------------------------------------------------------------------
 alter function crear_pedido(uuid,text,text,text,text,text,text,text,text,text,date,text,jsonb)
-  rename to crear_pedido_c6_base;
-revoke all on function crear_pedido_c6_base(uuid,text,text,text,text,text,text,text,text,text,date,text,jsonb)
+  rename to pw__crear_pedido_c6_base;
+revoke all on function pw__crear_pedido_c6_base(uuid,text,text,text,text,text,text,text,text,text,date,text,jsonb)
   from public, anon, authenticated, service_role;
 
 create function crear_pedido(
@@ -659,7 +659,7 @@ begin
       p_notas_pedido, p_items
     );
   end if;
-  return crear_pedido_c6_base(
+  return pw__crear_pedido_c6_base(
     p_customer_id, p_nombre, p_correo, p_telefono, p_direccion,
     p_ciudad, p_departamento, p_pais, p_notas_cliente, p_canal,
     p_fecha_orden, p_notas_pedido, p_items
@@ -893,9 +893,9 @@ revoke all on function pw__registrar_evento_directa_c6(text,text,text,text,text,
   from public, anon, authenticated, service_role;
 revoke all on function pw__estado_checkout_publico_c5(text,uuid)
   from public, anon, authenticated, service_role;
-revoke all on function mc__compras_listar_c5()
+revoke all on function pw__compras_listar_c5()
   from public, anon, authenticated, service_role;
-revoke all on function crear_pedido_c6_base(uuid,text,text,text,text,text,text,text,text,text,date,text,jsonb)
+revoke all on function pw__crear_pedido_c6_base(uuid,text,text,text,text,text,text,text,text,text,date,text,jsonb)
   from public, anon, authenticated, service_role;
 revoke all on function pw__procesar_pago_p4_c5(text,text,text,bigint,text,text,text,jsonb,text,text)
   from public, anon, authenticated, service_role;
