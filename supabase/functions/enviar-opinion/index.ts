@@ -2,11 +2,15 @@
 // MAGANDHI · Edge Function · enviar-opinion (Software de Opiniones)
 // ----------------------------------------------------------------------------
 // Recibe del navegador (tienda magandhi.com) una opinion de cliente:
-//   { codigo, slug, estrellas, comentario?, autor, es_prueba? }
+//   { codigo, slug, estrellas, comentario?, autor }
 // y la registra SOLO si el codigo corresponde a un pedido ENTREGADO que
 // contenia ese producto. Toda la validacion ocurre server-side en el RPC
 // SECURITY DEFINER op_registrar_opinion; esta funcion es la puerta publica que
 // lo invoca con la service_role y traduce los errores a mensajes amables.
+//
+// Desde 20261117000000 quien tiene sesion opina con op_cuenta_opinar, sin
+// codigo. Esta puerta queda para el enlace con codigo del correo «Entregado».
+// La marca es_prueba ya no se acepta del navegador: solo la pone MAGANDHI.
 //
 // ============================================================================
 // LINEA ROJA DE SEGURIDAD (orden permanente del dueno · NO negociable):
@@ -134,7 +138,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
     ? body.comentario
     : null;
   const estrellas = Number(body?.estrellas);
-  const esPrueba = body?.es_prueba === true;
 
   // Validacion minima en el borde (el RPC vuelve a validar todo server-side).
   if (!codigo) {
@@ -153,7 +156,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // DIAGNOSTICO: marca de entrada SIN el codigo (es secreto) ni datos sensibles.
   console.log(
     "[enviar-opinion] Opinion recibida:",
-    JSON.stringify({ slug, estrellas, es_prueba: esPrueba }),
+    JSON.stringify({ slug, estrellas }),
   );
 
   // --- Cliente Supabase server-side (SERVICE_ROLE, inyectada por el runtime) -
@@ -181,7 +184,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     p_estrellas: estrellas,
     p_comentario: comentario,
     p_autor: autor,
-    p_es_prueba: esPrueba,
+    // Una opinion de prueba solo la marca MAGANDHI por SQL; el navegador no.
+    p_es_prueba: false,
   });
 
   if (error) {

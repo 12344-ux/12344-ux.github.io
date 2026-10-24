@@ -5796,3 +5796,80 @@ ignorada y TTFB `0.390943s`; además `HEAD 302`, `OPTIONS 204` e inválido `404`
 P3 produce **clics aproximados**. CTR necesita impresiones. **P4 es el siguiente
 tramo:** congelar el enlace en intención/pedido y atribuir conversión/pedidos
 empieza allí. **P5 viene después**, con tablero e ingresos.
+
+# Opiniones con cuenta · `20261117000000` (PENDIENTE DE DESPLIEGUE)
+
+Decisión del dueño del 24-oct-2026. Quien tiene sesión opina sobre productos de
+pedidos **entregados**, sin código de reseña ni campo de nombre. Escribir el SQL
+o el TS en el repo **no** los despliega.
+
+## Contrato
+
+- **Una opinión por cuenta para cada producto**, aunque lo compre varias veces.
+  Volver a opinar sobre el mismo producto edita la opinión existente. Un pedido
+  con varios productos permite una opinión por producto.
+- **Nombre público:** MAGANDHI lo arma con el nombre de la cuenta guardado en
+  `auth.users.raw_user_meta_data`: `given_name` + `family_name` (Google),
+  `full_name` (campo «Nombre y apellido» del registro o Google) o `name`. Se
+  publica como «Nombre I.». Sin un nombre válido, «Cliente MAGANDHI».
+- **Editar** guarda la versión anterior en `opiniones_historial` y la tienda
+  muestra «Editada». **Eliminar** copia la fila completa al historial y la quita
+  de `opiniones`: sale de la tienda, del promedio y de Métricas, y la cuenta
+  puede volver a opinar. El historial es de solo inserción.
+- Una opinión **oculta por MAGANDHI** no se edita ni se elimina desde la cuenta.
+- El **código de reseña** del correo sigue funcionando para invitados. Ahora
+  respeta una opinión por cliente y producto, y `enviar-opinion` ya no acepta
+  `es_prueba` desde el navegador.
+- Puertas nuevas, solo `authenticated` y `service_role`:
+  `op_cuenta_opiniones()`, `op_cuenta_opinar(uuid, integer, text)` y
+  `op_cuenta_retirar_opinion(uuid)`. Los helpers `op__*` quedan cerrados para
+  todos los roles API.
+- `opiniones_publicas` conserva sus siete columnas y agrega `editada` al final.
+- No toca pagos, carrito, inventario, pedidos, Mis compras ni el panel interno
+  de Opiniones, que sigue respondiendo y ocultando también las opiniones con
+  cuenta.
+
+## Orden de despliegue (una sola ventana)
+
+1. Fusionar el PR de backend y esperar el Banco de pruebas en verde.
+2. **SQL Editor, una sola vez:** pegar y correr
+   `supabase/migrations/20261117000000_opiniones_cuenta.sql`. Escribe. Debe
+   terminar sin error: la propia migración se detiene completa si las firmas,
+   los permisos o la vista pública no quedan exactamente como se acordó.
+3. **Edge `enviar-opinion`:** redesplegarla desde ese merge sin cambiar su
+   ajuste de Verify JWT. Con la CLI, si hoy está apagado:
+   `supabase functions deploy enviar-opinion --project-ref bxlzipwxyxdtffnuizbz --no-verify-jwt`.
+4. Publicar el PR de la tienda (registro con nombre, formulario, Mis compras,
+   Mis opiniones y fichas).
+5. **SQL Editor, solo lectura:** `supabase/operacion/opiniones-cuenta-verificar.sql`.
+   Esperado: `migracion_aplicada=true`, `opiniones_con_codigo=1`,
+   `opiniones_con_cuenta=0`, `pedido_entregado=true`,
+   `pedido_de_una_cuenta=true`, `nombre_publico` con el nombre e inicial del
+   dueño y `listo_para_retirar=true`.
+6. **SQL Editor, escribe:**
+   `supabase/operacion/opiniones-cuenta-retirar-codigo-grisi.sql`. Retira la
+   opinión vieja de Grisi Manzanilla Gold, hecha con código. Esperado:
+   `retirada=true`, `quedan_con_codigo=0`, `cuenta_puede_opinar=true` y el
+   mismo `nombre_publico`. Si encuentra algo distinto de exactamente una opinión
+   con código, de un pedido entregado de una cuenta activa, se detiene sin
+   cambiar nada.
+7. Prueba integral con la cuenta del dueño, en PC y en móvil: opinar desde Mis
+   compras, verla en la ficha con su nombre público, editarla, eliminarla y
+   volver a opinar.
+
+## Validación antes del despliegue
+
+El Banco de pruebas corre `supabase/pruebas/local/opiniones-cuenta.sql` (nombre
+público, elegibilidad, una por producto, edición, retiro, moderación,
+convivencia con el código y permisos) y la secuencia operativa sobre una
+semilla que reproduce el caso de Grisi: semilla, verificación, retiro y
+`opiniones-cuenta-operacion-chequeo.sql`. La matriz de privilegios exige las
+tres puertas nuevas y sus firmas exactas.
+
+## Falla segura
+
+- Toda corrección es una migración forward nueva; no reaplicar
+  `20261117000000`.
+- Si la tienda nueva falla, se puede volver a publicar la versión anterior de
+  la tienda: la base nueva no rompe la ficha vieja (la vista conserva sus
+  columnas y el código sigue funcionando).

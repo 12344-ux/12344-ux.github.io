@@ -170,6 +170,14 @@ begin
       ];
     end if;
 
+    -- Opiniones con cuenta agrega tres puertas autenticadas. Los helpers op__*
+    -- y el historial permanecen cerrados; ninguna firma recibe UID.
+    if to_regclass('public.opiniones_historial') is not null then
+      v_lista_blanca := v_lista_blanca || array[
+        'op_cuenta_opiniones', 'op_cuenta_opinar', 'op_cuenta_retirar_opinion'
+      ];
+    end if;
+
     -- D1 puede no existir a propósito cuando los scripts reproducen una foto
     -- histórica anterior al 10-oct. Si la tabla existe, la lista blanca exige
     -- sus tres puertas; si no existe, exigirlas sería pedir funciones futuras
@@ -506,6 +514,33 @@ begin
       end;
     end if;
 
+    -- Opiniones con cuenta: tres firmas exactas, sin overloads que acepten
+    -- identidad o un pedido elegido por el navegador.
+    if to_regclass('public.opiniones_historial') is not null then
+      r_pers := r_pers || 'authenticated'::text;
+      r_obj := r_obj || 'Firmas RPC de opiniones con cuenta'::text;
+      r_esp := r_esp || 'FIRMAS EXACTAS'::text;
+      r_obt := r_obt || case when
+        to_regprocedure('public.op_cuenta_opinar(uuid,integer,text)') is not null
+        and to_regprocedure('public.op_cuenta_retirar_opinion(uuid)') is not null
+        and (
+          select count(*) = 3 and bool_and(
+            p.prokind = 'f'
+            and p.oid in (
+              to_regprocedure('public.op_cuenta_opiniones()')::oid,
+              to_regprocedure('public.op_cuenta_opinar(uuid,integer,text)')::oid,
+              to_regprocedure('public.op_cuenta_retirar_opinion(uuid)')::oid
+            )
+          )
+            from pg_proc p
+            join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public'
+             and p.proname in ('op_cuenta_opiniones', 'op_cuenta_opinar', 'op_cuenta_retirar_opinion')
+        ) then 'FIRMAS EXACTAS'
+        else 'FIRMAS DISTINTAS'
+      end;
+    end if;
+
     -- ---------- EXECUTE: service_role solo puertas, nunca helpers internos ----------
     -- Los helpers co__*/pw__*/sn__*, los triggers privados, mantenimientos y
     -- núcleos internos se alcanzan como propietario desde SECURITY DEFINER o
@@ -513,7 +548,7 @@ begin
     -- sn_buscar_v1/sn_recomendar_v1 son puertas service de SN.
     select string_agg(
              case
-               when left(p.proname, 4) in ('co__','pw__')
+               when left(p.proname, 4) in ('co__','pw__','op__')
                  or p.proname like 'sn\_\_%' escape '\'
                  or p.proname in (
                    'sn_campana_detalle_v1','sn_guardar_campana_v1',
@@ -582,7 +617,7 @@ begin
        )
        and (
          (
-           left(p.proname, 4) in ('co__','pw__')
+           left(p.proname, 4) in ('co__','pw__','op__')
            or p.proname like 'sn\_\_%' escape '\'
            or p.proname in (
              'sn_campana_detalle_v1','sn_guardar_campana_v1',

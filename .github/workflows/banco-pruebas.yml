@@ -74,7 +74,11 @@ jobs:
             "$REPO/supabase/pruebas/cuentas-cliente-c2-preflight.sql" \
             "$P/em5-resultados.sql" "$P/em5-1-respuesta-email.sql" "$P/em6-captura.sql" \
             "$P/promocionar-p3.sql" \
-            "$P/cuadre-contable-2026-10-14.sql" "$P/cuadre-contable-aplicar.sql" 2>&1 | tee -a /tmp/banco.log
+            "$P/cuadre-contable-2026-10-14.sql" "$P/cuadre-contable-aplicar.sql" \
+            "$P/opiniones-cuenta.sql" "$P/opiniones-cuenta-operacion-semilla.sql" \
+            "$REPO/supabase/operacion/opiniones-cuenta-verificar.sql" \
+            "$REPO/supabase/operacion/opiniones-cuenta-retirar-codigo-grisi.sql" \
+            "$P/opiniones-cuenta-operacion-chequeo.sql" 2>&1 | tee -a /tmp/banco.log
           sudo bash "$AQUI/probar-cuentas-concurrencia.sh" 2>&1 | tee -a /tmp/banco.log
           sudo bash "$AQUI/probar-cuentas-c2-concurrencia.sh" 2>&1 | tee -a /tmp/banco.log
           sudo -u pg pg_ctl -D /var/lib/pgdata stop -m fast >/dev/null || true
