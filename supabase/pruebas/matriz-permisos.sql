@@ -486,7 +486,7 @@ begin
     if to_regclass('public.favoritos_cliente') is not null then
       r_pers := r_pers || 'authenticated'::text;
       r_obj := r_obj || 'Firmas RPC de favoritos'::text;
-      r_esp := r_esp || 'fv_favoritos_listar() · fv_favorito_establecer(uuid,boolean)'::text;
+      r_esp := r_esp || 'FIRMAS EXACTAS'::text;
       r_obt := r_obt || case when
         to_regprocedure('public.fv_favorito_establecer(uuid,boolean)') is not null
         and (
