@@ -55,7 +55,7 @@ begin execute q; return 'SIN ERROR'; exception when others then return sqlerrm; 
 
 create or replace function pg_temp.producto_de(snap jsonb, campana uuid) returns jsonb language sql as $$
   select x from jsonb_array_elements(coalesce(snap->'productos', '[]'::jsonb)) x
-   where x->>'campana_id' = campana::text limit 1
+   where x->'campanas' ? campana::text limit 1
 $$;
 
 do $$
@@ -209,13 +209,16 @@ begin
   perform pg_temp.chk(snap->>'nombre_publico' = 'Ana P.', 'el snapshot trae el nombre con que aparecerá');
   perform pg_temp.chk(jsonb_array_length(snap->'opiniones') = 0, 'sin opiniones todavía');
   perform pg_temp.chk(pg_temp.producto_de(snap, k1)->>'estado' = 'pendiente' and pg_temp.producto_de(snap, k1b)->>'estado' = 'pendiente', 'producto entregado: todas sus campañas publicadas quedan pendientes');
+  perform pg_temp.chk((select count(*) from jsonb_array_elements(snap->'productos') x where x->'campanas' ? k1::text) = 1
+                      and jsonb_array_length(pg_temp.producto_de(snap, k1)->'campanas') = 2
+                      and pg_temp.producto_de(snap, k1)->>'campana_id' = (pg_temp.producto_de(snap, k1)->'campanas'->>0), 'un producto con dos campañas aparece una sola vez, con ambas campañas');
   perform pg_temp.chk(pg_temp.producto_de(snap, k2)->>'estado' = 'pendiente', 'cada producto de un pedido con varios productos se puede opinar');
   perform pg_temp.chk(pg_temp.producto_de(snap, k5) is null, 'pedido sin entregar no habilita opinar');
   perform pg_temp.chk(pg_temp.producto_de(snap, k6) is null, 'pedido anulado no habilita opinar');
   perform pg_temp.chk(pg_temp.producto_de(snap, k3) is null, 'producto inactivo no aparece pendiente');
   perform pg_temp.chk(pg_temp.producto_de(snap, k4) is null, 'campaña sin publicar no aparece');
-  perform pg_temp.chk((select bool_and((select count(*) from jsonb_object_keys(x)) = 6 and x ? 'campana_id' and x ? 'slug' and x ? 'nombre' and x ? 'imagen' and x ? 'estado' and x ? 'opinion_id') from jsonb_array_elements(snap->'productos') x), 'cada producto trae exactamente seis claves públicas');
-  perform pg_temp.chk((select count(*) from jsonb_array_elements(pg_temp.json_como(u_beto, 'select public.op_cuenta_opiniones()')->'productos') x where x->>'campana_id' in (k2::text)) = 0, 'otra cuenta no ve los productos ajenos');
+  perform pg_temp.chk((select bool_and((select count(*) from jsonb_object_keys(x)) = 7 and x ? 'campana_id' and x ? 'campanas' and x ? 'slug' and x ? 'nombre' and x ? 'imagen' and x ? 'estado' and x ? 'opinion_id') from jsonb_array_elements(snap->'productos') x), 'cada producto trae exactamente siete claves públicas');
+  perform pg_temp.chk((select count(*) from jsonb_array_elements(pg_temp.json_como(u_beto, 'select public.op_cuenta_opiniones()')->'productos') x where x->'campanas' ? k2::text) = 0, 'otra cuenta no ve los productos ajenos');
   perform pg_temp.chk(jsonb_array_length(pg_temp.json_como(u_nuevo, 'select public.op_cuenta_opiniones()')->'productos') = 0, 'una cuenta sin compras no tiene productos por opinar');
 
   -- ---------------------------------------------------------------- validaciones

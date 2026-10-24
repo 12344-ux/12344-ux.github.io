@@ -381,20 +381,38 @@ begin
       from candidatos c
       left join propias pp on pp.product_id = c.product_id
   )
+  , publicadas as (
+    select s.product_id, s.estado, s.opinion_id,
+           cp.id, cp.slug, cp.nombre, cp.imagen_banner_path, cp.orden
+      from estados s
+      join public.campana_producto mapa on mapa.product_id_ref = s.product_id
+      join public.catalogo_publico cp on cp.id = mapa.id
+     where s.estado is not null
+  ),
+  -- Un producto puede tener más de una campaña publicada: se entrega una sola
+  -- entrada con la campaña principal y la lista completa, para que Mis compras
+  -- reconozca cualquiera de ellas y Mis opiniones no repita el producto.
+  por_producto as (
+    select p.product_id, p.estado, p.opinion_id,
+           array_agg(p.id order by p.orden nulls last, p.id) as campanas,
+           (array_agg(p.slug order by p.orden nulls last, p.id))[1] as slug,
+           (array_agg(p.nombre order by p.orden nulls last, p.id))[1] as nombre,
+           (array_agg(p.imagen_banner_path order by p.orden nulls last, p.id))[1] as imagen
+      from publicadas p
+     group by p.product_id, p.estado, p.opinion_id
+  )
   select coalesce(jsonb_agg(jsonb_build_object(
-           'campana_id', cp.id,
-           'slug', cp.slug,
-           'nombre', cp.nombre,
-           'imagen', cp.imagen_banner_path,
-           'estado', s.estado,
-           'opinion_id', s.opinion_id
-         ) order by case s.estado when 'pendiente' then 0 when 'opinada' then 1 else 2 end,
-                    cp.nombre, cp.id), '[]'::jsonb)
+           'campana_id', pp.campanas[1],
+           'campanas', to_jsonb(pp.campanas),
+           'slug', pp.slug,
+           'nombre', pp.nombre,
+           'imagen', pp.imagen,
+           'estado', pp.estado,
+           'opinion_id', pp.opinion_id
+         ) order by case pp.estado when 'pendiente' then 0 when 'opinada' then 1 else 2 end,
+                    pp.nombre, pp.campanas[1]), '[]'::jsonb)
     into v_productos
-    from estados s
-    join public.campana_producto mapa on mapa.product_id_ref = s.product_id
-    join public.catalogo_publico cp on cp.id = mapa.id
-   where s.estado is not null;
+    from por_producto pp;
 
   return jsonb_build_object(
     'nombre_publico', public.op__nombre_publico_cuenta(v_uid),

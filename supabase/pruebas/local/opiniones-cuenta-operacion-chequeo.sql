@@ -38,7 +38,7 @@ begin
 
   snap := pg_temp.json_como(u_dueno, 'select public.op_cuenta_opiniones()');
   perform pg_temp.chk(snap->>'nombre_publico' = 'Dueño P.', 'la cuenta aparecerá como «Dueño P.»');
-  perform pg_temp.chk((select x->>'estado' from jsonb_array_elements(snap->'productos') x where x->>'campana_id' = v_campana::text) = 'pendiente', 'la cuenta dueña del pedido puede volver a opinar');
+  perform pg_temp.chk((select x->>'estado' from jsonb_array_elements(snap->'productos') x where x->'campanas' ? v_campana::text) = 'pendiente', 'la cuenta dueña del pedido puede volver a opinar');
 
   snap := pg_temp.json_como(u_dueno, format('select public.op_cuenta_opinar(%L, 5, %L)', v_campana, 'Ahora con mi cuenta'));
   perform pg_temp.chk((select count(*) from opiniones_publicas where slug = 'grisi-manzanilla-gold' and autor_nombre = 'Dueño P.') = 1, 'la nueva opinión con cuenta sale en la tienda');
