@@ -162,6 +162,14 @@ begin
       ];
     end if;
 
+    -- Favoritos agrega dos puertas autenticadas. La tabla permanece cerrada y
+    -- ninguna firma recibe UID desde el navegador.
+    if to_regclass('public.favoritos_cliente') is not null then
+      v_lista_blanca := v_lista_blanca || array[
+        'fv_favoritos_listar', 'fv_favorito_establecer'
+      ];
+    end if;
+
     -- D1 puede no existir a propósito cuando los scripts reproducen una foto
     -- histórica anterior al 10-oct. Si la tabla existe, la lista blanca exige
     -- sus tres puertas; si no existe, exigirlas sería pedir funciones futuras
@@ -472,6 +480,31 @@ begin
       else 'DISTINTO. Sobran: ' || coalesce((select string_agg(x, ', ') from unnest(v_funcs_auth) x where x <> all (v_lista_blanca)), '-')
         || ' · Faltan: ' || coalesce((select string_agg(x, ', ') from unnest(v_lista_blanca) x where x <> all (coalesce(v_funcs_auth, '{}'))), '-')
     end;
+
+    -- Favoritos exige además las dos firmas exactas; comparar solo nombres no
+    -- detectaría un overload futuro que aceptara identidad u otra autoridad.
+    if to_regclass('public.favoritos_cliente') is not null then
+      r_pers := r_pers || 'authenticated'::text;
+      r_obj := r_obj || 'Firmas RPC de favoritos'::text;
+      r_esp := r_esp || 'fv_favoritos_listar() · fv_favorito_establecer(uuid,boolean)'::text;
+      r_obt := r_obt || case when
+        to_regprocedure('public.fv_favorito_establecer(uuid,boolean)') is not null
+        and (
+          select count(*) = 2 and bool_and(
+            p.prokind = 'f'
+            and p.oid in (
+              to_regprocedure('public.fv_favoritos_listar()')::oid,
+              to_regprocedure('public.fv_favorito_establecer(uuid,boolean)')::oid
+            )
+          )
+            from pg_proc p
+            join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public'
+             and p.proname in ('fv_favoritos_listar', 'fv_favorito_establecer')
+        ) then 'FIRMAS EXACTAS'
+        else 'FIRMAS DISTINTAS'
+      end;
+    end if;
 
     -- ---------- EXECUTE: service_role solo puertas, nunca helpers internos ----------
     -- Los helpers co__*/pw__*/sn__*, los triggers privados, mantenimientos y
